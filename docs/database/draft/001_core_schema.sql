@@ -778,6 +778,25 @@ grant all on
   to service_role;
 
 -- 12.7 anon — aucun privilège, sur aucune table, volontairement.
-revoke all on all tables in schema public from anon;
+-- Liste EXPLICITE des tables de ce draft : on ne révoque pas en masse sur
+-- schema public, pour ne jamais toucher par surprise un objet ajouté plus tard
+-- par une autre fonctionnalité (ou par une intégration managée).
+revoke all on
+  public.profiles, public.programs, public.curriculum_versions, public.cohorts,
+  public.enrollments, public.role_assignments, public.outcomes,
+  public.outcome_relations, public.learning_resources,
+  public.learning_resource_outcomes, public.learning_resource_assets,
+  public.placements, public.placement_supervisors, public.placement_assignments,
+  public.evidence, public.evidence_sources, public.evidence_validations,
+  public.audit_events, public.ai_usage_events, public.ai_quota_policies
+  from anon;
+
+-- 12.8 learning_resource_assets — ÉCRITURE SERVEUR UNIQUEMENT
+-- Le navigateur ne choisit jamais bucket_name, object_path, storage_provider,
+-- checksum_sha256, byte_size ni processing_status. Aucun GRANT
+-- INSERT/UPDATE/DELETE à authenticated ; seul service_role écrit (12.6), après
+-- revérification de l'autorisation métier côté backend (service_role contourne
+-- la RLS). Flux détaillé : storage_architecture.md §2.
+
 
 -- FIN — DRAFT — DO NOT EXECUTE
