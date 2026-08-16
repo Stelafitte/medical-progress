@@ -749,9 +749,10 @@ grant insert (
 -- placement_assignment_id, source_system, source_id, imported_at,
 -- import_batch_id, created_at ne sont donc plus modifiables après création,
 -- par privilège et non seulement par policy.
+-- updated_at n'est pas accordé : il est imposé par set_updated_at().
 grant update (
   title, occurred_at, score_raw, score_max, proposed_mastery, autonomy_level,
-  repetition_count, confidence_level, context, status, updated_at
+  repetition_count, confidence_level, context, status
 ) on public.evidence to authenticated;
 -- Aucun GRANT DELETE : une preuve ne se supprime pas, elle change de statut.
 
