@@ -73,10 +73,11 @@ export function computeOutcomeProgress(
   const counted = related.filter((e) => isCountableEvidence(e, outcome.nature));
   const pending = related.filter((e) => e.status === "submitted" || e.status === "draft");
 
+  // Auto-déclaration en attente d'un tiers : signalée, jamais comptée.
   const blockedBySelfDeclaration =
     outcome.nature === "real_competence" &&
-    counted.length === 0 &&
-    related.some((e) => e.selfDeclared);
+    related.some((e) => e.selfDeclared && !hasThirdPartyValidation(e));
+
 
   let mastery: MasteryLevel = "not_started";
   if (counted.length >= 1) mastery = "novice";
