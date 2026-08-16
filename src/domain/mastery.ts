@@ -20,15 +20,21 @@ export function isAtLeast(level: MasteryLevel, target: MasteryLevel): boolean {
   return masteryRank(level) >= masteryRank(target);
 }
 
-/** Une preuve compte-t-elle pour l'acquis visé ? */
+/**
+ * Une preuve compte-t-elle pour l'acquis visé ?
+ *
+ * Compétence réelle : une auto-déclaration SEULE ne compte jamais, mais une
+ * activité réelle ou un stage saisi par l'apprenant compte dès qu'un tiers
+ * autorisé (encadrant, enseignant, administrateur) l'a explicitement validé.
+ */
 export function isCountableEvidence(evidence: Evidence, nature: OutcomeNature): boolean {
   if (evidence.status !== "validated") return false;
 
   if (nature === "real_competence") {
-    const validatedByThirdParty = evidence.validations.some((v) => v.decision === "validated");
     const authenticContext = evidence.kind === "real_activity" || evidence.kind === "placement";
-    return authenticContext && validatedByThirdParty && !evidence.selfDeclared;
+    return authenticContext && hasThirdPartyValidation(evidence);
   }
+
 
   if (nature === "simulated_competence") {
     return evidence.kind === "simulation" || evidence.kind === "human_validation";
