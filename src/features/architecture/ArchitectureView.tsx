@@ -33,7 +33,12 @@ const MODULES: readonly ModuleRow[] = [
   {
     name: "Schéma PostgreSQL & matrice RLS",
     state: "prevu",
-    note: "docs/database/draft/ — conception non exécutée (schéma, policies, matrice, tests, décisions)",
+    note: "docs/database/draft/ — conception non exécutée (schéma, policies à portées exactes, invariants serveur, matrice, checklist GRANT/POLICY, tests, décisions)",
+  },
+  {
+    name: "Hébergement des contenus (stockage objet)",
+    state: "prevu",
+    note: "docs/database/draft/storage_architecture.md — buckets privés UE, URL signées ; aucun bucket créé",
   },
   { name: "Repositories mock en mémoire", state: "simule", note: "src/infrastructure/mock/*" },
   {
