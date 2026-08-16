@@ -66,3 +66,24 @@ export const ROLE_LABELS_FR: Record<RoleName, string> = {
   teacher: "Enseignant",
   administrator: "Administrateur",
 };
+
+/**
+ * Règle PURE de cohérence entre un rôle et sa portée.
+ * - `placement_supervisor` : exige une portée stage ;
+ * - `teacher` / `learner` : exigent un programme ou une cohorte ;
+ * - `administrator` : plateforme ou programme.
+ */
+export function isRoleScopeConsistent(assignment: RoleAssignment): boolean {
+  const kind = assignment.scope.kind;
+  switch (assignment.role) {
+    case "placement_supervisor":
+      return kind === "placement";
+    case "teacher":
+    case "learner":
+      return kind === "program" || kind === "cohort";
+    case "administrator":
+      return kind === "platform" || kind === "program";
+    default:
+      return false;
+  }
+}

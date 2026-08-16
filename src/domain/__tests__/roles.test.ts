@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { canValidateEvidence, hasRole, rolesInContext, scopeCovers } from "../roles";
+import {
+  canValidateEvidence,
+  hasRole,
+  isRoleScopeConsistent,
+  rolesInContext,
+  scopeCovers,
+} from "../roles";
 import type { Provenance, RoleAssignment } from "../types";
 
 const provenance: Provenance = { sourceSystem: "native" };
@@ -65,5 +71,61 @@ describe("rôles contextualisés", () => {
     expect(rolesInContext(assignments, { programId: "prog-a", cohortId: "coh-1" })).toEqual([
       "learner",
     ]);
+  });
+});
+
+describe("isRoleScopeConsistent", () => {
+  it("un encadrant de stage exige une portée stage", () => {
+    expect(
+      isRoleScopeConsistent(
+        assignment({
+          role: "placement_supervisor",
+          scope: { kind: "placement", programId: "prog-a", placementId: "pla-1" },
+        }),
+      ),
+    ).toBe(true);
+    expect(
+      isRoleScopeConsistent(
+        assignment({ role: "placement_supervisor", scope: { kind: "platform" } }),
+      ),
+    ).toBe(false);
+  });
+
+  it("enseignant et apprenant exigent un programme ou une cohorte", () => {
+    for (const role of ["teacher", "learner"] as const) {
+      expect(
+        isRoleScopeConsistent(
+          assignment({ role, scope: { kind: "program", programId: "prog-a" } }),
+        ),
+      ).toBe(true);
+      expect(
+        isRoleScopeConsistent(
+          assignment({
+            role,
+            scope: { kind: "cohort", programId: "prog-a", cohortId: "coh-1" },
+          }),
+        ),
+      ).toBe(true);
+      expect(isRoleScopeConsistent(assignment({ role, scope: { kind: "platform" } }))).toBe(false);
+    }
+  });
+
+  it("un administrateur est plateforme ou programme, jamais stage", () => {
+    expect(
+      isRoleScopeConsistent(assignment({ role: "administrator", scope: { kind: "platform" } })),
+    ).toBe(true);
+    expect(
+      isRoleScopeConsistent(
+        assignment({ role: "administrator", scope: { kind: "program", programId: "prog-a" } }),
+      ),
+    ).toBe(true);
+    expect(
+      isRoleScopeConsistent(
+        assignment({
+          role: "administrator",
+          scope: { kind: "placement", programId: "prog-a", placementId: "pla-1" },
+        }),
+      ),
+    ).toBe(false);
   });
 });

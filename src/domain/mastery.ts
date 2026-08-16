@@ -20,14 +20,28 @@ export function isAtLeast(level: MasteryLevel, target: MasteryLevel): boolean {
   return masteryRank(level) >= masteryRank(target);
 }
 
-/** Une preuve compte-t-elle pour l'acquis visé ? */
+/**
+ * Un tiers autorisé (jamais l'apprenant) a-t-il explicitement validé la preuve ?
+ * La portée du validateur est vérifiée séparément par `canValidateEvidence`.
+ */
+export function hasThirdPartyValidation(evidence: Evidence): boolean {
+  return evidence.validations.some((v) => v.decision === "validated");
+}
+
+/**
+
+ * Une preuve compte-t-elle pour l'acquis visé ?
+ *
+ * Compétence réelle : une auto-déclaration SEULE ne compte jamais, mais une
+ * activité réelle ou un stage saisi par l'apprenant compte dès qu'un tiers
+ * autorisé (encadrant, enseignant, administrateur) l'a explicitement validé.
+ */
 export function isCountableEvidence(evidence: Evidence, nature: OutcomeNature): boolean {
   if (evidence.status !== "validated") return false;
 
   if (nature === "real_competence") {
-    const validatedByThirdParty = evidence.validations.some((v) => v.decision === "validated");
     const authenticContext = evidence.kind === "real_activity" || evidence.kind === "placement";
-    return authenticContext && validatedByThirdParty && !evidence.selfDeclared;
+    return authenticContext && hasThirdPartyValidation(evidence);
   }
 
   if (nature === "simulated_competence") {
@@ -58,10 +72,10 @@ export function computeOutcomeProgress(
   const counted = related.filter((e) => isCountableEvidence(e, outcome.nature));
   const pending = related.filter((e) => e.status === "submitted" || e.status === "draft");
 
+  // Auto-déclaration en attente d'un tiers : signalée, jamais comptée.
   const blockedBySelfDeclaration =
     outcome.nature === "real_competence" &&
-    counted.length === 0 &&
-    related.some((e) => e.selfDeclared);
+    related.some((e) => e.selfDeclared && !hasThirdPartyValidation(e));
 
   let mastery: MasteryLevel = "not_started";
   if (counted.length >= 1) mastery = "novice";

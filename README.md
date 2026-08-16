@@ -28,7 +28,7 @@ src/routes/              Pages fines (TanStack Router) déléguant à src/featur
   LearningResource, AuditEvent, Person.
 - `src/domain/mastery.ts` : calcul déterministe des niveaux de maîtrise.
 - `src/domain/roles.ts` : rôles contextualisés (plateforme / programme / cohorte / stage).
-- `src/application/ports.ts` : contrats d'accès aux données + `LegacyMigrationAdapter`.
+- `src/application/ports/repositories.ts` : contrats d'accès aux données + `LegacyMigrationAdapter`.
 - `src/infrastructure/mock/` : données de démonstration, en mémoire, sans persistance.
 
 ### Invariants métier
@@ -104,6 +104,12 @@ bun run lint       # eslint + prettier
 
 ## Tests
 
-`src/domain/__tests__/mastery.test.ts` couvre les invariants critiques (auto-déclaration,
-validation par un tiers, progression). Le lanceur (`vitest`) sera ajouté avec l'itération
-suivante ; la structure et les tests sont déjà en place.
+Le lanceur `vitest` est installé (`bun run test` / `bun run test:watch`).
+
+- `src/domain/__tests__/mastery.test.ts` : une auto-déclaration seule ne compte jamais ; une
+  activité réelle ou de stage saisie par l'apprenant compte après validation explicite d'un tiers
+  autorisé ; progression dérivée des preuves.
+- `src/domain/__tests__/roles.test.ts` : portée des rôles (plateforme, programme, cohorte, stage)
+  et cohérence rôle/portée (`isRoleScopeConsistent`).
+- `src/infrastructure/mock/__tests__/progression.test.ts` : progression calculée depuis les
+  fixtures mock, aucune valeur codée en dur.
