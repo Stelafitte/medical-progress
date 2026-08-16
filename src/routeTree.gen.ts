@@ -11,6 +11,10 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as EspaceRouteImport } from './routes/espace'
+import { Route as EspaceIndexRouteImport } from './routes/espace.index'
+import { Route as EspaceAdministrationRouteImport } from './routes/espace.administration'
+import { Route as EspaceArchitectureRouteImport } from './routes/espace.architecture'
+import { Route as EspacePasseportRouteImport } from './routes/espace.passeport'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -22,31 +26,80 @@ const EspaceRoute = EspaceRouteImport.update({
   path: '/espace',
   getParentRoute: () => rootRouteImport,
 } as any)
+const EspaceIndexRoute = EspaceIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => EspaceRoute,
+} as any)
+const EspaceAdministrationRoute = EspaceAdministrationRouteImport.update({
+  id: '/administration',
+  path: '/administration',
+  getParentRoute: () => EspaceRoute,
+} as any)
+const EspaceArchitectureRoute = EspaceArchitectureRouteImport.update({
+  id: '/architecture',
+  path: '/architecture',
+  getParentRoute: () => EspaceRoute,
+} as any)
+const EspacePasseportRoute = EspacePasseportRouteImport.update({
+  id: '/passeport',
+  path: '/passeport',
+  getParentRoute: () => EspaceRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/espace': typeof EspaceRoute
+  '/espace': typeof EspaceRouteWithChildren
+  '/espace/administration': typeof EspaceAdministrationRoute
+  '/espace/architecture': typeof EspaceArchitectureRoute
+  '/espace/passeport': typeof EspacePasseportRoute
+  '/espace/': typeof EspaceIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/espace': typeof EspaceRoute
+  '/espace/administration': typeof EspaceAdministrationRoute
+  '/espace/architecture': typeof EspaceArchitectureRoute
+  '/espace/passeport': typeof EspacePasseportRoute
+  '/espace': typeof EspaceIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/espace': typeof EspaceRoute
+  '/espace': typeof EspaceRouteWithChildren
+  '/espace/administration': typeof EspaceAdministrationRoute
+  '/espace/architecture': typeof EspaceArchitectureRoute
+  '/espace/passeport': typeof EspacePasseportRoute
+  '/espace/': typeof EspaceIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/espace'
+  fullPaths:
+    | '/'
+    | '/espace'
+    | '/espace/administration'
+    | '/espace/architecture'
+    | '/espace/passeport'
+    | '/espace/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/espace'
-  id: '__root__' | '/' | '/espace'
+  to:
+    | '/'
+    | '/espace/administration'
+    | '/espace/architecture'
+    | '/espace/passeport'
+    | '/espace'
+  id:
+    | '__root__'
+    | '/'
+    | '/espace'
+    | '/espace/administration'
+    | '/espace/architecture'
+    | '/espace/passeport'
+    | '/espace/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  EspaceRoute: typeof EspaceRoute
+  EspaceRoute: typeof EspaceRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -65,12 +118,57 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EspaceRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/espace/': {
+      id: '/espace/'
+      path: '/'
+      fullPath: '/espace/'
+      preLoaderRoute: typeof EspaceIndexRouteImport
+      parentRoute: typeof EspaceRoute
+    }
+    '/espace/administration': {
+      id: '/espace/administration'
+      path: '/administration'
+      fullPath: '/espace/administration'
+      preLoaderRoute: typeof EspaceAdministrationRouteImport
+      parentRoute: typeof EspaceRoute
+    }
+    '/espace/architecture': {
+      id: '/espace/architecture'
+      path: '/architecture'
+      fullPath: '/espace/architecture'
+      preLoaderRoute: typeof EspaceArchitectureRouteImport
+      parentRoute: typeof EspaceRoute
+    }
+    '/espace/passeport': {
+      id: '/espace/passeport'
+      path: '/passeport'
+      fullPath: '/espace/passeport'
+      preLoaderRoute: typeof EspacePasseportRouteImport
+      parentRoute: typeof EspaceRoute
+    }
   }
 }
 
+interface EspaceRouteChildren {
+  EspaceAdministrationRoute: typeof EspaceAdministrationRoute
+  EspaceArchitectureRoute: typeof EspaceArchitectureRoute
+  EspacePasseportRoute: typeof EspacePasseportRoute
+  EspaceIndexRoute: typeof EspaceIndexRoute
+}
+
+const EspaceRouteChildren: EspaceRouteChildren = {
+  EspaceAdministrationRoute: EspaceAdministrationRoute,
+  EspaceArchitectureRoute: EspaceArchitectureRoute,
+  EspacePasseportRoute: EspacePasseportRoute,
+  EspaceIndexRoute: EspaceIndexRoute,
+}
+
+const EspaceRouteWithChildren =
+  EspaceRoute._addFileChildren(EspaceRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  EspaceRoute: EspaceRoute,
+  EspaceRoute: EspaceRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
