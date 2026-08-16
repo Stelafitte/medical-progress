@@ -80,3 +80,40 @@ describe("computeOutcomeProgress", () => {
     expect(summarizeProgress([progress]).percentAtTarget).toBe(100);
   });
 });
+
+describe("compétence réelle et auto-déclaration", () => {
+  const real = outcome("real_competence");
+
+  it("une auto-déclaration seule ne compte jamais", () => {
+    const selfOnly = evidence({
+      kind: "real_activity",
+      selfDeclared: true,
+      validations: [],
+    });
+    expect(isCountableEvidence(selfOnly, "real_competence")).toBe(false);
+    const progress = computeOutcomeProgress(real, [selfOnly]);
+    expect(progress.mastery).toBe("not_started");
+    expect(progress.blockedBySelfDeclaration).toBe(true);
+  });
+
+  it("une activité saisie par l'apprenant compte après validation d'un tiers", () => {
+    const validated = evidence({
+      kind: "real_activity",
+      selfDeclared: true,
+      validations: [
+        {
+          evidenceId: "evi-test",
+          validatorPersonId: "per-sup",
+          validatorRole: "placement_supervisor",
+          decision: "validated",
+          decidedAt: "2026-01-02T00:00:00Z",
+          provenance,
+        },
+      ],
+    });
+    expect(isCountableEvidence(validated, "real_competence")).toBe(true);
+    const progress = computeOutcomeProgress(real, [validated]);
+    expect(progress.mastery).toBe("novice");
+    expect(progress.blockedBySelfDeclaration).toBe(false);
+  });
+});
