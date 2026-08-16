@@ -28,7 +28,7 @@ src/routes/              Pages fines (TanStack Router) déléguant à src/featur
   LearningResource, AuditEvent, Person.
 - `src/domain/mastery.ts` : calcul déterministe des niveaux de maîtrise.
 - `src/domain/roles.ts` : rôles contextualisés (plateforme / programme / cohorte / stage).
-- `src/application/ports.ts` : contrats d'accès aux données + `LegacyMigrationAdapter`.
+- `src/application/ports/repositories.ts` : contrats d'accès aux données + `LegacyMigrationAdapter`.
 - `src/infrastructure/mock/` : données de démonstration, en mémoire, sans persistance.
 
 ### Invariants métier

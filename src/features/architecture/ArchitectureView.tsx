@@ -23,7 +23,7 @@ const MODULES: readonly ModuleRow[] = [
   {
     name: "Ports d'accès aux données",
     state: "en_place",
-    note: "src/application/ports.ts",
+    note: "src/application/ports/repositories.ts",
   },
   {
     name: "Persistance (base de données)",
