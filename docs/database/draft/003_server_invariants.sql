@@ -25,8 +25,12 @@
 --   1. status ∈ {validated, rejected, submitted} est dérivé de la DERNIÈRE
 --      décision, jamais déclaré par un client.
 --   2. les colonnes d'identité d'une preuve sont immuables après soumission.
---   3. aucune fonction de ce fichier n'est exécutable par PUBLIC, anon ou
---      authenticated.
+--   3. la provenance historique (source_system, source_id, imported_at,
+--      import_batch_id) est native-obligatoire pour un client et immuable en
+--      UPDATE pour TOUS les rôles, sur les 15 tables concernées.
+--   4. updated_at est imposé par le serveur sur les 14 tables qui en ont une.
+--   5. aucune fonction de ce fichier n'est exécutable par PUBLIC, anon,
+--      authenticated ou service_role.
 -- =====================================================================
 
 -- ---------------------------------------------------------------------
