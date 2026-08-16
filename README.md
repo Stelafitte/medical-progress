@@ -13,20 +13,23 @@ Monolithe modulaire React + TypeScript strict + Tailwind + shadcn/ui, avec des c
 séparées :
 
 ```text
-src/domain/      Modèle métier et logique pure (aucune dépendance framework)
-src/data/        Ports (repositories) + implémentation mock isolée
-src/features/    Logique applicative par domaine fonctionnel (hooks de lecture)
-src/app/         Session simulée, injection de la couche données
-src/components/  UI réutilisable (shell, badges, switcher)
-src/routes/      Pages (TanStack Router)
+src/domain/              Modèle métier et règles pures (aucune dépendance framework)
+src/application/         Ports (repositories) + session simulée / injection données
+src/infrastructure/mock/ Données de démonstration et repositories mock
+src/features/            Vues et logique applicative par domaine fonctionnel
+                         (dashboard, passport, stage, resources, administration, architecture)
+src/components/layout/   Shell commun (en-tête, navigation, sélecteur de programme)
+src/components/          UI réutilisable (badges, titres de section, shadcn/ui)
+src/routes/              Pages fines (TanStack Router) déléguant à src/features
 ```
 
 - `src/domain/types.ts` : Program, CurriculumVersion, Cohort, Enrollment, RoleAssignment,
   Outcome, OutcomeRelation, Placement, PlacementAssignment, Evidence, EvidenceValidation,
   LearningResource, AuditEvent, Person.
 - `src/domain/mastery.ts` : calcul déterministe des niveaux de maîtrise.
-- `src/data/repositories.ts` : contrats d'accès aux données + `LegacyMigrationAdapter`.
-- `src/data/mock/` : données de démonstration, en mémoire, sans persistance.
+- `src/domain/roles.ts` : rôles contextualisés (plateforme / programme / cohorte / stage).
+- `src/application/ports.ts` : contrats d'accès aux données + `LegacyMigrationAdapter`.
+- `src/infrastructure/mock/` : données de démonstration, en mémoire, sans persistance.
 
 ### Invariants métier
 
@@ -47,11 +50,23 @@ src/routes/      Pages (TanStack Router)
 | `/`                      | Accueil sobre « Passeport Éducatif Médical »                           |
 | `/espace`                | Shell authentifié **simulé** + sélecteur de programme, tableau de bord |
 | `/espace/passeport`      | Preuves et niveaux de maîtrise (données factices)                      |
+| `/espace/stage`          | Affectations de stage, encadrants, preuves de terrain (simulé)          |
+| `/espace/ressources`     | Catalogue de ressources rattachées aux acquis (simulé)                 |
 | `/espace/administration` | Programmes, référentiels et cohortes (lecture seule)                   |
 | `/espace/architecture`   | État du socle — **visible en développement uniquement**                |
 
 Le tableau de bord apprenant est structuré en : Aujourd'hui, Cette semaine, Jalons,
-Progression, Stage.
+Progression, Stage. La page Architecture affiche des badges **En place / Simulé / Prévu**
+pour chaque module ; aucune action non implémentée n'est présentée comme fonctionnelle.
+
+## Scripts
+
+```bash
+bun run dev        # serveur de développement
+bun run typecheck  # TypeScript strict, sans émission
+bun run test       # tests unitaires (vitest)
+bun run lint       # eslint + prettier
+```
 
 ## Limites explicites de cette itération
 
