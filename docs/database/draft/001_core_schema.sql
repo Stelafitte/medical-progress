@@ -460,7 +460,7 @@ create table if not exists public.evidence (
   check (score_max is null or score_max > 0),
   check (score_raw is null or (score_max is not null and score_raw between 0 and score_max)),
   -- Une preuve de stage doit être rattachée à une affectation de stage.
-  check ((kind = 'placement') <= (placement_assignment_id is not null)),
+  check (kind <> 'placement' or placement_assignment_id is not null),
   constraint evidence_outcome_same_program
     foreign key (outcome_id, program_id)
     references public.outcomes (id, program_id) on delete restrict,

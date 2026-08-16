@@ -44,7 +44,7 @@ erDiagram
 - **`program_id` dupliqué volontairement** sur `cohorts`, `outcomes`, `enrollments`,
   `placement_assignments`, `evidence`, `learning_resource_outcomes` — mais **jamais
   librement** : chaque duplication est verrouillée par une **FK composite** vers une clé
-  alternative `(id, program_id)` du parent. Le programme ne peut donc pas divergerd'une
+  alternative `(id, program_id)` du parent. Le programme ne peut donc pas diverger d'une
   ligne à l'autre, et les policies RLS restent des tests locaux (pas de jointures profondes).
 - **Rôles hors `profiles`** : `role_assignments` est la seule source de droits
   (prévention d'escalade de privilèges). Cohérence `role`/`scope_kind` en `CHECK`,
