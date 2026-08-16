@@ -1,13 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { CalendarDays, ClipboardCheck, Flag, Stethoscope, TrendingUp } from "lucide-react";
-import { useSession } from "@/app/session";
+import { useSession } from "@/application/session";
 import { MasteryBadge, NatureBadge } from "@/components/mastery-badge";
 import { SectionHeading } from "@/components/section-heading";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useLearnerPassport } from "@/features/learner/useLearnerPassport";
+import { useLearnerPassport } from "@/features/dashboard/useLearnerPassport";
 
 const PLACEMENT_STATUS_FR: Record<string, string> = {
   planned: "à venir",

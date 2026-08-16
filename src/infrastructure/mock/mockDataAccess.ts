@@ -2,7 +2,7 @@
  * Implémentation mock des repositories : purement en mémoire, sans persistance.
  * Remplaçable par une implémentation base de données sans toucher à l'UI.
  */
-import type { DataAccess } from "@/data/repositories";
+import type { DataAccess } from "@/application/ports";
 import * as fx from "./fixtures";
 
 const clone = <T,>(value: T): T => value;

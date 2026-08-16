@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Skeleton } from "@/components/ui/skeleton";
 import { MASTERY_LABELS_FR } from "@/domain/mastery";
 import type { EvidenceKind } from "@/domain/types";
-import { useLearnerPassport } from "@/features/learner/useLearnerPassport";
+import { useLearnerPassport } from "@/features/dashboard/useLearnerPassport";
 
 const EVIDENCE_LABELS: Record<EvidenceKind, string> = {
   quiz: "QCM",

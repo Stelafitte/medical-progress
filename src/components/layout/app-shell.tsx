@@ -2,7 +2,7 @@ import { Link, Outlet } from "@tanstack/react-router";
 import { HeartPulse, LayoutDashboard, ShieldCheck, Boxes, IdCard } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ProgramSwitcher } from "@/components/program-switcher";
-import { useSession } from "@/app/session";
+import { useSession } from "@/application/session";
 import { IS_DEV } from "@/lib/env";
 
 const NAV = [

@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useDataAccess, useSession } from "@/app/session";
+import { useDataAccess, useSession } from "@/application/session";
 import { computeOutcomeProgress, summarizeProgress } from "@/domain/mastery";
 
 /** Agrège programme actif + acquis + preuves + stage pour l'apprenant courant. */
