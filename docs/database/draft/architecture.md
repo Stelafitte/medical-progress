@@ -60,7 +60,10 @@ erDiagram
 - **Fichiers hors base** : `learning_resource_assets` ne stocke que des métadonnées
   (`bucket_name`, `object_path`, `checksum_sha256`, `processing_status`). Aucun binaire,
   aucune URL publique durable ; `program_id` verrouillé par FK composite vers la ressource
-  parente. Détail : `storage_architecture.md`.
+  parente. La table est en **lecture seule pour tout rôle client** (policy SELECT
+  uniquement, aucun GRANT d'écriture) : le backend génère `asset_id`, le chemin canonique
+  et l'URL d'upload signée, puis écrit les métadonnées en `service_role`. Détail :
+  `storage_architecture.md`.
 - **Imputation IA contrainte** : `ai_usage_events` porte deux FK composites
   `(enrollment_id, program_id)` et `(enrollment_id, person_id)` plus un `CHECK` de
   cohérence des null : un appel rattaché à une inscription ne peut être imputé ni à un
@@ -133,6 +136,22 @@ Conséquences vérifiées par les tests d'acceptation :
 3. La transition est journalisée dans `audit_events`.
 4. C'est le **seul** mécanisme mutant privilégié ; aucune RPC équivalente n'est exposée,
    et un second trigger gèle les colonnes d'identité/provenance d'une preuve.
+
+### 3.3 ter Invariants serveur transverses
+- `enforce_source_provenance()` (BEFORE INSERT OR UPDATE, SECURITY INVOKER,
+  `search_path` verrouillé) sur les **15 tables** porteuses de provenance : un rôle
+  `authenticated` doit insérer `source_system = 'native'` avec `source_id`,
+  `imported_at`, `import_batch_id` NULL ; et **aucun rôle**, `service_role` compris,
+  ne peut modifier ces 4 colonnes en UPDATE. Un import est un INSERT ; une correction
+  est une nouvelle ligne auditée, pas une réécriture de l'origine.
+- `set_updated_at()` (BEFORE UPDATE) sur les **14 tables** ayant `updated_at` :
+  la valeur est toujours `clock_timestamp()` côté serveur. `updated_at` n'est donc
+  plus accordé dans les GRANT de colonnes de `profiles` et `evidence`.
+- **`service_role` contourne la RLS.** Toute opération serveur menée avec cette clé
+  (écriture d'assets, import legacy, journalisation) doit **revérifier l'autorisation
+  métier dans le backend** avant d'agir : la base ne rattrapera pas une erreur
+  d'autorisation applicative. Seuls l'immuabilité de la provenance et le gel de
+  l'identité d'une preuve restent opposables à `service_role`.
 
 ### 3.4 Calcul de progression
 Toujours dérivé, en lecture : preuves comptables par nature d'acquis
