@@ -18,7 +18,8 @@ export function canAccessAdministration(
   return hasRole(assignments, "administrator", { programId });
 }
 
-/** Le profil de compte est accessible à tout utilisateur authentifié. */
-export function canAccessOwnProfile(assignments: readonly RoleAssignment[]): boolean {
-  return assignments.length > 0;
+/** Le profil de compte est accessible à tout utilisateur authentifié, quels que soient ses rôles. */
+export function canAccessOwnProfile(isAuthenticated: boolean): boolean {
+  return isAuthenticated;
 }
+
