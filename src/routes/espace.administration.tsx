@@ -54,6 +54,7 @@ function AdminPage() {
     <div className="space-y-8">
       <SectionHeading
         title="Administration"
+        level={1}
         description="Un seul moteur, plusieurs programmes configurés. Lecture seule dans cette itération."
       />
 

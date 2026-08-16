@@ -46,6 +46,7 @@ function PassportPage() {
     <div className="space-y-6">
       <SectionHeading
         title="Passeport de compétences"
+        level={1}
         description="Chaque acquis affiche son niveau de maîtrise, sa nature et les preuves qui le soutiennent. Données de démonstration."
       />
 
