@@ -24,6 +24,7 @@ export function ResourcesView() {
     <div className="space-y-8">
       <SectionHeading
         title="Ressources"
+        level={1}
         description="Contenus rattachés aux acquis du référentiel du programme actif."
       />
 

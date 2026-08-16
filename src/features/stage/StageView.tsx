@@ -27,6 +27,8 @@ export function StageView() {
       <div className="space-y-4">
         <SectionHeading
           title="Stage"
+          level={1}
+        level={1}
           description="Ce programme ne comporte pas de terrain clinique configuré."
         />
         <Card>
@@ -48,6 +50,7 @@ export function StageView() {
     <div className="space-y-8">
       <SectionHeading
         title="Stage"
+        level={1}
         description="Affectations, encadrants et preuves rattachées au terrain clinique."
       />
 
