@@ -29,6 +29,7 @@ export const Route = createFileRoute("/espace/administration")({
  */
 function GuardedAdministration() {
   const { canAccessAdministration } = useSession();
-  if (!canAccessAdministration) return <AccessRestricted area="L'administration institutionnelle" />;
+  if (!canAccessAdministration)
+    return <AccessRestricted area="L'administration institutionnelle" />;
   return <AdministrationView />;
 }

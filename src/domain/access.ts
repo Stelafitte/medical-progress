@@ -22,4 +22,3 @@ export function canAccessAdministration(
 export function canAccessOwnProfile(isAuthenticated: boolean): boolean {
   return isAuthenticated;
 }
-

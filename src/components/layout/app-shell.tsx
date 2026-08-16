@@ -26,7 +26,7 @@ import {
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { ProgramSwitcher } from "@/components/program-switcher";
 import { useSession } from "@/application/session";
-import { initials } from "@/features/profile/ProfileView";
+import { initials } from "@/lib/initials";
 import { ROLE_LABELS_FR } from "@/domain/roles";
 import { IS_DEV } from "@/lib/env";
 import type { PersonId } from "@/domain/types";

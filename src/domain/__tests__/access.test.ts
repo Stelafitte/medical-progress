@@ -21,7 +21,10 @@ const learnerB = assignment({
   role: "learner",
   scope: { kind: "cohort", programId: "prog-b", cohortId: "coh-b" },
 });
-const adminA = assignment({ role: "administrator", scope: { kind: "program", programId: "prog-a" } });
+const adminA = assignment({
+  role: "administrator",
+  scope: { kind: "program", programId: "prog-a" },
+});
 const platformAdmin = assignment({ role: "administrator", scope: { kind: "platform" } });
 const teacherA = assignment({ role: "teacher", scope: { kind: "program", programId: "prog-a" } });
 

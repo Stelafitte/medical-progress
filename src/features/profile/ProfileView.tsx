@@ -8,15 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { ROLE_LABELS_FR, rolesInContext } from "@/domain/roles";
 import * as fx from "@/infrastructure/mock/fixtures";
-
-export function initials(fullName: string): string {
-  return fullName
-    .split(/\s+/)
-    .filter((part) => /\p{L}/u.test(part))
-    .slice(0, 2)
-    .map((part) => part[0]!.toUpperCase())
-    .join("");
-}
+import { initials } from "@/lib/initials";
 
 export function ProfileView() {
   const { person, programs, enrollments, roles } = useSession();
@@ -24,9 +16,7 @@ export function ProfileView() {
   const memberships = programs
     .map((program) => {
       const enrollment = enrollments.find((e) => e.programId === program.id);
-      const cohort = enrollment
-        ? fx.cohorts.find((c) => c.id === enrollment.cohortId)
-        : undefined;
+      const cohort = enrollment ? fx.cohorts.find((c) => c.id === enrollment.cohortId) : undefined;
       const contextualRoles = rolesInContext(roles, {
         programId: program.id,
         ...(cohort ? { cohortId: cohort.id } : {}),
@@ -81,9 +71,7 @@ export function ProfileView() {
             >
               Français (fr-FR)
             </p>
-            <p className="text-xs text-muted-foreground">
-              Préférence unique dans cette itération.
-            </p>
+            <p className="text-xs text-muted-foreground">Préférence unique dans cette itération.</p>
           </div>
           <div className="sm:col-span-2">
             <Button type="button" disabled variant="outline">
@@ -130,9 +118,7 @@ export function ProfileView() {
           ))}
         </ul>
         {memberships.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            Aucun programme rattaché à ce compte.
-          </p>
+          <p className="text-sm text-muted-foreground">Aucun programme rattaché à ce compte.</p>
         ) : null}
       </section>
 
