@@ -28,7 +28,6 @@ export function StageView() {
         <SectionHeading
           title="Stage"
           level={1}
-        level={1}
           description="Ce programme ne comporte pas de terrain clinique configuré."
         />
         <Card>
