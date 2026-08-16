@@ -402,10 +402,15 @@ create policy profiles_insert_self on public.profiles
   for insert to authenticated
   with check (id = auth.uid() and source_system = 'native');
 
+-- WITH CHECK sur id = auth.uid() SEULEMENT : un profil importé du legacy
+-- (source_system <> 'native') doit pouvoir corriger son nom et sa locale sans
+-- devoir réécrire son origine. L'immuabilité des 4 colonnes de provenance est
+-- garantie par enforce_source_provenance() (003_server_invariants.sql), et
+-- updated_at par set_updated_at().
 create policy profiles_update_self on public.profiles
   for update to authenticated
   using (id = auth.uid())
-  with check (id = auth.uid() and source_system = 'native');
+  with check (id = auth.uid());
 
 -- Aucune policy DELETE : la suppression passe par auth.users (serveur).
 
