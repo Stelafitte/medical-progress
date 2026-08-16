@@ -40,9 +40,29 @@ Le `program_id` du chemin est redondant avec la FK composite
    non renouvelable automatiquement, non mise en cache côté CDN).
 4. L'accès est journalisé dans `audit_events`.
 
-Les uploads suivent le même schéma inversé : le backend vérifie le droit d'écriture,
-crée la ligne de métadonnées en `processing_status = 'pending'`, puis renvoie une
-**URL signée d'upload**. Le client n'obtient jamais de credential de bucket.
+### Upload — écriture serveur uniquement
+
+Le navigateur n'écrit **jamais** dans `learning_resource_assets` : aucune policy
+INSERT/UPDATE/DELETE, aucun privilège accordé à `authenticated`. Séquence imposée :
+
+1. le frontend appelle une **server function autorisée** (« je veux déposer ce
+   fichier sur cette ressource ») ;
+2. le backend **revérifie l'autorisation métier** — rôle enseignant ou admin sur le
+   `program_id` de la ressource — car l'étape suivante utilise `service_role`, qui
+   contourne la RLS ;
+3. le backend génère lui-même `asset_id`, le **chemin canonique**
+   `{program_id}/{resource_id}/{asset_id}` et le bucket cible, puis insère la ligne de
+   métadonnées en `processing_status = 'pending'` ;
+4. le backend renvoie au client une **URL d'upload signée courte**, et rien d'autre :
+   jamais de credential de bucket, jamais un chemin choisi par le client ;
+5. scan antivirus et traitement (transcodage, extraction) ;
+6. le backend / `service_role` écrit `byte_size`, `checksum_sha256` calculés **côté
+   serveur** à partir de l'objet réellement stocké, puis passe `processing_status` à
+   `ready` — ou `quarantined` en cas d'échec.
+
+Conséquence directe : le navigateur ne peut ni choisir `bucket_name`, `object_path` ou
+`storage_provider`, ni falsifier `checksum_sha256` / `byte_size`, ni publier un fichier
+en posant `processing_status = 'ready'` sans passer par le scan.
 
 ## 4. RLS des métadonnées
 
@@ -52,7 +72,9 @@ parente** (cf. `002_rls_policies.sql` §8) :
 - apprenant : ressource publiée **et** asset `ready` **et** inscrit au programme ;
 - encadrant de stage : idem (ressources publiées du programme) ;
 - enseignant / admin de portée : tous les assets, tous statuts ;
-- écriture réservée au staff de portée, `source_system` forcé à `native` ;
+- **aucune écriture client** : pas de policy INSERT/UPDATE/DELETE et pas de GRANT ;
+  seul `service_role` écrit, après revérification métier côté backend ;
+- provenance et `updated_at` sous triggers serveur (`003_server_invariants.sql`) ;
 - aucun accès `anon`.
 
 ## 5. PostgreSQL vs stockage objet

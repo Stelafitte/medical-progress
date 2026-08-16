@@ -708,13 +708,15 @@ grant insert, update, delete on
   public.cohorts,
   public.enrollments,
   public.learning_resources,
-  public.learning_resource_assets,
   public.placements,
   public.placement_supervisors,
   public.placement_assignments,
   public.outcomes,
   public.ai_quota_policies
   to authenticated;
+
+-- learning_resource_assets : AUCUN privilège d'écriture client (12.8).
+-- L'écriture des métadonnées de fichier est exclusivement serveur.
 
 -- Tables sans policy UPDATE : on n'accorde pas UPDATE.
 grant insert, delete on
@@ -728,10 +730,12 @@ grant insert, update on public.role_assignments to authenticated;
 -- 12.3 profiles — GRANT DE COLONNES
 -- Un utilisateur ne peut écrire que son nom d'affichage et sa locale. Les
 -- colonnes de provenance legacy (source_system, source_id, imported_at,
--- import_batch_id) et created_at ne sont pas accordées : falsification
--- d'origine impossible même en cas d'erreur de policy.
+-- import_batch_id), created_at et updated_at ne sont pas accordées :
+-- falsification d'origine impossible, et updated_at est imposé par le trigger
+-- serveur set_updated_at() (003_server_invariants.sql).
 grant insert (id, full_name, locale) on public.profiles to authenticated;
-grant update (full_name, locale, updated_at) on public.profiles to authenticated;
+grant update (full_name, locale) on public.profiles to authenticated;
+
 
 -- 12.4 evidence — GRANT DE COLONNES
 -- INSERT : le client fournit l'identité de la preuve (une seule fois).
@@ -745,9 +749,10 @@ grant insert (
 -- placement_assignment_id, source_system, source_id, imported_at,
 -- import_batch_id, created_at ne sont donc plus modifiables après création,
 -- par privilège et non seulement par policy.
+-- updated_at n'est pas accordé : il est imposé par set_updated_at().
 grant update (
   title, occurred_at, score_raw, score_max, proposed_mastery, autonomy_level,
-  repetition_count, confidence_level, context, status, updated_at
+  repetition_count, confidence_level, context, status
 ) on public.evidence to authenticated;
 -- Aucun GRANT DELETE : une preuve ne se supprime pas, elle change de statut.
 
@@ -773,6 +778,25 @@ grant all on
   to service_role;
 
 -- 12.7 anon — aucun privilège, sur aucune table, volontairement.
-revoke all on all tables in schema public from anon;
+-- Liste EXPLICITE des tables de ce draft : on ne révoque pas en masse sur
+-- schema public, pour ne jamais toucher par surprise un objet ajouté plus tard
+-- par une autre fonctionnalité (ou par une intégration managée).
+revoke all on
+  public.profiles, public.programs, public.curriculum_versions, public.cohorts,
+  public.enrollments, public.role_assignments, public.outcomes,
+  public.outcome_relations, public.learning_resources,
+  public.learning_resource_outcomes, public.learning_resource_assets,
+  public.placements, public.placement_supervisors, public.placement_assignments,
+  public.evidence, public.evidence_sources, public.evidence_validations,
+  public.audit_events, public.ai_usage_events, public.ai_quota_policies
+  from anon;
+
+-- 12.8 learning_resource_assets — ÉCRITURE SERVEUR UNIQUEMENT
+-- Le navigateur ne choisit jamais bucket_name, object_path, storage_provider,
+-- checksum_sha256, byte_size ni processing_status. Aucun GRANT
+-- INSERT/UPDATE/DELETE à authenticated ; seul service_role écrit (12.6), après
+-- revérification de l'autorisation métier côté backend (service_role contourne
+-- la RLS). Flux détaillé : storage_architecture.md §2.
+
 
 -- FIN — DRAFT — DO NOT EXECUTE

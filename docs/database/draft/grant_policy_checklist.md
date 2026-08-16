@@ -12,7 +12,7 @@ est un défaut à corriger.
 
 | Table | SELECT | INSERT | UPDATE | DELETE |
 | --- | --- | --- | --- | --- |
-| profiles | P+G | P+G (colonnes `id, full_name, locale`) | P+G (colonnes `full_name, locale, updated_at`) | —/— |
+| profiles | P+G | P+G (colonnes `id, full_name, locale`) | P+G (colonnes `full_name, locale`) | —/— |
 | programs | P+G | P+G | P+G | P+G |
 | curriculum_versions | P+G | P+G | P+G | P+G |
 | cohorts | P+G | P+G | P+G | P+G |
@@ -22,11 +22,11 @@ est un défaut à corriger.
 | outcome_relations | P+G | P+G | —/— | P+G |
 | learning_resources | P+G | P+G | P+G | P+G |
 | learning_resource_outcomes | P+G | P+G | —/— | P+G |
-| learning_resource_assets | P+G | P+G | P+G | P+G |
+| learning_resource_assets | P+G | —/— (serveur) | —/— (serveur) | —/— (serveur) |
 | placements | P+G | P+G | P+G | P+G |
 | placement_supervisors | P+G | P+G | P+G | P+G |
 | placement_assignments | P+G | P+G | P+G | P+G |
-| evidence | P+G | P+G (colonnes d'identité incluses) | P+G (colonnes de contenu + status uniquement) | —/— |
+| evidence | P+G | P+G (colonnes d'identité incluses) | P+G (contenu + status, sans `updated_at`) | —/— |
 | evidence_sources | P+G | P+G (colonnes hors provenance) | —/— | —/— |
 | evidence_validations | P+G | P+G (colonnes hors provenance) | —/— | —/— |
 | audit_events | P+G | —/— | —/— | —/— |
@@ -39,13 +39,30 @@ Défauts corrigés lors de cette revue :
   manquant → policies inutilisables. Corrigé.
 - `programs`, `cohorts`, `enrollments`, `outcomes`, `placements`, `ai_quota_policies`, … :
   policies d'administration présentes, aucun privilège DML → corrigé.
-- `learning_resource_assets` : table nouvelle, policies et privilèges posés ensemble.
+- `learning_resource_assets` : écriture client **entièrement retirée** (policies
+  INSERT/UPDATE/DELETE supprimées **et** privilèges non accordés). Un navigateur ne
+  peut donc choisir ni `bucket_name`, ni `object_path`, ni `storage_provider`, ni
+  falsifier `checksum_sha256` / `byte_size`, ni poser `processing_status = 'ready'`.
+  Écriture exclusivement backend en `service_role` (`storage_architecture.md` §2).
+- `updated_at` retiré des GRANT de colonnes (`profiles`, `evidence`) : la valeur est
+  imposée par le trigger `set_updated_at()` (`003_server_invariants.sql` §4).
 
 ## 2. anon
 
-Aucun GRANT, aucune policy, sur aucune table : `revoke all on all tables in schema
-public from anon`. Vérification statique : le mot `anon` n'apparaît dans `001`/`002`
-que dans des `revoke`.
+Aucun GRANT, aucune policy, sur aucune table. Le `revoke` porte sur la **liste
+explicite des 20 tables de ce draft** (001 §12.7) et non sur `all tables in schema
+public` : un objet `public` ajouté plus tard par une autre fonctionnalité ou par une
+intégration managée ne doit pas être modifié par surprise par ce fichier.
+Vérification statique : le mot `anon` n'apparaît dans `001`/`002` que dans des `revoke`.
+
+## 2 bis. service_role — la RLS ne protège plus rien
+
+`service_role` **contourne la RLS** et détient `GRANT ALL`. Toute opération menée avec
+cette clé doit donc **revérifier l'autorisation métier dans le backend** avant
+écriture : appartenance au programme, portée du rôle, droit de validation. La base ne
+peut pas rattraper une erreur d'autorisation côté serveur. Deux garde-fous seulement
+restent actifs même en `service_role` : l'immuabilité de la provenance et le gel des
+colonnes d'identité d'une preuve (`003_server_invariants.sql`).
 
 ## 3. Colonnes NON accordées (protection par privilège)
 

@@ -17,7 +17,9 @@
 --   * jeu de données minimal : 2 programmes (DIU, DFASM), DEUX cohortes du MÊME
 --     programme DIU (cohorte A et cohorte B), 2 stages du DIU avec des encadrants
 --     distincts, 1 outcome real_competence par programme, 1 ressource publiée et
---     1 ressource non publiée avec leurs liaisons et assets.
+--     1 ressource non publiée avec leurs liaisons et assets (un asset `ready`,
+--     un asset `pending`), et un profil importé du legacy (`learner_legacy`,
+--     `source_system = 'dfasm-learnhub'`) inséré en service_role.
 --
 -- Convention : tout le plan tourne dans UNE transaction terminée par ROLLBACK.
 -- =====================================================================
@@ -340,6 +342,119 @@ select pg_temp.as_service();
 -- EXPECT ERROR (ai_usage_null_coherence) : inscription sans programme ni personne
 --   insert into public.ai_usage_events (enrollment_id, feature, model)
 --   values (:'enrollment_a', 'ecos', 'gpt-realtime');
+
+-- ---------------------------------------------------------------------
+-- T18. Assets pédagogiques : lecture seule pour TOUT rôle client
+-- Aucune policy INSERT/UPDATE/DELETE, aucun GRANT d'écriture.
+-- ---------------------------------------------------------------------
+select pg_temp.act_as(:'admin_platform');
+-- EXPECT ERROR (permission denied for table learning_resource_assets)
+--   insert into public.learning_resource_assets
+--     (learning_resource_id, program_id, asset_kind, storage_provider,
+--      bucket_name, object_path, processing_status)
+--   values (:'resource_published', :'program_diu', 'video', 'supabase',
+--           'originals', 'forge/chemin/choisi/par/le/client', 'ready');
+-- EXPECT ERROR : publier un asset en cours de scan
+--   update public.learning_resource_assets set processing_status = 'ready'
+--    where id = :'asset_pending';
+-- EXPECT ERROR : détourner le chemin ou le bucket d'un asset existant
+--   update public.learning_resource_assets
+--      set bucket_name = 'documents', object_path = 'autre/programme/fuite'
+--    where id = :'asset_ready';
+-- EXPECT ERROR : falsifier l'empreinte d'un fichier
+--   update public.learning_resource_assets
+--      set checksum_sha256 = repeat('0', 64), byte_size = 1
+--    where id = :'asset_ready';
+-- EXPECT ERROR : supprimer une métadonnée d'asset
+--   delete from public.learning_resource_assets where id = :'asset_ready';
+select pg_temp.act_as(:'teacher_cohort_a');
+-- ATTENDU OK : lecture des assets de son programme, tous statuts
+-- assert (select count(*) from public.learning_resource_assets) >= 1;
+select pg_temp.act_as(:'learner_a');
+-- ATTENDU : l'apprenant ne voit QUE les assets 'ready' de ressources publiées
+-- assert (select count(*) from public.learning_resource_assets
+--          where processing_status <> 'ready') = 0;
+select pg_temp.as_service();
+-- ATTENDU OK : seul chemin d'écriture — backend en service_role, APRÈS
+-- revérification de l'autorisation métier côté serveur (la RLS est contournée).
+--   insert into public.learning_resource_assets
+--     (learning_resource_id, program_id, asset_kind, storage_provider,
+--      bucket_name, object_path, processing_status)
+--   values (:'resource_published', :'program_diu', 'video', 'supabase',
+--           'originals', :'program_diu' || '/' || :'resource_published' || '/a1',
+--           'pending');
+
+-- ---------------------------------------------------------------------
+-- T19. Provenance historique : native imposée au client, immuable pour tous
+-- ---------------------------------------------------------------------
+select pg_temp.act_as(:'admin_diu');
+-- EXPECT ERROR (insufficient_privilege, enforce_source_provenance) :
+-- un admin de programme ne peut pas fabriquer une ligne « importée du legacy »
+--   insert into public.cohorts
+--     (program_id, curriculum_version_id, label, starts_on,
+--      source_system, source_id, imported_at, import_batch_id)
+--   values (:'program_diu', :'curriculum_diu', 'Promo forgée', current_date,
+--           'dfasm-learnhub', 'legacy-42', now(), gen_random_uuid());
+-- EXPECT ERROR : même sans toucher source_system, poser un source_id est refusé
+--   insert into public.cohorts
+--     (program_id, curriculum_version_id, label, starts_on, source_id)
+--   values (:'program_diu', :'curriculum_diu', 'Promo 2', current_date, 'legacy-43');
+-- ATTENDU OK : insertion native, colonnes de provenance laissées vides
+--   insert into public.cohorts (program_id, curriculum_version_id, label, starts_on)
+--   values (:'program_diu', :'curriculum_diu', 'Promo native', current_date);
+-- EXPECT ERROR (restrict_violation) : requalifier une ligne native en legacy
+--   update public.cohorts set source_system = 'dfasm-learnhub'
+--    where id = :'cohort_a';
+-- EXPECT ERROR : un profil importé ne peut pas voir son origine réécrite
+--   update public.profiles set import_batch_id = gen_random_uuid()
+--    where id = :'learner_legacy';
+select pg_temp.as_service();
+-- ATTENDU OK : l'import legacy passe par INSERT, et par lui seul
+--   insert into public.cohorts
+--     (program_id, curriculum_version_id, label, starts_on,
+--      source_system, source_id, imported_at, import_batch_id)
+--   values (:'program_diu', :'curriculum_diu', 'Promo 2019', date '2019-09-01',
+--           'dfasm-learnhub', 'legacy-2019', now(), :'import_batch');
+-- EXPECT ERROR : l'immuabilité vaut AUSSI pour service_role
+--   update public.cohorts set source_system = 'native' where source_id = 'legacy-2019';
+--   update public.cohorts set imported_at = now() where source_id = 'legacy-2019';
+-- ATTENDU : un import legacy antérieur est resté intact
+-- assert (select source_system from public.profiles where id = :'learner_legacy')
+--        = 'dfasm-learnhub';
+
+-- ---------------------------------------------------------------------
+-- T20. Un profil legacy peut corriger son nom sans réécrire son origine
+-- ---------------------------------------------------------------------
+select pg_temp.act_as(:'learner_legacy');
+-- ATTENDU OK : la WITH CHECK ne porte plus que sur id = auth.uid()
+--   update public.profiles set full_name = 'Nom corrigé', locale = 'fr'
+--    where id = :'learner_legacy';
+-- assert (select full_name from public.profiles where id = :'learner_legacy')
+--        = 'Nom corrigé';
+-- assert (select source_system from public.profiles where id = :'learner_legacy')
+--        = 'dfasm-learnhub';
+-- EXPECT ERROR : et il ne peut toujours pas toucher un autre profil
+--   update public.profiles set full_name = 'X' where id = :'learner_b';
+
+-- ---------------------------------------------------------------------
+-- T21. updated_at est imposé par le serveur
+-- ---------------------------------------------------------------------
+select pg_temp.act_as(:'learner_a');
+-- EXPECT ERROR (permission denied for column updated_at) : la colonne n'est
+-- plus accordée en UPDATE, ni sur profiles ni sur evidence
+--   update public.profiles set full_name = 'A', updated_at = date '2000-01-01'
+--    where id = :'learner_a';
+--   update public.evidence set title = 'A', updated_at = date '2000-01-01'
+--    where id = :'evidence_a_draft';
+-- ATTENDU : une mise à jour légitime avance updated_at toute seule
+--   update public.evidence set title = 'Titre v2' where id = :'evidence_a_draft';
+-- assert (select updated_at from public.evidence where id = :'evidence_a_draft')
+--        > (select created_at from public.evidence where id = :'evidence_a_draft');
+select pg_temp.as_service();
+-- ATTENDU : même en service_role, la valeur envoyée est écrasée
+--   update public.cohorts set updated_at = date '2000-01-01' where id = :'cohort_a';
+-- assert (select updated_at from public.cohorts where id = :'cohort_a')
+--        > date '2020-01-01';
 
 -- ---------------------------------------------------------------------
 -- Fin : aucun effet de bord

@@ -90,7 +90,7 @@ n'est activée, aucun fichier n'existe dans `supabase/migrations/`, aucun SQL n'
 | ------- | ------- |
 | `001_core_schema.sql` | Enums, 20 tables, FK composites, contraintes, index, commentaires, GRANT (dont GRANT de colonnes ; jamais `anon`) |
 | `002_rls_policies.sql` | RLS sur toutes les tables, helpers d'autorisation à portées exactes, policies séparées par opération |
-| `003_server_invariants.sql` | Unique mécanisme mutant : trigger de dérivation de `evidence.status` + garde-fou d'immutabilité |
+| `003_server_invariants.sql` | Triggers serveur : dérivation de `evidence.status`, immutabilité d'identité, provenance legacy immuable (15 tables), `updated_at` imposé (14 tables) |
 | `rls_matrix.md` | Matrice table × opération × rôle avec conditions d'appartenance et de portée |
 | `grant_policy_checklist.md` | Checklist statique GRANT ↔ POLICY et inventaire des fonctions `SECURITY DEFINER` |
 | `architecture.md` | ER Mermaid, normalisation, portées d'autorisation, flux, import legacy, rollback, limites |

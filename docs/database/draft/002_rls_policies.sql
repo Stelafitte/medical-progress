@@ -402,10 +402,15 @@ create policy profiles_insert_self on public.profiles
   for insert to authenticated
   with check (id = auth.uid() and source_system = 'native');
 
+-- WITH CHECK sur id = auth.uid() SEULEMENT : un profil importé du legacy
+-- (source_system <> 'native') doit pouvoir corriger son nom et sa locale sans
+-- devoir réécrire son origine. L'immuabilité des 4 colonnes de provenance est
+-- garantie par enforce_source_provenance() (003_server_invariants.sql), et
+-- updated_at par set_updated_at().
 create policy profiles_update_self on public.profiles
   for update to authenticated
   using (id = auth.uid())
-  with check (id = auth.uid() and source_system = 'native');
+  with check (id = auth.uid());
 
 -- Aucune policy DELETE : la suppression passe par auth.users (serveur).
 
@@ -634,19 +639,12 @@ create policy lra_select_scoped on public.learning_resource_assets
         or public.can_administer_program(lr.program_id)
       )
   ));
-create policy lra_insert_staff on public.learning_resource_assets
-  for insert to authenticated
-  with check ((public.has_any_program_role(program_id, 'teacher')
-               or public.can_administer_program(program_id))
-              and source_system = 'native');
-create policy lra_update_staff on public.learning_resource_assets
-  for update to authenticated
-  using (public.has_any_program_role(program_id, 'teacher')
-         or public.can_administer_program(program_id))
-  with check (public.has_any_program_role(program_id, 'teacher')
-             or public.can_administer_program(program_id));
-create policy lra_delete_admin on public.learning_resource_assets
-  for delete to authenticated using (public.can_administer_program(program_id));
+-- AUCUNE policy INSERT/UPDATE/DELETE, et aucun GRANT d'écriture (001 §12.8) :
+-- les métadonnées d'asset sont écrites uniquement par le backend en
+-- service_role, après revérification de l'autorisation métier (service_role
+-- contourne la RLS). Le navigateur ne peut donc ni choisir bucket_name /
+-- object_path / storage_provider, ni falsifier checksum_sha256 / byte_size, ni
+-- mettre processing_status = 'ready'. Flux : storage_architecture.md §2.
 
 -- ---------------------------------------------------------------------
 -- 9. Stages

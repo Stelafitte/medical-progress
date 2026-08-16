@@ -25,8 +25,12 @@
 --   1. status ∈ {validated, rejected, submitted} est dérivé de la DERNIÈRE
 --      décision, jamais déclaré par un client.
 --   2. les colonnes d'identité d'une preuve sont immuables après soumission.
---   3. aucune fonction de ce fichier n'est exécutable par PUBLIC, anon ou
---      authenticated.
+--   3. la provenance historique (source_system, source_id, imported_at,
+--      import_batch_id) est native-obligatoire pour un client et immuable en
+--      UPDATE pour TOUS les rôles, sur les 15 tables concernées.
+--   4. updated_at est imposé par le serveur sur les 14 tables qui en ont une.
+--   5. aucune fonction de ce fichier n'est exécutable par PUBLIC, anon,
+--      authenticated ou service_role.
 -- =====================================================================
 
 -- ---------------------------------------------------------------------
@@ -161,14 +165,146 @@ create trigger evidence_identity_immutable
   execute function public.enforce_evidence_identity_immutable();
 
 -- ---------------------------------------------------------------------
--- 3. Exposition : AUCUNE fonction de ce fichier n'est appelable par un client
+-- 3. Provenance historique immuable — TOUTES les tables porteuses des 4
+--    colonnes source_system / source_id / imported_at / import_batch_id
+--
+-- Règles :
+--   * INSERT par un rôle `authenticated` : source_system DOIT valoir 'native'
+--     et les trois autres colonnes DOIVENT être NULL. Un admin de programme ne
+--     peut donc pas fabriquer une ligne prétendument importée du legacy.
+--   * INSERT par service_role / postgres : provenance libre — c'est le seul
+--     chemin d'import legacy, et il passe par le backend qui doit revérifier
+--     l'autorisation métier (service_role contourne la RLS).
+--   * UPDATE, QUEL QUE SOIT LE RÔLE : aucune des 4 colonnes ne peut changer.
+--     Un import se fait par INSERT ; une correction ultérieure doit être
+--     traçable (nouvelle ligne + audit_events), jamais réécrire l'origine.
+--
+-- SECURITY INVOKER (défaut, explicite) : la fonction ne fait que refuser une
+-- transition, elle n'a besoin d'aucun privilège supplémentaire. search_path
+-- verrouillé malgré tout, car elle référence des objets qualifiés.
+-- ---------------------------------------------------------------------
+create or replace function public.enforce_source_provenance()
+returns trigger
+language plpgsql
+security invoker
+set search_path = pg_catalog, public
+as $$
+begin
+  if tg_op = 'INSERT' then
+    -- pg_has_role : couvre aussi un rôle applicatif futur membre de
+    -- service_role, sans dépendre d'une égalité de nom exacte.
+    if not pg_catalog.pg_has_role(current_user, 'service_role', 'USAGE')
+       and current_user <> 'postgres'
+    then
+      if new.source_system is distinct from 'native'
+         or new.source_id is not null
+         or new.imported_at is not null
+         or new.import_batch_id is not null
+      then
+        raise exception
+          'legacy provenance columns can only be set by the import backend (table %)',
+          tg_table_name
+          using errcode = 'insufficient_privilege';
+      end if;
+    end if;
+    return new;
+  end if;
+
+  -- UPDATE — immuable pour tout le monde, service_role compris.
+  if old.source_system   is distinct from new.source_system
+     or old.source_id      is distinct from new.source_id
+     or old.imported_at    is distinct from new.imported_at
+     or old.import_batch_id is distinct from new.import_batch_id
+  then
+    raise exception
+      'provenance columns are immutable (table %): imports are inserts, corrections must be traceable',
+      tg_table_name
+      using errcode = 'restrict_violation';
+  end if;
+
+  return new;
+end;
+$$;
+
+comment on function public.enforce_source_provenance() is
+  'Trigger générique : provenance native imposée aux clients à l''insertion, '
+  'et immuabilité des 4 colonnes de provenance à la mise à jour, tous rôles '
+  'confondus (y compris service_role).';
+
+do $$
+declare t text;
+begin
+  foreach t in array array[
+    'profiles', 'programs', 'curriculum_versions', 'cohorts', 'enrollments',
+    'role_assignments', 'outcomes', 'outcome_relations', 'learning_resources',
+    'learning_resource_assets', 'placements', 'placement_assignments',
+    'evidence', 'evidence_sources', 'evidence_validations'
+  ]
+  loop
+    execute format(
+      'drop trigger if exists %I on public.%I', t || '_source_provenance', t);
+    execute format(
+      'create trigger %I before insert or update on public.%I '
+      'for each row execute function public.enforce_source_provenance()',
+      t || '_source_provenance', t);
+  end loop;
+end $$;
+
+-- ---------------------------------------------------------------------
+-- 4. Horodatage serveur — updated_at n'est jamais fourni par un client
+-- Aucun GRANT UPDATE de colonne n'inclut updated_at (001 §12.3, §12.4) ;
+-- ce trigger ferme le cas des tables au GRANT large et des écritures serveur.
+-- clock_timestamp() et non now() : l'heure réelle de la ligne, non l'heure de
+-- début de transaction, pour distinguer deux écritures d'un même batch.
+-- ---------------------------------------------------------------------
+create or replace function public.set_updated_at()
+returns trigger
+language plpgsql
+security invoker
+set search_path = pg_catalog, public
+as $$
+begin
+  new.updated_at := pg_catalog.clock_timestamp();
+  return new;
+end;
+$$;
+
+comment on function public.set_updated_at() is
+  'Impose updated_at = clock_timestamp() à chaque UPDATE : la valeur envoyée '
+  'par un appelant, client ou serveur, est toujours écrasée.';
+
+do $$
+declare t text;
+begin
+  foreach t in array array[
+    'profiles', 'programs', 'curriculum_versions', 'cohorts', 'enrollments',
+    'role_assignments', 'outcomes', 'learning_resources',
+    'learning_resource_assets', 'placements', 'placement_supervisors',
+    'placement_assignments', 'evidence', 'ai_quota_policies'
+  ]
+  loop
+    execute format('drop trigger if exists %I on public.%I', t || '_set_updated_at', t);
+    -- Nom suffixé 'z_' : les triggers BEFORE s'exécutent par ordre
+    -- alphabétique, celui-ci doit passer APRÈS les gardes d'immutabilité.
+    execute format('drop trigger if exists %I on public.%I', 'z_' || t || '_set_updated_at', t);
+    execute format(
+      'create trigger %I before update on public.%I '
+      'for each row execute function public.set_updated_at()',
+      'z_' || t || '_set_updated_at', t);
+  end loop;
+end $$;
+
+-- ---------------------------------------------------------------------
+-- 5. Exposition : AUCUNE fonction de ce fichier n'est appelable par un client
 -- ---------------------------------------------------------------------
 do $$
 declare fn text;
 begin
   foreach fn in array array[
     'public.apply_evidence_validation_decision()',
-    'public.enforce_evidence_identity_immutable()'
+    'public.enforce_evidence_identity_immutable()',
+    'public.enforce_source_provenance()',
+    'public.set_updated_at()'
   ]
   loop
     execute format('alter function %s owner to postgres', fn);

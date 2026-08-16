@@ -35,6 +35,12 @@ Statut : **conception non exécutée**. Aucune base activée, aucune migration c
 | D26 | `learning_resource_outcomes` et assets visibles seulement si la ressource est publiée | les liaisons d'une ressource non publiée révéleraient un contenu à venir |
 | D27 | FK composites + `CHECK` de cohérence des null sur `ai_usage_events` | une FK composite est MATCH SIMPLE : inerte si une colonne est null, d'où le CHECK complémentaire |
 | D28 | `source_system = 'native'` imposé dans tous les `with check` d'écriture client | interdit de faire passer une saisie courante pour une donnée historique importée |
+| D29 | `learning_resource_assets` : policy SELECT seule, aucun GRANT d'écriture client | le navigateur ne doit jamais choisir `bucket_name`/`object_path`/`storage_provider`, falsifier `checksum_sha256`/`byte_size` ni poser `processing_status = 'ready'` avant scan |
+| D30 | Trigger générique `enforce_source_provenance()` sur les 15 tables porteuses | les `with check` de policy ne couvraient ni l'UPDATE ni `service_role` ; un admin de programme pouvait insérer une fausse ligne « legacy » |
+| D31 | Provenance immuable en UPDATE **pour tous les rôles** | un import est un INSERT ; une correction ultérieure doit être traçable, jamais réécrire l'origine d'une donnée historique |
+| D32 | `profiles_update_self` : `with check (id = auth.uid())` sans condition de provenance | un profil importé du legacy devait sinon requalifier son origine en `native` pour corriger son nom — exactement ce que D31 interdit |
+| D33 | Trigger générique `set_updated_at()` (`clock_timestamp()`), `updated_at` retiré des GRANT de colonnes | l'horodatage de modification est une donnée serveur ; `clock_timestamp()` distingue deux écritures d'un même batch |
+| D34 | `revoke ... from anon` sur la **liste explicite** des tables du draft | `revoke all on all tables in schema public` toucherait par surprise des objets `public` ajoutés plus tard par une autre fonctionnalité ou une intégration managée |
 
 ## Alternatives rejetées
 
@@ -55,6 +61,10 @@ Statut : **conception non exécutée**. Aucune base activée, aucune migration c
 | URL publique de bucket stockée en base | lien permanent non révocable ; remplacée par URL signée courte |
 | Binaires en `bytea` dans PostgreSQL | coût, sauvegardes ingérables, pas de streaming |
 | `pgvector` dès le Lot 1 | aucun usage réel avant le Lot 3 ; extension et index non justifiés |
+| Écriture des métadonnées d'asset par le staff via la Data API | le client choisirait le chemin, le bucket et le checksum, et pourrait publier un fichier non scanné |
+| Provenance protégée par les seuls `with check` de policy | ne couvre ni l'UPDATE ni `service_role` ; remplacé par le trigger D30 |
+| `updated_at` accordé au client en GRANT de colonne | horodatage falsifiable ; remplacé par le trigger D33 |
+| `revoke all on all tables in schema public from anon` | portée non maîtrisée sur les objets futurs du schéma ; remplacé par D34 |
 
 ## Questions à valider avant provisioning
 
