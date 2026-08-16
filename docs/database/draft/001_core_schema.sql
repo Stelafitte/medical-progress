@@ -76,6 +76,20 @@ do $$ begin
     ('course', 'video', 'quiz', 'checklist', 'reference');
 exception when duplicate_object then null; end $$;
 
+do $$ begin
+  create type public.resource_asset_kind as enum
+    ('original', 'derived', 'transcript', 'thumbnail');
+exception when duplicate_object then null; end $$;
+
+do $$ begin
+  create type public.storage_provider as enum ('supabase', 's3', 'r2');
+exception when duplicate_object then null; end $$;
+
+do $$ begin
+  create type public.asset_processing_status as enum
+    ('pending', 'processing', 'ready', 'failed', 'quarantined');
+exception when duplicate_object then null; end $$;
+
 -- ---------------------------------------------------------------------
 -- 2. Conventions transverses
 --   * clé primaire : uuid default gen_random_uuid()
@@ -348,6 +362,45 @@ create table if not exists public.learning_resource_outcomes (
 );
 create index if not exists lro_outcome_idx on public.learning_resource_outcomes (outcome_id);
 
+-- Métadonnées des fichiers pédagogiques. AUCUN binaire en base, AUCUNE URL
+-- publique durable stockée : seul le couple (bucket privé, object_path) est
+-- conservé, l'accès se fait par URL signée courte générée côté serveur.
+-- Voir docs/database/draft/storage_architecture.md.
+create table if not exists public.learning_resource_assets (
+  id            uuid primary key default gen_random_uuid(),
+  learning_resource_id uuid not null,
+  program_id    uuid not null,
+  asset_kind    public.resource_asset_kind not null,
+  storage_provider public.storage_provider not null default 'supabase',
+  bucket_name   text not null check (bucket_name = lower(bucket_name)),
+  object_path   text not null check (length(btrim(object_path)) > 0),
+  mime_type     text not null,
+  original_filename text,
+  byte_size     bigint not null check (byte_size >= 0),
+  checksum_sha256 text check (checksum_sha256 ~ '^[0-9a-f]{64}$'),
+  processing_status public.asset_processing_status not null default 'pending',
+  -- Un chemin d'objet ne doit jamais ressembler à une URL absolue.
+  check (object_path not like 'http://%' and object_path not like 'https://%'),
+  source_system text not null default 'native',
+  source_id     text,
+  imported_at   timestamptz,
+  import_batch_id uuid,
+  created_at    timestamptz not null default now(),
+  updated_at    timestamptz not null default now(),
+  unique (storage_provider, bucket_name, object_path),
+  -- program_id verrouillé par la ressource parente : pas de fuite inter-programme.
+  constraint lra_resource_same_program
+    foreign key (learning_resource_id, program_id)
+    references public.learning_resources (id, program_id) on delete cascade
+);
+create index if not exists lra_resource_idx
+  on public.learning_resource_assets (learning_resource_id, asset_kind);
+create index if not exists lra_status_idx
+  on public.learning_resource_assets (processing_status);
+comment on table public.learning_resource_assets is
+  'Métadonnées d''objets stockés hors base (buckets privés). Jamais de binaire, '
+  'jamais d''URL publique durable. RLS calquée sur la ressource parente.';
+
 -- ---------------------------------------------------------------------
 -- 9. Stages
 -- ---------------------------------------------------------------------
@@ -369,10 +422,16 @@ create table if not exists public.placements (
 create index if not exists placements_program_idx on public.placements (program_id);
 
 -- FK différée du scope placement des rôles vers placements.
-alter table public.role_assignments
-  add constraint role_assignments_placement_same_program
-  foreign key (placement_id, program_id)
-  references public.placements (id, program_id) on delete cascade;
+-- Ajout idempotent : le fichier doit pouvoir être relu sans erreur.
+do $$ begin
+  alter table public.role_assignments
+    add constraint role_assignments_placement_same_program
+    foreign key (placement_id, program_id)
+    references public.placements (id, program_id) on delete cascade;
+exception
+  when duplicate_object then null;
+  when duplicate_table then null;
+end $$;
 
 -- Encadrants d'un stage : source de vérité de l'autorisation "superviseur".
 create table if not exists public.placement_supervisors (
@@ -553,7 +612,7 @@ create table if not exists public.ai_usage_events (
   id            uuid primary key default gen_random_uuid(),
   person_id     uuid references public.profiles (id) on delete set null,
   program_id    uuid references public.programs (id) on delete set null,
-  enrollment_id uuid references public.enrollments (id) on delete set null,
+  enrollment_id uuid,
   feature       text not null,
   provider      text not null default 'openai',
   model         text not null,
@@ -563,7 +622,22 @@ create table if not exists public.ai_usage_events (
   cost_micro_eur bigint not null default 0 check (cost_micro_eur >= 0),
   request_ref   text,
   occurred_at   timestamptz not null default now(),
-  created_at    timestamptz not null default now()
+  created_at    timestamptz not null default now(),
+  -- Une consommation rattachée à une inscription impose programme ET personne :
+  -- impossible d'imputer un appel IA à un programme qui n'est pas celui de
+  -- l'inscription, ni à une personne qui n'en est pas le titulaire.
+  constraint ai_usage_enrollment_same_program
+    foreign key (enrollment_id, program_id)
+    references public.enrollments (id, program_id) on delete set null,
+  constraint ai_usage_enrollment_same_person
+    foreign key (enrollment_id, person_id)
+    references public.enrollments (id, person_id) on delete set null,
+  -- Cohérence des null : les FK composites sont MATCH SIMPLE, donc inertes dès
+  -- qu'une colonne est null ; ce CHECK ferme la porte laissée ouverte.
+  constraint ai_usage_null_coherence check (
+    enrollment_id is null
+    or (program_id is not null and person_id is not null)
+  )
 );
 create index if not exists ai_usage_program_time_idx
   on public.ai_usage_events (program_id, occurred_at desc);
@@ -591,32 +665,114 @@ comment on table public.ai_quota_policies is
   'Quotas IA configurables par programme. Lecture réservée aux admins de portée.';
 
 -- ---------------------------------------------------------------------
--- 12. GRANTS — jamais anon
+-- 12. GRANTS — un privilège pour CHAQUE policy, et rien de plus
 -- ---------------------------------------------------------------------
--- Lecture/écriture fine effectivement autorisée par les policies de
--- 002_rls_policies.sql ; les GRANT ne font qu'ouvrir la Data API.
-grant select on public.profiles, public.programs, public.curriculum_versions,
-  public.cohorts, public.enrollments, public.role_assignments, public.outcomes,
-  public.outcome_relations, public.learning_resources, public.learning_resource_outcomes,
-  public.placements, public.placement_supervisors, public.placement_assignments,
-  public.evidence, public.evidence_sources, public.evidence_validations,
+-- Règle de cohérence (checklist : docs/database/draft/grant_policy_checklist.md) :
+--   * toute table ayant une policy SELECT reçoit GRANT SELECT ;
+--   * toute table SANS policy pour une opération ne reçoit PAS le privilège ;
+--   * les tables sensibles reçoivent des GRANT de COLONNES, pour que même une
+--     policy trop permissive ne puisse pas laisser réécrire une colonne
+--     d'identité, de provenance ou de statut.
+-- La RLS reste la barrière d'autorisation ; les GRANT sont la barrière de surface.
+
+-- 12.1 Lecture — toutes les tables ayant au moins une policy SELECT
+grant select on
+  public.profiles,
+  public.programs,
+  public.curriculum_versions,
+  public.cohorts,
+  public.enrollments,
+  public.role_assignments,
+  public.outcomes,
+  public.outcome_relations,
+  public.learning_resources,
+  public.learning_resource_outcomes,
+  public.learning_resource_assets,
+  public.placements,
+  public.placement_supervisors,
+  public.placement_assignments,
+  public.evidence,
+  public.evidence_sources,
+  public.evidence_validations,
+  public.audit_events,
+  public.ai_usage_events,
+  public.ai_quota_policies
+  to authenticated;
+-- audit_events / ai_usage_events : SELECT seulement (policies admin + self).
+-- L'écriture reste exclusivement service_role — aucune policy INSERT n'existe.
+
+-- 12.2 Tables d'administration — DML complet côté privilèges, RLS filtrante
+grant insert, update, delete on
+  public.programs,
+  public.curriculum_versions,
+  public.cohorts,
+  public.enrollments,
+  public.learning_resources,
+  public.learning_resource_assets,
+  public.placements,
+  public.placement_supervisors,
+  public.placement_assignments,
+  public.outcomes,
   public.ai_quota_policies
   to authenticated;
 
-grant insert, update on public.profiles to authenticated;
-grant insert, update on public.evidence to authenticated;
-grant insert on public.evidence_sources to authenticated;
-grant insert on public.evidence_validations to authenticated;
+-- Tables sans policy UPDATE : on n'accorde pas UPDATE.
+grant insert, delete on
+  public.outcome_relations,
+  public.learning_resource_outcomes
+  to authenticated;
 
--- audit_events et ai_usage_events : aucun privilège pour authenticated.
-grant all on public.profiles, public.programs, public.curriculum_versions, public.cohorts,
-  public.enrollments, public.role_assignments, public.outcomes, public.outcome_relations,
-  public.learning_resources, public.learning_resource_outcomes, public.placements,
-  public.placement_supervisors, public.placement_assignments, public.evidence,
-  public.evidence_sources, public.evidence_validations, public.audit_events,
-  public.ai_usage_events, public.ai_quota_policies
+-- role_assignments : jamais de DELETE client (révocation par revoked_at).
+grant insert, update on public.role_assignments to authenticated;
+
+-- 12.3 profiles — GRANT DE COLONNES
+-- Un utilisateur ne peut écrire que son nom d'affichage et sa locale. Les
+-- colonnes de provenance legacy (source_system, source_id, imported_at,
+-- import_batch_id) et created_at ne sont pas accordées : falsification
+-- d'origine impossible même en cas d'erreur de policy.
+grant insert (id, full_name, locale) on public.profiles to authenticated;
+grant update (full_name, locale, updated_at) on public.profiles to authenticated;
+
+-- 12.4 evidence — GRANT DE COLONNES
+-- INSERT : le client fournit l'identité de la preuve (une seule fois).
+grant insert (
+  enrollment_id, outcome_id, program_id, kind, status, title, occurred_at,
+  score_raw, score_max, proposed_mastery, autonomy_level, repetition_count,
+  confidence_level, context, self_declared, created_by, placement_assignment_id
+) on public.evidence to authenticated;
+-- UPDATE : les colonnes d'identité et de provenance sont DÉLIBÉRÉMENT absentes.
+-- enrollment_id, program_id, outcome_id, created_by, self_declared,
+-- placement_assignment_id, source_system, source_id, imported_at,
+-- import_batch_id, created_at ne sont donc plus modifiables après création,
+-- par privilège et non seulement par policy.
+grant update (
+  title, occurred_at, score_raw, score_max, proposed_mastery, autonomy_level,
+  repetition_count, confidence_level, context, status, updated_at
+) on public.evidence to authenticated;
+-- Aucun GRANT DELETE : une preuve ne se supprime pas, elle change de statut.
+
+-- 12.5 evidence_sources / evidence_validations — GRANT DE COLONNES
+-- Les colonnes de provenance ne sont pas accordées : un client ne peut pas
+-- inventer un source_system / source_id / import_batch_id et faire passer une
+-- saisie native pour une donnée historique importée.
+grant insert (evidence_id, source_kind, storage_path, external_ref, payload)
+  on public.evidence_sources to authenticated;
+grant insert (evidence_id, validator_person_id, validator_role, decision, comment)
+  on public.evidence_validations to authenticated;
+-- Aucun UPDATE/DELETE : les deux tables sont append-only.
+
+-- 12.6 service_role — bypass RLS, jamais utilisé côté frontend
+grant all on
+  public.profiles, public.programs, public.curriculum_versions, public.cohorts,
+  public.enrollments, public.role_assignments, public.outcomes,
+  public.outcome_relations, public.learning_resources,
+  public.learning_resource_outcomes, public.learning_resource_assets,
+  public.placements, public.placement_supervisors, public.placement_assignments,
+  public.evidence, public.evidence_sources, public.evidence_validations,
+  public.audit_events, public.ai_usage_events, public.ai_quota_policies
   to service_role;
 
--- Aucun GRANT à anon, volontairement : aucune surface publique dans le Lot 1.
+-- 12.7 anon — aucun privilège, sur aucune table, volontairement.
+revoke all on all tables in schema public from anon;
 
 -- FIN — DRAFT — DO NOT EXECUTE
