@@ -88,16 +88,22 @@ n'est activée, aucun fichier n'existe dans `supabase/migrations/`, aucun SQL n'
 
 | Fichier | Contenu |
 | ------- | ------- |
-| `001_core_schema.sql` | Enums, 19 tables, FK composites, contraintes, index, commentaires, GRANTs (jamais `anon`) |
-| `002_rls_policies.sql` | RLS sur toutes les tables, fonctions d'autorisation, policies séparées par opération |
+| `001_core_schema.sql` | Enums, 20 tables, FK composites, contraintes, index, commentaires, GRANT (dont GRANT de colonnes ; jamais `anon`) |
+| `002_rls_policies.sql` | RLS sur toutes les tables, helpers d'autorisation à portées exactes, policies séparées par opération |
+| `003_server_invariants.sql` | Unique mécanisme mutant : trigger de dérivation de `evidence.status` + garde-fou d'immutabilité |
 | `rls_matrix.md` | Matrice table × opération × rôle avec conditions d'appartenance et de portée |
-| `architecture.md` | ER Mermaid, normalisation, flux, provenance/import legacy, rollback, limites |
+| `grant_policy_checklist.md` | Checklist statique GRANT ↔ POLICY et inventaire des fonctions `SECURITY DEFINER` |
+| `architecture.md` | ER Mermaid, normalisation, portées d'autorisation, flux, import legacy, rollback, limites |
+| `storage_architecture.md` | Hébergement des contenus : buckets privés UE, URL signées courtes, métadonnées en base |
 | `tests/rls_acceptance.sql` | Plan de tests transactionnels futurs (`ROLLBACK` final), non exécuté |
 | `decision_log.md` | Décisions, alternatives rejetées, questions à valider avant provisioning |
 
 Points structurants : la progression n'est jamais stockée (dérivée des preuves),
 `evidence_validations` est append-only, `evidence.status = 'validated'` est inatteignable
-depuis le client, et aucun utilisateur ne peut s'accorder un rôle ni élargir sa portée.
+depuis le client, aucun utilisateur ne peut s'accorder un rôle ni élargir sa portée, et
+une portée cohorte ou stage n'est jamais promue en portée programme. Les fichiers
+pédagogiques restent hors base : PostgreSQL ne porte que des métadonnées.
+
 
 ## À prévoir après validation du schéma
 
