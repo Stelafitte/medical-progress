@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { SessionProvider } from "@/app/session";
-import { AppShell } from "@/components/app-shell";
+import { SessionProvider } from "@/application/session";
+import { AppShell } from "@/components/layout/app-shell";
 
 export const Route = createFileRoute("/espace")({
   head: () => ({

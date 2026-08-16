@@ -15,6 +15,8 @@ import { Route as EspaceIndexRouteImport } from './routes/espace.index'
 import { Route as EspaceAdministrationRouteImport } from './routes/espace.administration'
 import { Route as EspaceArchitectureRouteImport } from './routes/espace.architecture'
 import { Route as EspacePasseportRouteImport } from './routes/espace.passeport'
+import { Route as EspaceRessourcesRouteImport } from './routes/espace.ressources'
+import { Route as EspaceStageRouteImport } from './routes/espace.stage'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -46,6 +48,16 @@ const EspacePasseportRoute = EspacePasseportRouteImport.update({
   path: '/passeport',
   getParentRoute: () => EspaceRoute,
 } as any)
+const EspaceRessourcesRoute = EspaceRessourcesRouteImport.update({
+  id: '/ressources',
+  path: '/ressources',
+  getParentRoute: () => EspaceRoute,
+} as any)
+const EspaceStageRoute = EspaceStageRouteImport.update({
+  id: '/stage',
+  path: '/stage',
+  getParentRoute: () => EspaceRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -53,6 +65,8 @@ export interface FileRoutesByFullPath {
   '/espace/administration': typeof EspaceAdministrationRoute
   '/espace/architecture': typeof EspaceArchitectureRoute
   '/espace/passeport': typeof EspacePasseportRoute
+  '/espace/ressources': typeof EspaceRessourcesRoute
+  '/espace/stage': typeof EspaceStageRoute
   '/espace/': typeof EspaceIndexRoute
 }
 export interface FileRoutesByTo {
@@ -60,6 +74,8 @@ export interface FileRoutesByTo {
   '/espace/administration': typeof EspaceAdministrationRoute
   '/espace/architecture': typeof EspaceArchitectureRoute
   '/espace/passeport': typeof EspacePasseportRoute
+  '/espace/ressources': typeof EspaceRessourcesRoute
+  '/espace/stage': typeof EspaceStageRoute
   '/espace': typeof EspaceIndexRoute
 }
 export interface FileRoutesById {
@@ -69,6 +85,8 @@ export interface FileRoutesById {
   '/espace/administration': typeof EspaceAdministrationRoute
   '/espace/architecture': typeof EspaceArchitectureRoute
   '/espace/passeport': typeof EspacePasseportRoute
+  '/espace/ressources': typeof EspaceRessourcesRoute
+  '/espace/stage': typeof EspaceStageRoute
   '/espace/': typeof EspaceIndexRoute
 }
 export interface FileRouteTypes {
@@ -79,6 +97,8 @@ export interface FileRouteTypes {
     | '/espace/administration'
     | '/espace/architecture'
     | '/espace/passeport'
+    | '/espace/ressources'
+    | '/espace/stage'
     | '/espace/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -86,6 +106,8 @@ export interface FileRouteTypes {
     | '/espace/administration'
     | '/espace/architecture'
     | '/espace/passeport'
+    | '/espace/ressources'
+    | '/espace/stage'
     | '/espace'
   id:
     | '__root__'
@@ -94,6 +116,8 @@ export interface FileRouteTypes {
     | '/espace/administration'
     | '/espace/architecture'
     | '/espace/passeport'
+    | '/espace/ressources'
+    | '/espace/stage'
     | '/espace/'
   fileRoutesById: FileRoutesById
 }
@@ -146,6 +170,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EspacePasseportRouteImport
       parentRoute: typeof EspaceRoute
     }
+    '/espace/ressources': {
+      id: '/espace/ressources'
+      path: '/ressources'
+      fullPath: '/espace/ressources'
+      preLoaderRoute: typeof EspaceRessourcesRouteImport
+      parentRoute: typeof EspaceRoute
+    }
+    '/espace/stage': {
+      id: '/espace/stage'
+      path: '/stage'
+      fullPath: '/espace/stage'
+      preLoaderRoute: typeof EspaceStageRouteImport
+      parentRoute: typeof EspaceRoute
+    }
   }
 }
 
@@ -153,6 +191,8 @@ interface EspaceRouteChildren {
   EspaceAdministrationRoute: typeof EspaceAdministrationRoute
   EspaceArchitectureRoute: typeof EspaceArchitectureRoute
   EspacePasseportRoute: typeof EspacePasseportRoute
+  EspaceRessourcesRoute: typeof EspaceRessourcesRoute
+  EspaceStageRoute: typeof EspaceStageRoute
   EspaceIndexRoute: typeof EspaceIndexRoute
 }
 
@@ -160,6 +200,8 @@ const EspaceRouteChildren: EspaceRouteChildren = {
   EspaceAdministrationRoute: EspaceAdministrationRoute,
   EspaceArchitectureRoute: EspaceArchitectureRoute,
   EspacePasseportRoute: EspacePasseportRoute,
+  EspaceRessourcesRoute: EspaceRessourcesRoute,
+  EspaceStageRoute: EspaceStageRoute,
   EspaceIndexRoute: EspaceIndexRoute,
 }
 

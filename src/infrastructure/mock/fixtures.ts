@@ -105,7 +105,12 @@ export const cohorts: readonly Cohort[] = [
 
 export const people: readonly Person[] = [
   { ...base, id: "per-learner", fullName: "Camille Rousseau", email: "camille.demo@example.org" },
-  { ...base, id: "per-supervisor", fullName: "Dr Hélène Vasseur", email: "helene.demo@example.org" },
+  {
+    ...base,
+    id: "per-supervisor",
+    fullName: "Dr Hélène Vasseur",
+    email: "helene.demo@example.org",
+  },
   { ...base, id: "per-teacher", fullName: "Pr Marc Delaunay", email: "marc.demo@example.org" },
   { ...base, id: "per-admin", fullName: "Service scolarité", email: "scolarite.demo@example.org" },
 ];
@@ -199,7 +204,8 @@ export const outcomes: readonly Outcome[] = [
     curriculumVersionId: "cv-diu-2026",
     code: "ECHO-3.1",
     label: "Quantifier la FEVG chez un patient",
-    description: "Mesurer la fraction d'éjection en situation clinique réelle, validée par un encadrant.",
+    description:
+      "Mesurer la fraction d'éjection en situation clinique réelle, validée par un encadrant.",
     nature: "real_competence",
     domain: "Fonction ventriculaire gauche",
     targetMastery: "proficient",

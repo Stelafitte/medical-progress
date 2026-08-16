@@ -4,8 +4,8 @@
  * personne courante, inscriptions, rôles contextualisés, programme actif.
  */
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
-import { mockDataAccess } from "@/data/mock/mockDataAccess";
-import * as fx from "@/data/mock/fixtures";
+import { mockDataAccess } from "@/infrastructure/mock/mockDataAccess";
+import * as fx from "@/infrastructure/mock/fixtures";
 import type {
   Enrollment,
   Person,

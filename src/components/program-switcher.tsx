@@ -1,4 +1,4 @@
-import { useSession } from "@/app/session";
+import { useSession } from "@/application/session";
 import {
   Select,
   SelectContent,
