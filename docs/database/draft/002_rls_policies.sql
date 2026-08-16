@@ -2,30 +2,63 @@
 -- DRAFT — DO NOT EXECUTE
 -- Passeport Éducatif Médical — Lot 1 — matrice RLS (conception)
 -- Ce fichier n'est pas une migration et n'a jamais été exécuté.
+--
 -- Principes :
---   * auth.uid() est la SEULE identité ; aucun user_id fourni par le client
---     n'est jamais utilisé pour décider d'un droit.
+--   * auth.uid() est la SEULE identité ; aucun identifiant fourni par le
+--     client n'est jamais utilisé pour décider d'un droit.
 --   * policies séparées par opération (SELECT / INSERT / UPDATE / DELETE),
 --     aucun FOR ALL vague.
 --   * service_role bypasse la RLS et n'est JAMAIS utilisé côté frontend.
+--   * PORTÉES EXACTES : un rôle de portée cohorte n'est jamais promu en rôle
+--     de programme, un encadrant n'existe que pour les stages où il est
+--     explicitement déclaré dans public.placement_supervisors.
 -- =====================================================================
 
 -- ---------------------------------------------------------------------
 -- 1. Fonctions d'autorisation
--- Toutes : stables, non mutantes, search_path verrouillé.
--- SECURITY DEFINER uniquement là où la policy lirait une table elle-même
--- protégée par RLS (risque de récursion infinie) : role_assignments,
--- enrollments, placement_supervisors. Chaque fonction est justifiée.
+--
+-- Toutes : language sql, STABLE, non mutantes, search_path verrouillé sur
+-- `pg_catalog, public` (pg_catalog en tête : aucun objet du search_path
+-- utilisateur ne peut masquer un opérateur ou une fonction système ;
+-- pg_temp est volontairement absent pour interdire toute résolution vers
+-- un objet temporaire créé par l'appelant).
+-- Toutes les tables sont schéma-qualifiées et auth.uid() est qualifié.
+--
+-- SECURITY DEFINER : uniquement là où la policy devrait lire une table
+-- elle-même protégée par RLS, ce qui provoquerait soit une récursion
+-- infinie, soit un résultat faussement vide. Justification par fonction :
+--
+--   is_platform_admin              lit role_assignments, dont les policies
+--                                  appellent cette fonction → récursion.
+--   has_program_wide_role          idem (role_assignments).
+--   has_cohort_role                idem + cohorts.
+--   has_any_program_role           idem (lecture de référentiel seulement).
+--   can_administer_program         idem (role_assignments).
+--   is_enrolled_in_program         lit enrollments, dont les policies
+--                                  appellent les helpers → récursion.
+--   owns_enrollment                idem (enrollments).
+--   supervises_placement           lit placement_supervisors, dont les
+--                                  policies dépendent de la portée stage.
+--   supervises_enrollment_placement idem (jointure supervisors/assignments).
+--   is_enrollment_academic_staff   composition des précédentes.
+--   can_read_enrollment            composition des précédentes.
+--   supervises_evidence            lit evidence + placement_* sous RLS.
+--   can_read_evidence              composition des précédentes.
+--   can_validate_evidence          composition des précédentes.
+--
+-- Aucune de ces fonctions n'écrit : elles sont toutes STABLE et ne
+-- contiennent aucun INSERT / UPDATE / DELETE / DDL. Aucune fonction MUTANTE
+-- n'est exécutable par `authenticated` (cf. 003_server_invariants.sql, dont
+-- la seule fonction mutante est révoquée à PUBLIC, anon ET authenticated).
 -- ---------------------------------------------------------------------
 
--- Admin plateforme : portée maximale. Lit role_assignments → SECURITY DEFINER
--- obligatoire (sinon récursion : les policies de role_assignments l'appellent).
+-- Admin plateforme : portée maximale.
 create or replace function public.is_platform_admin()
 returns boolean
 language sql
 stable
 security definer
-set search_path = public, pg_temp
+set search_path = pg_catalog, public
 as $$
   select exists (
     select 1 from public.role_assignments ra
@@ -36,33 +69,13 @@ as $$
   );
 $$;
 
--- Rôle détenu par l'utilisateur courant sur un programme donné, en tenant
--- compte de l'héritage de portée (platform > program > cohort/placement).
--- SECURITY DEFINER : même raison (lecture de role_assignments).
-create or replace function public.has_program_role(_program_id uuid, _role public.role_name)
-returns boolean
-language sql
-stable
-security definer
-set search_path = public, pg_temp
-as $$
-  select public.is_platform_admin() or exists (
-    select 1 from public.role_assignments ra
-    where ra.person_id = auth.uid()
-      and ra.role = _role
-      and ra.revoked_at is null
-      and ra.program_id = _program_id
-      and ra.scope_kind in ('program', 'cohort', 'placement')
-  );
-$$;
-
--- Administration d'un programme : admin de ce programme ou admin plateforme.
+-- Administration d'un programme : admin de CE programme, ou admin plateforme.
 create or replace function public.can_administer_program(_program_id uuid)
 returns boolean
 language sql
 stable
 security definer
-set search_path = public, pg_temp
+set search_path = pg_catalog, public
 as $$
   select public.is_platform_admin() or exists (
     select 1 from public.role_assignments ra
@@ -74,15 +87,79 @@ as $$
   );
 $$;
 
--- L'utilisateur est-il inscrit au programme ? Lit enrollments (RLS) →
--- SECURITY DEFINER pour éviter la récursion depuis les policies d'enrollments
--- et des tables de référentiel.
+-- Rôle LARGE sur un programme : uniquement scope_kind = 'program'.
+-- Un rôle de portée cohorte ou stage NE remonte PAS ici.
+create or replace function public.has_program_wide_role(
+  _program_id uuid, _role public.role_name)
+returns boolean
+language sql
+stable
+security definer
+set search_path = pg_catalog, public
+as $$
+  select exists (
+    select 1 from public.role_assignments ra
+    where ra.person_id = auth.uid()
+      and ra.role = _role
+      and ra.scope_kind = 'program'
+      and ra.program_id = _program_id
+      and ra.revoked_at is null
+  );
+$$;
+
+-- Rôle sur une COHORTE précise : rôle de portée cohorte sur cette cohorte,
+-- ou rôle large sur le programme de cette cohorte (héritage descendant only).
+create or replace function public.has_cohort_role(
+  _cohort_id uuid, _role public.role_name)
+returns boolean
+language sql
+stable
+security definer
+set search_path = pg_catalog, public
+as $$
+  select exists (
+    select 1 from public.role_assignments ra
+    where ra.person_id = auth.uid()
+      and ra.role = _role
+      and ra.scope_kind = 'cohort'
+      and ra.cohort_id = _cohort_id
+      and ra.revoked_at is null
+  ) or exists (
+    select 1 from public.cohorts c
+    where c.id = _cohort_id
+      and public.has_program_wide_role(c.program_id, _role)
+  );
+$$;
+
+-- Rôle détenu à N'IMPORTE QUELLE portée dans un programme.
+-- USAGE STRICTEMENT LIMITÉ à la lecture du RÉFÉRENTIEL non nominatif
+-- (programme, curriculum, acquis, ressources) : un enseignant de cohorte doit
+-- pouvoir lire le référentiel du programme. Cette fonction ne doit JAMAIS
+-- servir à autoriser l'accès à des données nominatives d'apprenant.
+create or replace function public.has_any_program_role(
+  _program_id uuid, _role public.role_name)
+returns boolean
+language sql
+stable
+security definer
+set search_path = pg_catalog, public
+as $$
+  select exists (
+    select 1 from public.role_assignments ra
+    where ra.person_id = auth.uid()
+      and ra.role = _role
+      and ra.program_id = _program_id
+      and ra.revoked_at is null
+  );
+$$;
+
+-- L'utilisateur est-il inscrit au programme ?
 create or replace function public.is_enrolled_in_program(_program_id uuid)
 returns boolean
 language sql
 stable
 security definer
-set search_path = public, pg_temp
+set search_path = pg_catalog, public
 as $$
   select exists (
     select 1 from public.enrollments e
@@ -98,7 +175,7 @@ returns boolean
 language sql
 stable
 security definer
-set search_path = public, pg_temp
+set search_path = pg_catalog, public
 as $$
   select exists (
     select 1 from public.enrollments e
@@ -106,13 +183,13 @@ as $$
   );
 $$;
 
--- Encadrant explicitement déclaré du stage. Lit placement_supervisors (RLS).
+-- Encadrant EXPLICITEMENT déclaré de ce stage. Aucune autre voie n'existe.
 create or replace function public.supervises_placement(_placement_id uuid)
 returns boolean
 language sql
 stable
 security definer
-set search_path = public, pg_temp
+set search_path = pg_catalog, public
 as $$
   select exists (
     select 1 from public.placement_supervisors ps
@@ -121,13 +198,67 @@ as $$
   );
 $$;
 
--- L'utilisateur encadre-t-il le stage auquel cette preuve est rattachée ?
+-- L'utilisateur encadre-t-il un stage où CETTE inscription est affectée ?
+create or replace function public.supervises_enrollment_placement(_enrollment_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = pg_catalog, public
+as $$
+  select exists (
+    select 1
+    from public.placement_assignments pa
+    join public.placement_supervisors ps on ps.placement_id = pa.placement_id
+    where pa.enrollment_id = _enrollment_id
+      and ps.person_id = auth.uid()
+  );
+$$;
+
+-- Encadrement pédagogique NOMINATIF d'une inscription : admin de portée,
+-- enseignant du programme (portée programme) ou enseignant de LA cohorte
+-- de cette inscription. Un enseignant de la cohorte A n'obtient jamais
+-- l'accès aux inscriptions de la cohorte B du même programme.
+create or replace function public.is_enrollment_academic_staff(_enrollment_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = pg_catalog, public
+as $$
+  select exists (
+    select 1 from public.enrollments e
+    where e.id = _enrollment_id
+      and (
+        public.can_administer_program(e.program_id)
+        or public.has_program_wide_role(e.program_id, 'teacher')
+        or public.has_cohort_role(e.cohort_id, 'teacher')
+      )
+  );
+$$;
+
+-- Lecture d'une inscription : son titulaire, l'encadrement pédagogique de
+-- portée, ou l'encadrant d'un stage où elle est affectée.
+create or replace function public.can_read_enrollment(_enrollment_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = pg_catalog, public
+as $$
+  select public.owns_enrollment(_enrollment_id)
+     or public.is_enrollment_academic_staff(_enrollment_id)
+     or public.supervises_enrollment_placement(_enrollment_id);
+$$;
+
+-- L'utilisateur encadre-t-il le stage auquel CETTE preuve est rattachée ?
+-- Une preuve sans placement_assignment_id ne relève jamais d'un encadrant.
 create or replace function public.supervises_evidence(_evidence_id uuid)
 returns boolean
 language sql
 stable
 security definer
-set search_path = public, pg_temp
+set search_path = pg_catalog, public
 as $$
   select exists (
     select 1
@@ -135,17 +266,40 @@ as $$
     join public.placement_assignments pa on pa.id = ev.placement_assignment_id
     join public.placement_supervisors ps on ps.placement_id = pa.placement_id
     where ev.id = _evidence_id
+      and ev.placement_assignment_id is not null
       and ps.person_id = auth.uid()
   );
 $$;
 
--- Peut-on valider cette preuve ? Jamais son propre travail, jamais hors portée.
+-- Lecture d'une preuve : son titulaire, l'encadrement pédagogique de portée
+-- (cohorte exacte incluse), ou l'encadrant du stage de CETTE preuve.
+-- Un encadrant ne voit PAS les preuves hors stage de l'apprenant qu'il encadre.
+create or replace function public.can_read_evidence(_evidence_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = pg_catalog, public
+as $$
+  select exists (
+    select 1 from public.evidence ev
+    where ev.id = _evidence_id
+      and (
+        public.owns_enrollment(ev.enrollment_id)
+        or public.is_enrollment_academic_staff(ev.enrollment_id)
+        or public.supervises_evidence(ev.id)
+      )
+  );
+$$;
+
+-- Validation d'une preuve : jamais son propre dossier, jamais sa propre
+-- saisie, jamais hors portée exacte.
 create or replace function public.can_validate_evidence(_evidence_id uuid)
 returns boolean
 language sql
 stable
 security definer
-set search_path = public, pg_temp
+set search_path = pg_catalog, public
 as $$
   select exists (
     select 1
@@ -156,24 +310,30 @@ as $$
       and ev.created_by <> auth.uid()        -- ni validation de sa propre saisie
       and (
         public.supervises_evidence(ev.id)
-        or public.has_program_role(ev.program_id, 'teacher')
-        or public.can_administer_program(ev.program_id)
+        or public.is_enrollment_academic_staff(ev.enrollment_id)
       )
   );
 $$;
 
--- Durcissement de l'exposition des fonctions : aucune exécution par anon.
+-- Exposition des fonctions : owner postgres, aucune exécution par PUBLIC
+-- ni anon, EXECUTE accordé aux seuls helpers de lecture nécessaires.
 do $$
 declare fn text;
 begin
   foreach fn in array array[
     'public.is_platform_admin()',
-    'public.has_program_role(uuid, public.role_name)',
     'public.can_administer_program(uuid)',
+    'public.has_program_wide_role(uuid, public.role_name)',
+    'public.has_cohort_role(uuid, public.role_name)',
+    'public.has_any_program_role(uuid, public.role_name)',
     'public.is_enrolled_in_program(uuid)',
     'public.owns_enrollment(uuid)',
     'public.supervises_placement(uuid)',
+    'public.supervises_enrollment_placement(uuid)',
+    'public.is_enrollment_academic_staff(uuid)',
+    'public.can_read_enrollment(uuid)',
     'public.supervises_evidence(uuid)',
+    'public.can_read_evidence(uuid)',
     'public.can_validate_evidence(uuid)'
   ]
   loop
@@ -197,6 +357,7 @@ alter table public.outcomes                   enable row level security;
 alter table public.outcome_relations          enable row level security;
 alter table public.learning_resources         enable row level security;
 alter table public.learning_resource_outcomes enable row level security;
+alter table public.learning_resource_assets   enable row level security;
 alter table public.placements                 enable row level security;
 alter table public.placement_supervisors      enable row level security;
 alter table public.placement_assignments      enable row level security;
@@ -208,43 +369,56 @@ alter table public.ai_usage_events            enable row level security;
 alter table public.ai_quota_policies          enable row level security;
 
 -- ---------------------------------------------------------------------
--- 3. profiles
+-- 3. profiles — portée nominative strictement bornée
 -- ---------------------------------------------------------------------
 create policy profiles_select_self on public.profiles
   for select to authenticated
   using (id = auth.uid() or public.is_platform_admin());
 
--- Un encadrant/enseignant/admin voit les profils des apprenants de sa portée.
-create policy profiles_select_scoped on public.profiles
+-- Encadrement : on ne voit le profil d'un apprenant que si l'on a une portée
+-- nominative sur AU MOINS UNE de ses inscriptions (cohorte exacte pour un
+-- enseignant de cohorte, stage encadré pour un encadrant).
+create policy profiles_select_scoped_learner on public.profiles
   for select to authenticated
   using (exists (
     select 1 from public.enrollments e
     where e.person_id = public.profiles.id
-      and (public.has_program_role(e.program_id, 'teacher')
-           or public.can_administer_program(e.program_id))
+      and (public.is_enrollment_academic_staff(e.id)
+           or public.supervises_enrollment_placement(e.id))
+  ));
+
+-- Réciproque : un apprenant voit le profil des encadrants de SES stages.
+create policy profiles_select_own_supervisors on public.profiles
+  for select to authenticated
+  using (exists (
+    select 1
+    from public.placement_supervisors ps
+    join public.placement_assignments pa on pa.placement_id = ps.placement_id
+    where ps.person_id = public.profiles.id
+      and public.owns_enrollment(pa.enrollment_id)
   ));
 
 create policy profiles_insert_self on public.profiles
   for insert to authenticated
-  with check (id = auth.uid());
+  with check (id = auth.uid() and source_system = 'native');
 
 create policy profiles_update_self on public.profiles
   for update to authenticated
   using (id = auth.uid())
-  with check (id = auth.uid());
+  with check (id = auth.uid() and source_system = 'native');
 
 -- Aucune policy DELETE : la suppression passe par auth.users (serveur).
 
 -- ---------------------------------------------------------------------
 -- 4. Référentiel : programs / curriculum_versions / cohorts
--- Lecture limitée aux programmes de ses inscriptions ou de ses rôles.
+-- Lecture non nominative → has_any_program_role est acceptable ici.
 -- ---------------------------------------------------------------------
 create policy programs_select_scoped on public.programs
   for select to authenticated
   using (
     public.is_enrolled_in_program(id)
-    or public.has_program_role(id, 'teacher')
-    or public.has_program_role(id, 'placement_supervisor')
+    or public.has_any_program_role(id, 'teacher')
+    or public.has_any_program_role(id, 'placement_supervisor')
     or public.can_administer_program(id)
   );
 
@@ -260,7 +434,7 @@ create policy programs_delete_platform_admin on public.programs
 create policy curriculum_versions_select_scoped on public.curriculum_versions
   for select to authenticated
   using (public.is_enrolled_in_program(program_id)
-         or public.has_program_role(program_id, 'teacher')
+         or public.has_any_program_role(program_id, 'teacher')
          or public.can_administer_program(program_id));
 create policy curriculum_versions_insert_admin on public.curriculum_versions
   for insert to authenticated with check (public.can_administer_program(program_id));
@@ -271,10 +445,13 @@ create policy curriculum_versions_update_admin on public.curriculum_versions
 create policy curriculum_versions_delete_admin on public.curriculum_versions
   for delete to authenticated using (public.can_administer_program(program_id));
 
+-- Une cohorte est une donnée de référentiel, mais un enseignant de cohorte ne
+-- doit voir QUE sa cohorte : d'où has_cohort_role et non has_any_program_role.
 create policy cohorts_select_scoped on public.cohorts
   for select to authenticated
   using (public.is_enrolled_in_program(program_id)
-         or public.has_program_role(program_id, 'teacher')
+         or public.has_program_wide_role(program_id, 'teacher')
+         or public.has_cohort_role(id, 'teacher')
          or public.can_administer_program(program_id));
 create policy cohorts_insert_admin on public.cohorts
   for insert to authenticated with check (public.can_administer_program(program_id));
@@ -286,24 +463,22 @@ create policy cohorts_delete_admin on public.cohorts
   for delete to authenticated using (public.can_administer_program(program_id));
 
 -- ---------------------------------------------------------------------
--- 5. enrollments — l'apprenant lit les siennes, ne s'inscrit pas lui-même
+-- 5. enrollments — portée nominative exacte
 -- ---------------------------------------------------------------------
 create policy enrollments_select_own on public.enrollments
   for select to authenticated using (person_id = auth.uid());
 
+-- Enseignant de cohorte : SA cohorte uniquement.
+-- Encadrant : uniquement les inscriptions affectées à ses stages.
 create policy enrollments_select_scoped on public.enrollments
   for select to authenticated
-  using (public.has_program_role(program_id, 'teacher')
-         or public.can_administer_program(program_id)
-         or exists (
-           select 1 from public.placement_assignments pa
-           where pa.enrollment_id = public.enrollments.id
-             and public.supervises_placement(pa.placement_id)
-         ));
+  using (public.is_enrollment_academic_staff(id)
+         or public.supervises_enrollment_placement(id));
 
 -- Aucune auto-inscription : l'inscription est un acte administratif.
 create policy enrollments_insert_admin on public.enrollments
-  for insert to authenticated with check (public.can_administer_program(program_id));
+  for insert to authenticated
+  with check (public.can_administer_program(program_id) and source_system = 'native');
 create policy enrollments_update_admin on public.enrollments
   for update to authenticated
   using (public.can_administer_program(program_id))
@@ -329,6 +504,7 @@ create policy role_assignments_insert_admin on public.role_assignments
   for insert to authenticated
   with check (
     person_id <> auth.uid()
+    and source_system = 'native'
     and (
       public.is_platform_admin()
       or (scope_kind <> 'platform'
@@ -356,13 +532,13 @@ create policy role_assignments_update_admin on public.role_assignments
 -- Pas de DELETE client : on révoque (revoked_at), on ne supprime pas l'historique.
 
 -- ---------------------------------------------------------------------
--- 7. outcomes / outcome_relations — lecture pédagogique
+-- 7. outcomes / outcome_relations — lecture pédagogique (non nominative)
 -- ---------------------------------------------------------------------
 create policy outcomes_select_scoped on public.outcomes
   for select to authenticated
   using (public.is_enrolled_in_program(program_id)
-         or public.has_program_role(program_id, 'teacher')
-         or public.has_program_role(program_id, 'placement_supervisor')
+         or public.has_any_program_role(program_id, 'teacher')
+         or public.has_any_program_role(program_id, 'placement_supervisor')
          or public.can_administer_program(program_id));
 create policy outcomes_insert_admin on public.outcomes
   for insert to authenticated with check (public.can_administer_program(program_id));
@@ -378,7 +554,7 @@ create policy outcome_relations_select_scoped on public.outcome_relations
   using (exists (select 1 from public.outcomes o
                  where o.id = from_outcome_id
                    and (public.is_enrolled_in_program(o.program_id)
-                        or public.has_program_role(o.program_id, 'teacher')
+                        or public.has_any_program_role(o.program_id, 'teacher')
                         or public.can_administer_program(o.program_id))));
 create policy outcome_relations_insert_admin on public.outcome_relations
   for insert to authenticated
@@ -393,42 +569,84 @@ create policy outcome_relations_delete_admin on public.outcome_relations
 -- Pas d'UPDATE : la clé primaire porte tout le sens ; on supprime/recrée.
 
 -- ---------------------------------------------------------------------
--- 8. Ressources
+-- 8. Ressources et assets
 -- ---------------------------------------------------------------------
 create policy learning_resources_select_scoped on public.learning_resources
   for select to authenticated
   using (
     (is_published and (public.is_enrolled_in_program(program_id)
-                       or public.has_program_role(program_id, 'placement_supervisor')))
-    or public.has_program_role(program_id, 'teacher')
+                       or public.has_any_program_role(program_id, 'placement_supervisor')))
+    or public.has_any_program_role(program_id, 'teacher')
     or public.can_administer_program(program_id)
   );
 create policy learning_resources_insert_staff on public.learning_resources
   for insert to authenticated
-  with check (public.has_program_role(program_id, 'teacher')
-              or public.can_administer_program(program_id));
+  with check ((public.has_any_program_role(program_id, 'teacher')
+               or public.can_administer_program(program_id))
+              and source_system = 'native');
 create policy learning_resources_update_staff on public.learning_resources
   for update to authenticated
-  using (public.has_program_role(program_id, 'teacher')
+  using (public.has_any_program_role(program_id, 'teacher')
          or public.can_administer_program(program_id))
-  with check (public.has_program_role(program_id, 'teacher')
+  with check (public.has_any_program_role(program_id, 'teacher')
              or public.can_administer_program(program_id));
 create policy learning_resources_delete_admin on public.learning_resources
   for delete to authenticated using (public.can_administer_program(program_id));
 
+-- Liaisons ressource ↔ acquis : un apprenant ne doit PAS voir les liaisons
+-- d'une ressource non publiée (elles révéleraient un contenu à venir).
+-- La visibilité est strictement calquée sur celle de la ressource parente.
 create policy lro_select_scoped on public.learning_resource_outcomes
   for select to authenticated
-  using (public.is_enrolled_in_program(program_id)
-         or public.has_program_role(program_id, 'teacher')
-         or public.can_administer_program(program_id));
+  using (exists (
+    select 1 from public.learning_resources lr
+    where lr.id = learning_resource_id
+      and (
+        (lr.is_published and (public.is_enrolled_in_program(lr.program_id)
+                              or public.has_any_program_role(lr.program_id, 'placement_supervisor')))
+        or public.has_any_program_role(lr.program_id, 'teacher')
+        or public.can_administer_program(lr.program_id)
+      )
+  ));
 create policy lro_insert_staff on public.learning_resource_outcomes
   for insert to authenticated
-  with check (public.has_program_role(program_id, 'teacher')
+  with check (public.has_any_program_role(program_id, 'teacher')
               or public.can_administer_program(program_id));
 create policy lro_delete_staff on public.learning_resource_outcomes
   for delete to authenticated
-  using (public.has_program_role(program_id, 'teacher')
+  using (public.has_any_program_role(program_id, 'teacher')
          or public.can_administer_program(program_id));
+
+-- Assets : métadonnées seules. Même visibilité que la ressource parente ;
+-- un asset d'une ressource non publiée reste invisible à l'apprenant, et un
+-- asset non 'ready' n'est pas exposé (traitement/antivirus en cours).
+create policy lra_select_scoped on public.learning_resource_assets
+  for select to authenticated
+  using (exists (
+    select 1 from public.learning_resources lr
+    where lr.id = learning_resource_id
+      and (
+        (lr.is_published
+         and public.learning_resource_assets.processing_status = 'ready'
+         and (public.is_enrolled_in_program(lr.program_id)
+              or public.has_any_program_role(lr.program_id, 'placement_supervisor')))
+        or public.has_any_program_role(lr.program_id, 'teacher')
+        or public.can_administer_program(lr.program_id)
+      )
+  ));
+create policy lra_insert_staff on public.learning_resource_assets
+  for insert to authenticated
+  with check ((public.has_any_program_role(program_id, 'teacher')
+               or public.can_administer_program(program_id))
+              and source_system = 'native');
+create policy lra_update_staff on public.learning_resource_assets
+  for update to authenticated
+  using (public.has_any_program_role(program_id, 'teacher')
+         or public.can_administer_program(program_id))
+  with check (public.has_any_program_role(program_id, 'teacher')
+             or public.can_administer_program(program_id));
+create policy lra_delete_admin on public.learning_resource_assets
+  for delete to authenticated using (public.can_administer_program(program_id));
 
 -- ---------------------------------------------------------------------
 -- 9. Stages
@@ -437,7 +655,7 @@ create policy placements_select_scoped on public.placements
   for select to authenticated
   using (public.is_enrolled_in_program(program_id)
          or public.supervises_placement(id)
-         or public.has_program_role(program_id, 'teacher')
+         or public.has_any_program_role(program_id, 'teacher')
          or public.can_administer_program(program_id));
 create policy placements_insert_admin on public.placements
   for insert to authenticated with check (public.can_administer_program(program_id));
@@ -448,11 +666,18 @@ create policy placements_update_admin on public.placements
 create policy placements_delete_admin on public.placements
   for delete to authenticated using (public.can_administer_program(program_id));
 
+-- Un encadrant voit ses propres lignes et celles de ses stages ; un apprenant
+-- voit les encadrants des stages où il est affecté (pas tous ceux du programme).
 create policy placement_supervisors_select_scoped on public.placement_supervisors
   for select to authenticated
   using (person_id = auth.uid()
-         or public.is_enrolled_in_program(program_id)
-         or public.can_administer_program(program_id));
+         or public.supervises_placement(placement_id)
+         or public.can_administer_program(program_id)
+         or exists (
+           select 1 from public.placement_assignments pa
+           where pa.placement_id = public.placement_supervisors.placement_id
+             and public.owns_enrollment(pa.enrollment_id)
+         ));
 -- Personne ne se déclare encadrant soi-même.
 create policy placement_supervisors_insert_admin on public.placement_supervisors
   for insert to authenticated
@@ -470,10 +695,10 @@ create policy placement_assignments_select_own on public.placement_assignments
 create policy placement_assignments_select_scoped on public.placement_assignments
   for select to authenticated
   using (public.supervises_placement(placement_id)
-         or public.has_program_role(program_id, 'teacher')
-         or public.can_administer_program(program_id));
+         or public.is_enrollment_academic_staff(enrollment_id));
 create policy placement_assignments_insert_admin on public.placement_assignments
-  for insert to authenticated with check (public.can_administer_program(program_id));
+  for insert to authenticated
+  with check (public.can_administer_program(program_id) and source_system = 'native');
 create policy placement_assignments_update_staff on public.placement_assignments
   for update to authenticated
   using (public.supervises_placement(placement_id)
@@ -489,16 +714,16 @@ create policy placement_assignments_delete_admin on public.placement_assignments
 create policy evidence_select_own on public.evidence
   for select to authenticated using (public.owns_enrollment(enrollment_id));
 
+-- Enseignant de cohorte : preuves de SA cohorte seulement.
+-- Encadrant : preuves rattachées à un stage qu'il encadre seulement.
 create policy evidence_select_scoped on public.evidence
   for select to authenticated
-  using (
-    (placement_assignment_id is not null and public.supervises_evidence(id))
-    or public.has_program_role(program_id, 'teacher')
-    or public.can_administer_program(program_id)
-  );
+  using (public.is_enrollment_academic_staff(enrollment_id)
+         or (placement_assignment_id is not null and public.supervises_evidence(id)));
 
 -- L'apprenant crée SES preuves, en draft ou submitted uniquement,
--- created_by imposé à auth.uid(), statut validated interdit à la création.
+-- created_by imposé à auth.uid(), statut validated interdit à la création,
+-- provenance forcée à 'native' (aucune falsification d'import legacy).
 create policy evidence_insert_own on public.evidence
   for insert to authenticated
   with check (
@@ -506,27 +731,30 @@ create policy evidence_insert_own on public.evidence
     and public.owns_enrollment(enrollment_id)
     and status in ('draft', 'submitted')
     and self_declared
+    and source_system = 'native'
   );
 
--- Le staff peut saisir une preuve pour un apprenant de sa portée, mais jamais
--- directement en 'validated' : le passage à validated est réservé au serveur
--- après enregistrement d'une décision dans evidence_validations.
+-- Le staff peut saisir une preuve pour un apprenant de SA portée exacte, mais
+-- jamais directement en 'validated' : le passage à validated est réservé au
+-- trigger serveur de 003_server_invariants.sql.
 create policy evidence_insert_staff on public.evidence
   for insert to authenticated
   with check (
     created_by = auth.uid()
     and not self_declared
     and status in ('draft', 'submitted')
-    and (public.has_program_role(program_id, 'teacher')
-         or public.can_administer_program(program_id)
-         or (placement_assignment_id is not null and exists (
-              select 1 from public.placement_assignments pa
-              where pa.id = placement_assignment_id
-                and public.supervises_placement(pa.placement_id))))
+    and source_system = 'native'
+    and (
+      public.is_enrollment_academic_staff(enrollment_id)
+      or (placement_assignment_id is not null and exists (
+            select 1 from public.placement_assignments pa
+            where pa.id = placement_assignment_id
+              and public.supervises_placement(pa.placement_id)))
+    )
   );
 
--- L'apprenant ne modifie que ses brouillons non validés, et ne peut ni
--- s'auto-valider ni changer de propriétaire.
+-- L'apprenant ne modifie que ses brouillons non encore jugés. Les colonnes
+-- d'identité ne lui sont de toute façon pas accordées (GRANT de colonnes).
 create policy evidence_update_own_draft on public.evidence
   for update to authenticated
   using (
@@ -537,7 +765,6 @@ create policy evidence_update_own_draft on public.evidence
   )
   with check (
     public.owns_enrollment(enrollment_id)
-    and created_by = auth.uid()
     and status in ('draft', 'submitted')
   );
 
@@ -545,16 +772,16 @@ create policy evidence_update_own_draft on public.evidence
 -- 'validated' depuis le client.
 create policy evidence_update_staff on public.evidence
   for update to authenticated
-  using (public.has_program_role(program_id, 'teacher')
-         or public.can_administer_program(program_id)
+  using (public.is_enrollment_academic_staff(enrollment_id)
          or (placement_assignment_id is not null and public.supervises_evidence(id)))
   with check (status in ('draft', 'submitted', 'rejected', 'expired'));
 
 -- Aucune policy DELETE : une preuve ne se supprime pas, elle change de statut.
 
+-- Pièces jointes : visibilité strictement identique à celle de la preuve.
 create policy evidence_sources_select_scoped on public.evidence_sources
   for select to authenticated
-  using (exists (select 1 from public.evidence ev where ev.id = evidence_id));
+  using (public.can_read_evidence(evidence_id));
 create policy evidence_sources_insert_own on public.evidence_sources
   for insert to authenticated
   with check (exists (
@@ -563,7 +790,7 @@ create policy evidence_sources_insert_own on public.evidence_sources
       and ev.status = 'draft'
       and ev.created_by = auth.uid()
       and public.owns_enrollment(ev.enrollment_id)
-  ));
+  ) and source_system = 'native');
 -- Pas d'UPDATE ni de DELETE client : une pièce jointe est immuable.
 
 -- ---------------------------------------------------------------------
@@ -575,20 +802,26 @@ create policy evidence_validations_select_scoped on public.evidence_validations
     validator_person_id = auth.uid()
     or exists (select 1 from public.evidence ev
                where ev.id = evidence_id and public.owns_enrollment(ev.enrollment_id))
-    or public.can_validate_evidence(evidence_id)
+    or public.can_read_evidence(evidence_id)
   );
 
--- Le validateur est TOUJOURS auth.uid() ; la portée est vérifiée en base.
+-- Le validateur est TOUJOURS auth.uid() ; la portée exacte est revérifiée,
+-- et le rôle déclaré doit correspondre à une portée réellement détenue.
 create policy evidence_validations_insert_scoped on public.evidence_validations
   for insert to authenticated
   with check (
     validator_person_id = auth.uid()
+    and source_system = 'native'
     and public.can_validate_evidence(evidence_id)
     and (
       (validator_role = 'placement_supervisor' and public.supervises_evidence(evidence_id))
       or (validator_role = 'teacher' and exists (
-            select 1 from public.evidence ev where ev.id = evidence_id
-              and public.has_program_role(ev.program_id, 'teacher')))
+            select 1 from public.evidence ev
+            where ev.id = evidence_id
+              and (public.has_program_wide_role(ev.program_id, 'teacher')
+                   or exists (select 1 from public.enrollments e
+                              where e.id = ev.enrollment_id
+                                and public.has_cohort_role(e.cohort_id, 'teacher')))))
       or (validator_role = 'administrator' and exists (
             select 1 from public.evidence ev where ev.id = evidence_id
               and public.can_administer_program(ev.program_id)))
@@ -598,10 +831,10 @@ create policy evidence_validations_insert_scoped on public.evidence_validations
 -- Aucune policy UPDATE ni DELETE : journal append-only, y compris pour un admin.
 
 -- ---------------------------------------------------------------------
--- 12. audit_events / ai_usage_events — écriture serveur uniquement
+-- 12. audit_events / ai_usage_events — lecture seule, écriture serveur
 -- ---------------------------------------------------------------------
--- Aucune policy INSERT / UPDATE / DELETE pour authenticated, et aucun GRANT
--- correspondant dans 001_core_schema.sql : la double barrière est volontaire.
+-- GRANT SELECT accordé à authenticated (cf. 001 §12.1) ; aucun privilège
+-- INSERT/UPDATE/DELETE et aucune policy correspondante : double barrière.
 create policy audit_events_select_admin on public.audit_events
   for select to authenticated
   using (public.is_platform_admin()
