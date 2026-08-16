@@ -639,19 +639,12 @@ create policy lra_select_scoped on public.learning_resource_assets
         or public.can_administer_program(lr.program_id)
       )
   ));
-create policy lra_insert_staff on public.learning_resource_assets
-  for insert to authenticated
-  with check ((public.has_any_program_role(program_id, 'teacher')
-               or public.can_administer_program(program_id))
-              and source_system = 'native');
-create policy lra_update_staff on public.learning_resource_assets
-  for update to authenticated
-  using (public.has_any_program_role(program_id, 'teacher')
-         or public.can_administer_program(program_id))
-  with check (public.has_any_program_role(program_id, 'teacher')
-             or public.can_administer_program(program_id));
-create policy lra_delete_admin on public.learning_resource_assets
-  for delete to authenticated using (public.can_administer_program(program_id));
+-- AUCUNE policy INSERT/UPDATE/DELETE, et aucun GRANT d'écriture (001 §12.8) :
+-- les métadonnées d'asset sont écrites uniquement par le backend en
+-- service_role, après revérification de l'autorisation métier (service_role
+-- contourne la RLS). Le navigateur ne peut donc ni choisir bucket_name /
+-- object_path / storage_provider, ni falsifier checksum_sha256 / byte_size, ni
+-- mettre processing_status = 'ready'. Flux : storage_architecture.md §2.
 
 -- ---------------------------------------------------------------------
 -- 9. Stages
