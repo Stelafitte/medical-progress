@@ -1,6 +1,6 @@
 /**
  * Structure de tests du socle.
- * Exécution : `bunx vitest run` (vitest à installer lors de l'itération suivante).
+ * Exécution : `bun run test`.
  */
 import { describe, expect, it } from "vitest";
 import { computeOutcomeProgress, isCountableEvidence, summarizeProgress } from "../mastery";

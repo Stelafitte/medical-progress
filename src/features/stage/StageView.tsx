@@ -50,6 +50,11 @@ export function StageView() {
       <SectionHeading
         title="Stage"
         level={1}
+        action={
+          <Badge variant="outline" className="font-normal">
+            Simulé
+          </Badge>
+        }
         description="Affectations, encadrants et preuves rattachées au terrain clinique."
       />
 

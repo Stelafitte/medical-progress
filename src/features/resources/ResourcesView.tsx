@@ -25,6 +25,11 @@ export function ResourcesView() {
       <SectionHeading
         title="Ressources"
         level={1}
+        action={
+          <Badge variant="outline" className="font-normal">
+            Simulé
+          </Badge>
+        }
         description="Contenus rattachés aux acquis du référentiel du programme actif."
       />
 
