@@ -25,7 +25,7 @@ Légende : `—` interdit · `self` sa propre ligne · `own` ses données d'appr
 
 | Rôle | SELECT | INSERT | UPDATE | DELETE |
 | --- | --- | --- | --- | --- |
-| learner | self + encadrants de **ses** stages | self (`id = auth.uid()`, `source_system='native'`) | self (colonnes `full_name`, `locale`, `updated_at` seulement) | — |
+| learner | self + encadrants de **ses** stages | self (`id = auth.uid()`, `source_system='native'`) | self (colonnes `full_name`, `locale` seulement) | — |
 | supervisor | self + apprenants affectés à **ses** stages | self | self | — |
 | teacher/cohort | self + apprenants de **sa cohorte** | self | self | — |
 | teacher/program | self + apprenants du programme | self | self | — |
@@ -95,8 +95,12 @@ Anti-escalade : personne ne peut s'accorder ni s'élargir un rôle ; aucun DELET
 | admin/program | `prog` | `prog` | `prog` | `prog` |
 | admin/platform | all | all | all | all |
 
-Assets : métadonnées seules. Aucun rôle n'obtient d'URL par la base ; l'URL signée
-courte est produite par le serveur après ce filtrage (`storage_architecture.md`).
+**Assets — lecture seule pour tous les rôles clients.** `learning_resource_assets`
+conserve sa policy SELECT (colonne INSERT/UPDATE/DELETE du tableau = `—` pour
+**tous** les rôles, y compris `admin/platform`) : les métadonnées de fichier sont
+écrites uniquement par le backend en `service_role`. Aucun rôle n'obtient d'URL par
+la base ; l'URL signée courte est produite par le serveur après ce filtrage
+(`storage_architecture.md`).
 
 ### placements / placement_supervisors / placement_assignments
 
@@ -174,5 +178,13 @@ utilisables) ; **aucun** privilège d'écriture, aucune policy d'écriture.
 3. Aucun DELETE client sur `evidence`, `evidence_sources`, `evidence_validations`,
    `audit_events`, `ai_usage_events`, `role_assignments`.
 4. Une portée cohorte ou stage ne devient jamais une portée programme.
-5. Toute écriture client force `source_system = 'native'`.
-6. `evidence.status = 'validated'` n'est atteignable que par le trigger serveur.
+5. Toute écriture client est `source_system = 'native'` avec `source_id`,
+   `imported_at` et `import_batch_id` NULL — imposé par `enforce_source_provenance()`
+   sur les 15 tables porteuses, en plus des `with check` de policy.
+6. Les 4 colonnes de provenance sont **immuables en UPDATE pour tous les rôles**,
+   `service_role` compris : un import est un INSERT, une correction est traçable.
+7. `updated_at` n'est jamais fourni par un appelant : `set_updated_at()` l'impose.
+8. `evidence.status = 'validated'` n'est atteignable que par le trigger serveur.
+9. `learning_resource_assets` est en lecture seule pour tout rôle client.
+10. `service_role` contourne la RLS : l'autorisation métier doit être revérifiée
+    dans le backend avant toute opération menée avec cette clé.
