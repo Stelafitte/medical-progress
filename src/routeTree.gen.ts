@@ -15,6 +15,7 @@ import { Route as EspaceIndexRouteImport } from './routes/espace.index'
 import { Route as EspaceAdministrationRouteImport } from './routes/espace.administration'
 import { Route as EspaceArchitectureRouteImport } from './routes/espace.architecture'
 import { Route as EspacePasseportRouteImport } from './routes/espace.passeport'
+import { Route as EspaceProfilRouteImport } from './routes/espace.profil'
 import { Route as EspaceRessourcesRouteImport } from './routes/espace.ressources'
 import { Route as EspaceStageRouteImport } from './routes/espace.stage'
 
@@ -48,6 +49,11 @@ const EspacePasseportRoute = EspacePasseportRouteImport.update({
   path: '/passeport',
   getParentRoute: () => EspaceRoute,
 } as any)
+const EspaceProfilRoute = EspaceProfilRouteImport.update({
+  id: '/profil',
+  path: '/profil',
+  getParentRoute: () => EspaceRoute,
+} as any)
 const EspaceRessourcesRoute = EspaceRessourcesRouteImport.update({
   id: '/ressources',
   path: '/ressources',
@@ -65,6 +71,7 @@ export interface FileRoutesByFullPath {
   '/espace/administration': typeof EspaceAdministrationRoute
   '/espace/architecture': typeof EspaceArchitectureRoute
   '/espace/passeport': typeof EspacePasseportRoute
+  '/espace/profil': typeof EspaceProfilRoute
   '/espace/ressources': typeof EspaceRessourcesRoute
   '/espace/stage': typeof EspaceStageRoute
   '/espace/': typeof EspaceIndexRoute
@@ -74,6 +81,7 @@ export interface FileRoutesByTo {
   '/espace/administration': typeof EspaceAdministrationRoute
   '/espace/architecture': typeof EspaceArchitectureRoute
   '/espace/passeport': typeof EspacePasseportRoute
+  '/espace/profil': typeof EspaceProfilRoute
   '/espace/ressources': typeof EspaceRessourcesRoute
   '/espace/stage': typeof EspaceStageRoute
   '/espace': typeof EspaceIndexRoute
@@ -85,6 +93,7 @@ export interface FileRoutesById {
   '/espace/administration': typeof EspaceAdministrationRoute
   '/espace/architecture': typeof EspaceArchitectureRoute
   '/espace/passeport': typeof EspacePasseportRoute
+  '/espace/profil': typeof EspaceProfilRoute
   '/espace/ressources': typeof EspaceRessourcesRoute
   '/espace/stage': typeof EspaceStageRoute
   '/espace/': typeof EspaceIndexRoute
@@ -97,6 +106,7 @@ export interface FileRouteTypes {
     | '/espace/administration'
     | '/espace/architecture'
     | '/espace/passeport'
+    | '/espace/profil'
     | '/espace/ressources'
     | '/espace/stage'
     | '/espace/'
@@ -106,6 +116,7 @@ export interface FileRouteTypes {
     | '/espace/administration'
     | '/espace/architecture'
     | '/espace/passeport'
+    | '/espace/profil'
     | '/espace/ressources'
     | '/espace/stage'
     | '/espace'
@@ -116,6 +127,7 @@ export interface FileRouteTypes {
     | '/espace/administration'
     | '/espace/architecture'
     | '/espace/passeport'
+    | '/espace/profil'
     | '/espace/ressources'
     | '/espace/stage'
     | '/espace/'
@@ -170,6 +182,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EspacePasseportRouteImport
       parentRoute: typeof EspaceRoute
     }
+    '/espace/profil': {
+      id: '/espace/profil'
+      path: '/profil'
+      fullPath: '/espace/profil'
+      preLoaderRoute: typeof EspaceProfilRouteImport
+      parentRoute: typeof EspaceRoute
+    }
     '/espace/ressources': {
       id: '/espace/ressources'
       path: '/ressources'
@@ -191,6 +210,7 @@ interface EspaceRouteChildren {
   EspaceAdministrationRoute: typeof EspaceAdministrationRoute
   EspaceArchitectureRoute: typeof EspaceArchitectureRoute
   EspacePasseportRoute: typeof EspacePasseportRoute
+  EspaceProfilRoute: typeof EspaceProfilRoute
   EspaceRessourcesRoute: typeof EspaceRessourcesRoute
   EspaceStageRoute: typeof EspaceStageRoute
   EspaceIndexRoute: typeof EspaceIndexRoute
@@ -200,6 +220,7 @@ const EspaceRouteChildren: EspaceRouteChildren = {
   EspaceAdministrationRoute: EspaceAdministrationRoute,
   EspaceArchitectureRoute: EspaceArchitectureRoute,
   EspacePasseportRoute: EspacePasseportRoute,
+  EspaceProfilRoute: EspaceProfilRoute,
   EspaceRessourcesRoute: EspaceRessourcesRoute,
   EspaceStageRoute: EspaceStageRoute,
   EspaceIndexRoute: EspaceIndexRoute,
