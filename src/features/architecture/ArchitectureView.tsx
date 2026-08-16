@@ -30,6 +30,11 @@ const MODULES: readonly ModuleRow[] = [
     state: "prevu",
     note: "Aucune base activée, aucune migration. Schéma à valider avant provisioning.",
   },
+  {
+    name: "Schéma PostgreSQL & matrice RLS",
+    state: "prevu",
+    note: "docs/database/draft/ — conception non exécutée (schéma, policies, matrice, tests, décisions)",
+  },
   { name: "Repositories mock en mémoire", state: "simule", note: "src/infrastructure/mock/*" },
   {
     name: "Authentification & session",

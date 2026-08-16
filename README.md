@@ -80,6 +80,25 @@ bun run lint       # eslint + prettier
 - Le moteur ECOS n'est pas implémenté : la simulation n'existe que comme nature d'acquis
   et type de preuve.
 
+## Dossier de conception base de données (non exécuté)
+
+`docs/database/draft/` contient la **conception versionnée** du schéma PostgreSQL et de
+la matrice RLS du Lot 1. Ce dossier est de la **conception non exécutée** : aucune base
+n'est activée, aucun fichier n'existe dans `supabase/migrations/`, aucun SQL n'a été joué.
+
+| Fichier | Contenu |
+| ------- | ------- |
+| `001_core_schema.sql` | Enums, 19 tables, FK composites, contraintes, index, commentaires, GRANTs (jamais `anon`) |
+| `002_rls_policies.sql` | RLS sur toutes les tables, fonctions d'autorisation, policies séparées par opération |
+| `rls_matrix.md` | Matrice table × opération × rôle avec conditions d'appartenance et de portée |
+| `architecture.md` | ER Mermaid, normalisation, flux, provenance/import legacy, rollback, limites |
+| `tests/rls_acceptance.sql` | Plan de tests transactionnels futurs (`ROLLBACK` final), non exécuté |
+| `decision_log.md` | Décisions, alternatives rejetées, questions à valider avant provisioning |
+
+Points structurants : la progression n'est jamais stockée (dérivée des preuves),
+`evidence_validations` est append-only, `evidence.status = 'validated'` est inatteignable
+depuis le client, et aucun utilisateur ne peut s'accorder un rôle ni élargir sa portée.
+
 ## À prévoir après validation du schéma
 
 - Provisioning de la base, RLS par programme/cohorte/stage, authentification.
