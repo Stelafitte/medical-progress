@@ -45,13 +45,7 @@ const CATEGORIES: ReadonlyArray<{
   },
 ];
 
-function OutcomeCard({
-  item,
-  evidence,
-}: {
-  item: OutcomeProgress;
-  evidence: readonly Evidence[];
-}) {
+function OutcomeCard({ item, evidence }: { item: OutcomeProgress; evidence: readonly Evidence[] }) {
   const related = evidence.filter((e) => e.outcomeId === item.outcome.id);
 
   return (
