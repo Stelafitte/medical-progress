@@ -94,7 +94,9 @@ describe("isRoleScopeConsistent", () => {
   it("enseignant et apprenant exigent un programme ou une cohorte", () => {
     for (const role of ["teacher", "learner"] as const) {
       expect(
-        isRoleScopeConsistent(assignment({ role, scope: { kind: "program", programId: "prog-a" } })),
+        isRoleScopeConsistent(
+          assignment({ role, scope: { kind: "program", programId: "prog-a" } }),
+        ),
       ).toBe(true);
       expect(
         isRoleScopeConsistent(
@@ -109,9 +111,9 @@ describe("isRoleScopeConsistent", () => {
   });
 
   it("un administrateur est plateforme ou programme, jamais stage", () => {
-    expect(isRoleScopeConsistent(assignment({ role: "administrator", scope: { kind: "platform" } }))).toBe(
-      true,
-    );
+    expect(
+      isRoleScopeConsistent(assignment({ role: "administrator", scope: { kind: "platform" } })),
+    ).toBe(true);
     expect(
       isRoleScopeConsistent(
         assignment({ role: "administrator", scope: { kind: "program", programId: "prog-a" } }),

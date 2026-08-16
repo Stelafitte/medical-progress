@@ -44,7 +44,6 @@ export function isCountableEvidence(evidence: Evidence, nature: OutcomeNature): 
     return authenticContext && hasThirdPartyValidation(evidence);
   }
 
-
   if (nature === "simulated_competence") {
     return evidence.kind === "simulation" || evidence.kind === "human_validation";
   }
@@ -77,7 +76,6 @@ export function computeOutcomeProgress(
   const blockedBySelfDeclaration =
     outcome.nature === "real_competence" &&
     related.some((e) => e.selfDeclared && !hasThirdPartyValidation(e));
-
 
   let mastery: MasteryLevel = "not_started";
   if (counted.length >= 1) mastery = "novice";
