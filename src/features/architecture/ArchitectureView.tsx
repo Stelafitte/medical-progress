@@ -23,18 +23,18 @@ const MODULES: readonly ModuleRow[] = [
   {
     name: "Ports d'accès aux données",
     state: "en_place",
-    note: "src/data/repositories.ts",
+    note: "src/application/ports.ts",
   },
   {
     name: "Persistance (base de données)",
     state: "prevu",
     note: "Aucune base activée, aucune migration. Schéma à valider avant provisioning.",
   },
-  { name: "Repositories mock en mémoire", state: "simule", note: "src/data/mock/*" },
+  { name: "Repositories mock en mémoire", state: "simule", note: "src/infrastructure/mock/*" },
   {
     name: "Authentification & session",
     state: "simule",
-    note: "src/app/session.tsx — personne et rôles figés",
+    note: "src/application/session.tsx — personne et rôles figés",
   },
   {
     name: "Rôles contextualisés (programme / cohorte / stage)",
@@ -57,7 +57,17 @@ const MODULES: readonly ModuleRow[] = [
     state: "prevu",
     note: "LegacyMigrationAdapter + champ Provenance déjà présents",
   },
-  { name: "Structure de tests", state: "en_place", note: "src/**/__tests__" },
+  { name: "Structure de tests", state: "en_place", note: "vitest — src/**/__tests__" },
+  {
+    name: "Vues métier par domaine fonctionnel",
+    state: "en_place",
+    note: "src/features/{dashboard,passport,stage,resources,administration,architecture}",
+  },
+  {
+    name: "Catalogue de ressources et saisie de gestes",
+    state: "simule",
+    note: "Lecture des contenus et contre-signature à implémenter",
+  },
 ];
 
 const STATE_META: Record<ModuleState, { label: string; icon: typeof CheckCircle2 }> = {

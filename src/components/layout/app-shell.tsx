@@ -1,5 +1,13 @@
 import { Link, Outlet } from "@tanstack/react-router";
-import { HeartPulse, LayoutDashboard, ShieldCheck, Boxes, IdCard } from "lucide-react";
+import {
+  HeartPulse,
+  LayoutDashboard,
+  ShieldCheck,
+  Boxes,
+  IdCard,
+  Stethoscope,
+  BookOpen,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ProgramSwitcher } from "@/components/program-switcher";
 import { useSession } from "@/application/session";
@@ -8,6 +16,8 @@ import { IS_DEV } from "@/lib/env";
 const NAV = [
   { to: "/espace", label: "Tableau de bord", icon: LayoutDashboard, exact: true },
   { to: "/espace/passeport", label: "Passeport", icon: IdCard, exact: false },
+  { to: "/espace/stage", label: "Stage", icon: Stethoscope, exact: false },
+  { to: "/espace/ressources", label: "Ressources", icon: BookOpen, exact: false },
   { to: "/espace/administration", label: "Administration", icon: ShieldCheck, exact: false },
 ] as const;
 
