@@ -9,6 +9,13 @@ import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLearnerPassport } from "@/features/learner/useLearnerPassport";
 
+const PLACEMENT_STATUS_FR: Record<string, string> = {
+  planned: "à venir",
+  in_progress: "en cours",
+  completed: "terminé",
+  cancelled: "annulé",
+};
+
 export const Route = createFileRoute("/espace/")({
   head: () => ({
     meta: [
@@ -199,7 +206,7 @@ function DashboardPage() {
           </CardHeader>
           {currentAssignment ? (
             <CardContent className="text-sm text-muted-foreground">
-              Statut : {currentAssignment.status} · du{" "}
+              Statut : {PLACEMENT_STATUS_FR[currentAssignment.status]} · du{" "}
               {new Date(currentAssignment.startsOn).toLocaleDateString("fr-FR")} au{" "}
               {new Date(currentAssignment.endsOn).toLocaleDateString("fr-FR")}
             </CardContent>
