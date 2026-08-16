@@ -29,8 +29,9 @@ export function ProfileView() {
         : undefined;
       const contextualRoles = rolesInContext(roles, {
         programId: program.id,
-        cohortId: cohort?.id,
+        ...(cohort ? { cohortId: cohort.id } : {}),
       });
+
       return { program, cohort, enrollment, contextualRoles };
     })
     .filter((m) => m.enrollment || m.contextualRoles.length > 0);
