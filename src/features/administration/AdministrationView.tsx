@@ -13,8 +13,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-
-
 export function AdministrationView() {
   const data = useDataAccess();
   const { data: result, isPending } = useQuery({

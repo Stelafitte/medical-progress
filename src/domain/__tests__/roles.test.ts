@@ -28,12 +28,12 @@ describe("rôles contextualisés", () => {
       role: "placement_supervisor",
       scope: { kind: "placement", programId: "prog-a", placementId: "pla-1" },
     });
-    expect(
-      canValidateEvidence([supervisor], { programId: "prog-a", placementId: "pla-1" }),
-    ).toBe(true);
-    expect(
-      canValidateEvidence([supervisor], { programId: "prog-a", placementId: "pla-2" }),
-    ).toBe(false);
+    expect(canValidateEvidence([supervisor], { programId: "prog-a", placementId: "pla-1" })).toBe(
+      true,
+    );
+    expect(canValidateEvidence([supervisor], { programId: "prog-a", placementId: "pla-2" })).toBe(
+      false,
+    );
     expect(canValidateEvidence([supervisor], { programId: "prog-a" })).toBe(false);
   });
 

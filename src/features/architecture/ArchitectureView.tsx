@@ -76,8 +76,6 @@ const STATE_META: Record<ModuleState, { label: string; icon: typeof CheckCircle2
   prevu: { label: "Prévu", icon: CircleDashed },
 };
 
-
-
 export function ArchitectureView() {
   if (!IS_DEV) {
     return (

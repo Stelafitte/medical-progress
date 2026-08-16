@@ -16,8 +16,6 @@ const EVIDENCE_LABELS: Record<EvidenceKind, string> = {
   human_validation: "Validation humaine",
 };
 
-
-
 export function PassportView() {
   const { data, isPending } = useLearnerPassport();
 

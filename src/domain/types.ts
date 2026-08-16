@@ -114,7 +114,11 @@ export type RoleScope =
   | { readonly kind: "platform" }
   | { readonly kind: "program"; readonly programId: ProgramId }
   | { readonly kind: "cohort"; readonly programId: ProgramId; readonly cohortId: CohortId }
-  | { readonly kind: "placement"; readonly programId: ProgramId; readonly placementId: PlacementId };
+  | {
+      readonly kind: "placement";
+      readonly programId: ProgramId;
+      readonly placementId: PlacementId;
+    };
 
 export interface RoleAssignment {
   readonly personId: PersonId;
@@ -194,11 +198,7 @@ export interface PlacementAssignment extends Entity<PlacementAssignmentId> {
 /* ------------------------------------------------------------------ */
 
 export type EvidenceKind =
-  | "quiz"
-  | "real_activity"
-  | "simulation"
-  | "placement"
-  | "human_validation";
+  "quiz" | "real_activity" | "simulation" | "placement" | "human_validation";
 
 export type EvidenceStatus = "draft" | "submitted" | "validated" | "rejected" | "expired";
 

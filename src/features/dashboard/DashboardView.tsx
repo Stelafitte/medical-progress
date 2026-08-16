@@ -15,8 +15,6 @@ const PLACEMENT_STATUS_FR: Record<string, string> = {
   cancelled: "annulé",
 };
 
-
-
 export function DashboardView() {
   const { activeProgram, person } = useSession();
   const { data, isPending } = useLearnerPassport();
