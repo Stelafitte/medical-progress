@@ -21,6 +21,15 @@ export function isAtLeast(level: MasteryLevel, target: MasteryLevel): boolean {
 }
 
 /**
+ * Un tiers autorisé (jamais l'apprenant) a-t-il explicitement validé la preuve ?
+ * La portée du validateur est vérifiée séparément par `canValidateEvidence`.
+ */
+export function hasThirdPartyValidation(evidence: Evidence): boolean {
+  return evidence.validations.some((v) => v.decision === "validated");
+}
+
+/**
+
  * Une preuve compte-t-elle pour l'acquis visé ?
  *
  * Compétence réelle : une auto-déclaration SEULE ne compte jamais, mais une
