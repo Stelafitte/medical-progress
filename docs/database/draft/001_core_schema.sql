@@ -708,13 +708,15 @@ grant insert, update, delete on
   public.cohorts,
   public.enrollments,
   public.learning_resources,
-  public.learning_resource_assets,
   public.placements,
   public.placement_supervisors,
   public.placement_assignments,
   public.outcomes,
   public.ai_quota_policies
   to authenticated;
+
+-- learning_resource_assets : AUCUN privilège d'écriture client (12.8).
+-- L'écriture des métadonnées de fichier est exclusivement serveur.
 
 -- Tables sans policy UPDATE : on n'accorde pas UPDATE.
 grant insert, delete on
@@ -728,10 +730,12 @@ grant insert, update on public.role_assignments to authenticated;
 -- 12.3 profiles — GRANT DE COLONNES
 -- Un utilisateur ne peut écrire que son nom d'affichage et sa locale. Les
 -- colonnes de provenance legacy (source_system, source_id, imported_at,
--- import_batch_id) et created_at ne sont pas accordées : falsification
--- d'origine impossible même en cas d'erreur de policy.
+-- import_batch_id), created_at et updated_at ne sont pas accordées :
+-- falsification d'origine impossible, et updated_at est imposé par le trigger
+-- serveur set_updated_at() (003_server_invariants.sql).
 grant insert (id, full_name, locale) on public.profiles to authenticated;
-grant update (full_name, locale, updated_at) on public.profiles to authenticated;
+grant update (full_name, locale) on public.profiles to authenticated;
+
 
 -- 12.4 evidence — GRANT DE COLONNES
 -- INSERT : le client fournit l'identité de la preuve (une seule fois).
