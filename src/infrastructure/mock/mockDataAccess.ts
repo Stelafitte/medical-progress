@@ -46,6 +46,12 @@ export const mockDataAccess: DataAccess = {
   resources: {
     listResources: (programId) => ok(fx.learningResources.filter((r) => r.programId === programId)),
   },
+  plan: {
+    listPlanSchedule: (programId) => {
+      const ids = new Set(fx.outcomes.filter((o) => o.programId === programId).map((o) => o.id));
+      return ok(fx.planSchedule.filter((s) => ids.has(s.outcomeId)));
+    },
+  },
   audit: {
     listRecentEvents: (limit = 20) => ok(fx.auditEvents.slice(0, limit)),
   },

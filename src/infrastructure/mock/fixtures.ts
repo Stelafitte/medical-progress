@@ -2,6 +2,7 @@
  * Données de démonstration isolées.
  * Aucune donnée réelle, aucun secret, aucune provenance externe.
  */
+import type { PlanScheduleEntry } from "@/domain/acquisitionPlan";
 import type {
   AuditEvent,
   Cohort,
@@ -475,5 +476,61 @@ export const auditEvents: readonly AuditEvent[] = [
     targetType: "Cohort",
     targetId: "coh-diu-2026",
     programId: "prog-diu-echo",
+  },
+];
+
+/**
+ * Calendrier de référence du plan d'acquisition (démonstration isolée).
+ * Aucune donnée réelle : sert uniquement à rendre les vues Gantt et Calendrier.
+ */
+export const planSchedule: readonly PlanScheduleEntry[] = [
+  {
+    outcomeId: "out-echo-anat",
+    startsOn: "2026-06-15T00:00:00Z",
+    dueOn: "2026-07-31T00:00:00Z",
+    milestoneLabel: "Jalon 1 — Bases anatomiques validées",
+    official: true,
+  },
+  {
+    outcomeId: "out-echo-coupes",
+    startsOn: "2026-07-15T00:00:00Z",
+    dueOn: "2026-09-10T00:00:00Z",
+    milestoneLabel: "Jalon 2 — Coupes standard en simulation",
+    official: false,
+  },
+  {
+    outcomeId: "out-echo-fevg",
+    startsOn: "2026-08-03T00:00:00Z",
+    dueOn: "2026-10-15T00:00:00Z",
+    milestoneLabel: "Jalon 3 — FEVG en situation réelle",
+    official: true,
+  },
+  {
+    outcomeId: "out-echo-valve",
+    startsOn: "2026-09-01T00:00:00Z",
+    dueOn: "2026-12-18T00:00:00Z",
+    milestoneLabel: "Jalon 4 — Valvulopathie aortique",
+    official: false,
+  },
+  {
+    outcomeId: "out-dfasm-ecg",
+    startsOn: "2026-06-01T00:00:00Z",
+    dueOn: "2026-09-30T00:00:00Z",
+    milestoneLabel: "Jalon 1 — ECG de repos",
+    official: true,
+  },
+  {
+    outcomeId: "out-dfasm-douleur",
+    startsOn: "2026-06-20T00:00:00Z",
+    dueOn: "2026-11-15T00:00:00Z",
+    milestoneLabel: "Jalon 2 — Douleur thoracique en simulation",
+    official: false,
+  },
+  {
+    outcomeId: "out-dfasm-obs",
+    startsOn: "2026-09-01T00:00:00Z",
+    dueOn: "2027-01-31T00:00:00Z",
+    milestoneLabel: "Jalon 3 — Observation validée en service",
+    official: true,
   },
 ];

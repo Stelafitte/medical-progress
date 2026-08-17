@@ -5,6 +5,7 @@
  * sélectif depuis un système historique) devra respecter ces interfaces sans
  * modifier l'UI ni la logique métier.
  */
+import type { PlanScheduleEntry } from "@/domain/acquisitionPlan";
 import type {
   AuditEvent,
   Cohort,
@@ -57,6 +58,11 @@ export interface LearningResourceRepository {
   listResources(programId: ProgramId): Promise<readonly LearningResource[]>;
 }
 
+export interface AcquisitionPlanRepository {
+  /** Calendrier de référence des acquis d'un programme. */
+  listPlanSchedule(programId: ProgramId): Promise<readonly PlanScheduleEntry[]>;
+}
+
 export interface AuditRepository {
   listRecentEvents(limit?: number): Promise<readonly AuditEvent[]>;
 }
@@ -69,6 +75,7 @@ export interface DataAccess {
   readonly evidence: EvidenceRepository;
   readonly placements: PlacementRepository;
   readonly resources: LearningResourceRepository;
+  readonly plan: AcquisitionPlanRepository;
   readonly audit: AuditRepository;
   /** Marque explicitement une implémentation non persistante. */
   readonly isMock: boolean;
