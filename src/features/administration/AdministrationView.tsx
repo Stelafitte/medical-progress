@@ -12,6 +12,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { StageLogTemplatesSection } from "@/features/administration/StageLogTemplatesSection";
+import { StageLogsReceived } from "@/features/stage/StageLogReviewSection";
+
 
 export function AdministrationView() {
   const data = useDataAccess();
