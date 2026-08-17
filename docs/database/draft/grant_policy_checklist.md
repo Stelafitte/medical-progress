@@ -114,7 +114,6 @@ colonnes d'identité d'une preuve (`003_server_invariants.sql`).
 | `auto_accept_personal_plan_change()` | 003 | **oui** | applique un changement personnel sans décideur humain | **REVOKE ALL** — trigger uniquement |
 | `enforce_plan_item_official_fields()` | 003 | non (refuse) | INVOKER | **REVOKE ALL** — trigger uniquement |
 | `forbid_write()` | 003 | non (refuse) | INVOKER | **REVOKE ALL** — trigger uniquement |
-| `is_internal_plan_writer()` | 003 §6.bis | non | STABLE, aucune écriture ; répond `false` hors DEFINER postgres | EXECUTE authenticated + service_role (appelée dans le corps des triggers INVOKER), REVOKE anon |
 
 Contrôles à repasser :
 
@@ -135,8 +134,11 @@ Contrôles à repasser :
    `sequence`, `is_mandatory`, `placement_assignment_id`, `learner_target_at`,
    `learner_pace` — modifiées uniquement par `apply_plan_change_decision()` ou
    `auto_accept_personal_plan_change()`, reconnues par le contexte effectif
-   `current_user = 'postgres'` (003 §6.bis). Aucun custom GUC n'autorise quoi que
-   ce soit : le drapeau `app.plan_change_applying` a été supprimé.
+   `current_user = 'postgres'`, évalué **en ligne** dans chaque trigger INVOKER
+   (003 §6.bis) : aucun helper SQL n'est appelé, donc aucune écriture légitime ne
+   peut échouer sur un EXECUTE manquant. Aucun custom GUC n'autorise quoi que
+   ce soit : le drapeau `app.plan_change_applying` a été supprimé, et
+   `is_internal_plan_writer()` n'existe plus (T39).
    Le seul GRANT UPDATE client sur `acquisition_plan_items` est `progress_state`,
    et le commentaire du GRANT dans 001 §13.9 énonce exactement ce privilège.
 4. `plan_change_decisions` : ni policy ni GRANT UPDATE/DELETE, plus un trigger

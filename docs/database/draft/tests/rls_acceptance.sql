@@ -662,7 +662,7 @@ rollback;
 --   select set_config('app.plan_change_applying', 'on', true);
 --   update public.acquisition_plan_items set official_due_at = now()
 --    where id = :item;          attendu échec (trigger §11 :
---                               is_internal_plan_writer() = false)
+--                               current_user <> 'postgres')
 --   -- contrôle statique : aucune occurrence du drapeau dans 003 :
 --   -- rg -n "plan_change_applying" 003_server_invariants.sql
 --   --   => uniquement le commentaire final expliquant son abandon
@@ -700,6 +700,33 @@ rollback;
 --    where id = :req_real_2;              attendu 'placement_supervisor'
 --   enseignant de portée : insert décision            attendu 42501 (policy §18)
 
+-- T39. Aucun appel de fonction imbriqué dans les triggers INVOKER
+--   Contrôle statique :
+--   -- rg -n "is_internal_plan_writer" docs/database/draft
+--   --   => aucun résultat (définition supprimée, plus aucune référence)
+--   -- rg -n "_internal boolean" 003_server_invariants.sql
+--   --   => exactement deux occurrences, toutes deux
+--   --      `_internal boolean := (current_user = 'postgres');`
+--   Chemin légitime de l'apprenant (aucun EXECUTE requis) :
+--   apprenant propriétaire :
+--   update public.acquisition_plan_items set progress_state = 'in_progress'
+--    where id = :item;                                    attendu 1 ligne
+--   update public.plan_change_requests
+--      set justification = 'précision ajoutée'
+--    where id = :req_draft and status = 'draft';           attendu 1 ligne
+--   update public.plan_change_requests set status = 'pending'
+--    where id = :req_draft;      attendu 1 ligne (justification présente, §8)
+--   update public.plan_change_requests set status = 'withdrawn'
+--    where id = :req_pending;    attendu 1 ligne (retrait autorisé, §8)
+--   Chemins toujours refusés (triggers §8 / §11, inchangés) :
+--   update public.acquisition_plan_items set learner_target_at = now()
+--    where id = :item;                                    attendu 42501
+--   update public.acquisition_plan_items set learner_pace = '{}'::jsonb
+--    where id = :item;                                    attendu 42501
+--   update public.plan_change_requests set status = 'approved'
+--    where id = :req_pending;                             attendu échec
+--   set role service_role;  (mêmes deux UPDATE)           attendu échec
+
 -- =====================================================================
 -- Checklist statique de cohérence — périmètre plan d'acquisition
 -- =====================================================================
@@ -727,14 +754,17 @@ rollback;
 --     search_path = pg_catalog, public, et n'acceptent aucun identifiant
 --     d'utilisateur en paramètre.
 --  9. Toutes les fonctions de 003 §6-§11 sont révoquées pour PUBLIC, anon,
---     authenticated et service_role : appel direct impossible. Seule exception
---     documentée : is_internal_plan_writer() (§6.bis), STABLE, sans écriture,
---     appelée dans le corps des triggers INVOKER ; elle répond toujours false
---     pour authenticated et service_role.
+--     authenticated et service_role : appel direct impossible, sans exception.
+--     Les triggers INVOKER n'appellent AUCUN helper : ils évaluent en ligne
+--     `_internal boolean := (current_user = 'postgres')`, donc aucune écriture
+--     légitime ne peut échouer en `permission denied` sur un EXECUTE manquant
+--     (T39).
 -- 11. Aucune autorisation ne repose sur un custom GUC : `rg -n
 --     "current_setting\('app\." 002_rls_policies.sql 003_server_invariants.sql`
 --     ne doit rien retourner d'exécutable (T36).
 -- 10. anon : aucun privilège sur les 8 nouvelles tables (001 §13.9, revoke
 --     explicite table par table).
+-- 12. Contrôle statique : `rg -n "is_internal_plan_writer" .` ne renvoie AUCUNE
+--     définition ni référence dans tout le dossier draft (T39).
 
 -- FIN — DRAFT — DO NOT EXECUTE
