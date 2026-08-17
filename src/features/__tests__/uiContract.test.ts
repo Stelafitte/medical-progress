@@ -38,24 +38,30 @@ describe("terminologie", () => {
 });
 
 describe("navigation", () => {
-  it("place Ressources immédiatement avant Stage", () => {
+  const navigation = read("src/components/layout/navigation.ts");
+
+  it("place Ressources immédiatement avant Stage dans l'espace apprenant", () => {
     const order = [
-      ...shell.matchAll(/label: "(Tableau de bord|Passeport|Ressources|Stage|Administration)"/g),
+      ...navigation.matchAll(
+        /label: "(Tableau de bord|Passeport|Ressources|Stage)"/g,
+      ),
     ].map((m) => m[1]);
-    expect(order).toEqual([
-      "Tableau de bord",
-      "Passeport",
-      "Ressources",
-      "Stage",
-      "Administration",
-    ]);
+    expect(order).toEqual(["Tableau de bord", "Passeport", "Ressources", "Stage"]);
   });
 
-  it("conserve la visibilité conditionnelle de l'administration", () => {
-    expect(shell).toContain("adminOnly");
-    expect(shell).toContain("canAccessAdministration");
+  it("dérive les espaces visibles des rôles contextualisés", () => {
+    for (const helper of [
+      "canAccessLearnerSpace",
+      "canAccessSupervision",
+      "canAccessProgramAdministration",
+      "canAccessPlatformAdministration",
+    ]) {
+      expect(navigation).toContain(helper);
+    }
+    expect(shell).toContain("navSpacesFor");
   });
 });
+
 
 describe("profil — sécurité non active", () => {
   it("n'expose aucune saisie ni stockage de mot de passe", () => {
