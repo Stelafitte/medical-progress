@@ -6,7 +6,13 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
 import { mockDataAccess } from "@/infrastructure/mock/mockDataAccess";
 import * as fx from "@/infrastructure/mock/fixtures";
-import { canAccessAdministration, canAccessOwnProfile } from "@/domain/access";
+import {
+  canAccessAdministration,
+  canAccessOwnProfile,
+  canAccessPlatformAdministration,
+  canAccessProgramAdministration,
+  canAccessSupervision,
+} from "@/domain/access";
 import { rolesInContext } from "@/domain/roles";
 import type {
   Enrollment,
@@ -30,6 +36,12 @@ export interface SessionValue {
   readonly rolesInActiveProgram: readonly RoleName[];
   /** Dérivé des RoleAssignment, recalculé à chaque changement de programme. */
   readonly canAccessAdministration: boolean;
+  /** Administration DU programme sélectionné (jamais implicite pour un admin plateforme). */
+  readonly canAccessProgramAdministration: boolean;
+  /** Administration PLATEFORME : supervision, sans dossier pédagogique. */
+  readonly canAccessPlatformAdministration: boolean;
+  /** Espace responsable de stage, limité aux affectations de la personne. */
+  readonly canAccessSupervision: boolean;
   readonly canAccessProfile: boolean;
   readonly isSimulated: true;
   setActiveProgramId(id: ProgramId): void;
@@ -64,6 +76,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       roles,
       rolesInActiveProgram: rolesInContext(roles, { programId: activeProgram.id }),
       canAccessAdministration: canAccessAdministration(roles, activeProgram.id),
+      canAccessProgramAdministration: canAccessProgramAdministration(roles, activeProgram.id),
+      canAccessPlatformAdministration: canAccessPlatformAdministration(roles),
+      canAccessSupervision: canAccessSupervision(roles, activeProgram.id),
       canAccessProfile: canAccessOwnProfile(true),
       isSimulated: true,
       setActiveProgramId,

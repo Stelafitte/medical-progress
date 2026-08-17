@@ -1,16 +1,6 @@
 import { useState } from "react";
 import { Link, Outlet } from "@tanstack/react-router";
-import {
-  HeartPulse,
-  LayoutDashboard,
-  ShieldCheck,
-  Boxes,
-  IdCard,
-  Stethoscope,
-  BookOpen,
-  Menu,
-  UserRound,
-} from "lucide-react";
+import { Boxes, HeartPulse, Menu, UserRound } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,51 +15,34 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { ProgramSwitcher } from "@/components/program-switcher";
+import { navSpacesFor } from "@/components/layout/navigation";
 import { useSession } from "@/application/session";
 import { initials } from "@/lib/initials";
 import { ROLE_LABELS_FR } from "@/domain/roles";
 import { IS_DEV } from "@/lib/env";
 import type { PersonId } from "@/domain/types";
 
-interface NavEntry {
-  to: string;
-  label: string;
-  icon: typeof LayoutDashboard;
-  exact: boolean;
-  /** Entrée réservée à l'administration institutionnelle. */
-  adminOnly?: boolean;
-}
-
-const NAV: readonly NavEntry[] = [
-  { to: "/espace", label: "Tableau de bord", icon: LayoutDashboard, exact: true },
-  { to: "/espace/passeport", label: "Passeport", icon: IdCard, exact: false },
-  { to: "/espace/ressources", label: "Ressources", icon: BookOpen, exact: false },
-  { to: "/espace/stage", label: "Stage", icon: Stethoscope, exact: false },
-  {
-    to: "/espace/administration",
-    label: "Administration",
-    icon: ShieldCheck,
-    exact: false,
-    adminOnly: true,
-  },
-];
-
 const linkClass =
   "flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground";
 const activeClass = { className: "bg-secondary text-secondary-foreground" };
 
+/** Libellé de démonstration affiché à côté de chaque identité simulée. */
+const DEMO_PROFILE_HINTS: Record<string, string> = {
+  "per-learner": "apprenant DIU et DFASM",
+  "per-learner-2": "apprenant DIU",
+  "per-supervisor": "responsable de stage DIU",
+  "per-supervisor-2": "responsable de stage DFASM",
+  "per-teacher": "enseignant DIU",
+  "per-admin": "administrateur des deux programmes",
+  "per-platform-admin": "administrateur plateforme",
+};
+
 export function AppShell() {
-  const {
-    person,
-    people,
-    setActivePersonId,
-    canAccessAdministration,
-    rolesInActiveProgram,
-    activeProgram,
-  } = useSession();
+  const { person, people, setActivePersonId, roles, rolesInActiveProgram, activeProgram } =
+    useSession();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const entries = NAV.filter((entry) => !entry.adminOnly || canAccessAdministration);
+  const spaces = navSpacesFor(roles, activeProgram.id);
 
   return (
     <div className="min-h-screen bg-surface">
@@ -88,23 +61,30 @@ export function AppShell() {
                 <Menu className="size-5" aria-hidden />
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-72">
+            <SheetContent side="left" className="w-72 overflow-y-auto">
               <SheetHeader>
                 <SheetTitle>Navigation</SheetTitle>
               </SheetHeader>
-              <nav aria-label="Navigation mobile" className="mt-4 flex flex-col gap-1">
-                {entries.map(({ to, label, icon: Icon, exact }) => (
-                  <Link
-                    key={to}
-                    to={to}
-                    activeOptions={{ exact }}
-                    className={linkClass}
-                    activeProps={activeClass}
-                    onClick={() => setMobileOpen(false)}
-                  >
-                    <Icon className="size-4" aria-hidden />
-                    {label}
-                  </Link>
+              <nav aria-label="Navigation mobile" className="mt-4 flex flex-col gap-4">
+                {spaces.map((space) => (
+                  <div key={space.key} className="flex flex-col gap-1">
+                    <p className="px-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      {space.label}
+                    </p>
+                    {space.entries.map(({ to, label, icon: Icon, exact }) => (
+                      <Link
+                        key={to}
+                        to={to}
+                        activeOptions={{ exact }}
+                        className={linkClass}
+                        activeProps={activeClass}
+                        onClick={() => setMobileOpen(false)}
+                      >
+                        <Icon className="size-4" aria-hidden />
+                        {label}
+                      </Link>
+                    ))}
+                  </div>
                 ))}
                 {IS_DEV ? (
                   <Link
@@ -120,7 +100,7 @@ export function AppShell() {
                     </Badge>
                   </Link>
                 ) : null}
-                <div className="mt-4 border-t border-border pt-4">
+                <div className="border-t border-border pt-4">
                   <Link
                     to="/espace/profil"
                     className={linkClass}
@@ -165,7 +145,7 @@ export function AppShell() {
                   </span>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-64">
+              <DropdownMenuContent align="end" className="w-72">
                 <DropdownMenuLabel>
                   <span className="block">{person.fullName}</span>
                   <span className="block text-xs font-normal text-muted-foreground">
@@ -186,7 +166,7 @@ export function AppShell() {
                   <>
                     <DropdownMenuSeparator />
                     <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
-                      Identité simulée (dev)
+                      Profil de démonstration (dev)
                     </DropdownMenuLabel>
                     <DropdownMenuRadioGroup
                       value={person.id}
@@ -194,7 +174,12 @@ export function AppShell() {
                     >
                       {people.map((p) => (
                         <DropdownMenuRadioItem key={p.id} value={p.id}>
-                          {p.fullName}
+                          <span className="flex flex-col">
+                            <span>{p.fullName}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {DEMO_PROFILE_HINTS[p.id] ?? "rôle de démonstration"}
+                            </span>
+                          </span>
                         </DropdownMenuRadioItem>
                       ))}
                     </DropdownMenuRadioGroup>
@@ -209,18 +194,22 @@ export function AppShell() {
           aria-label="Navigation principale"
           className="mx-auto hidden max-w-6xl px-4 sm:px-6 md:block"
         >
-          <ul className="flex flex-wrap gap-1 pb-2">
-            {entries.map(({ to, label, icon: Icon, exact }) => (
-              <li key={to}>
-                <Link
-                  to={to}
-                  activeOptions={{ exact }}
-                  className={linkClass}
-                  activeProps={activeClass}
-                >
-                  <Icon className="size-4" aria-hidden />
-                  {label}
-                </Link>
+          <ul className="flex flex-wrap items-center gap-1 pb-2">
+            {spaces.map((space) => (
+              <li key={space.key} className="flex flex-wrap items-center gap-1">
+                <span className="sr-only">{space.label}</span>
+                {space.entries.map(({ to, label, icon: Icon, exact }) => (
+                  <Link
+                    key={to}
+                    to={to}
+                    activeOptions={{ exact }}
+                    className={linkClass}
+                    activeProps={activeClass}
+                  >
+                    <Icon className="size-4" aria-hidden />
+                    {label}
+                  </Link>
+                ))}
               </li>
             ))}
             {IS_DEV ? (

@@ -18,7 +18,54 @@ export function canAccessAdministration(
   return hasRole(assignments, "administrator", { programId });
 }
 
+/**
+ * Administration DU PROGRAMME : réservée à un administrateur explicitement
+ * rattaché au programme sélectionné. Un administrateur de plateforme n'y accède
+ * pas automatiquement (les dossiers pédagogiques ne sont pas un droit implicite).
+ */
+export function canAccessProgramAdministration(
+  assignments: readonly RoleAssignment[],
+  programId: ProgramId,
+): boolean {
+  return assignments.some(
+    (a) =>
+      a.role === "administrator" && a.scope.kind === "program" && a.scope.programId === programId,
+  );
+}
+
+/** Administration PLATEFORME : uniquement une portée plateforme. */
+export function canAccessPlatformAdministration(
+  assignments: readonly RoleAssignment[],
+): boolean {
+  return assignments.some((a) => a.role === "administrator" && a.scope.kind === "platform");
+}
+
+/**
+ * Espace responsable de stage : au moins une portée stage dans le programme
+ * sélectionné. Le périmètre reste limité aux affectations de cet encadrant.
+ */
+export function canAccessSupervision(
+  assignments: readonly RoleAssignment[],
+  programId: ProgramId,
+): boolean {
+  return assignments.some(
+    (a) =>
+      a.role === "placement_supervisor" &&
+      a.scope.kind === "placement" &&
+      a.scope.programId === programId,
+  );
+}
+
+/** Espace apprenant : réservé à qui possède un rôle apprenant dans le programme. */
+export function canAccessLearnerSpace(
+  assignments: readonly RoleAssignment[],
+  programId: ProgramId,
+): boolean {
+  return hasRole(assignments, "learner", { programId });
+}
+
 /** Le profil de compte est accessible à tout utilisateur authentifié, quels que soient ses rôles. */
 export function canAccessOwnProfile(isAuthenticated: boolean): boolean {
   return isAuthenticated;
 }
+
