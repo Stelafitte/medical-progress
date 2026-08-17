@@ -391,19 +391,55 @@ create trigger aptid_immutable
   for each row execute function public.enforce_plan_template_immutable();
 
 -- =====================================================================
+-- 6.bis Chemin d'écriture interne — sans drapeau falsifiable
+-- Un custom GUC (`current_setting('app.…')`) est positionnable par n'importe
+-- quel rôle SQL : il ne peut donc JAMAIS servir d'autorisation. Les écritures
+-- privilégiées du plan sont reconnues par leur contexte effectif : elles ne
+-- surviennent qu'à l'intérieur d'une fonction SECURITY DEFINER dont le
+-- propriétaire est postgres, donc avec `current_user = 'postgres'`.
+-- Ni `authenticated` ni `service_role` ne peuvent atteindre ce contexte :
+--   * ces rôles ne sont pas membres de postgres (aucun SET ROLE possible) ;
+--   * les fonctions concernées ont EXECUTE révoqué pour tous les rôles (§13)
+--     et ne s'exécutent qu'en trigger.
+-- =====================================================================
+create or replace function public.is_internal_plan_writer()
+returns boolean
+language sql
+stable
+security invoker
+set search_path = pg_catalog, public
+as $$
+  select current_user = 'postgres'
+$$;
+comment on function public.is_internal_plan_writer() is
+  'Vrai uniquement dans le contexte effectif d''une fonction SECURITY DEFINER '
+  'possédée par postgres. Ne dépend d''aucun GUC positionnable par un client.';
+-- EXECUTE reste ouvert : cette fonction est appelée DANS le corps des triggers
+-- INVOKER (§8, §11), qui s'exécutent avec le rôle appelant et ont donc besoin du
+-- privilège. Elle ne révèle et n'accorde rien : appelée par authenticated ou
+-- service_role, elle répond toujours false.
+alter function public.is_internal_plan_writer() owner to postgres;
+grant execute on function public.is_internal_plan_writer()
+  to authenticated, service_role;
+revoke all on function public.is_internal_plan_writer() from anon;
+
+-- =====================================================================
 -- 7. Dérivation de l'impact et du rôle décideur
 -- Le client n'a AUCUN GRANT sur change_impact / required_approver_role
 -- (001 §13.9) : ils sont calculés ici, à partir des colonnes proposées et de
 -- l'élément de plan visé. Un apprenant ne peut donc pas requalifier une
 -- demande d'échéance officielle en simple ajustement personnel.
 --
--- Règles (miroir exact de src/domain/acquisitionPlan.ts) :
---   * cible personnelle et/ou rythme, sans changement officiel, dans la
---     fenêtre officielle                                    => auto_accept
---   * échéance officielle, prérequis, acquis obligatoire     => teacher_or_admin
---   * élément rattaché à un stage, ou acquis de nature
---     real_competence                                        => placement_supervisor
--- L'ordre d'évaluation est décroissant en exigence : le cas clinique gagne.
+-- Règles (miroir de src/domain/acquisitionPlan.ts) :
+--   * élément rattaché à un stage (placement_assignment_id)  => placement_supervisor
+--     (l'encadrant EXACT de ce stage est requis)
+--   * acquis real_competence SANS stage encore assigné       => teacher_or_admin
+--     décision PROVISOIRE sur le CALENDRIER uniquement ; elle ne vaut jamais
+--     acquisition, et dès qu'un stage est rattaché à l'élément, toute demande
+--     ultérieure exige l'encadrant exact
+--   * échéance officielle, ordre, hors fenêtre officielle    => teacher_or_admin
+--   * cible personnelle et/ou rythme, dans la fenêtre        => auto_accept
+-- L'ordre d'évaluation est décroissant en exigence.
 -- =====================================================================
 create or replace function public.derive_plan_change_request_impact()
 returns trigger
@@ -443,9 +479,17 @@ begin
                     or new.proposed_learner_target_at <= _item.official_due_at)
                 );
 
-  if _item.placement_assignment_id is not null or _nature = 'real_competence' then
+  if _item.placement_assignment_id is not null then
+    -- Stage rattaché : l'encadrant exact de CE stage, et lui seul.
     new.change_impact := 'clinical_competence';
     new.required_approver_role := 'placement_supervisor';
+  elsif _nature = 'real_competence' then
+    -- Aucun stage assigné : la demande resterait indécidable si l'on exigeait
+    -- un encadrant. Repli SÛR : enseignant/administrateur de portée statue
+    -- provisoirement sur le calendrier. Aucune acquisition n'en découle
+    -- (la maîtrise reste dérivée des preuves validées, 003 §5).
+    new.change_impact := 'clinical_competence';
+    new.required_approver_role := 'teacher_or_admin';
   elsif _official or not _in_window then
     new.change_impact := case
       when new.proposed_official_due_at is not null then 'official_deadline'
@@ -476,6 +520,7 @@ create trigger pcr_derive_impact
   on public.plan_change_requests
   for each row execute function public.derive_plan_change_request_impact();
 
+
 -- =====================================================================
 -- 8. Transitions de cycle de vie d'une demande
 --   draft   -> pending   (justification obligatoire, déjà en CHECK)
@@ -493,8 +538,7 @@ security invoker
 set search_path = pg_catalog, public
 as $$
 declare
-  _applying boolean := coalesce(
-    pg_catalog.current_setting('app.plan_change_applying', true) = 'on', false);
+  _internal boolean := public.is_internal_plan_writer();
 begin
   -- Identité et demandeur non falsifiables après création.
   if new.plan_item_id <> old.plan_item_id
@@ -513,7 +557,7 @@ begin
 
   if new.status <> old.status then
     if new.status in ('approved', 'rejected') then
-      if not _applying then
+      if not _internal then
         raise exception
           'only a recorded decision can set a plan change request to %', new.status
           using errcode = 'insufficient_privilege';
@@ -542,7 +586,7 @@ begin
     end if;
   else
     -- Une demande soumise est immuable hors décision ou retrait.
-    if old.status = 'pending' and not _applying then
+    if old.status = 'pending' and not _internal then
       raise exception 'a pending plan change request cannot be edited'
         using errcode = 'insufficient_privilege';
     end if;
@@ -584,13 +628,17 @@ begin
       _req.id, _req.status using errcode = 'check_violation';
   end if;
 
-  perform pg_catalog.set_config('app.plan_change_applying', 'on', true);
 
+  -- rejected : AUCUNE écriture sur l'élément de plan (ni date, ni rythme).
   if new.decision = 'approved' then
-    -- Seuls les champs proposés sont appliqués, un par un.
+    -- Seuls les champs proposés sont appliqués, un par un, dans la même
+    -- transaction que la décision et son audit.
     update public.acquisition_plan_items i
        set learner_target_at = coalesce(_req.proposed_learner_target_at,
                                         i.learner_target_at),
+           learner_pace      = case when _req.proposed_pace <> '{}'::jsonb
+                                    then _req.proposed_pace
+                                    else i.learner_pace end,
            official_due_at   = coalesce(_req.proposed_official_due_at,
                                         i.official_due_at),
            sequence          = coalesce(_req.proposed_sequence, i.sequence)
@@ -617,12 +665,17 @@ begin
       'plan_item_id', _req.plan_item_id,
       'change_impact', _req.change_impact,
       'required_approver_role', _req.required_approver_role,
+      'applied_learner_target_at', _req.proposed_learner_target_at,
+      'applied_learner_pace',
+        case when new.decision = 'approved' then _req.proposed_pace
+             else '{}'::jsonb end,
+      'applied_official_due_at', _req.proposed_official_due_at,
+      'applied_sequence', _req.proposed_sequence,
       'reviewer_role', new.reviewer_role,
       'decision_id', new.id
     )
   );
 
-  perform pg_catalog.set_config('app.plan_change_applying', 'off', true);
   return null;  -- AFTER trigger.
 end;
 $$;
@@ -667,11 +720,13 @@ begin
     return null;
   end if;
 
-  perform pg_catalog.set_config('app.plan_change_applying', 'on', true);
 
   update public.acquisition_plan_items i
      set learner_target_at = coalesce(new.proposed_learner_target_at,
-                                      i.learner_target_at)
+                                      i.learner_target_at),
+         learner_pace      = case when new.proposed_pace <> '{}'::jsonb
+                                  then new.proposed_pace
+                                  else i.learner_pace end
    where i.id = new.plan_item_id;
 
   update public.plan_change_requests r
@@ -683,9 +738,11 @@ begin
   values (new.requested_by, 'plan_change_request.auto_accepted',
           'plan_change_request', new.id::text, new.program_id,
           jsonb_build_object('plan_item_id', new.plan_item_id,
-                             'change_impact', new.change_impact));
+                             'change_impact', new.change_impact,
+                             'applied_learner_target_at',
+                                new.proposed_learner_target_at,
+                             'applied_learner_pace', new.proposed_pace));
 
-  perform pg_catalog.set_config('app.plan_change_applying', 'off', true);
   return null;
 end;
 $$;
@@ -696,9 +753,10 @@ create trigger pcr_auto_accept
   for each row execute function public.auto_accept_personal_plan_change();
 
 -- =====================================================================
--- 11. Éléments de plan : colonnes officielles gelées hors décision
--- Le client n'a pas le GRANT correspondant ; ce trigger ferme le cas
--- service_role et rappelle que progress_state n'est PAS une acquisition.
+-- 11. Éléments de plan : tout sauf progress_state est gelé hors chemin interne
+-- Le client n'a le GRANT que sur progress_state (001 §13.9) ; ce trigger ferme
+-- le cas service_role, couvre AUSSI learner_target_at et learner_pace, et
+-- rappelle que progress_state n'est PAS une acquisition.
 -- =====================================================================
 create or replace function public.enforce_plan_item_official_fields()
 returns trigger
@@ -707,8 +765,7 @@ security invoker
 set search_path = pg_catalog, public
 as $$
 declare
-  _applying boolean := coalesce(
-    pg_catalog.current_setting('app.plan_change_applying', true) = 'on', false);
+  _internal boolean := public.is_internal_plan_writer();
 begin
   if new.plan_id <> old.plan_id
      or new.enrollment_id <> old.enrollment_id
@@ -718,13 +775,22 @@ begin
       using errcode = 'insufficient_privilege';
   end if;
 
-  if not _applying then
+  if not _internal then
     if new.official_start_at is distinct from old.official_start_at
        or new.official_due_at is distinct from old.official_due_at
        or new.sequence is distinct from old.sequence
-       or new.is_mandatory is distinct from old.is_mandatory then
+       or new.is_mandatory is distinct from old.is_mandatory
+       or new.placement_assignment_id is distinct from old.placement_assignment_id then
       raise exception
         'official plan fields change only through an approved plan change request'
+        using errcode = 'insufficient_privilege';
+    end if;
+    -- Calendrier personnel et rythme : jamais en UPDATE direct, même pour
+    -- service_role. Ils exigent une demande justifiée (auto-acceptée ou approuvée).
+    if new.learner_target_at is distinct from old.learner_target_at
+       or new.learner_pace is distinct from old.learner_pace then
+      raise exception
+        'learner_target_at and learner_pace change only through a justified plan change request'
         using errcode = 'insufficient_privilege';
     end if;
   end if;
@@ -810,11 +876,12 @@ begin
     execute format('revoke all on function %s from service_role', fn);
   end loop;
 end $$;
--- Le drapeau transactionnel app.plan_change_applying n'est positionné que par
--- les deux fonctions SECURITY DEFINER ci-dessus, avec set_config(..., true)
--- (portée transaction). Un client ne peut pas s'en servir pour contourner les
--- gardes : positionner le drapeau ne lui donne aucun GRANT de colonne, et les
--- policies de 002 restent évaluées avant tout trigger.
+-- Aucun drapeau applicatif (custom GUC) n'intervient dans une autorisation :
+-- set_config('app.plan_change_applying', ...) n'existe plus dans ce fichier.
+-- Le seul chemin d'écriture privilégiée est le contexte effectif
+-- current_user = 'postgres' (§6.bis), atteignable uniquement à l'intérieur des
+-- fonctions SECURITY DEFINER possédées par postgres ci-dessus, dont l'EXECUTE
+-- est révoqué pour PUBLIC, anon, authenticated et service_role.
 
 
 -- FIN — DRAFT — DO NOT EXECUTE

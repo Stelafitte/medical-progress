@@ -55,7 +55,8 @@ erDiagram
 
 Le plan d'acquisition est détaillé dans `plan_acquisition_architecture.md` :
 versioning des templates, projections Liste/Kanban/Gantt/Calendrier sur
-`acquisition_plan_items`, séparation dates officielles / cible personnelle,
+`acquisition_plan_items`, séparation dates officielles / cible personnelle
+(`learner_target_at`, `learner_pace`, toutes deux hors GRANT client),
 dérivation de l'impact d'une demande et audit.
 
 ## 2. Choix de normalisation
@@ -145,8 +146,9 @@ Conséquences vérifiées par les tests d'acceptation :
 2. `can_validate_evidence()` exclut le titulaire de l'inscription **et** l'auteur de la saisie.
 3. Le service serveur, après cette insertion, passe `evidence.status` à `validated`
    ou `rejected`. Aucune policy client ne permet d'écrire `validated`.
-4. Le journal est **append-only** : une décision erronée est corrigée par une décision
-   ultérieure, jamais par réécriture.
+4. Le journal est **append-only** : une décision erronée n'est PAS corrigée par une
+   seconde décision (la demande n'est plus `pending`), mais par une **nouvelle demande**
+   justifiée et auditée ; le journal n'est jamais réécrit.
 
 ### 3.3 bis Dérivation du statut (serveur)
 1. L'insertion dans `evidence_validations` franchit d'abord la policy
@@ -181,7 +183,8 @@ admin              template draft ──publication (serveur : figeage + anti-cy
                                                      │
 serveur            instanciation d'une version ───────┘
                    -> acquisition_plans + acquisition_plan_items (dépliage)
-apprenant          ajuste learner_target_at / progress_state (dans la fenêtre officielle)
+apprenant          ajuste progress_state directement ; toute date / ordre /
+                   rythme passe par une plan_change_request justifiée
 apprenant          plan_change_requests : draft ──submit──► pending
 serveur (trigger)  dérive change_impact + required_approver_role
                      auto_accept          -> appliqué immédiatement, audité

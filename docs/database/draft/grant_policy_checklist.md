@@ -36,7 +36,7 @@ est un défaut à corriger.
 | acquisition_plan_template_items | P+G | P+G (colonnes hors provenance) | P+G (`draft` seulement) | P+G (`draft` seulement) |
 | acquisition_plan_template_item_dependencies | P+G | P+G | —/— | P+G |
 | acquisition_plans | P+G | —/— (serveur) | —/— (serveur) | —/— (serveur) |
-| acquisition_plan_items | P+G | —/— (serveur) | P+G (colonnes `learner_target_at`, `progress_state`) | —/— |
+| acquisition_plan_items | P+G | —/— (serveur) | P+G (colonne `progress_state` uniquement) | —/— |
 | plan_change_requests | P+G | P+G (colonnes hors dérivées) | P+G (proposition, justification, `status` borné par trigger) | —/— |
 | plan_change_decisions | P+G | P+G (colonnes hors provenance) | —/— (append-only) | —/— (append-only) |
 | passport_share_preferences | P+G | P+G | P+G | P+G |
@@ -114,6 +114,7 @@ colonnes d'identité d'une preuve (`003_server_invariants.sql`).
 | `auto_accept_personal_plan_change()` | 003 | **oui** | applique un changement personnel sans décideur humain | **REVOKE ALL** — trigger uniquement |
 | `enforce_plan_item_official_fields()` | 003 | non (refuse) | INVOKER | **REVOKE ALL** — trigger uniquement |
 | `forbid_write()` | 003 | non (refuse) | INVOKER | **REVOKE ALL** — trigger uniquement |
+| `is_internal_plan_writer()` | 003 §6.bis | non | STABLE, aucune écriture ; répond `false` hors DEFINER postgres | EXECUTE authenticated + service_role (appelée dans le corps des triggers INVOKER), REVOKE anon |
 
 Contrôles à repasser :
 
@@ -130,10 +131,14 @@ Contrôles à repasser :
 1. `acquisition_plans` : aucune policy DML **et** aucun GRANT DML client (cohérent).
 2. Colonnes dérivées jamais accordées : `change_impact`, `required_approver_role`,
    `submitted_at`, `decided_at`, `withdrawn_at`, `published_at`, `retired_at`.
-3. Colonnes officielles d'un item jamais accordées : `official_start_at`,
-   `official_due_at`, `sequence`, `is_mandatory` — modifiées uniquement par
-   `apply_plan_change_decision()` sous le drapeau transactionnel
-   `app.plan_change_applying`.
+3. Colonnes d'un item jamais accordées : `official_start_at`, `official_due_at`,
+   `sequence`, `is_mandatory`, `placement_assignment_id`, `learner_target_at`,
+   `learner_pace` — modifiées uniquement par `apply_plan_change_decision()` ou
+   `auto_accept_personal_plan_change()`, reconnues par le contexte effectif
+   `current_user = 'postgres'` (003 §6.bis). Aucun custom GUC n'autorise quoi que
+   ce soit : le drapeau `app.plan_change_applying` a été supprimé.
+   Le seul GRANT UPDATE client sur `acquisition_plan_items` est `progress_state`,
+   et le commentaire du GRANT dans 001 §13.9 énonce exactement ce privilège.
 4. `plan_change_decisions` : ni policy ni GRANT UPDATE/DELETE, plus un trigger
    `forbid_write()` qui bloque même `service_role`.
 5. Les deux fonctions mutantes du plan sont révoquées pour tous les rôles et ne

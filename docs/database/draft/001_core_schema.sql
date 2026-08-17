@@ -1019,8 +1019,13 @@ create table if not exists public.acquisition_plan_items (
   official_start_at timestamptz,
   official_due_at   timestamptz,
   -- Cible que l'apprenant se fixe, toujours dans les bornes officielles.
+  -- AUCUN GRANT client (13.9) : elle change uniquement par demande justifiée.
   learner_target_at timestamptz,
+  -- Rythme personnel appliqué (miroir du proposed_pace approuvé) : clés bornées,
+  -- objet JSON plat, jamais écrit directement par un client.
+  learner_pace jsonb not null default '{}'::jsonb,
   is_mandatory  boolean not null default true,
+
   -- État de PLANIFICATION, jamais un état d'acquisition (cf. 13.1).
   progress_state public.plan_item_progress_state not null default 'to_plan',
   placement_assignment_id uuid,
@@ -1036,6 +1041,17 @@ create table if not exists public.acquisition_plan_items (
   constraint api_window_ordered
     check (official_due_at is null or official_start_at is null
            or official_due_at >= official_start_at),
+  -- Rythme borné : objet JSON plat, taille limitée, clés connues seulement.
+  constraint api_learner_pace_object
+    check (jsonb_typeof(learner_pace) = 'object'
+           and pg_catalog.length(learner_pace::text) <= 2000),
+  -- Clés autorisées uniquement (pas de sous-requête : opérateur jsonb - text[]).
+  constraint api_learner_pace_keys
+    check (learner_pace - array['cadence', 'sessions_per_week',
+                                'minutes_per_session', 'preferred_days',
+                                'note']::text[] = '{}'::jsonb),
+
+
   constraint api_provenance_coherent
     check ((source_system = 'native') = (source_id is null)),
   constraint api_plan_same_enrollment
@@ -1065,6 +1081,16 @@ comment on table public.acquisition_plan_items is
   'Une ligne = un élément planifié. Les quatre vues du frontend (Liste, Kanban, '
   'Gantt, Calendrier) sont des projections de CETTE table ; aucune vue ne '
   'possède sa propre table. progress_state est un état de planification.';
+comment on column public.acquisition_plan_items.learner_target_at is
+  'Cible personnelle. Aucun GRANT client : elle ne change que par application '
+  'd''une plan_change_request justifiée (auto-acceptée ou approuvée).';
+comment on column public.acquisition_plan_items.learner_pace is
+  'Rythme personnel appliqué (clés bornées). Aucun GRANT client : miroir du '
+  'proposed_pace approuvé, écrit uniquement par le chemin interne 003 §9/§10.';
+comment on column public.acquisition_plan_items.progress_state is
+  'SEULE colonne modifiable directement par l''apprenant (état de planification, '
+  'jamais une acquisition).';
+
 
 -- ---------------------------------------------------------------------
 -- 13.6 plan_change_requests — demande de modification par l'apprenant
@@ -1099,6 +1125,12 @@ create table if not exists public.plan_change_requests (
   constraint pcr_pace_object
     check (jsonb_typeof(proposed_pace) = 'object'
            and pg_catalog.length(proposed_pace::text) <= 2000),
+  -- Mêmes clés autorisées que acquisition_plan_items.learner_pace (13.5).
+  constraint pcr_pace_keys
+    check (proposed_pace - array['cadence', 'sessions_per_week',
+                                 'minutes_per_session', 'preferred_days',
+                                 'note']::text[] = '{}'::jsonb),
+
   -- Au moins une modification proposée, sinon la demande n'a pas d'objet.
   constraint pcr_has_proposal
     check (proposed_learner_target_at is not null
@@ -1242,12 +1274,15 @@ grant delete on public.acquisition_plan_template_item_dependencies to authentica
 -- acquisition_plans : instanciation = opération serveur (choix de version,
 -- dépliage des items, audit). Aucun INSERT/UPDATE/DELETE client.
 
--- acquisition_plan_items : l'apprenant ne touche QUE sa cible personnelle et
--- son état de planification. official_*, sequence, is_mandatory, outcome_id,
--- plan_id, placement_assignment_id ne sont PAS accordés : ils changent
--- exclusivement par application d'une décision approuvée (003 §9).
-grant update (learner_target_at, progress_state)
+-- acquisition_plan_items : l'apprenant ne modifie DIRECTEMENT que son état de
+-- planification (progress_state). learner_target_at, learner_pace, official_*,
+-- sequence, is_mandatory, outcome_id, plan_id, placement_assignment_id ne sont
+-- PAS accordés : toute modification de calendrier, d'ordre ou de rythme passe
+-- obligatoirement par une plan_change_request justifiée, appliquée par le
+-- chemin interne (003 §9 décision approuvée, §10 auto-acceptation personnelle).
+grant update (progress_state)
   on public.acquisition_plan_items to authenticated;
+
 
 -- plan_change_requests : l'apprenant écrit sa demande et sa justification.
 -- change_impact, required_approver_role, submitted_at, decided_at,

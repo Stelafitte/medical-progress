@@ -201,14 +201,33 @@ policy DML.
 
 | Rôle | SELECT | INSERT | UPDATE | DELETE |
 | --- | --- | --- | --- | --- |
-| learner | `own` | — | `own` — colonnes `learner_target_at`, `progress_state` uniquement | — |
+| learner | `own` | — | `own` — colonne `progress_state` UNIQUEMENT | — |
 | teacher | `cohort`/`prog` exact | — | — | — |
 | supervisor | items rattachés à un stage **qu'il supervise** | — | — | — |
 | admin/program | `prog` | — | — | — |
 
-`official_start_at`, `official_due_at`, `sequence`, `is_mandatory` ne sont
-accordés à aucun client : ils changent uniquement par application d'une décision
-approuvée.
+`official_start_at`, `official_due_at`, `sequence`, `is_mandatory`,
+`placement_assignment_id`, `learner_target_at` et `learner_pace` ne sont accordés
+à aucun client. Toute modification de calendrier (officiel ou personnel), d'ordre
+ou de rythme passe obligatoirement par une `plan_change_request` justifiée,
+appliquée par le chemin interne : auto-acceptation personnelle (003 §10) ou
+décision approuvée (003 §9). Le trigger 003 §11 applique la même règle à
+`service_role`.
+
+Le chemin interne n'est reconnu par AUCUN drapeau applicatif : il est identifié
+par le contexte effectif `current_user = 'postgres'` (003 §6.bis), atteignable
+uniquement dans les fonctions `SECURITY DEFINER` possédées par postgres, dont
+l'EXECUTE est révoqué pour tous les rôles clients.
+
+### Demande portant sur une compétence réelle
+
+| Situation de l'élément | Rôle décideur exigé | Portée de la décision |
+| --- | --- | --- |
+| `placement_assignment_id` renseigné | `placement_supervisor` **exact** du stage | calendrier ; l'acquisition reste dérivée des preuves validées |
+| acquis `real_competence` sans stage assigné | `teacher_or_admin` de portée | **calendrier uniquement**, à titre provisoire ; jamais une validation d'acquisition |
+
+Ce repli évite les demandes indécidables. Dès qu'un stage est rattaché à
+l'élément, la dérivation exige à nouveau l'encadrant exact.
 
 ### plan_change_requests
 

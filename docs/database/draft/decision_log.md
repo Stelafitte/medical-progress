@@ -49,11 +49,16 @@ Statut : **conception non exécutée**. Aucune base activée, aucune migration c
 | D39 | Deux colonnes distinctes : dates officielles (institution) et `learner_target_at` (apprenant) | l'apprenant organise son rythme sans jamais déplacer une échéance opposable ; bornage par trigger |
 | D40 | `change_impact` et `required_approver_role` **dérivés par trigger**, non accordés au client | sinon un apprenant requalifierait une échéance officielle en simple ajustement personnel |
 | D41 | Auto-acceptation d'un changement strictement personnel dans la fenêtre officielle | une validation humaine pour un ajustement sans impact institutionnel n'a aucune valeur, et sature les enseignants |
-| D42 | Une demande clinique (stage ou `real_competence`) exige l'encadrant **de ce stage** | cohérence avec la règle de validation des compétences réelles : un enseignant ne se substitue pas à l'encadrant du terrain |
+| D42 | Une demande portant sur un élément **rattaché à un stage** exige l'encadrant **de ce stage** | cohérence avec la règle de validation des compétences réelles : un enseignant ne se substitue pas à l'encadrant du terrain |
 | D43 | `plan_change_decisions` append-only, application atomique par trigger `AFTER INSERT` | la décision et son effet sur le plan ne peuvent pas diverger ; une erreur se corrige par une nouvelle ligne |
-| D44 | Drapeau transactionnel `app.plan_change_applying` plutôt qu'une RPC d'application | aucune surface d'écriture privilégiée exposée ; le drapeau seul ne confère aucun GRANT de colonne |
+| D44 | ~~Drapeau transactionnel `app.plan_change_applying`~~ **abandonné** (voir D47) | un custom GUC est positionnable par n'importe quel rôle SQL : il ne peut jamais valoir autorisation |
 | D45 | `passport_share_preferences` exclues de **toute** condition de policy | des préférences de confort ne doivent jamais pouvoir masquer un dossier institutionnel à un professionnel autorisé |
 | D46 | Aucune contrainte déclarative anti-cycle sur les prérequis de template | non exprimable en SQL déclaratif : vérifié par le backend à la publication, en même temps que le figeage |
+| D47 | Chemin d'écriture interne reconnu par le contexte effectif `current_user = 'postgres'` (`is_internal_plan_writer()`), et non par un drapeau | non falsifiable : `authenticated` et `service_role` ne peuvent pas atteindre ce contexte, et les fonctions concernées ont EXECUTE révoqué pour tous les rôles |
+| D48 | `learner_target_at` et `learner_pace` retirés du GRANT UPDATE client | un UPDATE direct contournerait le workflow : plus de justification, plus d'impact dérivé, plus d'audit. Le seul GRANT client restant sur un item est `progress_state` |
+| D49 | Rythme stocké en `jsonb` borné (`learner_pace`, clés listées) plutôt qu'en colonnes typées | le vocabulaire pédagogique du rythme n'est pas stabilisé ; bornage par CHECK de type, de taille et de clés, typage possible au Lot 2 |
+| D50 | Acquis `real_competence` **sans stage assigné** : `teacher_or_admin` statue provisoirement sur le calendrier | sinon la demande serait indécidable ; la décision ne vaut jamais acquisition, et l'encadrant exact redevient obligatoire dès qu'un stage est rattaché |
+| D51 | Une décision erronée se corrige par une **nouvelle demande** liée et auditée | la demande décidée n'est plus `pending` et le journal est append-only : une seconde décision sur la même demande est refusée par construction |
 
 ## Alternatives rejetées
 
@@ -109,8 +114,9 @@ Statut : **conception non exécutée**. Aucune base activée, aucune migration c
 11. **Co-signature** : si une preuve exige deux validations, le trigger de dérivation doit
     compter les décisions au lieu de lire la dernière — à trancher avant provisioning.
 12. **Quarantaine antivirus** : qui a le droit de lever un `processing_status = 'quarantined'` ?
-13. **Rythme (`proposed_pace`)** : quelles clés JSONB sont acceptées, et faut-il les
-    typer en colonnes dès le Lot 2 ?
+13. **Rythme** : clés tranchées (`cadence`, `sessions_per_week`,
+    `minutes_per_session`, `preferred_days`, `note`, cf. D49) ; reste à décider si elles
+    deviennent des colonnes typées au Lot 2.
 14. **Plan multiple** : un apprenant peut-il détenir deux plans actifs (ex. remédiation) ?
     Aujourd'hui l'index partiel `ap_one_active_per_enrollment` l'interdit.
 15. **Recalcul après nouvelle version de template** : migration des plans en cours,
