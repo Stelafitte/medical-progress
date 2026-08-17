@@ -4,6 +4,7 @@
  */
 import type { DataAccess } from "@/application/ports/repositories";
 import * as fx from "./fixtures";
+import * as slfx from "./stageLogFixtures";
 
 const clone = <T>(value: T): T => value;
 const ok = <T>(value: T): Promise<T> => Promise.resolve(clone(value));
@@ -51,6 +52,32 @@ export const mockDataAccess: DataAccess = {
       const ids = new Set(fx.outcomes.filter((o) => o.programId === programId).map((o) => o.id));
       return ok(fx.planSchedule.filter((s) => ids.has(s.outcomeId)));
     },
+  },
+  stageLogs: {
+    listTemplates: (programId) =>
+      ok(
+        programId
+          ? slfx.stageLogTemplates.filter((t) => t.programId === programId)
+          : slfx.stageLogTemplates,
+      ),
+    listLogsForEnrollment: (enrollmentId) =>
+      ok(slfx.stageLogs.filter((l) => l.enrollmentId === enrollmentId)),
+    listLogsToValidate: (placementAssignmentIds) =>
+      ok(
+        slfx.stageLogs.filter(
+          (l) =>
+            l.status === "submitted" &&
+            !!l.placementAssignmentId &&
+            placementAssignmentIds.includes(l.placementAssignmentId),
+        ),
+      ),
+    listLogsReceived: (programId) =>
+      ok(
+        slfx.stageLogs.filter(
+          (l) =>
+            l.programId === programId && (l.status === "validated" || l.status === "transmitted"),
+        ),
+      ),
   },
   audit: {
     listRecentEvents: (limit = 20) => ok(fx.auditEvents.slice(0, limit)),

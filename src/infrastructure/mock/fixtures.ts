@@ -106,6 +106,7 @@ export const cohorts: readonly Cohort[] = [
 
 export const people: readonly Person[] = [
   { ...base, id: "per-learner", fullName: "Camille Rousseau", email: "camille.demo@example.org" },
+  { ...base, id: "per-learner-2", fullName: "Nicolas Perrin", email: "nicolas.demo@example.org" },
   {
     ...base,
     id: "per-supervisor",
@@ -131,6 +132,14 @@ export const enrollments: readonly Enrollment[] = [
     personId: "per-learner",
     programId: "prog-dfasm-cardio",
     cohortId: "coh-dfasm-2026",
+    status: "active",
+  },
+  {
+    ...base,
+    id: "enr-diu-autre",
+    personId: "per-learner-2",
+    programId: "prog-diu-echo",
+    cohortId: "coh-diu-2026",
     status: "active",
   },
 ];

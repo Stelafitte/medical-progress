@@ -6,6 +6,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useLearnerPassport } from "@/features/dashboard/useLearnerPassport";
 import { useSession } from "@/application/session";
 import { ROLE_LABELS_FR, rolesInContext } from "@/domain/roles";
+import { StageLogBook } from "@/features/stage/StageLogBook";
+import { StageLogsToValidate } from "@/features/stage/StageLogReviewSection";
 
 const STATUS_FR: Record<string, string> = {
   planned: "à venir",
@@ -115,6 +117,10 @@ export function StageView() {
           <li className="text-sm text-muted-foreground">Aucune affectation pour l'instant.</li>
         ) : null}
       </ul>
+
+      <StageLogBook />
+
+      <StageLogsToValidate />
     </div>
   );
 }

@@ -6,7 +6,15 @@ Statut : **conception non exécutée**. Aucune base activée, aucune migration c
 
 | # | Décision | Motif |
 | --- | --- | --- |
+| D58 (2026-08-17) | **Carnet de stage générique** : un seul moteur, une configuration par programme / module / cohorte (`stage_log_templates` versionné) | interdit deux architectures parallèles DIU / DFASM ; conception détaillée dans `stage_logbook_architecture.md`, aucune migration créée |
+| D59 (2026-08-17) | La photo est **toujours un fragment explicitement autorisé** par l'administrateur (`stage_log_photo_requirements`), jamais un document intégral | limite la collecte au strict nécessaire et rend la consigne de cadrage opposable |
+| D60 (2026-08-17) | `declared_no_identifiers` obligatoire et contraint à `true`, `checklist_acknowledged` complet | une pièce jointe sans déclaration explicite de l'apprenant est refusée par construction, en base comme en UI |
+| D61 (2026-08-17) | `automatic_check` figé à `not_active` ; aucune formulation ne présente la photo comme anonymisée | aucun contrôle OCR n'existe : promettre une anonymisation serait faux et juridiquement dangereux |
+| D62 (2026-08-17) | Aucune acquisition n'est jamais dérivée d'une photo ; `stage_log_validations` humaine obligatoire | invariant produit : une compétence réelle n'est jamais déclarée acquise par l'apprenant seul |
+| D63 (2026-08-17) | « Transmis » est un **état interne** du carnet (`transmitted`), jamais un envoi e-mail | évite l'exfiltration de fragments de dossier hors de l'espace sécurisé du programme |
+| D64 (2026-08-17) | Photos futures en **bucket privé**, écriture réservée à `service_role`, lecture par URL signée courte | alignement sur `storage_architecture.md` ; aucune URL publique possible |
 | D53 (2026-08-17) | Le **nom global** de la plateforme devient exactement « Mon Passeport Éducatif » (anciens noms courants, historiques uniquement : « Passeport Éducatif Médical », « EduPassport Core ») | décision produit définitive ; renommage limité aux textes visibles, métadonnées et documentation — aucun nom de table, type, colonne, fonction, policy ni concept métier n'est modifié |
+
 | D1 | `profiles` référence `auth.users(id)` sans email ni mot de passe | pas de duplication d'identifiants ; `auth.users` reste la source de vérité |
 | D2 | Aucune table de progression | la progression est dérivée des preuves (invariant produit) ; éviter une seconde vérité divergente |
 | D3 | Rôles dans `role_assignments`, jamais sur `profiles` | prévention d'escalade de privilèges |

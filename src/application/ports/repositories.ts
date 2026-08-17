@@ -6,6 +6,8 @@
  * modifier l'UI ni la logique métier.
  */
 import type { PlanScheduleEntry } from "@/domain/acquisitionPlan";
+import type { StageLog, StageLogTemplate } from "@/domain/stageLog";
+
 import type {
   AuditEvent,
   Cohort,
@@ -63,6 +65,17 @@ export interface AcquisitionPlanRepository {
   listPlanSchedule(programId: ProgramId): Promise<readonly PlanScheduleEntry[]>;
 }
 
+export interface StageLogRepository {
+  /** Modèles de carnets configurés pour un programme (toutes cohortes). */
+  listTemplates(programId?: ProgramId): Promise<readonly StageLogTemplate[]>;
+  /** Carnet(s) d'une inscription : accès apprenant limité à son propre carnet. */
+  listLogsForEnrollment(enrollmentId: EnrollmentId): Promise<readonly StageLog[]>;
+  /** Carnets soumis rattachés aux stages d'un encadrant / enseignant. */
+  listLogsToValidate(placementAssignmentIds: readonly string[]): Promise<readonly StageLog[]>;
+  /** Carnets validés puis transmis dans l'espace de l'administration du programme. */
+  listLogsReceived(programId: ProgramId): Promise<readonly StageLog[]>;
+}
+
 export interface AuditRepository {
   listRecentEvents(limit?: number): Promise<readonly AuditEvent[]>;
 }
@@ -76,6 +89,7 @@ export interface DataAccess {
   readonly placements: PlacementRepository;
   readonly resources: LearningResourceRepository;
   readonly plan: AcquisitionPlanRepository;
+  readonly stageLogs: StageLogRepository;
   readonly audit: AuditRepository;
   /** Marque explicitement une implémentation non persistante. */
   readonly isMock: boolean;
