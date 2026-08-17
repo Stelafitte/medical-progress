@@ -60,9 +60,14 @@ autorisées : `cadence`, `sessions_per_week`, `minutes_per_session`,
 ## 3.bis Chemin d'écriture interne, sans drapeau
 
 Les écritures privilégiées sont reconnues par le contexte effectif
-`current_user = 'postgres'` (`003 §6.bis`, `is_internal_plan_writer()`), atteint
-seulement à l'intérieur des fonctions `SECURITY DEFINER` possédées par postgres
-et non appelables directement. Un custom GUC du type
+`current_user = 'postgres'` (`003 §6.bis`), atteint seulement à l'intérieur des
+fonctions `SECURITY DEFINER` possédées par postgres et non appelables
+directement (`apply_plan_change_decision()`,
+`auto_accept_personal_plan_change()`). Ce test est évalué **en ligne** dans
+chaque trigger `SECURITY INVOKER` (`_internal boolean := (current_user =
+'postgres')`) : aucun helper n'est appelé, sinon un `EXECUTE` manquant pourrait
+faire échouer des écritures légitimes (progress_state, édition d'un brouillon,
+`draft -> pending`). Un custom GUC du type
 `app.plan_change_applying` a été supprimé : n'importe quel rôle SQL peut en
 positionner un, il ne peut donc jamais valoir autorisation.
 
