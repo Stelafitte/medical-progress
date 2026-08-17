@@ -37,7 +37,6 @@ describe("terminologie", () => {
   });
 });
 
-
 describe("navigation", () => {
   it("place Ressources immédiatement avant Stage", () => {
     const order = [
