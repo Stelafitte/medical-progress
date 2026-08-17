@@ -77,6 +77,9 @@ describe("droits et visibilité simulés", () => {
     expect(adminTemplates).toContain("Modèles de carnets de stage");
     expect(adminTemplates).toContain("Photos autorisées");
     expect(adminTemplates).toContain("Durée de conservation");
-    expect(adminTemplates).toContain("aucune\n                    option ne permet");
+    expect(adminTemplates.replace(/\s+/g, " ")).toContain(
+      "aucune option ne permet de demander un document intégral",
+    );
+
   });
 });
