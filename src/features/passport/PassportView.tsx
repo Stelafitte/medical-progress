@@ -1,129 +1,88 @@
-import { CheckCircle2, ShieldAlert, Target } from "lucide-react";
-import { MasteryBadge, NatureBadge } from "@/components/mastery-badge";
+import { useMemo, useState } from "react";
+import { CheckCircle2, Target } from "lucide-react";
 import { SectionHeading } from "@/components/section-heading";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { MASTERY_LABELS_FR } from "@/domain/mastery";
-import type { OutcomeProgress } from "@/domain/mastery";
-import type { Evidence, EvidenceKind, OutcomeNature } from "@/domain/types";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  APPROVAL_RULE_LABELS_FR,
+  IMPACT_LABELS_FR,
+  PLAN_CHANGE_STATUS_LABELS_FR,
+  TRACK_LABELS_FR,
+  approvalRuleForImpact,
+  type AcquisitionPlanItem,
+  type PlanChangeImpact,
+  type PlanChangeRequest,
+} from "@/domain/acquisitionPlan";
 import { useLearnerPassport } from "@/features/dashboard/useLearnerPassport";
+import { PlanChangeRequestDialog } from "./PlanChangeRequestDialog";
+import { CalendarView } from "./views/CalendarView";
+import { GanttView } from "./views/GanttView";
+import { KanbanView } from "./views/KanbanView";
+import { ListView } from "./views/ListView";
 
-const EVIDENCE_LABELS: Record<EvidenceKind, string> = {
-  quiz: "QCM",
-  real_activity: "Activité réelle",
-  simulation: "Simulation (dont ECOS)",
-  placement: "Stage",
-  human_validation: "Validation humaine",
-};
+type PassportViewMode = "list" | "kanban" | "gantt" | "calendar";
 
-/** Les trois catégories visibles du passeport, alignées sur outcome.nature. */
-const CATEGORIES: ReadonlyArray<{
-  nature: OutcomeNature;
-  id: string;
-  title: string;
-  description: string;
-}> = [
-  {
-    nature: "knowledge",
-    id: "categorie-connaissances",
-    title: "Connaissances",
-    description: "Ce que je sais.",
-  },
-  {
-    nature: "simulated_competence",
-    id: "categorie-simulees",
-    title: "Compétences simulées",
-    description:
-      "Ce que je sais faire en situation simulée (simulation, ECOS et autres modalités).",
-  },
-  {
-    nature: "real_competence",
-    id: "categorie-reelles",
-    title: "Compétences réelles",
-    description: "Ce que je réalise en situation clinique, toujours validé par un encadrant.",
-  },
+const VIEW_TABS: ReadonlyArray<{ value: PassportViewMode; label: string }> = [
+  { value: "list", label: "Liste" },
+  { value: "kanban", label: "Kanban" },
+  { value: "gantt", label: "Gantt" },
+  { value: "calendar", label: "Calendrier" },
 ];
 
-function OutcomeCard({ item, evidence }: { item: OutcomeProgress; evidence: readonly Evidence[] }) {
-  const related = evidence.filter((e) => e.outcomeId === item.outcome.id);
+type PlanFilter = "all" | "knowledge" | "simulated_competence" | "real_competence";
 
-  return (
-    <Card>
-      <CardHeader>
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="secondary" className="font-mono text-xs">
-            {item.outcome.code}
-          </Badge>
-          <NatureBadge nature={item.outcome.nature} />
-          <MasteryBadge level={item.mastery} className="ms-auto" />
-        </div>
-        <CardTitle className="text-base">{item.outcome.label}</CardTitle>
-        <CardDescription>
-          {item.outcome.description} · Cible : {MASTERY_LABELS_FR[item.outcome.targetMastery]}
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        {item.blockedBySelfDeclaration ? (
-          <p className="flex items-start gap-2 rounded-md border border-warning/40 bg-warning/10 p-3 text-sm text-foreground">
-            <ShieldAlert className="mt-0.5 size-4 text-warning" aria-hidden />
-            Compétence réelle : l'auto-déclaration ne suffit pas. Une validation par un encadrant de
-            stage est requise.
-          </p>
-        ) : null}
+const FILTERS: ReadonlyArray<{ value: PlanFilter; label: string }> = [
+  { value: "all", label: "Tout le plan d'acquisition" },
+  { value: "knowledge", label: "Connaissances" },
+  { value: "simulated_competence", label: "Compétences — simulées" },
+  { value: "real_competence", label: "Compétences — réelles" },
+];
 
-        {related.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Aucune preuve enregistrée.</p>
-        ) : (
-          <ul className="divide-y divide-border">
-            {related.map((ev) => (
-              <li key={ev.id} className="flex flex-wrap items-center gap-2 py-2">
-                <Badge variant="outline" className="font-normal">
-                  {EVIDENCE_LABELS[ev.kind]}
-                </Badge>
-                <span className="text-sm text-foreground">{ev.title}</span>
-                <span className="text-xs text-muted-foreground">
-                  {new Date(ev.occurredAt).toLocaleDateString("fr-FR")}
-                </span>
-                <span className="ms-auto flex items-center gap-2 text-xs">
-                  {ev.selfDeclared ? <span className="text-warning">auto-déclarée</span> : null}
-                  <Badge
-                    className={
-                      ev.status === "validated"
-                        ? "border-transparent bg-success text-success-foreground"
-                        : "border-transparent bg-muted text-muted-foreground"
-                    }
-                  >
-                    {ev.status === "validated" ? "validée" : ev.status}
-                  </Badge>
-                </span>
-                {ev.validations.length > 0 ? (
-                  <p className="w-full text-xs text-muted-foreground">
-                    Validée par un encadrant : {ev.validations[0]?.comment ?? "sans commentaire"}
-                  </p>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
+const IMPACTS: readonly PlanChangeImpact[] = [
+  "personal_pace",
+  "official_deadline",
+  "clinical_competence",
+];
 
 export function PassportView() {
   const { data, isPending } = useLearnerPassport();
+  const [view, setView] = useState<PassportViewMode>("list");
+  const [filter, setFilter] = useState<PlanFilter>("all");
+  const [dialogItem, setDialogItem] = useState<AcquisitionPlanItem | null>(null);
+  const [requests, setRequests] = useState<readonly PlanChangeRequest[]>([]);
 
-  if (isPending || !data) return <Skeleton className="h-96 w-full" />;
+  const plan = data?.plan;
+
+  const filteredItems = useMemo(
+    () => (plan?.items ?? []).filter((item) => filter === "all" || item.nature === filter),
+    [plan, filter],
+  );
+
+  const filteredEvents = useMemo(
+    () => (plan?.events ?? []).filter((event) => filter === "all" || event.nature === filter),
+    [plan, filter],
+  );
+
+  if (isPending || !data || !plan) return <Skeleton className="h-96 w-full" />;
 
   const { progress, evidence, summary } = data;
-  const nextSteps = progress.filter((p) => !p.meetsTarget).slice(0, 4);
+  const nextSteps = plan.items.filter((i) => i.stage !== "acquired").slice(0, 4);
   const validatedCount = evidence.filter((e) => e.status === "validated").length;
 
   return (
     <div className="space-y-10">
       <SectionHeading
-        title="Mon Passeport Éducatif Médical"
+        title="Mon Passeport Éducatif"
         level={1}
         description="Connaissances, compétences simulées et compétences en situation réelle"
       />
@@ -157,9 +116,9 @@ export function PassportView() {
               <CardContent>
                 <ul className="space-y-1 text-sm text-muted-foreground">
                   {nextSteps.map((item) => (
-                    <li key={item.outcome.id}>
-                      <span className="font-mono text-xs">{item.outcome.code}</span>{" "}
-                      {item.outcome.label}
+                    <li key={item.id}>
+                      <span className="font-mono text-xs">{item.code}</span> {item.milestoneLabel} —{" "}
+                      {new Date(item.dueOn).toLocaleDateString("fr-FR")}
                     </li>
                   ))}
                 </ul>
@@ -169,36 +128,129 @@ export function PassportView() {
         </div>
       </section>
 
-      {CATEGORIES.map((category) => {
-        const items = progress.filter((p) => p.outcome.nature === category.nature);
-        return (
-          <section key={category.nature} aria-labelledby={category.id}>
-            <SectionHeading
-              id={category.id}
-              title={category.title}
-              description={category.description}
-              action={
-                <Badge variant="outline" className="font-normal">
-                  {items.filter((i) => i.meetsTarget).length} / {items.length} au niveau cible
-                </Badge>
-              }
-            />
-            {items.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                Aucun acquis de cette catégorie dans ce programme.
-              </p>
-            ) : (
-              <ul className="space-y-4">
-                {items.map((item) => (
-                  <li key={item.outcome.id}>
-                    <OutcomeCard item={item} evidence={evidence} />
-                  </li>
+      <section aria-labelledby="titre-plan" className="space-y-4">
+        <SectionHeading
+          id="titre-plan"
+          title="Plan d'acquisition"
+          description="Une seule source de données, quatre représentations. Les plans connaissances et compétences sont distingués par filtre."
+          action={<Badge variant="outline">Prototype — non enregistré</Badge>}
+        />
+
+        <div className="flex flex-wrap items-end gap-4">
+          <div className="space-y-1">
+            <Label htmlFor="filtre-plan">Filtrer le plan</Label>
+            <Select value={filter} onValueChange={(value) => setFilter(value as PlanFilter)}>
+              <SelectTrigger id="filtre-plan" className="w-72">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {FILTERS.map((f) => (
+                  <SelectItem key={f.value} value={f.value}>
+                    {f.label}
+                  </SelectItem>
                 ))}
-              </ul>
-            )}
-          </section>
-        );
-      })}
+              </SelectContent>
+            </Select>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            {filter === "knowledge"
+              ? TRACK_LABELS_FR.knowledge
+              : filter === "all"
+                ? `${TRACK_LABELS_FR.knowledge} et ${TRACK_LABELS_FR.competence.toLowerCase()}`
+                : TRACK_LABELS_FR.competence}{" "}
+            · {filteredItems.length} élément(s)
+          </p>
+        </div>
+
+        <Tabs value={view} onValueChange={(value) => setView(value as PassportViewMode)}>
+          <TabsList aria-label="Choisir une vue du passeport">
+            {VIEW_TABS.map((tab) => (
+              <TabsTrigger key={tab.value} value={tab.value}>
+                {tab.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+
+          <TabsContent value="list" className="mt-6">
+            <ListView
+              progress={progress}
+              planItems={filteredItems}
+              evidence={evidence}
+              onProposeChange={setDialogItem}
+            />
+          </TabsContent>
+          <TabsContent value="kanban" className="mt-6">
+            <KanbanView items={filteredItems} onProposeChange={setDialogItem} />
+          </TabsContent>
+          <TabsContent value="gantt" className="mt-6">
+            <GanttView items={filteredItems} range={plan.range} />
+          </TabsContent>
+          <TabsContent value="calendar" className="mt-6">
+            <CalendarView events={filteredEvents} />
+          </TabsContent>
+        </Tabs>
+      </section>
+
+      <section aria-labelledby="titre-regles" className="space-y-4">
+        <SectionHeading
+          id="titre-regles"
+          title="Modifier mon plan : règles de validation"
+          description="Prototype : aucune demande n'est enregistrée ni transmise."
+        />
+        <ul className="grid gap-3 md:grid-cols-3">
+          {IMPACTS.map((impact) => (
+            <li key={impact} className="rounded-lg border border-border bg-card p-4">
+              <p className="text-sm font-medium">{IMPACT_LABELS_FR[impact]}</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {APPROVAL_RULE_LABELS_FR[approvalRuleForImpact(impact)]}
+              </p>
+            </li>
+          ))}
+        </ul>
+
+        <div>
+          <h3 className="mb-2 text-sm font-semibold">Mes demandes simulées</h3>
+          {requests.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Aucune demande. Utilisez « Proposer une modification » sur un élément planifié.
+            </p>
+          ) : (
+            <ul className="divide-y divide-border rounded-lg border border-border bg-card">
+              {requests.map((request) => {
+                const item = plan.items.find((i) => i.id === request.itemId);
+                return (
+                  <li key={request.id} className="flex flex-wrap items-center gap-2 px-4 py-3">
+                    <span className="font-mono text-xs">{item?.code ?? request.itemId}</span>
+                    <span className="text-sm">
+                      {request.requestedDate
+                        ? `Nouvelle date : ${new Date(request.requestedDate).toLocaleDateString("fr-FR")}`
+                        : `Nouveau rythme : ${request.requestedPace}`}
+                    </span>
+                    <Badge variant="secondary">
+                      {PLAN_CHANGE_STATUS_LABELS_FR[request.status]}
+                    </Badge>
+                    <Badge variant="outline" className="ms-auto font-normal">
+                      {APPROVAL_RULE_LABELS_FR[request.approvalRule]}
+                    </Badge>
+                    <p className="w-full text-xs text-muted-foreground">
+                      Justification : {request.justification} · Demande simulée, non enregistrée.
+                    </p>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          <p className="mt-2 text-xs text-muted-foreground">
+            Statuts prévus : {Object.values(PLAN_CHANGE_STATUS_LABELS_FR).join(" · ")}.
+          </p>
+        </div>
+      </section>
+
+      <PlanChangeRequestDialog
+        item={dialogItem}
+        onClose={() => setDialogItem(null)}
+        onCreate={(request) => setRequests((prev) => [request, ...prev])}
+      />
     </div>
   );
 }

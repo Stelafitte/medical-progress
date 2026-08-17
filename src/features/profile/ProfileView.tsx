@@ -9,6 +9,8 @@ import { Label } from "@/components/ui/label";
 import { ROLE_LABELS_FR, rolesInContext } from "@/domain/roles";
 import * as fx from "@/infrastructure/mock/fixtures";
 import { initials } from "@/lib/initials";
+import { AccountSecuritySection } from "./AccountSecuritySection";
+import { PassportVisibilitySection } from "./PassportVisibilitySection";
 
 export function ProfileView() {
   const { person, programs, enrollments, roles } = useSession();
@@ -122,10 +124,14 @@ export function ProfileView() {
         ) : null}
       </section>
 
+      <AccountSecuritySection />
+
+      <PassportVisibilitySection />
+
       <p className="text-sm text-muted-foreground">
         Pour votre progression dans le programme sélectionné, ouvrez{" "}
         <Link to="/espace/passeport" className="underline">
-          Mon Passeport Éducatif Médical
+          Mon Passeport Éducatif
         </Link>
         .
       </p>
