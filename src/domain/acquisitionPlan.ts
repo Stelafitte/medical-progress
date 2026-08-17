@@ -152,15 +152,12 @@ export function approvalRuleForImpact(
     case "personal_pace":
       return "auto_accept";
     case "clinical_competence":
-      return context.hasPlacementAssignment === false
-        ? "teacher_or_admin"
-        : "placement_supervisor";
+      return context.hasPlacementAssignment === false ? "teacher_or_admin" : "placement_supervisor";
     case "official_deadline":
     default:
       return "teacher_or_admin";
   }
 }
-
 
 export interface PlanChangeRequestDraft {
   readonly itemId: OutcomeId;

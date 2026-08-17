@@ -63,12 +63,12 @@ describe("plan d'acquisition", () => {
     expect(approvalRuleForImpact("clinical_competence")).toBe("placement_supervisor");
     // Sans stage assigné, exiger un encadrant rendrait la demande indécidable :
     // enseignant/administrateur statue provisoirement sur le calendrier.
-    expect(
-      approvalRuleForImpact("clinical_competence", { hasPlacementAssignment: false }),
-    ).toBe("teacher_or_admin");
-    expect(
-      approvalRuleForImpact("clinical_competence", { hasPlacementAssignment: true }),
-    ).toBe("placement_supervisor");
+    expect(approvalRuleForImpact("clinical_competence", { hasPlacementAssignment: false })).toBe(
+      "teacher_or_admin",
+    );
+    expect(approvalRuleForImpact("clinical_competence", { hasPlacementAssignment: true })).toBe(
+      "placement_supervisor",
+    );
   });
 
   it("exige une justification et une modification demandée", () => {
