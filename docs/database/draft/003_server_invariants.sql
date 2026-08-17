@@ -402,26 +402,12 @@ create trigger aptid_immutable
 --   * les fonctions concernées ont EXECUTE révoqué pour tous les rôles (§13)
 --     et ne s'exécutent qu'en trigger.
 -- =====================================================================
-create or replace function public.is_internal_plan_writer()
-returns boolean
-language sql
-stable
-security invoker
-set search_path = pg_catalog, public
-as $$
-  select current_user = 'postgres'
-$$;
-comment on function public.is_internal_plan_writer() is
-  'Vrai uniquement dans le contexte effectif d''une fonction SECURITY DEFINER '
-  'possédée par postgres. Ne dépend d''aucun GUC positionnable par un client.';
--- EXECUTE reste ouvert : cette fonction est appelée DANS le corps des triggers
--- INVOKER (§8, §11), qui s'exécutent avec le rôle appelant et ont donc besoin du
--- privilège. Elle ne révèle et n'accorde rien : appelée par authenticated ou
--- service_role, elle répond toujours false.
-alter function public.is_internal_plan_writer() owner to postgres;
-grant execute on function public.is_internal_plan_writer()
-  to authenticated, service_role;
-revoke all on function public.is_internal_plan_writer() from anon;
+-- Aucun helper SQL n'est introduit pour ce test : un appel de fonction imbriqué
+-- depuis un trigger SECURITY INVOKER exigerait EXECUTE pour le rôle appelant et
+-- pourrait échouer en `permission denied`, ce qui bloquerait aussi les écritures
+-- légitimes (progress_state, édition d'un brouillon, draft -> pending).
+-- Chaque trigger évalue donc directement, dans son bloc declare :
+--     _internal boolean := (current_user = 'postgres');
 
 -- =====================================================================
 -- 7. Dérivation de l'impact et du rôle décideur
@@ -538,7 +524,9 @@ security invoker
 set search_path = pg_catalog, public
 as $$
 declare
-  _internal boolean := public.is_internal_plan_writer();
+  -- Contexte effectif, évalué sans appel de fonction imbriqué (cf. §6.bis) :
+  -- vrai uniquement dans une fonction SECURITY DEFINER possédée par postgres.
+  _internal boolean := (current_user = 'postgres');
 begin
   -- Identité et demandeur non falsifiables après création.
   if new.plan_item_id <> old.plan_item_id
@@ -765,7 +753,9 @@ security invoker
 set search_path = pg_catalog, public
 as $$
 declare
-  _internal boolean := public.is_internal_plan_writer();
+  -- Contexte effectif, évalué sans appel de fonction imbriqué (cf. §6.bis) :
+  -- vrai uniquement dans une fonction SECURITY DEFINER possédée par postgres.
+  _internal boolean := (current_user = 'postgres');
 begin
   if new.plan_id <> old.plan_id
      or new.enrollment_id <> old.enrollment_id
@@ -882,6 +872,10 @@ end $$;
 -- current_user = 'postgres' (§6.bis), atteignable uniquement à l'intérieur des
 -- fonctions SECURITY DEFINER possédées par postgres ci-dessus, dont l'EXECUTE
 -- est révoqué pour PUBLIC, anon, authenticated et service_role.
+-- Contrôle statique attendu : `rg -n "is_internal_plan_writer|current_setting\('app\." .`
+-- ne doit renvoyer AUCUNE définition ni référence, et les deux triggers INVOKER
+-- (§8, §11) doivent tester `current_user = 'postgres'` en ligne, sans appel de
+-- fonction, pour ne dépendre d'aucun privilège EXECUTE.
 
 
 -- FIN — DRAFT — DO NOT EXECUTE
