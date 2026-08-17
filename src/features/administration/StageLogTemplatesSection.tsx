@@ -108,7 +108,8 @@ export function StageLogTemplatesSection() {
                     <ul className="mt-1 list-disc space-y-1 ps-5 text-muted-foreground">
                       {template.objectives.map((objective) => (
                         <li key={objective.key}>
-                          {objective.label} — {objective.quota} ({FREQUENCY_FR[objective.frequency]})
+                          {objective.label} — {objective.quota} ({FREQUENCY_FR[objective.frequency]}
+                          )
                         </li>
                       ))}
                     </ul>
@@ -147,7 +148,9 @@ export function StageLogTemplatesSection() {
                     </Badge>
                     <Badge variant="outline">
                       Validation responsable :{" "}
-                      {template.photoPolicy.supervisorValidationRequired ? "requise" : "non requise"}
+                      {template.photoPolicy.supervisorValidationRequired
+                        ? "requise"
+                        : "non requise"}
                     </Badge>
                     <Badge variant="outline">
                       Objet personnalisé :{" "}

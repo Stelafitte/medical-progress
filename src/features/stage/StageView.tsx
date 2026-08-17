@@ -9,7 +9,6 @@ import { ROLE_LABELS_FR, rolesInContext } from "@/domain/roles";
 import { StageLogBook } from "@/features/stage/StageLogBook";
 import { StageLogsToValidate } from "@/features/stage/StageLogReviewSection";
 
-
 const STATUS_FR: Record<string, string> = {
   planned: "à venir",
   in_progress: "en cours",
@@ -125,4 +124,3 @@ export function StageView() {
     </div>
   );
 }
-

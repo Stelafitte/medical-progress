@@ -133,8 +133,8 @@ export function StageLogsReceived() {
                     </Badge>
                   </div>
                   <CardDescription>
-                    Modèle {log.templateId} · version {log.templateVersion} ·{" "}
-                    {log.entries.length} entrée(s)
+                    Modèle {log.templateId} · version {log.templateVersion} · {log.entries.length}{" "}
+                    entrée(s)
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="text-sm text-muted-foreground">

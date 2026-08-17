@@ -104,12 +104,7 @@ export interface StageLogTemplate extends Entity<StageLogTemplateId> {
 /* Carnet, entrées, pièces jointes                                     */
 /* ------------------------------------------------------------------ */
 
-export type StageLogStatus =
-  | "draft"
-  | "submitted"
-  | "needs_revision"
-  | "validated"
-  | "transmitted";
+export type StageLogStatus = "draft" | "submitted" | "needs_revision" | "validated" | "transmitted";
 
 export const STAGE_LOG_STATUS_LABELS_FR: Record<StageLogStatus, string> = {
   draft: "brouillon",
@@ -171,11 +166,7 @@ export interface StageLog extends Entity<StageLogId> {
 /* ------------------------------------------------------------------ */
 
 export type PhotoChecklistKey =
-  | "no_name"
-  | "no_birth_date"
-  | "no_record_identifier"
-  | "no_barcode"
-  | "framing_limited";
+  "no_name" | "no_birth_date" | "no_record_identifier" | "no_barcode" | "framing_limited";
 
 export interface PhotoChecklistItem {
   readonly key: PhotoChecklistKey;
@@ -193,8 +184,7 @@ export const PHOTO_CHECKLIST: readonly PhotoChecklistItem[] = [
 export const PHOTO_BANNER_FR =
   "Ne photographiez que le fragment demandé. En cas de doute, utilisez la saisie manuelle.";
 
-export const PHOTO_DECLARATION_FR =
-  "Je confirme avoir vérifié l'absence de tout élément nominatif";
+export const PHOTO_DECLARATION_FR = "Je confirme avoir vérifié l'absence de tout élément nominatif";
 
 export const PHOTO_NO_GUARANTEE_FR =
   "Contrôle automatique futur non actif : aucune anonymisation n'est garantie par la plateforme.";
@@ -297,9 +287,7 @@ export function isEntryComplete(template: StageLogTemplate, entry: StageLogEntry
   const requiredPhotos = template.photoPolicy.enabled
     ? template.photoPolicy.allowedObjects.filter((o) => o.required)
     : [];
-  const photosOk = requiredPhotos.every((o) =>
-    entry.photos.some((p) => p.requirementId === o.id),
-  );
+  const photosOk = requiredPhotos.every((o) => entry.photos.some((p) => p.requirementId === o.id));
   return fieldsOk && photosOk;
 }
 
@@ -314,8 +302,7 @@ export function nextStageLogStatus(
   action: StageLogAction,
   actorRoles: readonly RoleName[],
 ): StageLogStatus | null {
-  const isValidator =
-    actorRoles.includes("placement_supervisor") || actorRoles.includes("teacher");
+  const isValidator = actorRoles.includes("placement_supervisor") || actorRoles.includes("teacher");
   const isAdmin = actorRoles.includes("administrator");
   switch (action) {
     case "submit":

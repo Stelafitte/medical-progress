@@ -80,6 +80,5 @@ describe("droits et visibilité simulés", () => {
     expect(adminTemplates.replace(/\s+/g, " ")).toContain(
       "aucune option ne permet de demander un document intégral",
     );
-
   });
 });

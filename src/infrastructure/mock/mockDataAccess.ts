@@ -6,7 +6,6 @@ import type { DataAccess } from "@/application/ports/repositories";
 import * as fx from "./fixtures";
 import * as slfx from "./stageLogFixtures";
 
-
 const clone = <T>(value: T): T => value;
 const ok = <T>(value: T): Promise<T> => Promise.resolve(clone(value));
 
@@ -75,12 +74,12 @@ export const mockDataAccess: DataAccess = {
     listLogsReceived: (programId) =>
       ok(
         slfx.stageLogs.filter(
-          (l) => l.programId === programId && (l.status === "validated" || l.status === "transmitted"),
+          (l) =>
+            l.programId === programId && (l.status === "validated" || l.status === "transmitted"),
         ),
       ),
   },
   audit: {
     listRecentEvents: (limit = 20) => ok(fx.auditEvents.slice(0, limit)),
   },
-
 };

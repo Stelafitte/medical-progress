@@ -79,7 +79,12 @@ export const stageLogTemplates: readonly StageLogTemplate[] = [
     ],
     objectives: [
       { key: "ett", label: "ETT complètes réalisées", quota: 50, frequency: "per_placement" },
-      { key: "stress", label: "Échographies de stress observées", quota: 5, frequency: "per_semester" },
+      {
+        key: "stress",
+        label: "Échographies de stress observées",
+        quota: 5,
+        frequency: "per_semester",
+      },
       { key: "weekly", label: "Entrées de carnet par semaine", quota: 5, frequency: "weekly" },
     ],
     completenessRules: [
@@ -159,8 +164,18 @@ export const stageLogTemplates: readonly StageLogTemplate[] = [
       },
     ],
     objectives: [
-      { key: "situations", label: "Situations cliniques documentées", quota: 12, frequency: "per_placement" },
-      { key: "ecg", label: "ECG interprétés et contresignés", quota: 20, frequency: "per_placement" },
+      {
+        key: "situations",
+        label: "Situations cliniques documentées",
+        quota: 12,
+        frequency: "per_placement",
+      },
+      {
+        key: "ecg",
+        label: "ECG interprétés et contresignés",
+        quota: 20,
+        frequency: "per_placement",
+      },
       { key: "weekly", label: "Entrées de carnet par semaine", quota: 2, frequency: "weekly" },
     ],
     completenessRules: [

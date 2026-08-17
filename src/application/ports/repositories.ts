@@ -95,7 +95,6 @@ export interface DataAccess {
   readonly isMock: boolean;
 }
 
-
 /**
  * Adapter de migration (non implémenté dans cette itération).
  * Sert de point d'ancrage documenté pour la réintégration sélective des

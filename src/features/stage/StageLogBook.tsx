@@ -283,8 +283,7 @@ export function StageLogBook() {
         <CardHeader>
           <CardTitle className="text-base">Entrées du carnet ({entries.length})</CardTitle>
           <CardDescription>
-            Objectifs :{" "}
-            {template.objectives.map((o) => `${o.label} — ${o.quota}`).join(" · ")}
+            Objectifs : {template.objectives.map((o) => `${o.label} — ${o.quota}`).join(" · ")}
           </CardDescription>
         </CardHeader>
         <CardContent>

@@ -144,7 +144,6 @@ export const enrollments: readonly Enrollment[] = [
   },
 ];
 
-
 export const roleAssignments: readonly RoleAssignment[] = [
   {
     personId: "per-learner",
