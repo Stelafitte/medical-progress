@@ -5,13 +5,13 @@ import { AppShell } from "@/components/layout/app-shell";
 export const Route = createFileRoute("/espace")({
   head: () => ({
     meta: [
-      { title: "Espace apprenant — Passeport Éducatif Médical" },
+      { title: "Espace apprenant — Mon Passeport Éducatif" },
       {
         name: "description",
         content:
-          "Espace authentifié simulé du Passeport Éducatif Médical : tableau de bord, passeport de compétences et administration.",
+          "Espace authentifié simulé de Mon Passeport Éducatif : tableau de bord, passeport de compétences et administration.",
       },
-      { property: "og:title", content: "Espace apprenant — Passeport Éducatif Médical" },
+      { property: "og:title", content: "Espace apprenant — Mon Passeport Éducatif" },
       {
         property: "og:description",
         content: "Tableau de bord, passeport de compétences et administration multi-programmes.",

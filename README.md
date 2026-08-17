@@ -1,4 +1,4 @@
-# Passeport Éducatif Médical — socle (itération 1)
+# Mon Passeport Éducatif — socle (itération 1)
 
 Projet **indépendant**. Aucun code, table ou API d'un projet existant (notamment
 `dfasm-learnhub`) n'est utilisé, remixé ni modifié.
@@ -47,7 +47,7 @@ src/routes/              Pages fines (TanStack Router) déléguant à src/featur
 
 | Route                    | Contenu                                                                |
 | ------------------------ | ---------------------------------------------------------------------- |
-| `/`                      | Accueil sobre « Passeport Éducatif Médical »                           |
+| `/`                      | Accueil sobre « Mon Passeport Éducatif »                           |
 | `/espace`                | Shell authentifié **simulé** + sélecteur de programme, tableau de bord |
 | `/espace/passeport`      | Preuves et niveaux de maîtrise (données factices)                      |
 | `/espace/stage`          | Affectations de stage, encadrants, preuves de terrain (simulé)          |

@@ -1,5 +1,5 @@
 /**
- * Modèle métier universel du Passeport Éducatif Médical.
+ * Modèle métier universel de Mon Passeport Éducatif.
  *
  * Ce module ne contient AUCUNE dépendance framework ni accès données :
  * uniquement des types et invariants de domaine, partageables entre

@@ -6,13 +6,13 @@ import { AdministrationView } from "@/features/administration/AdministrationView
 export const Route = createFileRoute("/espace/administration")({
   head: () => ({
     meta: [
-      { title: "Administration des programmes — Passeport Éducatif Médical" },
+      { title: "Administration des programmes — Mon Passeport Éducatif" },
       {
         name: "description",
         content:
           "Vue administrative minimale : programmes, versions de référentiel et cohortes du socle multi-programmes.",
       },
-      { property: "og:title", content: "Administration — Passeport Éducatif Médical" },
+      { property: "og:title", content: "Administration — Mon Passeport Éducatif" },
       {
         property: "og:description",
         content: "Programmes, référentiels et cohortes gérés par un moteur commun configurable.",
