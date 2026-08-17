@@ -50,7 +50,7 @@ Statut : **conception non exécutée**. Aucune base activée, aucune migration c
 | D40 | `change_impact` et `required_approver_role` **dérivés par trigger**, non accordés au client | sinon un apprenant requalifierait une échéance officielle en simple ajustement personnel |
 | D41 | Auto-acceptation d'un changement strictement personnel dans la fenêtre officielle | une validation humaine pour un ajustement sans impact institutionnel n'a aucune valeur, et sature les enseignants |
 | D42 | Une demande clinique (stage ou `real_competence`) exige l'encadrant **de ce stage** | cohérence avec la règle de validation des compétences réelles : un enseignant ne se substitue pas à l'encadrant du terrain |
-| D43 | `plan_change_decisions` append-only, application atomique par trigger `AFTER INSERT` | la décision et son effet sur le plan ne peuvent pas divergerer ; une erreur se corrige par une nouvelle ligne |
+| D43 | `plan_change_decisions` append-only, application atomique par trigger `AFTER INSERT` | la décision et son effet sur le plan ne peuvent pas diverger ; une erreur se corrige par une nouvelle ligne |
 | D44 | Drapeau transactionnel `app.plan_change_applying` plutôt qu'une RPC d'application | aucune surface d'écriture privilégiée exposée ; le drapeau seul ne confère aucun GRANT de colonne |
 | D45 | `passport_share_preferences` exclues de **toute** condition de policy | des préférences de confort ne doivent jamais pouvoir masquer un dossier institutionnel à un professionnel autorisé |
 | D46 | Aucune contrainte déclarative anti-cycle sur les prérequis de template | non exprimable en SQL déclaratif : vérifié par le backend à la publication, en même temps que le figeage |
@@ -108,12 +108,12 @@ Statut : **conception non exécutée**. Aucune base activée, aucune migration c
     (seed manuel côté base, hors application) ?
 11. **Co-signature** : si une preuve exige deux validations, le trigger de dérivation doit
     compter les décisions au lieu de lire la dernière — à trancher avant provisioning.
-12 bis. **Rythme (`proposed_pace`)** : quelles clés JSONB sont acceptées, et faut-il
-    les typer en colonnes dès le Lot 2 ?
-13. **Plan multiple** : un apprenant peut-il détenir deux plans actifs (ex. remédiation)
-    ? Aujourd'hui l'index partiel `ap_one_active_per_enrollment` l'interdit.
-14. **Recalcul après nouvelle version de template** : migration des plans en cours,
-    opt-in ou obligatoire ? À trancher avant provisioning.
-15. **Export personnel** : format et rétention des exports générés depuis les
-    préférences de partage (aucun mécanisme d'export n'est conçu dans ce lot).
 12. **Quarantaine antivirus** : qui a le droit de lever un `processing_status = 'quarantined'` ?
+13. **Rythme (`proposed_pace`)** : quelles clés JSONB sont acceptées, et faut-il les
+    typer en colonnes dès le Lot 2 ?
+14. **Plan multiple** : un apprenant peut-il détenir deux plans actifs (ex. remédiation) ?
+    Aujourd'hui l'index partiel `ap_one_active_per_enrollment` l'interdit.
+15. **Recalcul après nouvelle version de template** : migration des plans en cours,
+    opt-in ou obligatoire ?
+16. **Export personnel** : format et rétention des exports générés depuis les préférences
+    de partage (aucun mécanisme d'export n'est conçu dans ce lot).
