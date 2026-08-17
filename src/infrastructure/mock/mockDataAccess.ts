@@ -52,7 +52,33 @@ export const mockDataAccess: DataAccess = {
       return ok(fx.planSchedule.filter((s) => ids.has(s.outcomeId)));
     },
   },
+  stageLogs: {
+    listTemplates: (programId) =>
+      ok(
+        programId
+          ? slfx.stageLogTemplates.filter((t) => t.programId === programId)
+          : slfx.stageLogTemplates,
+      ),
+    listLogsForEnrollment: (enrollmentId) =>
+      ok(slfx.stageLogs.filter((l) => l.enrollmentId === enrollmentId)),
+    listLogsToValidate: (placementAssignmentIds) =>
+      ok(
+        slfx.stageLogs.filter(
+          (l) =>
+            l.status === "submitted" &&
+            !!l.placementAssignmentId &&
+            placementAssignmentIds.includes(l.placementAssignmentId),
+        ),
+      ),
+    listLogsReceived: (programId) =>
+      ok(
+        slfx.stageLogs.filter(
+          (l) => l.programId === programId && (l.status === "validated" || l.status === "transmitted"),
+        ),
+      ),
+  },
   audit: {
     listRecentEvents: (limit = 20) => ok(fx.auditEvents.slice(0, limit)),
   },
+
 };
