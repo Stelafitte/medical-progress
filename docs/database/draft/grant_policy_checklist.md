@@ -138,7 +138,7 @@ Contrôles à repasser :
    (003 §6.bis) : aucun helper SQL n'est appelé, donc aucune écriture légitime ne
    peut échouer sur un EXECUTE manquant. Aucun custom GUC n'autorise quoi que
    ce soit : le drapeau `app.plan_change_applying` a été supprimé, et
-   `is_internal_plan_writer()` n'existe plus (T39).
+   et l'ancien helper interne a été entièrement supprimé (T39).
    Le seul GRANT UPDATE client sur `acquisition_plan_items` est `progress_state`,
    et le commentaire du GRANT dans 001 §13.9 énonce exactement ce privilège.
 4. `plan_change_decisions` : ni policy ni GRANT UPDATE/DELETE, plus un trigger

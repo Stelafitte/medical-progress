@@ -872,7 +872,7 @@ end $$;
 -- current_user = 'postgres' (§6.bis), atteignable uniquement à l'intérieur des
 -- fonctions SECURITY DEFINER possédées par postgres ci-dessus, dont l'EXECUTE
 -- est révoqué pour PUBLIC, anon, authenticated et service_role.
--- Contrôle statique attendu : `rg -n "is_internal_plan_writer|current_setting\('app\." .`
+-- Contrôle statique attendu : `rg -n "_plan_writer|current_setting\('app\." .`
 -- ne doit renvoyer AUCUNE définition ni référence, et les deux triggers INVOKER
 -- (§8, §11) doivent tester `current_user = 'postgres'` en ligne, sans appel de
 -- fonction, pour ne dépendre d'aucun privilège EXECUTE.

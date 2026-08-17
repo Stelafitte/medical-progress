@@ -702,7 +702,7 @@ rollback;
 
 -- T39. Aucun appel de fonction imbriqué dans les triggers INVOKER
 --   Contrôle statique :
---   -- rg -n "is_internal_plan_writer" docs/database/draft
+--   -- rg -n "_plan_writer" docs/database/draft
 --   --   => aucun résultat (définition supprimée, plus aucune référence)
 --   -- rg -n "_internal boolean" 003_server_invariants.sql
 --   --   => exactement deux occurrences, toutes deux
@@ -764,7 +764,8 @@ rollback;
 --     ne doit rien retourner d'exécutable (T36).
 -- 10. anon : aucun privilège sur les 8 nouvelles tables (001 §13.9, revoke
 --     explicite table par table).
--- 12. Contrôle statique : `rg -n "is_internal_plan_writer" .` ne renvoie AUCUNE
---     définition ni référence dans tout le dossier draft (T39).
+-- 12. Contrôle statique : `rg -n "_plan_writer" .` ne renvoie AUCUNE définition
+--     ni référence dans tout le dossier draft — l'ancien helper interne a été
+--     supprimé (T39).
 
 -- FIN — DRAFT — DO NOT EXECUTE
