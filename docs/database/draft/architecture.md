@@ -35,7 +35,28 @@ erDiagram
   PROFILES ||--o{ AI_USAGE_EVENTS : ""
   PROFILES ||--o{ AUDIT_EVENTS : "acteur"
   ENROLLMENTS ||--o{ AI_USAGE_EVENTS : "imputation quota"
+  PROGRAMS ||--o{ ACQUISITION_PLAN_TEMPLATES : "modèles versionnés"
+  CURRICULUM_VERSIONS ||--o{ ACQUISITION_PLAN_TEMPLATES : ""
+  COHORTS ||--o{ ACQUISITION_PLAN_TEMPLATES : "optionnel"
+  ACQUISITION_PLAN_TEMPLATES ||--o{ ACQUISITION_PLAN_TEMPLATE_ITEMS : ""
+  ACQUISITION_PLAN_TEMPLATE_ITEMS ||--o{ ACQUISITION_PLAN_TEMPLATE_ITEM_DEPENDENCIES : "prérequis"
+  OUTCOMES ||--o{ ACQUISITION_PLAN_TEMPLATE_ITEMS : "cible"
+  ACQUISITION_PLAN_TEMPLATES ||--o{ ACQUISITION_PLANS : "instancié en"
+  ENROLLMENTS ||--o{ ACQUISITION_PLANS : "1 actif"
+  ACQUISITION_PLANS ||--o{ ACQUISITION_PLAN_ITEMS : ""
+  OUTCOMES ||--o{ ACQUISITION_PLAN_ITEMS : "cible"
+  PLACEMENT_ASSIGNMENTS ||--o{ ACQUISITION_PLAN_ITEMS : "contexte stage"
+  ACQUISITION_PLAN_ITEMS ||--o{ PLAN_CHANGE_REQUESTS : "demande"
+  PROFILES ||--o{ PLAN_CHANGE_REQUESTS : "demandeur"
+  PLAN_CHANGE_REQUESTS ||--o{ PLAN_CHANGE_DECISIONS : "append-only"
+  PROFILES ||--o{ PLAN_CHANGE_DECISIONS : "décideur"
+  ENROLLMENTS ||--|| PASSPORT_SHARE_PREFERENCES : "partage personnel"
 ```
+
+Le plan d'acquisition est détaillé dans `plan_acquisition_architecture.md` :
+versioning des templates, projections Liste/Kanban/Gantt/Calendrier sur
+`acquisition_plan_items`, séparation dates officielles / cible personnelle,
+dérivation de l'impact d'une demande et audit.
 
 ## 2. Choix de normalisation
 
@@ -153,6 +174,28 @@ Conséquences vérifiées par les tests d'acceptation :
   d'autorisation applicative. Seuls l'immuabilité de la provenance et le gel de
   l'identité d'une preuve restent opposables à `service_role`.
 
+### 3.3 quater Plan d'acquisition : template → plan → demande → décision
+
+```text
+admin              template draft ──publication (serveur : figeage + anti-cycle)──► published
+                                                     │
+serveur            instanciation d'une version ───────┘
+                   -> acquisition_plans + acquisition_plan_items (dépliage)
+apprenant          ajuste learner_target_at / progress_state (dans la fenêtre officielle)
+apprenant          plan_change_requests : draft ──submit──► pending
+serveur (trigger)  dérive change_impact + required_approver_role
+                     auto_accept          -> appliqué immédiatement, audité
+                     teacher_or_admin     -> attente d'une décision de portée
+                     placement_supervisor -> attente de l'encadrant DU stage
+décideur           plan_change_decisions (append-only) ──trigger──► application atomique
+                   des seuls champs proposés + audit_events
+```
+
+Rappel structurant : **rien de ce flux ne produit une acquisition**.
+`progress_state = 'done'` signifie « action planifiée terminée ». La maîtrise
+reste dérivée de `evidence` + `evidence_validations` (§3.4), et une compétence
+réelle exige toujours une validation par un tiers.
+
 ### 3.4 Calcul de progression
 Toujours dérivé, en lecture : preuves comptables par nature d'acquis
 (`knowledge` : quiz / validation humaine ; `simulated_competence` : simulation /
@@ -238,6 +281,13 @@ Rollback :
 | `Provenance` | colonnes `source_system` / `source_id` / `imported_at` / `import_batch_id` |
 | `Person` | `profiles` (l'email reste dans `auth.users`) |
 | `Evidence.metrics` | non repris : remplacé par colonnes typées + `context` JSONB |
+| `AcquisitionPlanItem` | `acquisition_plan_items` |
+| `AcquisitionPlanTrack` / `AcquisitionTrack` | dérivé de `outcomes.nature` (aucune colonne `track`) |
+| `PlanItemStage` (`to_plan`/`in_progress`/`to_validate`) | `plan_item_progress_state` (mêmes valeurs ; `acquired` n'est pas stocké) |
+| `PlanChangeRequest` | `plan_change_requests` (+ `plan_change_decisions`) |
+| `PlanChangeImpact` | `plan_change_impact` (6 valeurs SQL regroupées en 3 côté UI) |
+| `PlanApprovalRule` | `plan_approval_rule` |
+| `PlanChangeStatus` (`accepted`) | `plan_change_status` (`approved`, + `withdrawn`) |
 | `ResourceAsset` (non nécessaire au Lot 1) | `learning_resource_assets` / `resource_asset_kind` / `storage_provider` / `asset_processing_status` |
 
 Aucun type TypeScript n'a été ajouté pour les assets : les repositories mock n'exposent

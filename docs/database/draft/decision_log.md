@@ -42,6 +42,19 @@ Statut : **conception non exécutée**. Aucune base activée, aucune migration c
 | D33 | Trigger générique `set_updated_at()` (`clock_timestamp()`), `updated_at` retiré des GRANT de colonnes | l'horodatage de modification est une donnée serveur ; `clock_timestamp()` distingue deux écritures d'un même batch |
 | D34 | `revoke ... from anon` sur la **liste explicite** des tables du draft | `revoke all on all tables in schema public` toucherait par surprise des objets `public` ajoutés plus tard par une autre fonctionnalité ou une intégration managée |
 
+| D35 | Template de plan **versionné et immuable une fois publié** | un cursus publié est opposable : une évolution pédagogique crée une nouvelle `version_number`, les plans déjà instanciés restent rattachés à leur version d'engagement |
+| D36 | Piste connaissances/compétences **dérivée** de `outcomes.nature`, aucune colonne `track` | une colonne dupliquée finirait par contredire la nature de l'acquis ; la vérité reste unique |
+| D37 | `acquisition_plan_items` unique source des vues Liste/Kanban/Gantt/Calendrier | une table par vue dupliquerait la vérité et divergerait ; ajouter une vue n'ajoute aucune table |
+| D38 | `progress_state` (dont `done`) est un état de **planification**, jamais d'acquisition | la maîtrise reste dérivée des preuves ; `done` sur un plan ne prouve rien |
+| D39 | Deux colonnes distinctes : dates officielles (institution) et `learner_target_at` (apprenant) | l'apprenant organise son rythme sans jamais déplacer une échéance opposable ; bornage par trigger |
+| D40 | `change_impact` et `required_approver_role` **dérivés par trigger**, non accordés au client | sinon un apprenant requalifierait une échéance officielle en simple ajustement personnel |
+| D41 | Auto-acceptation d'un changement strictement personnel dans la fenêtre officielle | une validation humaine pour un ajustement sans impact institutionnel n'a aucune valeur, et sature les enseignants |
+| D42 | Une demande clinique (stage ou `real_competence`) exige l'encadrant **de ce stage** | cohérence avec la règle de validation des compétences réelles : un enseignant ne se substitue pas à l'encadrant du terrain |
+| D43 | `plan_change_decisions` append-only, application atomique par trigger `AFTER INSERT` | la décision et son effet sur le plan ne peuvent pas diverger ; une erreur se corrige par une nouvelle ligne |
+| D44 | Drapeau transactionnel `app.plan_change_applying` plutôt qu'une RPC d'application | aucune surface d'écriture privilégiée exposée ; le drapeau seul ne confère aucun GRANT de colonne |
+| D45 | `passport_share_preferences` exclues de **toute** condition de policy | des préférences de confort ne doivent jamais pouvoir masquer un dossier institutionnel à un professionnel autorisé |
+| D46 | Aucune contrainte déclarative anti-cycle sur les prérequis de template | non exprimable en SQL déclaratif : vérifié par le backend à la publication, en même temps que le figeage |
+
 ## Alternatives rejetées
 
 | Alternative | Raison du rejet |
@@ -64,6 +77,12 @@ Statut : **conception non exécutée**. Aucune base activée, aucune migration c
 | Écriture des métadonnées d'asset par le staff via la Data API | le client choisirait le chemin, le bucket et le checksum, et pourrait publier un fichier non scanné |
 | Provenance protégée par les seuls `with check` de policy | ne couvre ni l'UPDATE ni `service_role` ; remplacé par le trigger D30 |
 | `updated_at` accordé au client en GRANT de colonne | horodatage falsifiable ; remplacé par le trigger D33 |
+| Colonne `track` sur les items de plan | deuxième vérité face à `outcomes.nature`, divergence garantie |
+| Table par vue (`plan_kanban_cards`, `plan_gantt_bars`, …) | duplication de la vérité et coût de synchronisation, pour zéro gain |
+| Colonne `mastery` ou `progress_percent` sur le plan | contredirait la dérivation par les preuves, cœur du modèle |
+| `status` de demande librement écrit par le client | un apprenant s'auto-approuverait ; borné par trigger |
+| RPC `submit_plan_change_request()` exposée à `authenticated` | même refus que D23 : surface d'écriture privilégiée appelable hors contexte |
+| Préférences de partage utilisées dans les `using` de policy | masquerait un dossier institutionnel à un encadrant ou un enseignant responsable |
 | `revoke all on all tables in schema public from anon` | portée non maîtrisée sur les objets futurs du schéma ; remplacé par D34 |
 
 ## Questions à valider avant provisioning
@@ -90,3 +109,11 @@ Statut : **conception non exécutée**. Aucune base activée, aucune migration c
 11. **Co-signature** : si une preuve exige deux validations, le trigger de dérivation doit
     compter les décisions au lieu de lire la dernière — à trancher avant provisioning.
 12. **Quarantaine antivirus** : qui a le droit de lever un `processing_status = 'quarantined'` ?
+13. **Rythme (`proposed_pace`)** : quelles clés JSONB sont acceptées, et faut-il les
+    typer en colonnes dès le Lot 2 ?
+14. **Plan multiple** : un apprenant peut-il détenir deux plans actifs (ex. remédiation) ?
+    Aujourd'hui l'index partiel `ap_one_active_per_enrollment` l'interdit.
+15. **Recalcul après nouvelle version de template** : migration des plans en cours,
+    opt-in ou obligatoire ?
+16. **Export personnel** : format et rétention des exports générés depuis les préférences
+    de partage (aucun mécanisme d'export n'est conçu dans ce lot).

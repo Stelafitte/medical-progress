@@ -88,12 +88,13 @@ n'est activée, aucun fichier n'existe dans `supabase/migrations/`, aucun SQL n'
 
 | Fichier | Contenu |
 | ------- | ------- |
-| `001_core_schema.sql` | Enums, 20 tables, FK composites, contraintes, index, commentaires, GRANT (dont GRANT de colonnes ; jamais `anon`) |
+| `001_core_schema.sql` | Enums, 28 tables (dont les 8 tables du plan d'acquisition et des préférences de partage), FK composites, FK composites, contraintes, index, commentaires, GRANT (dont GRANT de colonnes ; jamais `anon`) |
 | `002_rls_policies.sql` | RLS sur toutes les tables, helpers d'autorisation à portées exactes, policies séparées par opération |
-| `003_server_invariants.sql` | Triggers serveur : dérivation de `evidence.status`, immutabilité d'identité, provenance legacy immuable (15 tables), `updated_at` imposé (14 tables) |
+| `003_server_invariants.sql` | Triggers serveur : dérivation de `evidence.status`, immutabilité d'identité, provenance legacy immuable (23 tables), `updated_at` imposé (20 tables), immuabilité des templates publiés, dérivation de l'impact d'une demande, transitions de demande, application atomique d'une décision |
 | `rls_matrix.md` | Matrice table × opération × rôle avec conditions d'appartenance et de portée |
 | `grant_policy_checklist.md` | Checklist statique GRANT ↔ POLICY et inventaire des fonctions `SECURITY DEFINER` |
 | `architecture.md` | ER Mermaid, normalisation, portées d'autorisation, flux, import legacy, rollback, limites |
+| `plan_acquisition_architecture.md` | Plan d'acquisition : template versionné → plan individuel → demande → décision, Liste/Kanban/Gantt/Calendrier comme projections d'une source unique, dates officielles vs cible personnelle, mapping frontend ↔ SQL |
 | `storage_architecture.md` | Hébergement des contenus : buckets privés UE, URL signées courtes, métadonnées en base |
 | `tests/rls_acceptance.sql` | Plan de tests transactionnels futurs (`ROLLBACK` final), non exécuté |
 | `decision_log.md` | Décisions, alternatives rejetées, questions à valider avant provisioning |
@@ -102,7 +103,12 @@ Points structurants : la progression n'est jamais stockée (dérivée des preuve
 `evidence_validations` est append-only, `evidence.status = 'validated'` est inatteignable
 depuis le client, aucun utilisateur ne peut s'accorder un rôle ni élargir sa portée, et
 une portée cohorte ou stage n'est jamais promue en portée programme. Les fichiers
-pédagogiques restent hors base : PostgreSQL ne porte que des métadonnées.
+pédagogiques restent hors base : PostgreSQL ne porte que des métadonnées. Côté plan
+d'acquisition : un template publié est immuable (nouvelle version obligatoire),
+`acquisition_plan_items.progress_state` décrit une action planifiée et jamais une
+acquisition, l'impact d'une demande et le rôle décideur sont dérivés côté serveur, le
+journal des décisions est append-only, et les préférences de partage ne modifient
+aucune policy RLS ni la visibilité institutionnelle.
 
 
 ## À prévoir après validation du schéma
