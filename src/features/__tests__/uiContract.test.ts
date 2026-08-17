@@ -16,9 +16,12 @@ const visibility = read("src/features/profile/PassportVisibilitySection.tsx");
 const shell = read("src/components/layout/app-shell.tsx");
 
 describe("terminologie", () => {
-  it("n'utilise plus « Mon Passeport Éducatif Médical »", () => {
-    for (const file of [passportView, passportRoute, profileView]) {
-      expect(file).not.toContain("Mon Passeport Éducatif Médical");
+  const rootRoute = read("src/routes/__root.tsx");
+  const homeRoute = read("src/routes/index.tsx");
+
+  it("n'utilise plus l'ancien nom « Passeport Éducatif Médical »", () => {
+    for (const file of [passportView, passportRoute, profileView, shell, rootRoute, homeRoute]) {
+      expect(file).not.toContain("Passeport Éducatif Médical");
     }
   });
 
@@ -27,10 +30,13 @@ describe("terminologie", () => {
     expect(passportRoute).toContain('{ title: "Mon Passeport Éducatif" }');
   });
 
-  it("conserve le nom de la plateforme", () => {
-    expect(shell).toContain("Passeport Éducatif Médical");
+  it("conserve le nom global de la plateforme dans le shell et les métadonnées", () => {
+    expect(shell).toContain("Mon Passeport Éducatif");
+    expect(rootRoute).toContain('{ title: "Mon Passeport Éducatif" }');
+    expect(rootRoute).toContain('{ property: "og:title", content: "Mon Passeport Éducatif" }');
   });
 });
+
 
 describe("navigation", () => {
   it("place Ressources immédiatement avant Stage", () => {
