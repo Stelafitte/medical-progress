@@ -6,6 +6,8 @@
  * modifier l'UI ni la logique métier.
  */
 import type { PlanScheduleEntry } from "@/domain/acquisitionPlan";
+import type { StageLog, StageLogTemplate } from "@/domain/stageLog";
+
 import type {
   AuditEvent,
   Cohort,
