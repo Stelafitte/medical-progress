@@ -4,6 +4,8 @@
  */
 import type { DataAccess } from "@/application/ports/repositories";
 import * as fx from "./fixtures";
+import * as slfx from "./stageLogFixtures";
+
 
 const clone = <T>(value: T): T => value;
 const ok = <T>(value: T): Promise<T> => Promise.resolve(clone(value));
