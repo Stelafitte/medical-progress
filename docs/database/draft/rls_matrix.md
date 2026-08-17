@@ -171,6 +171,80 @@ utilisables) ; **aucun** privilège d'écriture, aucune policy d'écriture.
 | admin/program | `prog` | `prog` | `prog` | — |
 | admin/platform | all | all | all | all |
 
+### acquisition_plan_templates / _template_items / _item_dependencies
+
+| Rôle | SELECT | INSERT | UPDATE | DELETE |
+| --- | --- | --- | --- | --- |
+| learner | `prog` + `published` (+ sa cohorte si le template est ciblé) | — | — | — |
+| teacher | `prog` ou `cohort` exact | — | — | — |
+| supervisor | — | — | — | — |
+| admin/program | `prog` | `prog` + `draft` | `prog` + `draft` | `prog` + `draft` |
+| admin/platform | all | all | `draft` | `draft` |
+
+`published_at` / `retired_at` ne sont accordés à personne côté client : publier
+est une opération serveur (figeage + vérification d'absence de cycle).
+
+### acquisition_plans
+
+| Rôle | SELECT | INSERT | UPDATE | DELETE |
+| --- | --- | --- | --- | --- |
+| learner | `own` | — | — | — |
+| teacher | `cohort`/`prog` exact | — | — | — |
+| supervisor | — | — | — | — |
+| admin/program | `prog` | — | — | — |
+| service_role | serveur | serveur | serveur | serveur |
+
+Instancier un plan est une opération serveur : aucun GRANT DML client, aucune
+policy DML.
+
+### acquisition_plan_items
+
+| Rôle | SELECT | INSERT | UPDATE | DELETE |
+| --- | --- | --- | --- | --- |
+| learner | `own` | — | `own` — colonnes `learner_target_at`, `progress_state` uniquement | — |
+| teacher | `cohort`/`prog` exact | — | — | — |
+| supervisor | items rattachés à un stage **qu'il supervise** | — | — | — |
+| admin/program | `prog` | — | — | — |
+
+`official_start_at`, `official_due_at`, `sequence`, `is_mandatory` ne sont
+accordés à aucun client : ils changent uniquement par application d'une décision
+approuvée.
+
+### plan_change_requests
+
+| Rôle | SELECT | INSERT | UPDATE | DELETE |
+| --- | --- | --- | --- | --- |
+| learner | `own` | `own` + `draft` + `requested_by = auth.uid()` | `own` : brouillon, `draft→pending`, `draft/pending→withdrawn` | — |
+| teacher | `cohort`/`prog` exact | — | — | — |
+| supervisor | demandes portant sur un item de **son** stage | — | — | — |
+| admin/program | `prog` | — | — | — |
+
+`change_impact`, `required_approver_role`, `submitted_at`, `decided_at`,
+`withdrawn_at` ne sont jamais accordés : dérivés côté serveur. `approved` /
+`rejected` sont inatteignables depuis un client.
+
+### plan_change_decisions (append-only)
+
+| Rôle | SELECT | INSERT | UPDATE | DELETE |
+| --- | --- | --- | --- | --- |
+| learner | demandes qu'il peut lire | — | — | — |
+| teacher | portée exacte | si `required_approver_role = 'teacher_or_admin'` et non-demandeur | — | — |
+| supervisor | ses stages | si `required_approver_role = 'placement_supervisor'` et encadrant **de ce stage** | — | — |
+| admin/program | `prog` | si `required_approver_role = 'teacher_or_admin'` | — | — |
+
+Une demande `auto_accept` n'est décidable par personne : elle est appliquée
+automatiquement à la soumission.
+
+### passport_share_preferences
+
+| Rôle | SELECT | INSERT | UPDATE | DELETE |
+| --- | --- | --- | --- | --- |
+| learner | `own` | `own` | `own` | `own` |
+| teacher / supervisor / admin/program / admin/platform | — | — | — | — |
+
+Ces lignes ne sont lues par **aucune** autre policy : elles ne réduisent jamais
+la visibilité institutionnelle des preuves, validations, stages ou plans.
+
 ## Invariants transverses
 
 1. `anon` n'a aucun accès, à aucune table (`revoke all ... from anon`).
@@ -186,5 +260,10 @@ utilisables) ; **aucun** privilège d'écriture, aucune policy d'écriture.
 7. `updated_at` n'est jamais fourni par un appelant : `set_updated_at()` l'impose.
 8. `evidence.status = 'validated'` n'est atteignable que par le trigger serveur.
 9. `learning_resource_assets` est en lecture seule pour tout rôle client.
-10. `service_role` contourne la RLS : l'autorisation métier doit être revérifiée
+10. `progress_state` d'un élément de plan n'est jamais une acquisition : la maîtrise
+    reste dérivée de `evidence` + `evidence_validations`.
+11. Un template `published` est immuable, items et dépendances compris.
+12. `plan_change_decisions` est append-only ; une demande décidée ne se rouvre pas.
+13. Les préférences de partage n'apparaissent dans aucune condition de policy.
+14. `service_role` contourne la RLS : l'autorisation métier doit être revérifiée
     dans le backend avant toute opération menée avec cette clé.
