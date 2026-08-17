@@ -6,6 +6,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useLearnerPassport } from "@/features/dashboard/useLearnerPassport";
 import { useSession } from "@/application/session";
 import { ROLE_LABELS_FR, rolesInContext } from "@/domain/roles";
+import { StageLogBook } from "@/features/stage/StageLogBook";
+import { StageLogsToValidate } from "@/features/stage/StageLogReviewSection";
+
 
 const STATUS_FR: Record<string, string> = {
   planned: "à venir",
