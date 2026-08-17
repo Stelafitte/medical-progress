@@ -4,7 +4,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState, MockBadge, PanelCard, ScopeNotice } from "@/features/professional/mock-ui";
 import { useProgramAdmin } from "@/features/administration/useProgramAdmin";
 import { StageLogTemplatesSection } from "@/features/administration/StageLogTemplatesSection";
-import { OUTCOME_NATURE_LABELS_FR } from "@/domain/mastery";
+import { NATURE_LABELS_FR } from "@/domain/mastery";
 
 export function AdminPedagogy() {
   const { data, isPending } = useProgramAdmin();
@@ -31,7 +31,7 @@ export function AdminPedagogy() {
         {(["knowledge", "simulated_competence", "real_competence"] as const).map((nature) => (
           <PanelCard
             key={nature}
-            title={OUTCOME_NATURE_LABELS_FR[nature]}
+            title={NATURE_LABELS_FR[nature]}
             description={`${byNature(nature).length} acquis configuré(s)`}
           >
             <ul className="space-y-1 text-sm">
