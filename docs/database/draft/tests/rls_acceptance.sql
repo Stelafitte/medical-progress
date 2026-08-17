@@ -461,4 +461,190 @@ select pg_temp.as_service();
 -- ---------------------------------------------------------------------
 rollback;
 
+
+-- =====================================================================
+-- PLAN D'ACQUISITION ET PRÉFÉRENCES DE PARTAGE (T22 → T33)
+-- Même protocole : begin; set local role authenticated; set local
+-- request.jwt.claims; ... rollback;
+-- =====================================================================
+
+-- T22. Un autre apprenant ne voit ni le plan ni les demandes de A
+--   set local request.jwt.claims -> personne B
+--   select count(*) from public.acquisition_plan_items
+--     where enrollment_id = :enrollment_a;            attendu 0
+--   select count(*) from public.plan_change_requests
+--     where enrollment_id = :enrollment_a;            attendu 0
+--   select count(*) from public.passport_share_preferences;  attendu 0 (hors B)
+--   insert into public.plan_change_requests(plan_item_id, enrollment_id,
+--     program_id, requested_by, proposed_learner_target_at)
+--     values (:item_a, :enrollment_a, :program_a, :person_b, now());
+--                                                      attendu 42501
+
+-- T23. Administrateur hors programme refusé
+--   admin du programme DFASM :
+--   select count(*) from public.acquisition_plan_templates
+--     where program_id = :program_diu;                 attendu 0
+--   update public.acquisition_plan_templates set name = 'x'
+--     where program_id = :program_diu;                 attendu 0 ligne
+
+-- T24. Enseignant hors cohorte refusé (MÊME programme)
+--   enseignant de portée cohorte A :
+--   select count(*) from public.acquisition_plan_items
+--     where enrollment_id = :enrollment_cohorte_b;     attendu 0
+--   select count(*) from public.plan_change_requests
+--     where enrollment_id = :enrollment_cohorte_b;     attendu 0
+
+-- T25. Encadrant hors stage refusé, et bornage au stage supervisé
+--   encadrant du stage S1 :
+--   select count(*) from public.acquisition_plan_items
+--     where placement_assignment_id = :assignment_s2;  attendu 0
+--   select count(*) from public.acquisition_plan_items
+--     where placement_assignment_id = :assignment_s1;  attendu >= 1
+--   -- il ne voit PAS les items sans stage du même apprenant :
+--   select count(*) from public.acquisition_plan_items
+--     where enrollment_id = :enrollment_a
+--       and placement_assignment_id is null;           attendu 0
+
+-- T26. Changement strictement personnel dans les bornes : auto-accepté
+--   apprenant titulaire, item sans stage, outcome knowledge :
+--   insert ... proposed_learner_target_at = :date_dans_fenetre, justification 'ok…';
+--   select change_impact, required_approver_role from public.plan_change_requests
+--     where id = :req;                    attendu personal_target / auto_accept
+--   update public.plan_change_requests set status = 'pending' where id = :req;
+--   select status from public.plan_change_requests where id = :req;  attendu approved
+--   select learner_target_at from public.acquisition_plan_items
+--     where id = :item;                   attendu :date_dans_fenetre
+--   select count(*) from public.audit_events
+--     where action = 'plan_change_request.auto_accepted';            attendu 1
+
+-- T27. Justification manquante : soumission refusée
+--   insert sans justification (draft accepté), puis :
+--   update public.plan_change_requests set status = 'pending' where id = :req;
+--                                          attendu erreur (CHECK ou trigger §8)
+--   select status from public.plan_change_requests where id = :req;  attendu draft
+
+-- T28. Échéance officielle : validation enseignant/admin exigée
+--   insert ... proposed_official_due_at = :date + 30 jours ;
+--   select change_impact, required_approver_role;
+--                            attendu official_deadline / teacher_or_admin
+--   update ... status='pending' ;
+--   select status;                                     attendu pending (pas approved)
+--   -- l'apprenant ne peut pas décider lui-même :
+--   insert into public.plan_change_decisions(request_id, program_id,
+--     reviewer_person_id, reviewer_role, decision)
+--     values (:req, :program, :person_a, 'teacher', 'approved');   attendu 42501
+--   -- l'enseignant de la cohorte, oui :
+--   set local request.jwt.claims -> enseignant cohorte A ; même insert
+--     avec reviewer_person_id = enseignant ;                       attendu OK
+--   select status, official_due_at from public.plan_change_requests r
+--     join public.acquisition_plan_items i on i.id = r.plan_item_id;
+--                            attendu approved / date appliquée atomiquement
+
+-- T29. Stage / compétence clinique : encadrant EXACT exigé
+--   item rattaché à :assignment_s1 (ou outcome real_competence) :
+--   select required_approver_role;                     attendu placement_supervisor
+--   -- enseignant de la cohorte : refusé
+--   insert into public.plan_change_decisions(... reviewer_role 'teacher' ...);
+--                                                      attendu 42501
+--   -- encadrant d'un AUTRE stage : refusé
+--   insert ... reviewer_person_id = :supervisor_s2 ;    attendu 42501
+--   -- encadrant de S1 : accepté
+--   insert ... reviewer_person_id = :supervisor_s1,
+--              reviewer_role = 'placement_supervisor' ; attendu OK
+
+-- T30. Décisions append-only, décision non réécrivable
+--   set local role service_role;  -- pire cas : la RLS ne protège plus
+--   update public.plan_change_decisions set decision = 'rejected'
+--     where id = :dec;                                 attendu 42501 (trigger)
+--   delete from public.plan_change_decisions where id = :dec;      attendu 42501
+--   -- et une demande décidée ne se rouvre pas :
+--   update public.plan_change_requests set status = 'pending'
+--     where id = :req_approved;                        attendu 42501
+
+-- T31. Template publié immuable, nouvelle version obligatoire
+--   admin de programme :
+--   update public.acquisition_plan_templates set name = 'v2'
+--     where id = :template_published;         attendu 0 ligne (policy draft only)
+--   update public.acquisition_plan_template_items set sequence = 99
+--     where template_id = :template_published;         attendu 0 ligne
+--   set local role service_role;
+--   update public.acquisition_plan_templates set name = 'v2'
+--     where id = :template_published;                  attendu 42501 (trigger §6)
+--   -- chemin correct : nouvelle ligne version_number = n + 1
+--   insert into public.acquisition_plan_templates(program_id,
+--     curriculum_version_id, cohort_id, name, version_number)
+--     values (..., 2);                                 attendu OK
+
+-- T32. Les préférences de partage n'affectent PAS l'accès institutionnel
+--   apprenant : update public.passport_share_preferences
+--     set share_knowledge = false, share_evidence = false,
+--         share_real_competence = false, share_validations = false,
+--         share_placements = false, share_history = false,
+--         share_next_milestones = false, share_simulated_competence = false
+--     where enrollment_id = :enrollment_a;             attendu 1 ligne
+--   set local request.jwt.claims -> enseignant de la cohorte de A
+--   select count(*) from public.evidence where enrollment_id = :enrollment_a;
+--                                                      attendu inchangé (> 0)
+--   select count(*) from public.acquisition_plan_items
+--     where enrollment_id = :enrollment_a;             attendu inchangé (> 0)
+--   select count(*) from public.evidence_validations v
+--     join public.evidence e on e.id = v.evidence_id
+--    where e.enrollment_id = :enrollment_a;            attendu inchangé
+--   -- et l'enseignant ne lit PAS les préférences personnelles :
+--   select count(*) from public.passport_share_preferences
+--     where enrollment_id = :enrollment_a;             attendu 0
+
+-- T33. La maîtrise n'est jamais déduite de l'état du plan
+--   apprenant : update public.acquisition_plan_items
+--     set progress_state = 'done' where id = :item_real_competence;  attendu 1
+--   -- aucune preuve validée n'existe pour cet acquis :
+--   select count(*) from public.evidence e
+--    where e.enrollment_id = :enrollment_a
+--      and e.outcome_id = :outcome_real and e.status = 'validated';   attendu 0
+--   -- donc la maîtrise calculée reste not_started (calcul applicatif,
+--   -- src/domain/mastery.ts) : aucune colonne de la base ne prétend l'inverse.
+--   -- Vérifier aussi qu'aucune table ne stocke de maîtrise :
+--   select count(*) from information_schema.columns
+--    where table_schema = 'public' and column_name in
+--          ('mastery', 'mastery_level', 'progress_percent');
+--                       attendu : uniquement evidence.proposed_mastery (proposée,
+--                       non opposable) et outcomes.target_mastery (cible)
+
+-- T34. Colonnes dérivées non falsifiables par le client
+--   apprenant :
+--   insert into public.plan_change_requests(..., change_impact,
+--     required_approver_role) values (..., 'personal_pace', 'auto_accept');
+--                     attendu 42501 (aucun GRANT sur ces colonnes) ; et même
+--                     en service_role, le trigger §7 les recalcule.
+--   update public.acquisition_plan_items set official_due_at = now() + '1 year'
+--     where id = :item;                     attendu 42501 (colonne non accordée)
+
+-- =====================================================================
+-- Checklist statique de cohérence — périmètre plan d'acquisition
+-- =====================================================================
+--  1. Chaque nouvelle table a la RLS activée ET au moins une policy SELECT.
+--  2. Aucune policy FOR ALL, aucun `using (true)` : une policy par opération.
+--  3. Chaque policy a le GRANT correspondant (001 §13.9) et réciproquement ;
+--     acquisition_plans n'a AUCUN GRANT DML client et AUCUNE policy DML.
+--  4. Colonnes jamais accordées au client : change_impact,
+--     required_approver_role, submitted_at, decided_at, withdrawn_at,
+--     official_start_at, official_due_at, sequence, is_mandatory,
+--     published_at, retired_at, updated_at, colonnes de provenance.
+--  5. Chaque nouvelle table porte le trigger de provenance ; les six tables
+--     avec updated_at portent z_*_set_updated_at (003 §12).
+--  6. FK composites présentes pour chaque rattachement inter-entités :
+--     template↔programme/cursus/cohorte, item↔template/outcome,
+--     plan↔enrollment/programme/template, plan_item↔plan/outcome/stage,
+--     demande↔item/enrollment, décision↔demande.
+--  7. Transitions couvertes par test : draft→pending (T26/T27),
+--     draft/pending→withdrawn (à ajouter au jeu d'exécution), pending→approved
+--     (T28/T29), pending→rejected, réécriture refusée (T30).
+--  8. Toutes les fonctions de 002 §14 sont STABLE, sans écriture, avec
+--     search_path = pg_catalog, public, et n'acceptent aucun identifiant
+--     d'utilisateur en paramètre.
+--  9. Toutes les fonctions de 003 §6-§11 sont révoquées pour PUBLIC, anon,
+--     authenticated et service_role : appel direct impossible.
+-- 10. anon : aucun privilège sur les 8 nouvelles tables (001 §13.9, revoke
+--     explicite table par table).
+
 -- FIN — DRAFT — DO NOT EXECUTE

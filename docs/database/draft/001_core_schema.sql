@@ -799,4 +799,514 @@ revoke all on
 -- la RLS). Flux détaillé : storage_architecture.md §2.
 
 
+-- =====================================================================
+-- 13. PLAN D'ACQUISITION ET PRÉFÉRENCES DE PARTAGE
+-- Alignement de nommage avec le bloc UI déjà livré (une seule vérité) :
+--   AcquisitionPlanItem   -> public.acquisition_plan_items
+--   AcquisitionPlanTrack  -> DÉRIVÉE de outcomes.nature (aucune colonne track)
+--   PlanChangeRequest     -> public.plan_change_requests
+-- Le frontend nomme 'accepted' ce que la base nomme 'approved' (vocabulaire
+-- décisionnel SQL) ; le mapping est documenté dans plan_acquisition_architecture.md
+-- et reste le seul point de traduction autorisé.
+-- =====================================================================
+
+-- 13.1 Types énumérés du plan
+do $$ begin
+  create type public.plan_template_status as enum ('draft', 'published', 'retired');
+exception when duplicate_object then null; end $$;
+
+do $$ begin
+  create type public.acquisition_plan_status as enum ('active', 'archived');
+exception when duplicate_object then null; end $$;
+
+-- État de PLANIFICATION uniquement. 'done' = action planifiée terminée.
+-- 'done' ne signifie JAMAIS « connaissance acquise » ni « compétence acquise » :
+-- la maîtrise reste dérivée de public.evidence + public.evidence_validations
+-- (cf. src/domain/mastery.ts). La colonne Kanban « Acquis » du frontend est
+-- calculée depuis les preuves, pas depuis cette colonne.
+do $$ begin
+  create type public.plan_item_progress_state as enum
+    ('to_plan', 'in_progress', 'to_validate', 'done');
+exception when duplicate_object then null; end $$;
+
+-- Impact d'une demande de modification. Les trois valeurs officielles
+-- (official_deadline, prerequisite, required_outcome) sont regroupées côté UI
+-- sous l'étiquette « échéance officielle ».
+do $$ begin
+  create type public.plan_change_impact as enum
+    ('personal_target', 'personal_pace', 'official_deadline',
+     'prerequisite', 'required_outcome', 'clinical_competence');
+exception when duplicate_object then null; end $$;
+
+do $$ begin
+  create type public.plan_approval_rule as enum
+    ('auto_accept', 'teacher_or_admin', 'placement_supervisor');
+exception when duplicate_object then null; end $$;
+
+do $$ begin
+  create type public.plan_change_status as enum
+    ('draft', 'pending', 'approved', 'rejected', 'withdrawn');
+exception when duplicate_object then null; end $$;
+
+do $$ begin
+  create type public.plan_decision as enum ('approved', 'rejected');
+exception when duplicate_object then null; end $$;
+
+-- ---------------------------------------------------------------------
+-- 13.2 acquisition_plan_templates — modèle versionné défini par admin
+-- Un template publié est IMMUABLE : une évolution crée une nouvelle version
+-- (invariant appliqué par trigger, 003 §6).
+-- ---------------------------------------------------------------------
+create table if not exists public.acquisition_plan_templates (
+  id            uuid primary key default gen_random_uuid(),
+  program_id    uuid not null,
+  curriculum_version_id uuid not null,
+  -- Optionnel : un template peut viser une cohorte précise (sinon tout le cursus).
+  cohort_id     uuid,
+  name          text not null check (length(btrim(name)) between 1 and 200),
+  version_number integer not null check (version_number >= 1),
+  status        public.plan_template_status not null default 'draft',
+  published_at  timestamptz,
+  retired_at    timestamptz,
+  created_by    uuid references public.profiles (id) on delete set null,
+  source_system text not null default 'native',
+  source_id     text,
+  imported_at   timestamptz,
+  import_batch_id uuid,
+  created_at    timestamptz not null default now(),
+  updated_at    timestamptz not null default now(),
+  unique (id, program_id),
+  unique (program_id, curriculum_version_id, cohort_id, version_number),
+  constraint apt_provenance_coherent
+    check ((source_system = 'native') = (source_id is null)),
+  constraint apt_published_has_date
+    check ((status = 'draft') = (published_at is null)),
+  -- FK COMPOSITES : impossible de rattacher un cursus ou une cohorte
+  -- appartenant à un autre programme.
+  constraint apt_curriculum_same_program
+    foreign key (curriculum_version_id, program_id)
+    references public.curriculum_versions (id, program_id) on delete restrict,
+  constraint apt_cohort_same_program
+    foreign key (cohort_id, program_id)
+    references public.cohorts (id, program_id) on delete restrict
+);
+create index if not exists apt_program_idx
+  on public.acquisition_plan_templates (program_id, status);
+comment on table public.acquisition_plan_templates is
+  'Modèle de plan d''acquisition versionné. Un template published est immuable : '
+  'toute évolution crée une nouvelle version_number.';
+
+-- ---------------------------------------------------------------------
+-- 13.3 acquisition_plan_template_items
+-- La piste (connaissances / compétences) est DÉRIVÉE de outcomes.nature :
+-- aucune colonne track ici, donc aucune nature incohérente possible.
+-- ---------------------------------------------------------------------
+create table if not exists public.acquisition_plan_template_items (
+  id            uuid primary key default gen_random_uuid(),
+  template_id   uuid not null,
+  program_id    uuid not null,
+  outcome_id    uuid not null,
+  sequence      integer not null check (sequence >= 0),
+  official_start_at timestamptz,
+  official_due_at   timestamptz,
+  is_mandatory  boolean not null default true,
+  placement_required boolean not null default false,
+  -- Paramètres pédagogiques bornés (durée conseillée, répétitions, modalité…).
+  pedagogy_params jsonb not null default '{}'::jsonb,
+  source_system text not null default 'native',
+  source_id     text,
+  imported_at   timestamptz,
+  import_batch_id uuid,
+  created_at    timestamptz not null default now(),
+  updated_at    timestamptz not null default now(),
+  unique (id, template_id),
+  unique (id, program_id),
+  unique (template_id, outcome_id),
+  unique (template_id, sequence) deferrable initially deferred,
+  constraint apti_window_ordered
+    check (official_due_at is null or official_start_at is null
+           or official_due_at >= official_start_at),
+  constraint apti_params_object
+    check (jsonb_typeof(pedagogy_params) = 'object'
+           and pg_catalog.length(pedagogy_params::text) <= 4000),
+  constraint apti_provenance_coherent
+    check ((source_system = 'native') = (source_id is null)),
+  constraint apti_template_same_program
+    foreign key (template_id, program_id)
+    references public.acquisition_plan_templates (id, program_id) on delete cascade,
+  constraint apti_outcome_same_program
+    foreign key (outcome_id, program_id)
+    references public.outcomes (id, program_id) on delete restrict
+);
+create index if not exists apti_template_idx
+  on public.acquisition_plan_template_items (template_id, sequence);
+
+-- Prérequis entre items d'un MÊME template (graphe, pas d'arbre).
+create table if not exists public.acquisition_plan_template_item_dependencies (
+  template_id   uuid not null,
+  item_id       uuid not null,
+  depends_on_item_id uuid not null,
+  relation_kind public.outcome_relation_kind not null default 'prerequisite_of',
+  source_system text not null default 'native',
+  source_id     text,
+  created_at    timestamptz not null default now(),
+  primary key (item_id, depends_on_item_id),
+  -- Anti auto-dépendance.
+  constraint aptid_no_self check (item_id <> depends_on_item_id),
+  constraint aptid_provenance_coherent
+    check ((source_system = 'native') = (source_id is null)),
+  -- Les deux items doivent appartenir AU MÊME template.
+  constraint aptid_item_in_template
+    foreign key (item_id, template_id)
+    references public.acquisition_plan_template_items (id, template_id) on delete cascade,
+  constraint aptid_dep_in_template
+    foreign key (depends_on_item_id, template_id)
+    references public.acquisition_plan_template_items (id, template_id) on delete cascade
+);
+comment on table public.acquisition_plan_template_item_dependencies is
+  'Prérequis intra-template. L''absence de cycle n''est pas exprimable en '
+  'contrainte déclarative : elle est vérifiée par le backend à la publication '
+  '(cf. plan_acquisition_architecture.md §4).';
+
+-- ---------------------------------------------------------------------
+-- 13.4 acquisition_plans — instance individualisée
+-- ---------------------------------------------------------------------
+create table if not exists public.acquisition_plans (
+  id            uuid primary key default gen_random_uuid(),
+  enrollment_id uuid not null,
+  program_id    uuid not null,
+  template_id   uuid not null,
+  status        public.acquisition_plan_status not null default 'active',
+  activated_at  timestamptz not null default now(),
+  archived_at   timestamptz,
+  source_system text not null default 'native',
+  source_id     text,
+  imported_at   timestamptz,
+  import_batch_id uuid,
+  created_at    timestamptz not null default now(),
+  updated_at    timestamptz not null default now(),
+  unique (id, enrollment_id),
+  unique (id, program_id),
+  unique (id, template_id),
+  -- Un seul plan actif par inscription (index partiel, pas de contrainte molle).
+  constraint ap_archived_coherent
+    check ((status = 'archived') = (archived_at is not null)),
+  constraint ap_provenance_coherent
+    check ((source_system = 'native') = (source_id is null)),
+  constraint ap_enrollment_same_program
+    foreign key (enrollment_id, program_id)
+    references public.enrollments (id, program_id) on delete cascade,
+  constraint ap_template_same_program
+    foreign key (template_id, program_id)
+    references public.acquisition_plan_templates (id, program_id) on delete restrict
+);
+create unique index if not exists ap_one_active_per_enrollment
+  on public.acquisition_plans (enrollment_id) where (status = 'active');
+
+-- ---------------------------------------------------------------------
+-- 13.5 acquisition_plan_items — source UNIQUE des vues Liste / Kanban / Gantt / Calendrier
+-- Dates officielles (institution) et cible personnelle (apprenant) sont
+-- DEUX colonnes distinctes : l'apprenant n'écrase jamais une échéance officielle.
+-- ---------------------------------------------------------------------
+create table if not exists public.acquisition_plan_items (
+  id            uuid primary key default gen_random_uuid(),
+  plan_id       uuid not null,
+  enrollment_id uuid not null,
+  program_id    uuid not null,
+  outcome_id    uuid not null,
+  template_item_id uuid,
+  sequence      integer not null check (sequence >= 0),
+  official_start_at timestamptz,
+  official_due_at   timestamptz,
+  -- Cible que l'apprenant se fixe, toujours dans les bornes officielles.
+  learner_target_at timestamptz,
+  is_mandatory  boolean not null default true,
+  -- État de PLANIFICATION, jamais un état d'acquisition (cf. 13.1).
+  progress_state public.plan_item_progress_state not null default 'to_plan',
+  placement_assignment_id uuid,
+  source_system text not null default 'native',
+  source_id     text,
+  imported_at   timestamptz,
+  import_batch_id uuid,
+  created_at    timestamptz not null default now(),
+  updated_at    timestamptz not null default now(),
+  unique (id, enrollment_id),
+  unique (id, program_id),
+  unique (plan_id, outcome_id),
+  constraint api_window_ordered
+    check (official_due_at is null or official_start_at is null
+           or official_due_at >= official_start_at),
+  constraint api_provenance_coherent
+    check ((source_system = 'native') = (source_id is null)),
+  constraint api_plan_same_enrollment
+    foreign key (plan_id, enrollment_id)
+    references public.acquisition_plans (id, enrollment_id) on delete cascade,
+  constraint api_plan_same_program
+    foreign key (plan_id, program_id)
+    references public.acquisition_plans (id, program_id) on delete cascade,
+  constraint api_outcome_same_program
+    foreign key (outcome_id, program_id)
+    references public.outcomes (id, program_id) on delete restrict,
+  constraint api_template_item_same_program
+    foreign key (template_item_id, program_id)
+    references public.acquisition_plan_template_items (id, program_id) on delete set null,
+  -- Le stage rattaché doit être un stage DE CET APPRENANT.
+  constraint api_placement_same_enrollment
+    foreign key (placement_assignment_id, enrollment_id)
+    references public.placement_assignments (id, enrollment_id) on delete set null
+);
+create index if not exists api_enrollment_idx
+  on public.acquisition_plan_items (enrollment_id, sequence);
+create index if not exists api_calendar_idx
+  on public.acquisition_plan_items (program_id, official_due_at);
+create index if not exists api_placement_idx
+  on public.acquisition_plan_items (placement_assignment_id);
+comment on table public.acquisition_plan_items is
+  'Une ligne = un élément planifié. Les quatre vues du frontend (Liste, Kanban, '
+  'Gantt, Calendrier) sont des projections de CETTE table ; aucune vue ne '
+  'possède sa propre table. progress_state est un état de planification.';
+
+-- ---------------------------------------------------------------------
+-- 13.6 plan_change_requests — demande de modification par l'apprenant
+-- change_impact et required_approver_role sont DÉRIVÉS par trigger (003 §7) :
+-- aucun GRANT client sur ces colonnes (13.9).
+-- ---------------------------------------------------------------------
+create table if not exists public.plan_change_requests (
+  id            uuid primary key default gen_random_uuid(),
+  plan_item_id  uuid not null,
+  enrollment_id uuid not null,
+  program_id    uuid not null,
+  requested_by  uuid not null references public.profiles (id) on delete restrict,
+  proposed_learner_target_at timestamptz,
+  proposed_official_due_at   timestamptz,
+  proposed_sequence integer check (proposed_sequence >= 0),
+  proposed_pace jsonb not null default '{}'::jsonb,
+  justification text,
+  change_impact public.plan_change_impact,
+  required_approver_role public.plan_approval_rule,
+  status        public.plan_change_status not null default 'draft',
+  submitted_at  timestamptz,
+  decided_at    timestamptz,
+  withdrawn_at  timestamptz,
+  source_system text not null default 'native',
+  source_id     text,
+  imported_at   timestamptz,
+  import_batch_id uuid,
+  created_at    timestamptz not null default now(),
+  updated_at    timestamptz not null default now(),
+  unique (id, enrollment_id),
+  unique (id, program_id),
+  constraint pcr_pace_object
+    check (jsonb_typeof(proposed_pace) = 'object'
+           and pg_catalog.length(proposed_pace::text) <= 2000),
+  -- Au moins une modification proposée, sinon la demande n'a pas d'objet.
+  constraint pcr_has_proposal
+    check (proposed_learner_target_at is not null
+           or proposed_official_due_at is not null
+           or proposed_sequence is not null
+           or proposed_pace <> '{}'::jsonb),
+  -- Justification OBLIGATOIRE dès que la demande quitte le brouillon.
+  constraint pcr_justification_required
+    check (status = 'draft'
+           or (justification is not null
+               and length(btrim(justification)) between 10 and 2000)),
+  constraint pcr_derived_set_when_submitted
+    check (status = 'draft'
+           or (change_impact is not null and required_approver_role is not null)),
+  constraint pcr_decision_dates
+    check ((status in ('approved', 'rejected')) = (decided_at is not null)
+           and (status = 'withdrawn') = (withdrawn_at is not null)),
+  constraint pcr_provenance_coherent
+    check ((source_system = 'native') = (source_id is null)),
+  constraint pcr_item_same_enrollment
+    foreign key (plan_item_id, enrollment_id)
+    references public.acquisition_plan_items (id, enrollment_id) on delete cascade,
+  constraint pcr_item_same_program
+    foreign key (plan_item_id, program_id)
+    references public.acquisition_plan_items (id, program_id) on delete cascade,
+  constraint pcr_enrollment_same_program
+    foreign key (enrollment_id, program_id)
+    references public.enrollments (id, program_id) on delete cascade
+);
+create index if not exists pcr_item_idx on public.plan_change_requests (plan_item_id);
+create index if not exists pcr_queue_idx
+  on public.plan_change_requests (program_id, status, required_approver_role);
+create index if not exists pcr_requester_idx on public.plan_change_requests (requested_by);
+
+-- ---------------------------------------------------------------------
+-- 13.7 plan_change_decisions — journal APPEND-ONLY
+-- Aucun GRANT UPDATE / DELETE, pour aucun rôle client (13.9).
+-- ---------------------------------------------------------------------
+create table if not exists public.plan_change_decisions (
+  id            uuid primary key default gen_random_uuid(),
+  request_id    uuid not null,
+  program_id    uuid not null,
+  reviewer_person_id uuid not null references public.profiles (id) on delete restrict,
+  reviewer_role public.role_name not null,
+  decision      public.plan_decision not null,
+  comment       text check (comment is null or length(btrim(comment)) <= 2000),
+  decided_at    timestamptz not null default now(),
+  source_system text not null default 'native',
+  source_id     text,
+  imported_at   timestamptz,
+  import_batch_id uuid,
+  created_at    timestamptz not null default now(),
+  constraint pcd_reviewer_role_allowed
+    check (reviewer_role in ('teacher', 'administrator', 'placement_supervisor')),
+  constraint pcd_provenance_coherent
+    check ((source_system = 'native') = (source_id is null)),
+  constraint pcd_request_same_program
+    foreign key (request_id, program_id)
+    references public.plan_change_requests (id, program_id) on delete restrict
+);
+create index if not exists pcd_request_idx
+  on public.plan_change_decisions (request_id, decided_at);
+comment on table public.plan_change_decisions is
+  'Journal append-only des décisions. Une erreur de décision se corrige par une '
+  'nouvelle ligne, jamais par une réécriture (aucun UPDATE/DELETE accordé).';
+
+-- ---------------------------------------------------------------------
+-- 13.8 passport_share_preferences — partage/export PERSONNEL uniquement
+-- ATTENTION (invariant documentaire ET technique) : ces préférences
+-- n'interviennent dans AUCUNE policy RLS de 002. Elles ne modifient jamais :
+--   * le dossier institutionnel,
+--   * la visibilité des enseignants, encadrants et administrateurs de portée,
+--   * l'accès aux preuves et validations pour les professionnels autorisés.
+-- Elles ne pilotent QUE ce que l'apprenant choisit d'inclure dans un partage
+-- ou un export qu'il initie lui-même.
+-- ---------------------------------------------------------------------
+create table if not exists public.passport_share_preferences (
+  enrollment_id uuid not null,
+  program_id    uuid not null,
+  share_knowledge            boolean not null default true,
+  share_simulated_competence boolean not null default true,
+  share_real_competence      boolean not null default true,
+  share_evidence             boolean not null default false,
+  share_validations          boolean not null default false,
+  share_placements           boolean not null default false,
+  share_history              boolean not null default false,
+  share_next_milestones      boolean not null default true,
+  source_system text not null default 'native',
+  source_id     text,
+  imported_at   timestamptz,
+  import_batch_id uuid,
+  created_at    timestamptz not null default now(),
+  updated_at    timestamptz not null default now(),
+  primary key (enrollment_id),
+  constraint psp_provenance_coherent
+    check ((source_system = 'native') = (source_id is null)),
+  constraint psp_enrollment_same_program
+    foreign key (enrollment_id, program_id)
+    references public.enrollments (id, program_id) on delete cascade
+);
+comment on table public.passport_share_preferences is
+  'Préférences de partage/export personnel. AUCUNE policy RLS ne les consulte : '
+  'elles ne restreignent jamais la visibilité institutionnelle.';
+
+-- ---------------------------------------------------------------------
+-- 13.9 GRANTS du plan — un privilège pour CHAQUE policy, et rien de plus
+-- ---------------------------------------------------------------------
+grant select on
+  public.acquisition_plan_templates,
+  public.acquisition_plan_template_items,
+  public.acquisition_plan_template_item_dependencies,
+  public.acquisition_plans,
+  public.acquisition_plan_items,
+  public.plan_change_requests,
+  public.plan_change_decisions,
+  public.passport_share_preferences
+  to authenticated;
+
+-- Templates : administration de programme uniquement (RLS filtrante).
+-- Pas de GRANT sur published_at / retired_at : la publication est une opération
+-- serveur (elle doit figer le template et vérifier l'absence de cycle).
+grant insert (id, program_id, curriculum_version_id, cohort_id, name,
+              version_number, created_by)
+  on public.acquisition_plan_templates to authenticated;
+grant update (name) on public.acquisition_plan_templates to authenticated;
+grant delete on public.acquisition_plan_templates to authenticated;  -- draft seulement (RLS)
+
+grant insert (id, template_id, program_id, outcome_id, sequence,
+              official_start_at, official_due_at, is_mandatory,
+              placement_required, pedagogy_params)
+  on public.acquisition_plan_template_items to authenticated;
+grant update (sequence, official_start_at, official_due_at, is_mandatory,
+              placement_required, pedagogy_params)
+  on public.acquisition_plan_template_items to authenticated;
+grant delete on public.acquisition_plan_template_items to authenticated;
+
+grant insert (template_id, item_id, depends_on_item_id, relation_kind)
+  on public.acquisition_plan_template_item_dependencies to authenticated;
+grant delete on public.acquisition_plan_template_item_dependencies to authenticated;
+
+-- acquisition_plans : instanciation = opération serveur (choix de version,
+-- dépliage des items, audit). Aucun INSERT/UPDATE/DELETE client.
+
+-- acquisition_plan_items : l'apprenant ne touche QUE sa cible personnelle et
+-- son état de planification. official_*, sequence, is_mandatory, outcome_id,
+-- plan_id, placement_assignment_id ne sont PAS accordés : ils changent
+-- exclusivement par application d'une décision approuvée (003 §9).
+grant update (learner_target_at, progress_state)
+  on public.acquisition_plan_items to authenticated;
+
+-- plan_change_requests : l'apprenant écrit sa demande et sa justification.
+-- change_impact, required_approver_role, submitted_at, decided_at,
+-- withdrawn_at et status ne sont PAS accordés en UPDATE : le cycle de vie est
+-- imposé par les triggers de 003 §7-§8 via une colonne de transition unique.
+grant insert (id, plan_item_id, enrollment_id, program_id, requested_by,
+              proposed_learner_target_at, proposed_official_due_at,
+              proposed_sequence, proposed_pace, justification)
+  on public.plan_change_requests to authenticated;
+grant update (proposed_learner_target_at, proposed_official_due_at,
+              proposed_sequence, proposed_pace, justification, status)
+  on public.plan_change_requests to authenticated;
+-- status est accordé car draft -> pending et draft/pending -> withdrawn sont des
+-- actions légitimes de l'apprenant ; les transitions interdites (approved /
+-- rejected, réécriture d'une décision) sont refusées par le trigger 003 §8 ET
+-- par le with check des policies de 002 §15.
+-- Aucun GRANT DELETE : une demande se retire (withdrawn), elle ne s'efface pas.
+
+-- plan_change_decisions : insertion seule, colonnes d'identité comprises ;
+-- la légitimité du décideur est vérifiée par policy (002 §16) puis re-vérifiée
+-- par le trigger d'application (003 §9). Aucun UPDATE, aucun DELETE.
+grant insert (request_id, program_id, reviewer_person_id, reviewer_role,
+              decision, comment)
+  on public.plan_change_decisions to authenticated;
+
+-- passport_share_preferences : pleinement gérées par l'apprenant titulaire.
+grant insert (enrollment_id, program_id, share_knowledge,
+              share_simulated_competence, share_real_competence,
+              share_evidence, share_validations, share_placements,
+              share_history, share_next_milestones)
+  on public.passport_share_preferences to authenticated;
+grant update (share_knowledge, share_simulated_competence,
+              share_real_competence, share_evidence, share_validations,
+              share_placements, share_history, share_next_milestones)
+  on public.passport_share_preferences to authenticated;
+grant delete on public.passport_share_preferences to authenticated;
+
+grant all on
+  public.acquisition_plan_templates,
+  public.acquisition_plan_template_items,
+  public.acquisition_plan_template_item_dependencies,
+  public.acquisition_plans,
+  public.acquisition_plan_items,
+  public.plan_change_requests,
+  public.plan_change_decisions,
+  public.passport_share_preferences
+  to service_role;
+
+-- anon : aucun privilège, liste explicite (même politique que 12.7).
+revoke all on
+  public.acquisition_plan_templates,
+  public.acquisition_plan_template_items,
+  public.acquisition_plan_template_item_dependencies,
+  public.acquisition_plans,
+  public.acquisition_plan_items,
+  public.plan_change_requests,
+  public.plan_change_decisions,
+  public.passport_share_preferences
+  from anon;
+
+
 -- FIN — DRAFT — DO NOT EXECUTE

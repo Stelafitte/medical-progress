@@ -861,4 +861,379 @@ create policy ai_quota_update_admin on public.ai_quota_policies
 create policy ai_quota_delete_platform_admin on public.ai_quota_policies
   for delete to authenticated using (public.is_platform_admin());
 
+
+-- =====================================================================
+-- 14. PLAN D'ACQUISITION — fonctions d'autorisation complémentaires
+-- Mêmes règles que §1 : SECURITY DEFINER (pour ne pas relire une table dont la
+-- policy appelle la fonction → récursion), STABLE, language sql, aucune
+-- écriture, search_path = pg_catalog, public, identité issue de auth.uid() seul.
+-- =====================================================================
+
+-- L'apprenant voit un template s'il est inscrit au programme ET que le template
+-- est publié (et, si le template cible une cohorte, que c'est SA cohorte).
+create or replace function public.can_read_plan_template(_template_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = pg_catalog, public
+as $$
+  select exists (
+    select 1
+      from public.acquisition_plan_templates t
+     where t.id = _template_id
+       and (
+         public.can_administer_program(t.program_id)
+         or public.has_program_wide_role(t.program_id, 'teacher')
+         or (t.cohort_id is not null and public.has_cohort_role(t.cohort_id, 'teacher'))
+         or (
+           t.status = 'published'
+           and exists (
+             select 1
+               from public.enrollments e
+              where e.person_id = auth.uid()
+                and e.program_id = t.program_id
+                and (t.cohort_id is null or e.cohort_id = t.cohort_id)
+           )
+         )
+       )
+  )
+$$;
+
+-- Un encadrant ne voit un élément de plan que s'il est explicitement encadrant
+-- DU STAGE rattaché à cet élément — jamais tout le plan de l'apprenant.
+create or replace function public.supervises_plan_item(_plan_item_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = pg_catalog, public
+as $$
+  select exists (
+    select 1
+      from public.acquisition_plan_items i
+      join public.placement_assignments pa on pa.id = i.placement_assignment_id
+      join public.placement_supervisors ps on ps.placement_id = pa.placement_id
+     where i.id = _plan_item_id
+       and ps.person_id = auth.uid()
+  )
+$$;
+
+create or replace function public.can_read_plan_item(_plan_item_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = pg_catalog, public
+as $$
+  select exists (
+    select 1
+      from public.acquisition_plan_items i
+     where i.id = _plan_item_id
+       and (
+         public.owns_enrollment(i.enrollment_id)
+         or public.is_enrollment_academic_staff(i.enrollment_id)
+       )
+  )
+  or public.supervises_plan_item(_plan_item_id)
+$$;
+
+create or replace function public.can_read_plan_change_request(_request_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = pg_catalog, public
+as $$
+  select exists (
+    select 1
+      from public.plan_change_requests r
+     where r.id = _request_id
+       and (
+         public.owns_enrollment(r.enrollment_id)
+         or public.is_enrollment_academic_staff(r.enrollment_id)
+         or public.supervises_plan_item(r.plan_item_id)
+       )
+  )
+$$;
+
+-- Qui peut DÉCIDER : strictement le rôle exigé par la demande, dans la portée
+-- exacte. Une demande clinique n'est jamais décidable par un enseignant, et une
+-- demande d'échéance officielle n'est jamais décidable par un encadrant.
+create or replace function public.can_decide_plan_change_request(_request_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = pg_catalog, public
+as $$
+  select exists (
+    select 1
+      from public.plan_change_requests r
+     where r.id = _request_id
+       and r.status = 'pending'
+       -- Un demandeur ne décide jamais sa propre demande.
+       and r.requested_by <> auth.uid()
+       and (
+         case r.required_approver_role
+           when 'placement_supervisor'
+             then public.supervises_plan_item(r.plan_item_id)
+           when 'teacher_or_admin'
+             then public.can_administer_program(r.program_id)
+               or public.is_enrollment_academic_staff(r.enrollment_id)
+           -- auto_accept : aucune décision humaine n'est requise ni permise.
+           else false
+         end
+       )
+  )
+$$;
+
+grant execute on function
+  public.can_read_plan_template(uuid),
+  public.supervises_plan_item(uuid),
+  public.can_read_plan_item(uuid),
+  public.can_read_plan_change_request(uuid),
+  public.can_decide_plan_change_request(uuid)
+  to authenticated;
+revoke all on function
+  public.can_read_plan_template(uuid),
+  public.supervises_plan_item(uuid),
+  public.can_read_plan_item(uuid),
+  public.can_read_plan_change_request(uuid),
+  public.can_decide_plan_change_request(uuid)
+  from anon, public;
+
+-- ---------------------------------------------------------------------
+-- 14.1 Activation de la RLS sur les 8 nouvelles tables
+-- ---------------------------------------------------------------------
+alter table public.acquisition_plan_templates enable row level security;
+alter table public.acquisition_plan_template_items enable row level security;
+alter table public.acquisition_plan_template_item_dependencies enable row level security;
+alter table public.acquisition_plans enable row level security;
+alter table public.acquisition_plan_items enable row level security;
+alter table public.plan_change_requests enable row level security;
+alter table public.plan_change_decisions enable row level security;
+alter table public.passport_share_preferences enable row level security;
+-- Aucune table sans policy : ci-dessous, une policy par opération et par rôle.
+-- Aucun FOR ALL, aucun `using (true)`.
+
+-- ---------------------------------------------------------------------
+-- 15. Templates et items de template
+-- ---------------------------------------------------------------------
+create policy apt_select_scoped on public.acquisition_plan_templates
+  for select to authenticated
+  using (public.can_read_plan_template(id));
+
+create policy apt_insert_admin on public.acquisition_plan_templates
+  for insert to authenticated
+  with check (
+    public.can_administer_program(program_id)
+    and status = 'draft'
+    and published_at is null
+  );
+
+-- Un template published ou retired n'est plus modifiable (double garde :
+-- ici par policy, et par le trigger 003 §6 pour service_role).
+create policy apt_update_admin_draft on public.acquisition_plan_templates
+  for update to authenticated
+  using (public.can_administer_program(program_id) and status = 'draft')
+  with check (public.can_administer_program(program_id) and status = 'draft');
+
+create policy apt_delete_admin_draft on public.acquisition_plan_templates
+  for delete to authenticated
+  using (public.can_administer_program(program_id) and status = 'draft');
+
+create policy apti_select_scoped on public.acquisition_plan_template_items
+  for select to authenticated
+  using (public.can_read_plan_template(template_id));
+
+create policy apti_insert_admin on public.acquisition_plan_template_items
+  for insert to authenticated
+  with check (
+    public.can_administer_program(program_id)
+    and exists (
+      select 1 from public.acquisition_plan_templates t
+       where t.id = template_id and t.status = 'draft'
+    )
+  );
+
+create policy apti_update_admin_draft on public.acquisition_plan_template_items
+  for update to authenticated
+  using (
+    public.can_administer_program(program_id)
+    and exists (select 1 from public.acquisition_plan_templates t
+                 where t.id = template_id and t.status = 'draft')
+  )
+  with check (
+    public.can_administer_program(program_id)
+    and exists (select 1 from public.acquisition_plan_templates t
+                 where t.id = template_id and t.status = 'draft')
+  );
+
+create policy apti_delete_admin_draft on public.acquisition_plan_template_items
+  for delete to authenticated
+  using (
+    public.can_administer_program(program_id)
+    and exists (select 1 from public.acquisition_plan_templates t
+                 where t.id = template_id and t.status = 'draft')
+  );
+
+create policy aptid_select_scoped on public.acquisition_plan_template_item_dependencies
+  for select to authenticated
+  using (public.can_read_plan_template(template_id));
+
+create policy aptid_insert_admin on public.acquisition_plan_template_item_dependencies
+  for insert to authenticated
+  with check (
+    exists (select 1 from public.acquisition_plan_templates t
+             where t.id = template_id
+               and t.status = 'draft'
+               and public.can_administer_program(t.program_id))
+  );
+
+create policy aptid_delete_admin on public.acquisition_plan_template_item_dependencies
+  for delete to authenticated
+  using (
+    exists (select 1 from public.acquisition_plan_templates t
+             where t.id = template_id
+               and t.status = 'draft'
+               and public.can_administer_program(t.program_id))
+  );
+
+-- ---------------------------------------------------------------------
+-- 16. Plans individuels et éléments planifiés
+-- Aucune policy INSERT/UPDATE/DELETE sur acquisition_plans : l'instanciation
+-- d'un plan est une opération serveur (service_role) après revérification
+-- métier — un client ne s'attribue pas un plan.
+-- ---------------------------------------------------------------------
+create policy ap_select_own on public.acquisition_plans
+  for select to authenticated
+  using (public.owns_enrollment(enrollment_id));
+
+create policy ap_select_staff on public.acquisition_plans
+  for select to authenticated
+  using (
+    public.is_enrollment_academic_staff(enrollment_id)
+    or public.can_administer_program(program_id)
+  );
+
+create policy api_select_own on public.acquisition_plan_items
+  for select to authenticated
+  using (public.owns_enrollment(enrollment_id));
+
+create policy api_select_staff on public.acquisition_plan_items
+  for select to authenticated
+  using (
+    public.is_enrollment_academic_staff(enrollment_id)
+    or public.can_administer_program(program_id)
+  );
+
+-- L'encadrant ne voit QUE les éléments rattachés à un stage qu'il supervise.
+create policy api_select_supervisor on public.acquisition_plan_items
+  for select to authenticated
+  using (public.supervises_plan_item(id));
+
+-- L'apprenant ajuste sa cible personnelle et son état de planification.
+-- Les colonnes officielles ne lui sont pas accordées (001 §13.9) ; la cible
+-- personnelle doit rester dans la fenêtre officielle (trigger 003 §7).
+create policy api_update_own_personal on public.acquisition_plan_items
+  for update to authenticated
+  using (public.owns_enrollment(enrollment_id))
+  with check (public.owns_enrollment(enrollment_id));
+
+-- ---------------------------------------------------------------------
+-- 17. Demandes de modification
+-- ---------------------------------------------------------------------
+create policy pcr_select_scoped on public.plan_change_requests
+  for select to authenticated
+  using (public.can_read_plan_change_request(id));
+
+create policy pcr_insert_own_draft on public.plan_change_requests
+  for insert to authenticated
+  with check (
+    public.owns_enrollment(enrollment_id)
+    and requested_by = auth.uid()
+    and status = 'draft'
+    and decided_at is null
+    and withdrawn_at is null
+    -- L'élément visé doit appartenir à SON plan.
+    and exists (select 1 from public.acquisition_plan_items i
+                 where i.id = plan_item_id
+                   and i.enrollment_id = enrollment_id)
+  );
+
+-- Le titulaire modifie son brouillon, le soumet, ou le retire.
+-- Il ne peut jamais écrire 'approved' / 'rejected' : ces états ne sont posés
+-- que par le trigger d'application (003 §9), en conséquence d'une décision.
+create policy pcr_update_own_lifecycle on public.plan_change_requests
+  for update to authenticated
+  using (
+    public.owns_enrollment(enrollment_id)
+    and requested_by = auth.uid()
+    and status in ('draft', 'pending')
+  )
+  with check (
+    public.owns_enrollment(enrollment_id)
+    and status in ('draft', 'pending', 'withdrawn')
+  );
+-- Aucune policy DELETE : une demande se retire, elle ne s'efface pas.
+
+-- ---------------------------------------------------------------------
+-- 18. Décisions — append-only, rôle exigé exact
+-- ---------------------------------------------------------------------
+create policy pcd_select_scoped on public.plan_change_decisions
+  for select to authenticated
+  using (public.can_read_plan_change_request(request_id));
+
+create policy pcd_insert_authorized on public.plan_change_decisions
+  for insert to authenticated
+  with check (
+    reviewer_person_id = auth.uid()
+    and public.can_decide_plan_change_request(request_id)
+    -- Le rôle déclaré doit correspondre au rôle réellement détenu et exigé.
+    and (
+      (reviewer_role = 'placement_supervisor'
+        and exists (select 1 from public.plan_change_requests r
+                     where r.id = request_id
+                       and r.required_approver_role = 'placement_supervisor'
+                       and public.supervises_plan_item(r.plan_item_id)))
+      or (reviewer_role = 'teacher'
+        and exists (select 1 from public.plan_change_requests r
+                     where r.id = request_id
+                       and r.required_approver_role = 'teacher_or_admin'
+                       and public.is_enrollment_academic_staff(r.enrollment_id)))
+      or (reviewer_role = 'administrator'
+        and exists (select 1 from public.plan_change_requests r
+                     where r.id = request_id
+                       and r.required_approver_role = 'teacher_or_admin'
+                       and public.can_administer_program(r.program_id)))
+    )
+  );
+-- Aucune policy UPDATE ni DELETE : le journal est append-only.
+
+-- ---------------------------------------------------------------------
+-- 19. Préférences de partage — titulaire uniquement
+-- RAPPEL : ces lignes ne sont lues par AUCUNE autre policy de ce fichier.
+-- Elles ne réduisent jamais la visibilité institutionnelle : un enseignant de
+-- portée continue de lire les preuves et validations de l'apprenant même si
+-- toutes les préférences sont désactivées.
+-- ---------------------------------------------------------------------
+create policy psp_select_own on public.passport_share_preferences
+  for select to authenticated
+  using (public.owns_enrollment(enrollment_id));
+
+create policy psp_insert_own on public.passport_share_preferences
+  for insert to authenticated
+  with check (public.owns_enrollment(enrollment_id));
+
+create policy psp_update_own on public.passport_share_preferences
+  for update to authenticated
+  using (public.owns_enrollment(enrollment_id))
+  with check (public.owns_enrollment(enrollment_id));
+
+create policy psp_delete_own on public.passport_share_preferences
+  for delete to authenticated
+  using (public.owns_enrollment(enrollment_id));
+
+
 -- FIN — DRAFT — DO NOT EXECUTE

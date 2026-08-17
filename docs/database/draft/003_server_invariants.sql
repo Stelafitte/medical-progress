@@ -319,4 +319,502 @@ end $$;
 -- EXECUTE de l'appelant : révoquer partout ne casse donc pas le mécanisme,
 -- mais supprime toute possibilité d'appel direct (RPC, PostgREST, SQL).
 
+
+-- =====================================================================
+-- 6. PLAN D'ACQUISITION — immuabilité d'un template publié
+-- Un template `published` (ou `retired`) est un référentiel opposable : il ne
+-- se corrige pas, il se réédite. Les policies de 002 §15 l'interdisent déjà au
+-- client ; ce trigger ferme le cas service_role / script d'import.
+-- Fonction NON privilégiée : elle ne fait que refuser une transition.
+-- =====================================================================
+create or replace function public.enforce_plan_template_immutable()
+returns trigger
+language plpgsql
+security invoker
+set search_path = pg_catalog, public
+as $$
+declare
+  _status public.plan_template_status;
+begin
+  if tg_table_name = 'acquisition_plan_templates' then
+    if tg_op = 'DELETE' then
+      if old.status <> 'draft' then
+        raise exception 'a published or retired plan template cannot be deleted'
+          using errcode = 'insufficient_privilege';
+      end if;
+      return old;
+    end if;
+
+    -- Seules transitions permises hors draft : publication et retrait.
+    if old.status = 'published' and new.status = 'retired' then
+      return new;
+    end if;
+    if old.status = 'draft' then
+      return new;
+    end if;
+    raise exception
+      'plan template % is % : create a new version_number instead of editing it',
+      old.id, old.status
+      using errcode = 'insufficient_privilege';
+  end if;
+
+  -- Items et dépendances : rattachés à un template figé => figés aussi.
+  select t.status into _status
+    from public.acquisition_plan_templates t
+   where t.id = coalesce(new.template_id, old.template_id);
+
+  if _status is distinct from 'draft' then
+    raise exception
+      'plan template % is % : its items and dependencies are immutable', 
+      coalesce(new.template_id, old.template_id), _status
+      using errcode = 'insufficient_privilege';
+  end if;
+  return coalesce(new, old);
+end;
+$$;
+
+drop trigger if exists apt_immutable on public.acquisition_plan_templates;
+create trigger apt_immutable
+  before update or delete on public.acquisition_plan_templates
+  for each row execute function public.enforce_plan_template_immutable();
+
+drop trigger if exists apti_immutable on public.acquisition_plan_template_items;
+create trigger apti_immutable
+  before insert or update or delete on public.acquisition_plan_template_items
+  for each row execute function public.enforce_plan_template_immutable();
+
+drop trigger if exists aptid_immutable
+  on public.acquisition_plan_template_item_dependencies;
+create trigger aptid_immutable
+  before insert or update or delete
+  on public.acquisition_plan_template_item_dependencies
+  for each row execute function public.enforce_plan_template_immutable();
+
+-- =====================================================================
+-- 7. Dérivation de l'impact et du rôle décideur
+-- Le client n'a AUCUN GRANT sur change_impact / required_approver_role
+-- (001 §13.9) : ils sont calculés ici, à partir des colonnes proposées et de
+-- l'élément de plan visé. Un apprenant ne peut donc pas requalifier une
+-- demande d'échéance officielle en simple ajustement personnel.
+--
+-- Règles (miroir exact de src/domain/acquisitionPlan.ts) :
+--   * cible personnelle et/ou rythme, sans changement officiel, dans la
+--     fenêtre officielle                                    => auto_accept
+--   * échéance officielle, prérequis, acquis obligatoire     => teacher_or_admin
+--   * élément rattaché à un stage, ou acquis de nature
+--     real_competence                                        => placement_supervisor
+-- L'ordre d'évaluation est décroissant en exigence : le cas clinique gagne.
+-- =====================================================================
+create or replace function public.derive_plan_change_request_impact()
+returns trigger
+language plpgsql
+security invoker
+set search_path = pg_catalog, public
+as $$
+declare
+  _item    public.acquisition_plan_items;
+  _nature  public.outcome_nature;
+  _official boolean;
+  _personal boolean;
+  _in_window boolean;
+begin
+  select * into _item
+    from public.acquisition_plan_items i
+   where i.id = new.plan_item_id;
+
+  if _item.id is null then
+    raise exception 'plan item % does not exist', new.plan_item_id;
+  end if;
+
+  select o.nature into _nature
+    from public.outcomes o where o.id = _item.outcome_id;
+
+  _official := new.proposed_official_due_at is not null
+               or (new.proposed_sequence is not null
+                   and new.proposed_sequence <> _item.sequence);
+  _personal := new.proposed_learner_target_at is not null
+               or new.proposed_pace <> '{}'::jsonb;
+
+  _in_window := new.proposed_learner_target_at is null
+                or (
+                  (_item.official_start_at is null
+                    or new.proposed_learner_target_at >= _item.official_start_at)
+                  and (_item.official_due_at is null
+                    or new.proposed_learner_target_at <= _item.official_due_at)
+                );
+
+  if _item.placement_assignment_id is not null or _nature = 'real_competence' then
+    new.change_impact := 'clinical_competence';
+    new.required_approver_role := 'placement_supervisor';
+  elsif _official or not _in_window then
+    new.change_impact := case
+      when new.proposed_official_due_at is not null then 'official_deadline'
+      else 'prerequisite'
+    end;
+    new.required_approver_role := 'teacher_or_admin';
+  elsif _personal then
+    new.change_impact := case
+      when new.proposed_pace <> '{}'::jsonb then 'personal_pace'
+      else 'personal_target'
+    end;
+    new.required_approver_role := 'auto_accept';
+  else
+    raise exception 'a plan change request must propose at least one change';
+  end if;
+
+  -- Cohérence de portée : la demande porte toujours sur l'inscription de l'item.
+  new.enrollment_id := _item.enrollment_id;
+  new.program_id    := _item.program_id;
+  return new;
+end;
+$$;
+
+drop trigger if exists pcr_derive_impact on public.plan_change_requests;
+create trigger pcr_derive_impact
+  before insert or update of proposed_learner_target_at, proposed_official_due_at,
+                             proposed_sequence, proposed_pace
+  on public.plan_change_requests
+  for each row execute function public.derive_plan_change_request_impact();
+
+-- =====================================================================
+-- 8. Transitions de cycle de vie d'une demande
+--   draft   -> pending   (justification obligatoire, déjà en CHECK)
+--   draft   -> withdrawn
+--   pending -> withdrawn (tant qu'aucune décision n'est journalisée)
+--   pending -> approved | rejected  : RÉSERVÉ au trigger de décision (§9)
+--   toute autre transition, et toute écriture sur une demande décidée : refus.
+-- La colonne status est accordée au client (001 §13.9) mais ce trigger la
+-- borne : le client ne peut jamais poser lui-même approved / rejected.
+-- =====================================================================
+create or replace function public.enforce_plan_change_request_transitions()
+returns trigger
+language plpgsql
+security invoker
+set search_path = pg_catalog, public
+as $$
+declare
+  _applying boolean := coalesce(
+    pg_catalog.current_setting('app.plan_change_applying', true) = 'on', false);
+begin
+  -- Identité et demandeur non falsifiables après création.
+  if new.plan_item_id <> old.plan_item_id
+     or new.requested_by <> old.requested_by
+     or new.enrollment_id <> old.enrollment_id
+     or new.program_id <> old.program_id
+     or new.created_at <> old.created_at then
+    raise exception 'plan change request identity is immutable'
+      using errcode = 'insufficient_privilege';
+  end if;
+
+  if old.status in ('approved', 'rejected', 'withdrawn') then
+    raise exception 'plan change request % is already %, it cannot be rewritten',
+      old.id, old.status using errcode = 'insufficient_privilege';
+  end if;
+
+  if new.status <> old.status then
+    if new.status in ('approved', 'rejected') then
+      if not _applying then
+        raise exception
+          'only a recorded decision can set a plan change request to %', new.status
+          using errcode = 'insufficient_privilege';
+      end if;
+      new.decided_at := coalesce(new.decided_at, pg_catalog.clock_timestamp());
+    elsif new.status = 'pending' then
+      if old.status <> 'draft' then
+        raise exception 'invalid transition % -> pending', old.status
+          using errcode = 'check_violation';
+      end if;
+      if new.justification is null
+         or length(btrim(new.justification)) < 10 then
+        raise exception 'a justification is required before submitting a request'
+          using errcode = 'check_violation';
+      end if;
+      new.submitted_at := pg_catalog.clock_timestamp();
+    elsif new.status = 'withdrawn' then
+      if old.status not in ('draft', 'pending') then
+        raise exception 'invalid transition % -> withdrawn', old.status
+          using errcode = 'check_violation';
+      end if;
+      new.withdrawn_at := pg_catalog.clock_timestamp();
+    else
+      raise exception 'invalid transition % -> %', old.status, new.status
+        using errcode = 'check_violation';
+    end if;
+  else
+    -- Une demande soumise est immuable hors décision ou retrait.
+    if old.status = 'pending' and not _applying then
+      raise exception 'a pending plan change request cannot be edited'
+        using errcode = 'insufficient_privilege';
+    end if;
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists pcr_transitions on public.plan_change_requests;
+create trigger pcr_transitions
+  before update on public.plan_change_requests
+  for each row execute function public.enforce_plan_change_request_transitions();
+
+-- =====================================================================
+-- 9. Application atomique d'une décision + journalisation d'audit
+-- SECURITY DEFINER : la fonction doit écrire des colonnes de
+-- acquisition_plan_items et plan_change_requests que le rôle appelant n'a pas
+-- le privilège d'écrire (official_due_at, sequence, status décisionnel).
+-- Elle n'est PAS appelable directement : trigger AFTER INSERT sur
+-- plan_change_decisions, dont l'insertion a déjà franchi la policy
+-- pcd_insert_authorized (rôle exigé exact, portée exacte, non-demandeur).
+-- =====================================================================
+create or replace function public.apply_plan_change_decision()
+returns trigger
+language plpgsql
+security definer
+set search_path = pg_catalog, public
+as $$
+declare
+  _req public.plan_change_requests;
+begin
+  select * into _req
+    from public.plan_change_requests r where r.id = new.request_id
+    for update;
+
+  if _req.status <> 'pending' then
+    raise exception 'plan change request % is not pending (status %)',
+      _req.id, _req.status using errcode = 'check_violation';
+  end if;
+
+  perform pg_catalog.set_config('app.plan_change_applying', 'on', true);
+
+  if new.decision = 'approved' then
+    -- Seuls les champs proposés sont appliqués, un par un.
+    update public.acquisition_plan_items i
+       set learner_target_at = coalesce(_req.proposed_learner_target_at,
+                                        i.learner_target_at),
+           official_due_at   = coalesce(_req.proposed_official_due_at,
+                                        i.official_due_at),
+           sequence          = coalesce(_req.proposed_sequence, i.sequence)
+     where i.id = _req.plan_item_id;
+  end if;
+
+  update public.plan_change_requests r
+     set status = case new.decision
+                    when 'approved' then 'approved'::public.plan_change_status
+                    else 'rejected'::public.plan_change_status
+                  end,
+         decided_at = new.decided_at
+   where r.id = _req.id;
+
+  insert into public.audit_events
+    (actor_person_id, action, target_type, target_id, program_id, detail)
+  values (
+    new.reviewer_person_id,
+    'plan_change_request.' || new.decision::text,
+    'plan_change_request',
+    _req.id::text,
+    _req.program_id,
+    jsonb_build_object(
+      'plan_item_id', _req.plan_item_id,
+      'change_impact', _req.change_impact,
+      'required_approver_role', _req.required_approver_role,
+      'reviewer_role', new.reviewer_role,
+      'decision_id', new.id
+    )
+  );
+
+  perform pg_catalog.set_config('app.plan_change_applying', 'off', true);
+  return null;  -- AFTER trigger.
+end;
+$$;
+
+drop trigger if exists pcd_apply_decision on public.plan_change_decisions;
+create trigger pcd_apply_decision
+  after insert on public.plan_change_decisions
+  for each row execute function public.apply_plan_change_decision();
+
+-- Journal append-only : refus explicite, y compris pour service_role.
+create or replace function public.forbid_write()
+returns trigger
+language plpgsql
+security invoker
+set search_path = pg_catalog, public
+as $$
+begin
+  raise exception '% is append-only (attempted %)', tg_table_name, tg_op
+    using errcode = 'insufficient_privilege';
+end;
+$$;
+
+drop trigger if exists pcd_append_only on public.plan_change_decisions;
+create trigger pcd_append_only
+  before update or delete on public.plan_change_decisions
+  for each row execute function public.forbid_write();
+
+-- =====================================================================
+-- 10. Auto-acceptation d'un changement strictement personnel
+-- Règle métier : un ajustement de cible personnelle ou de rythme, sans impact
+-- institutionnel et dans la fenêtre officielle, n'a pas besoin d'un décideur.
+-- Il est appliqué à la soumission, et journalisé comme les autres.
+-- =====================================================================
+create or replace function public.auto_accept_personal_plan_change()
+returns trigger
+language plpgsql
+security definer
+set search_path = pg_catalog, public
+as $$
+begin
+  if new.status <> 'pending' or new.required_approver_role <> 'auto_accept' then
+    return null;
+  end if;
+
+  perform pg_catalog.set_config('app.plan_change_applying', 'on', true);
+
+  update public.acquisition_plan_items i
+     set learner_target_at = coalesce(new.proposed_learner_target_at,
+                                      i.learner_target_at)
+   where i.id = new.plan_item_id;
+
+  update public.plan_change_requests r
+     set status = 'approved', decided_at = pg_catalog.clock_timestamp()
+   where r.id = new.id;
+
+  insert into public.audit_events
+    (actor_person_id, action, target_type, target_id, program_id, detail)
+  values (new.requested_by, 'plan_change_request.auto_accepted',
+          'plan_change_request', new.id::text, new.program_id,
+          jsonb_build_object('plan_item_id', new.plan_item_id,
+                             'change_impact', new.change_impact));
+
+  perform pg_catalog.set_config('app.plan_change_applying', 'off', true);
+  return null;
+end;
+$$;
+
+drop trigger if exists pcr_auto_accept on public.plan_change_requests;
+create trigger pcr_auto_accept
+  after update of status on public.plan_change_requests
+  for each row execute function public.auto_accept_personal_plan_change();
+
+-- =====================================================================
+-- 11. Éléments de plan : colonnes officielles gelées hors décision
+-- Le client n'a pas le GRANT correspondant ; ce trigger ferme le cas
+-- service_role et rappelle que progress_state n'est PAS une acquisition.
+-- =====================================================================
+create or replace function public.enforce_plan_item_official_fields()
+returns trigger
+language plpgsql
+security invoker
+set search_path = pg_catalog, public
+as $$
+declare
+  _applying boolean := coalesce(
+    pg_catalog.current_setting('app.plan_change_applying', true) = 'on', false);
+begin
+  if new.plan_id <> old.plan_id
+     or new.enrollment_id <> old.enrollment_id
+     or new.program_id <> old.program_id
+     or new.outcome_id <> old.outcome_id then
+    raise exception 'plan item identity is immutable'
+      using errcode = 'insufficient_privilege';
+  end if;
+
+  if not _applying then
+    if new.official_start_at is distinct from old.official_start_at
+       or new.official_due_at is distinct from old.official_due_at
+       or new.sequence is distinct from old.sequence
+       or new.is_mandatory is distinct from old.is_mandatory then
+      raise exception
+        'official plan fields change only through an approved plan change request'
+        using errcode = 'insufficient_privilege';
+    end if;
+  end if;
+
+  -- Bornage de la cible personnelle : elle reste dans la fenêtre officielle.
+  if new.learner_target_at is not null then
+    if (new.official_start_at is not null
+         and new.learner_target_at < new.official_start_at)
+       or (new.official_due_at is not null
+         and new.learner_target_at > new.official_due_at) then
+      raise exception
+        'learner_target_at must stay inside the official window'
+        using errcode = 'check_violation';
+    end if;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists api_official_fields on public.acquisition_plan_items;
+create trigger api_official_fields
+  before update on public.acquisition_plan_items
+  for each row execute function public.enforce_plan_item_official_fields();
+
+-- =====================================================================
+-- 12. Rattachement des triggers transverses existants aux nouvelles tables
+-- (provenance §3, updated_at §4) — même mécanisme, mêmes garanties.
+-- =====================================================================
+do $$
+declare t text;
+begin
+  foreach t in array array[
+    'acquisition_plan_templates', 'acquisition_plan_template_items',
+    'acquisition_plan_template_item_dependencies', 'acquisition_plans',
+    'acquisition_plan_items', 'plan_change_requests',
+    'plan_change_decisions', 'passport_share_preferences'
+  ]
+  loop
+    execute format('drop trigger if exists %I on public.%I',
+                   t || '_source_provenance', t);
+    execute format(
+      'create trigger %I before insert or update on public.%I '
+      'for each row execute function public.enforce_source_provenance()',
+      t || '_source_provenance', t);
+  end loop;
+
+  -- plan_change_decisions n'a pas de colonne updated_at (append-only).
+  foreach t in array array[
+    'acquisition_plan_templates', 'acquisition_plan_template_items',
+    'acquisition_plans', 'acquisition_plan_items', 'plan_change_requests',
+    'passport_share_preferences'
+  ]
+  loop
+    execute format('drop trigger if exists %I on public.%I',
+                   'z_' || t || '_set_updated_at', t);
+    execute format(
+      'create trigger %I before update on public.%I '
+      'for each row execute function public.set_updated_at()',
+      'z_' || t || '_set_updated_at', t);
+  end loop;
+end $$;
+
+-- =====================================================================
+-- 13. Exposition : aucune des nouvelles fonctions n'est appelable par un client
+-- =====================================================================
+do $$
+declare fn text;
+begin
+  foreach fn in array array[
+    'public.enforce_plan_template_immutable()',
+    'public.derive_plan_change_request_impact()',
+    'public.enforce_plan_change_request_transitions()',
+    'public.apply_plan_change_decision()',
+    'public.auto_accept_personal_plan_change()',
+    'public.enforce_plan_item_official_fields()',
+    'public.forbid_write()'
+  ]
+  loop
+    execute format('alter function %s owner to postgres', fn);
+    execute format('revoke all on function %s from public', fn);
+    execute format('revoke all on function %s from anon', fn);
+    execute format('revoke all on function %s from authenticated', fn);
+    execute format('revoke all on function %s from service_role', fn);
+  end loop;
+end $$;
+-- Le drapeau transactionnel app.plan_change_applying n'est positionné que par
+-- les deux fonctions SECURITY DEFINER ci-dessus, avec set_config(..., true)
+-- (portée transaction). Un client ne peut pas s'en servir pour contourner les
+-- gardes : positionner le drapeau ne lui donne aucun GRANT de colonne, et les
+-- policies de 002 restent évaluées avant tout trigger.
+
+
 -- FIN — DRAFT — DO NOT EXECUTE
