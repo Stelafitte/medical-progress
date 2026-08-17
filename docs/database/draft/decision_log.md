@@ -6,6 +6,7 @@ Statut : **conception non exécutée**. Aucune base activée, aucune migration c
 
 | # | Décision | Motif |
 | --- | --- | --- |
+| D53 (2026-08-17) | Le **nom global** de la plateforme devient exactement « Mon Passeport Éducatif » (anciens noms courants, historiques uniquement : « Passeport Éducatif Médical », « EduPassport Core ») | décision produit définitive ; renommage limité aux textes visibles, métadonnées et documentation — aucun nom de table, type, colonne, fonction, policy ni concept métier n'est modifié |
 | D1 | `profiles` référence `auth.users(id)` sans email ni mot de passe | pas de duplication d'identifiants ; `auth.users` reste la source de vérité |
 | D2 | Aucune table de progression | la progression est dérivée des preuves (invariant produit) ; éviter une seconde vérité divergente |
 | D3 | Rôles dans `role_assignments`, jamais sur `profiles` | prévention d'escalade de privilèges |

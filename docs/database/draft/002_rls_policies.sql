@@ -1,6 +1,6 @@
 -- =====================================================================
 -- DRAFT — DO NOT EXECUTE
--- Passeport Éducatif Médical — Lot 1 — matrice RLS (conception)
+-- Mon Passeport Éducatif — Lot 1 — matrice RLS (conception)
 -- Ce fichier n'est pas une migration et n'a jamais été exécuté.
 --
 -- Principes :

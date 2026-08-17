@@ -77,13 +77,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Passeport Éducatif Médical" },
+      { title: "Mon Passeport Éducatif" },
       {
         name: "description",
         content:
           "Socle universitaire multi-programmes de suivi des connaissances et compétences médicales.",
       },
-      { property: "og:title", content: "Passeport Éducatif Médical" },
+      { property: "og:title", content: "Mon Passeport Éducatif" },
       {
         property: "og:description",
         content:
