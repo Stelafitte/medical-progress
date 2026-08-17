@@ -117,17 +117,18 @@ export function StageLogTemplatesSection() {
                 </div>
 
                 <div className="space-y-2 rounded-md border border-border p-3">
-                  <p className="flex flex-wrap items-center gap-2 font-medium">
+                  <div className="flex flex-wrap items-center gap-2 font-medium">
                     <Camera className="size-4 text-primary" aria-hidden />
                     Photos autorisées
                     <Badge variant={template.photoPolicy.enabled ? "secondary" : "outline"}>
                       {template.photoPolicy.enabled ? "section activée" : "section désactivée"}
                     </Badge>
-                  </p>
+                  </div>
                   <ul className="space-y-2">
                     {template.photoPolicy.allowedObjects.map((object) => (
                       <li key={object.id} className="rounded-md bg-muted/50 p-2">
-                        <p className="font-medium">
+                        <div className="font-medium">
+
                           {object.label}{" "}
                           <Badge variant="outline" className="align-middle text-[10px]">
                             {object.required ? "obligatoire" : "facultatif"}
