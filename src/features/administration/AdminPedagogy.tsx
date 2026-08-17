@@ -104,7 +104,7 @@ export function AdminPedagogy() {
             <li key={r.id} className="flex flex-wrap items-center gap-2">
               <span>{r.title}</span>
               <Badge variant="outline" className="font-normal">
-                {r.kind}
+                {r.format}
               </Badge>
             </li>
           ))}
