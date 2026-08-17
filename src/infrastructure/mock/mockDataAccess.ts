@@ -4,6 +4,7 @@
  */
 import type { DataAccess } from "@/application/ports/repositories";
 import * as fx from "./fixtures";
+import * as pfx from "./professionalFixtures";
 import * as slfx from "./stageLogFixtures";
 
 const clone = <T>(value: T): T => value;
@@ -43,6 +44,47 @@ export const mockDataAccess: DataAccess = {
     listPlacements: (programId) => ok(fx.placements.filter((p) => p.programId === programId)),
     listAssignmentsForEnrollment: (enrollmentId) =>
       ok(fx.placementAssignments.filter((a) => a.enrollmentId === enrollmentId)),
+    listAssignmentsForProgram: (programId) => {
+      const placementIds = new Set(
+        fx.placements.filter((p) => p.programId === programId).map((p) => p.id),
+      );
+      return ok(fx.placementAssignments.filter((a) => placementIds.has(a.placementId)));
+    },
+    listAssignmentsForSupervisor: (supervisorPersonId, programId) => {
+      const placementIds = new Set(
+        fx.placements.filter((p) => p.programId === programId).map((p) => p.id),
+      );
+      return ok(
+        fx.placementAssignments.filter(
+          (a) => a.supervisorPersonId === supervisorPersonId && placementIds.has(a.placementId),
+        ),
+      );
+    },
+  },
+  supervision: {
+    listAlerts: (programId) => ok(pfx.supervisionAlerts.filter((a) => a.programId === programId)),
+    listCaseDiscussions: (programId) =>
+      ok(pfx.caseDiscussions.filter((c) => c.programId === programId)),
+    listCompetenceConfirmations: (programId) =>
+      ok(pfx.competenceConfirmations.filter((c) => c.programId === programId)),
+    listPlacementReports: (programId) =>
+      ok(pfx.placementReports.filter((r) => r.programId === programId)),
+    listMessages: (programId) =>
+      ok(pfx.professionalMessages.filter((m) => m.programId === programId)),
+    listEnrollmentsByIds: (ids) => ok(fx.enrollments.filter((e) => ids.includes(e.id))),
+    listPeopleByIds: (ids) => ok(fx.people.filter((p) => ids.includes(p.id))),
+  },
+  administration: {
+    listDocuments: (programId) => ok(pfx.adminDocuments.filter((d) => d.programId === programId)),
+    listCertificates: (programId) =>
+      ok(pfx.completionCertificates.filter((c) => c.programId === programId)),
+    listTasks: (programId) => ok(pfx.adminTasks.filter((t) => t.programId === programId)),
+    listMessageTemplates: () => ok(pfx.messageTemplates),
+    listSendHistory: (programId) => ok(pfx.sendHistory.filter((s) => s.programId === programId)),
+    listPeople: () => ok(fx.people),
+    listAllRoleAssignments: () => ok(fx.roleAssignments),
+    listAllEnrollments: (programId) => ok(fx.enrollments.filter((e) => e.programId === programId)),
+    listPlatformSupervision: () => ok(pfx.platformSupervision),
   },
   resources: {
     listResources: (programId) => ok(fx.learningResources.filter((r) => r.programId === programId)),

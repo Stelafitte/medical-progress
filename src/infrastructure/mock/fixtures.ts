@@ -113,8 +113,20 @@ export const people: readonly Person[] = [
     fullName: "Dr Hélène Vasseur",
     email: "helene.demo@example.org",
   },
+  {
+    ...base,
+    id: "per-supervisor-2",
+    fullName: "Dr Karim Benali",
+    email: "karim.demo@example.org",
+  },
   { ...base, id: "per-teacher", fullName: "Pr Marc Delaunay", email: "marc.demo@example.org" },
   { ...base, id: "per-admin", fullName: "Service scolarité", email: "scolarite.demo@example.org" },
+  {
+    ...base,
+    id: "per-platform-admin",
+    fullName: "Direction de la plateforme",
+    email: "plateforme.demo@example.org",
+  },
 ];
 
 export const enrollments: readonly Enrollment[] = [
@@ -174,7 +186,28 @@ export const roleAssignments: readonly RoleAssignment[] = [
     provenance: native,
   },
   {
+    personId: "per-supervisor-2",
+    role: "placement_supervisor",
+    scope: { kind: "placement", programId: "prog-dfasm-cardio", placementId: "pla-cardio-service" },
+    grantedAt: ts("2026-09-01T00:00:00Z"),
+    provenance: native,
+  },
+  {
     personId: "per-admin",
+    role: "administrator",
+    scope: { kind: "program", programId: "prog-diu-echo" },
+    grantedAt: ts("2026-01-05T00:00:00Z"),
+    provenance: native,
+  },
+  {
+    personId: "per-admin",
+    role: "administrator",
+    scope: { kind: "program", programId: "prog-dfasm-cardio" },
+    grantedAt: ts("2026-01-05T00:00:00Z"),
+    provenance: native,
+  },
+  {
+    personId: "per-platform-admin",
     role: "administrator",
     scope: { kind: "platform" },
     grantedAt: ts("2026-01-05T00:00:00Z"),
@@ -322,10 +355,20 @@ export const placementAssignments: readonly PlacementAssignment[] = [
     id: "pas-cardio-1",
     placementId: "pla-cardio-service",
     enrollmentId: "enr-dfasm",
-    supervisorPersonId: "per-teacher",
+    supervisorPersonId: "per-supervisor-2",
     startsOn: ts("2026-09-01T00:00:00Z"),
     endsOn: ts("2026-10-30T00:00:00Z"),
     status: "planned",
+  },
+  {
+    ...base,
+    id: "pas-echo-2",
+    placementId: "pla-echo-chu",
+    enrollmentId: "enr-diu-autre",
+    supervisorPersonId: "per-supervisor",
+    startsOn: ts("2026-09-01T00:00:00Z"),
+    endsOn: ts("2026-10-31T00:00:00Z"),
+    status: "in_progress",
   },
 ];
 

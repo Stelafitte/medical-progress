@@ -1,35 +1,20 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useSession } from "@/application/session";
-import { AccessRestricted } from "@/components/access-restricted";
-import { AdministrationView } from "@/features/administration/AdministrationView";
+import { createFileRoute, Outlet } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/espace/administration")({
   head: () => ({
     meta: [
-      { title: "Administration des programmes — Mon Passeport Éducatif" },
+      { title: "Administration du programme — Mon Passeport Éducatif" },
       {
         name: "description",
-        content:
-          "Vue administrative minimale : programmes, versions de référentiel et cohortes du socle multi-programmes.",
+        content: "Organisation, configuration pédagogique, suivi, documents et gouvernance.",
       },
-      { property: "og:title", content: "Administration — Mon Passeport Éducatif" },
+      { property: "og:title", content: "Administration du programme — Mon Passeport Éducatif" },
       {
         property: "og:description",
-        content: "Programmes, référentiels et cohortes gérés par un moteur commun configurable.",
+        content: "Organisation, configuration pédagogique, suivi, documents et gouvernance.",
       },
       { name: "robots", content: "noindex" },
     ],
   }),
-  component: GuardedAdministration,
+  component: () => <Outlet />,
 });
-
-/**
- * Garde d'accès : la décision vient des RoleAssignment du contexte de session
- * (programme sélectionné), jamais d'un booléen local.
- */
-function GuardedAdministration() {
-  const { canAccessAdministration } = useSession();
-  if (!canAccessAdministration)
-    return <AccessRestricted area="L'administration institutionnelle" />;
-  return <AdministrationView />;
-}

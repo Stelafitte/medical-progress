@@ -14,10 +14,28 @@ import { Route as EspaceRouteImport } from './routes/espace'
 import { Route as EspaceIndexRouteImport } from './routes/espace.index'
 import { Route as EspaceAdministrationRouteImport } from './routes/espace.administration'
 import { Route as EspaceArchitectureRouteImport } from './routes/espace.architecture'
+import { Route as EspaceEncadrementRouteImport } from './routes/espace.encadrement'
 import { Route as EspacePasseportRouteImport } from './routes/espace.passeport'
+import { Route as EspacePlateformeRouteImport } from './routes/espace.plateforme'
 import { Route as EspaceProfilRouteImport } from './routes/espace.profil'
 import { Route as EspaceRessourcesRouteImport } from './routes/espace.ressources'
 import { Route as EspaceStageRouteImport } from './routes/espace.stage'
+import { Route as EspaceAdministrationIndexRouteImport } from './routes/espace.administration.index'
+import { Route as EspaceAdministrationCommunicationsRouteImport } from './routes/espace.administration.communications'
+import { Route as EspaceAdministrationDocumentsRouteImport } from './routes/espace.administration.documents'
+import { Route as EspaceAdministrationGouvernanceRouteImport } from './routes/espace.administration.gouvernance'
+import { Route as EspaceAdministrationOrganisationRouteImport } from './routes/espace.administration.organisation'
+import { Route as EspaceAdministrationPedagogieRouteImport } from './routes/espace.administration.pedagogie'
+import { Route as EspaceAdministrationSuiviRouteImport } from './routes/espace.administration.suivi'
+import { Route as EspaceEncadrementIndexRouteImport } from './routes/espace.encadrement.index'
+import { Route as EspaceEncadrementAlertesRouteImport } from './routes/espace.encadrement.alertes'
+import { Route as EspaceEncadrementBilansRouteImport } from './routes/espace.encadrement.bilans'
+import { Route as EspaceEncadrementCarnetsRouteImport } from './routes/espace.encadrement.carnets'
+import { Route as EspaceEncadrementCasRouteImport } from './routes/espace.encadrement.cas'
+import { Route as EspaceEncadrementCompetencesRouteImport } from './routes/espace.encadrement.competences'
+import { Route as EspaceEncadrementEtudiantsRouteImport } from './routes/espace.encadrement.etudiants'
+import { Route as EspaceEncadrementMessagesRouteImport } from './routes/espace.encadrement.messages'
+import { Route as EspaceEncadrementProfilRouteImport } from './routes/espace.encadrement.profil'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -44,9 +62,19 @@ const EspaceArchitectureRoute = EspaceArchitectureRouteImport.update({
   path: '/architecture',
   getParentRoute: () => EspaceRoute,
 } as any)
+const EspaceEncadrementRoute = EspaceEncadrementRouteImport.update({
+  id: '/encadrement',
+  path: '/encadrement',
+  getParentRoute: () => EspaceRoute,
+} as any)
 const EspacePasseportRoute = EspacePasseportRouteImport.update({
   id: '/passeport',
   path: '/passeport',
+  getParentRoute: () => EspaceRoute,
+} as any)
+const EspacePlateformeRoute = EspacePlateformeRouteImport.update({
+  id: '/plateforme',
+  path: '/plateforme',
   getParentRoute: () => EspaceRoute,
 } as any)
 const EspaceProfilRoute = EspaceProfilRouteImport.update({
@@ -64,39 +92,183 @@ const EspaceStageRoute = EspaceStageRouteImport.update({
   path: '/stage',
   getParentRoute: () => EspaceRoute,
 } as any)
+const EspaceAdministrationIndexRoute =
+  EspaceAdministrationIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => EspaceAdministrationRoute,
+  } as any)
+const EspaceAdministrationCommunicationsRoute =
+  EspaceAdministrationCommunicationsRouteImport.update({
+    id: '/communications',
+    path: '/communications',
+    getParentRoute: () => EspaceAdministrationRoute,
+  } as any)
+const EspaceAdministrationDocumentsRoute =
+  EspaceAdministrationDocumentsRouteImport.update({
+    id: '/documents',
+    path: '/documents',
+    getParentRoute: () => EspaceAdministrationRoute,
+  } as any)
+const EspaceAdministrationGouvernanceRoute =
+  EspaceAdministrationGouvernanceRouteImport.update({
+    id: '/gouvernance',
+    path: '/gouvernance',
+    getParentRoute: () => EspaceAdministrationRoute,
+  } as any)
+const EspaceAdministrationOrganisationRoute =
+  EspaceAdministrationOrganisationRouteImport.update({
+    id: '/organisation',
+    path: '/organisation',
+    getParentRoute: () => EspaceAdministrationRoute,
+  } as any)
+const EspaceAdministrationPedagogieRoute =
+  EspaceAdministrationPedagogieRouteImport.update({
+    id: '/pedagogie',
+    path: '/pedagogie',
+    getParentRoute: () => EspaceAdministrationRoute,
+  } as any)
+const EspaceAdministrationSuiviRoute =
+  EspaceAdministrationSuiviRouteImport.update({
+    id: '/suivi',
+    path: '/suivi',
+    getParentRoute: () => EspaceAdministrationRoute,
+  } as any)
+const EspaceEncadrementIndexRoute = EspaceEncadrementIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => EspaceEncadrementRoute,
+} as any)
+const EspaceEncadrementAlertesRoute =
+  EspaceEncadrementAlertesRouteImport.update({
+    id: '/alertes',
+    path: '/alertes',
+    getParentRoute: () => EspaceEncadrementRoute,
+  } as any)
+const EspaceEncadrementBilansRoute = EspaceEncadrementBilansRouteImport.update({
+  id: '/bilans',
+  path: '/bilans',
+  getParentRoute: () => EspaceEncadrementRoute,
+} as any)
+const EspaceEncadrementCarnetsRoute =
+  EspaceEncadrementCarnetsRouteImport.update({
+    id: '/carnets',
+    path: '/carnets',
+    getParentRoute: () => EspaceEncadrementRoute,
+  } as any)
+const EspaceEncadrementCasRoute = EspaceEncadrementCasRouteImport.update({
+  id: '/cas',
+  path: '/cas',
+  getParentRoute: () => EspaceEncadrementRoute,
+} as any)
+const EspaceEncadrementCompetencesRoute =
+  EspaceEncadrementCompetencesRouteImport.update({
+    id: '/competences',
+    path: '/competences',
+    getParentRoute: () => EspaceEncadrementRoute,
+  } as any)
+const EspaceEncadrementEtudiantsRoute =
+  EspaceEncadrementEtudiantsRouteImport.update({
+    id: '/etudiants',
+    path: '/etudiants',
+    getParentRoute: () => EspaceEncadrementRoute,
+  } as any)
+const EspaceEncadrementMessagesRoute =
+  EspaceEncadrementMessagesRouteImport.update({
+    id: '/messages',
+    path: '/messages',
+    getParentRoute: () => EspaceEncadrementRoute,
+  } as any)
+const EspaceEncadrementProfilRoute = EspaceEncadrementProfilRouteImport.update({
+  id: '/profil',
+  path: '/profil',
+  getParentRoute: () => EspaceEncadrementRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/espace': typeof EspaceRouteWithChildren
-  '/espace/administration': typeof EspaceAdministrationRoute
+  '/espace/administration': typeof EspaceAdministrationRouteWithChildren
   '/espace/architecture': typeof EspaceArchitectureRoute
+  '/espace/encadrement': typeof EspaceEncadrementRouteWithChildren
   '/espace/passeport': typeof EspacePasseportRoute
+  '/espace/plateforme': typeof EspacePlateformeRoute
   '/espace/profil': typeof EspaceProfilRoute
   '/espace/ressources': typeof EspaceRessourcesRoute
   '/espace/stage': typeof EspaceStageRoute
   '/espace/': typeof EspaceIndexRoute
+  '/espace/administration/communications': typeof EspaceAdministrationCommunicationsRoute
+  '/espace/administration/documents': typeof EspaceAdministrationDocumentsRoute
+  '/espace/administration/gouvernance': typeof EspaceAdministrationGouvernanceRoute
+  '/espace/administration/organisation': typeof EspaceAdministrationOrganisationRoute
+  '/espace/administration/pedagogie': typeof EspaceAdministrationPedagogieRoute
+  '/espace/administration/suivi': typeof EspaceAdministrationSuiviRoute
+  '/espace/encadrement/alertes': typeof EspaceEncadrementAlertesRoute
+  '/espace/encadrement/bilans': typeof EspaceEncadrementBilansRoute
+  '/espace/encadrement/carnets': typeof EspaceEncadrementCarnetsRoute
+  '/espace/encadrement/cas': typeof EspaceEncadrementCasRoute
+  '/espace/encadrement/competences': typeof EspaceEncadrementCompetencesRoute
+  '/espace/encadrement/etudiants': typeof EspaceEncadrementEtudiantsRoute
+  '/espace/encadrement/messages': typeof EspaceEncadrementMessagesRoute
+  '/espace/encadrement/profil': typeof EspaceEncadrementProfilRoute
+  '/espace/administration/': typeof EspaceAdministrationIndexRoute
+  '/espace/encadrement/': typeof EspaceEncadrementIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/espace/administration': typeof EspaceAdministrationRoute
   '/espace/architecture': typeof EspaceArchitectureRoute
   '/espace/passeport': typeof EspacePasseportRoute
+  '/espace/plateforme': typeof EspacePlateformeRoute
   '/espace/profil': typeof EspaceProfilRoute
   '/espace/ressources': typeof EspaceRessourcesRoute
   '/espace/stage': typeof EspaceStageRoute
   '/espace': typeof EspaceIndexRoute
+  '/espace/administration/communications': typeof EspaceAdministrationCommunicationsRoute
+  '/espace/administration/documents': typeof EspaceAdministrationDocumentsRoute
+  '/espace/administration/gouvernance': typeof EspaceAdministrationGouvernanceRoute
+  '/espace/administration/organisation': typeof EspaceAdministrationOrganisationRoute
+  '/espace/administration/pedagogie': typeof EspaceAdministrationPedagogieRoute
+  '/espace/administration/suivi': typeof EspaceAdministrationSuiviRoute
+  '/espace/encadrement/alertes': typeof EspaceEncadrementAlertesRoute
+  '/espace/encadrement/bilans': typeof EspaceEncadrementBilansRoute
+  '/espace/encadrement/carnets': typeof EspaceEncadrementCarnetsRoute
+  '/espace/encadrement/cas': typeof EspaceEncadrementCasRoute
+  '/espace/encadrement/competences': typeof EspaceEncadrementCompetencesRoute
+  '/espace/encadrement/etudiants': typeof EspaceEncadrementEtudiantsRoute
+  '/espace/encadrement/messages': typeof EspaceEncadrementMessagesRoute
+  '/espace/encadrement/profil': typeof EspaceEncadrementProfilRoute
+  '/espace/administration': typeof EspaceAdministrationIndexRoute
+  '/espace/encadrement': typeof EspaceEncadrementIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/espace': typeof EspaceRouteWithChildren
-  '/espace/administration': typeof EspaceAdministrationRoute
+  '/espace/administration': typeof EspaceAdministrationRouteWithChildren
   '/espace/architecture': typeof EspaceArchitectureRoute
+  '/espace/encadrement': typeof EspaceEncadrementRouteWithChildren
   '/espace/passeport': typeof EspacePasseportRoute
+  '/espace/plateforme': typeof EspacePlateformeRoute
   '/espace/profil': typeof EspaceProfilRoute
   '/espace/ressources': typeof EspaceRessourcesRoute
   '/espace/stage': typeof EspaceStageRoute
   '/espace/': typeof EspaceIndexRoute
+  '/espace/administration/communications': typeof EspaceAdministrationCommunicationsRoute
+  '/espace/administration/documents': typeof EspaceAdministrationDocumentsRoute
+  '/espace/administration/gouvernance': typeof EspaceAdministrationGouvernanceRoute
+  '/espace/administration/organisation': typeof EspaceAdministrationOrganisationRoute
+  '/espace/administration/pedagogie': typeof EspaceAdministrationPedagogieRoute
+  '/espace/administration/suivi': typeof EspaceAdministrationSuiviRoute
+  '/espace/encadrement/alertes': typeof EspaceEncadrementAlertesRoute
+  '/espace/encadrement/bilans': typeof EspaceEncadrementBilansRoute
+  '/espace/encadrement/carnets': typeof EspaceEncadrementCarnetsRoute
+  '/espace/encadrement/cas': typeof EspaceEncadrementCasRoute
+  '/espace/encadrement/competences': typeof EspaceEncadrementCompetencesRoute
+  '/espace/encadrement/etudiants': typeof EspaceEncadrementEtudiantsRoute
+  '/espace/encadrement/messages': typeof EspaceEncadrementMessagesRoute
+  '/espace/encadrement/profil': typeof EspaceEncadrementProfilRoute
+  '/espace/administration/': typeof EspaceAdministrationIndexRoute
+  '/espace/encadrement/': typeof EspaceEncadrementIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -105,32 +277,84 @@ export interface FileRouteTypes {
     | '/espace'
     | '/espace/administration'
     | '/espace/architecture'
+    | '/espace/encadrement'
     | '/espace/passeport'
+    | '/espace/plateforme'
     | '/espace/profil'
     | '/espace/ressources'
     | '/espace/stage'
     | '/espace/'
+    | '/espace/administration/communications'
+    | '/espace/administration/documents'
+    | '/espace/administration/gouvernance'
+    | '/espace/administration/organisation'
+    | '/espace/administration/pedagogie'
+    | '/espace/administration/suivi'
+    | '/espace/encadrement/alertes'
+    | '/espace/encadrement/bilans'
+    | '/espace/encadrement/carnets'
+    | '/espace/encadrement/cas'
+    | '/espace/encadrement/competences'
+    | '/espace/encadrement/etudiants'
+    | '/espace/encadrement/messages'
+    | '/espace/encadrement/profil'
+    | '/espace/administration/'
+    | '/espace/encadrement/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/espace/administration'
     | '/espace/architecture'
     | '/espace/passeport'
+    | '/espace/plateforme'
     | '/espace/profil'
     | '/espace/ressources'
     | '/espace/stage'
     | '/espace'
+    | '/espace/administration/communications'
+    | '/espace/administration/documents'
+    | '/espace/administration/gouvernance'
+    | '/espace/administration/organisation'
+    | '/espace/administration/pedagogie'
+    | '/espace/administration/suivi'
+    | '/espace/encadrement/alertes'
+    | '/espace/encadrement/bilans'
+    | '/espace/encadrement/carnets'
+    | '/espace/encadrement/cas'
+    | '/espace/encadrement/competences'
+    | '/espace/encadrement/etudiants'
+    | '/espace/encadrement/messages'
+    | '/espace/encadrement/profil'
+    | '/espace/administration'
+    | '/espace/encadrement'
   id:
     | '__root__'
     | '/'
     | '/espace'
     | '/espace/administration'
     | '/espace/architecture'
+    | '/espace/encadrement'
     | '/espace/passeport'
+    | '/espace/plateforme'
     | '/espace/profil'
     | '/espace/ressources'
     | '/espace/stage'
     | '/espace/'
+    | '/espace/administration/communications'
+    | '/espace/administration/documents'
+    | '/espace/administration/gouvernance'
+    | '/espace/administration/organisation'
+    | '/espace/administration/pedagogie'
+    | '/espace/administration/suivi'
+    | '/espace/encadrement/alertes'
+    | '/espace/encadrement/bilans'
+    | '/espace/encadrement/carnets'
+    | '/espace/encadrement/cas'
+    | '/espace/encadrement/competences'
+    | '/espace/encadrement/etudiants'
+    | '/espace/encadrement/messages'
+    | '/espace/encadrement/profil'
+    | '/espace/administration/'
+    | '/espace/encadrement/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -175,11 +399,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EspaceArchitectureRouteImport
       parentRoute: typeof EspaceRoute
     }
+    '/espace/encadrement': {
+      id: '/espace/encadrement'
+      path: '/encadrement'
+      fullPath: '/espace/encadrement'
+      preLoaderRoute: typeof EspaceEncadrementRouteImport
+      parentRoute: typeof EspaceRoute
+    }
     '/espace/passeport': {
       id: '/espace/passeport'
       path: '/passeport'
       fullPath: '/espace/passeport'
       preLoaderRoute: typeof EspacePasseportRouteImport
+      parentRoute: typeof EspaceRoute
+    }
+    '/espace/plateforme': {
+      id: '/espace/plateforme'
+      path: '/plateforme'
+      fullPath: '/espace/plateforme'
+      preLoaderRoute: typeof EspacePlateformeRouteImport
       parentRoute: typeof EspaceRoute
     }
     '/espace/profil': {
@@ -203,13 +441,178 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EspaceStageRouteImport
       parentRoute: typeof EspaceRoute
     }
+    '/espace/administration/': {
+      id: '/espace/administration/'
+      path: '/'
+      fullPath: '/espace/administration/'
+      preLoaderRoute: typeof EspaceAdministrationIndexRouteImport
+      parentRoute: typeof EspaceAdministrationRoute
+    }
+    '/espace/administration/communications': {
+      id: '/espace/administration/communications'
+      path: '/communications'
+      fullPath: '/espace/administration/communications'
+      preLoaderRoute: typeof EspaceAdministrationCommunicationsRouteImport
+      parentRoute: typeof EspaceAdministrationRoute
+    }
+    '/espace/administration/documents': {
+      id: '/espace/administration/documents'
+      path: '/documents'
+      fullPath: '/espace/administration/documents'
+      preLoaderRoute: typeof EspaceAdministrationDocumentsRouteImport
+      parentRoute: typeof EspaceAdministrationRoute
+    }
+    '/espace/administration/gouvernance': {
+      id: '/espace/administration/gouvernance'
+      path: '/gouvernance'
+      fullPath: '/espace/administration/gouvernance'
+      preLoaderRoute: typeof EspaceAdministrationGouvernanceRouteImport
+      parentRoute: typeof EspaceAdministrationRoute
+    }
+    '/espace/administration/organisation': {
+      id: '/espace/administration/organisation'
+      path: '/organisation'
+      fullPath: '/espace/administration/organisation'
+      preLoaderRoute: typeof EspaceAdministrationOrganisationRouteImport
+      parentRoute: typeof EspaceAdministrationRoute
+    }
+    '/espace/administration/pedagogie': {
+      id: '/espace/administration/pedagogie'
+      path: '/pedagogie'
+      fullPath: '/espace/administration/pedagogie'
+      preLoaderRoute: typeof EspaceAdministrationPedagogieRouteImport
+      parentRoute: typeof EspaceAdministrationRoute
+    }
+    '/espace/administration/suivi': {
+      id: '/espace/administration/suivi'
+      path: '/suivi'
+      fullPath: '/espace/administration/suivi'
+      preLoaderRoute: typeof EspaceAdministrationSuiviRouteImport
+      parentRoute: typeof EspaceAdministrationRoute
+    }
+    '/espace/encadrement/': {
+      id: '/espace/encadrement/'
+      path: '/'
+      fullPath: '/espace/encadrement/'
+      preLoaderRoute: typeof EspaceEncadrementIndexRouteImport
+      parentRoute: typeof EspaceEncadrementRoute
+    }
+    '/espace/encadrement/alertes': {
+      id: '/espace/encadrement/alertes'
+      path: '/alertes'
+      fullPath: '/espace/encadrement/alertes'
+      preLoaderRoute: typeof EspaceEncadrementAlertesRouteImport
+      parentRoute: typeof EspaceEncadrementRoute
+    }
+    '/espace/encadrement/bilans': {
+      id: '/espace/encadrement/bilans'
+      path: '/bilans'
+      fullPath: '/espace/encadrement/bilans'
+      preLoaderRoute: typeof EspaceEncadrementBilansRouteImport
+      parentRoute: typeof EspaceEncadrementRoute
+    }
+    '/espace/encadrement/carnets': {
+      id: '/espace/encadrement/carnets'
+      path: '/carnets'
+      fullPath: '/espace/encadrement/carnets'
+      preLoaderRoute: typeof EspaceEncadrementCarnetsRouteImport
+      parentRoute: typeof EspaceEncadrementRoute
+    }
+    '/espace/encadrement/cas': {
+      id: '/espace/encadrement/cas'
+      path: '/cas'
+      fullPath: '/espace/encadrement/cas'
+      preLoaderRoute: typeof EspaceEncadrementCasRouteImport
+      parentRoute: typeof EspaceEncadrementRoute
+    }
+    '/espace/encadrement/competences': {
+      id: '/espace/encadrement/competences'
+      path: '/competences'
+      fullPath: '/espace/encadrement/competences'
+      preLoaderRoute: typeof EspaceEncadrementCompetencesRouteImport
+      parentRoute: typeof EspaceEncadrementRoute
+    }
+    '/espace/encadrement/etudiants': {
+      id: '/espace/encadrement/etudiants'
+      path: '/etudiants'
+      fullPath: '/espace/encadrement/etudiants'
+      preLoaderRoute: typeof EspaceEncadrementEtudiantsRouteImport
+      parentRoute: typeof EspaceEncadrementRoute
+    }
+    '/espace/encadrement/messages': {
+      id: '/espace/encadrement/messages'
+      path: '/messages'
+      fullPath: '/espace/encadrement/messages'
+      preLoaderRoute: typeof EspaceEncadrementMessagesRouteImport
+      parentRoute: typeof EspaceEncadrementRoute
+    }
+    '/espace/encadrement/profil': {
+      id: '/espace/encadrement/profil'
+      path: '/profil'
+      fullPath: '/espace/encadrement/profil'
+      preLoaderRoute: typeof EspaceEncadrementProfilRouteImport
+      parentRoute: typeof EspaceEncadrementRoute
+    }
   }
 }
 
+interface EspaceAdministrationRouteChildren {
+  EspaceAdministrationCommunicationsRoute: typeof EspaceAdministrationCommunicationsRoute
+  EspaceAdministrationDocumentsRoute: typeof EspaceAdministrationDocumentsRoute
+  EspaceAdministrationGouvernanceRoute: typeof EspaceAdministrationGouvernanceRoute
+  EspaceAdministrationOrganisationRoute: typeof EspaceAdministrationOrganisationRoute
+  EspaceAdministrationPedagogieRoute: typeof EspaceAdministrationPedagogieRoute
+  EspaceAdministrationSuiviRoute: typeof EspaceAdministrationSuiviRoute
+  EspaceAdministrationIndexRoute: typeof EspaceAdministrationIndexRoute
+}
+
+const EspaceAdministrationRouteChildren: EspaceAdministrationRouteChildren = {
+  EspaceAdministrationCommunicationsRoute:
+    EspaceAdministrationCommunicationsRoute,
+  EspaceAdministrationDocumentsRoute: EspaceAdministrationDocumentsRoute,
+  EspaceAdministrationGouvernanceRoute: EspaceAdministrationGouvernanceRoute,
+  EspaceAdministrationOrganisationRoute: EspaceAdministrationOrganisationRoute,
+  EspaceAdministrationPedagogieRoute: EspaceAdministrationPedagogieRoute,
+  EspaceAdministrationSuiviRoute: EspaceAdministrationSuiviRoute,
+  EspaceAdministrationIndexRoute: EspaceAdministrationIndexRoute,
+}
+
+const EspaceAdministrationRouteWithChildren =
+  EspaceAdministrationRoute._addFileChildren(EspaceAdministrationRouteChildren)
+
+interface EspaceEncadrementRouteChildren {
+  EspaceEncadrementAlertesRoute: typeof EspaceEncadrementAlertesRoute
+  EspaceEncadrementBilansRoute: typeof EspaceEncadrementBilansRoute
+  EspaceEncadrementCarnetsRoute: typeof EspaceEncadrementCarnetsRoute
+  EspaceEncadrementCasRoute: typeof EspaceEncadrementCasRoute
+  EspaceEncadrementCompetencesRoute: typeof EspaceEncadrementCompetencesRoute
+  EspaceEncadrementEtudiantsRoute: typeof EspaceEncadrementEtudiantsRoute
+  EspaceEncadrementMessagesRoute: typeof EspaceEncadrementMessagesRoute
+  EspaceEncadrementProfilRoute: typeof EspaceEncadrementProfilRoute
+  EspaceEncadrementIndexRoute: typeof EspaceEncadrementIndexRoute
+}
+
+const EspaceEncadrementRouteChildren: EspaceEncadrementRouteChildren = {
+  EspaceEncadrementAlertesRoute: EspaceEncadrementAlertesRoute,
+  EspaceEncadrementBilansRoute: EspaceEncadrementBilansRoute,
+  EspaceEncadrementCarnetsRoute: EspaceEncadrementCarnetsRoute,
+  EspaceEncadrementCasRoute: EspaceEncadrementCasRoute,
+  EspaceEncadrementCompetencesRoute: EspaceEncadrementCompetencesRoute,
+  EspaceEncadrementEtudiantsRoute: EspaceEncadrementEtudiantsRoute,
+  EspaceEncadrementMessagesRoute: EspaceEncadrementMessagesRoute,
+  EspaceEncadrementProfilRoute: EspaceEncadrementProfilRoute,
+  EspaceEncadrementIndexRoute: EspaceEncadrementIndexRoute,
+}
+
+const EspaceEncadrementRouteWithChildren =
+  EspaceEncadrementRoute._addFileChildren(EspaceEncadrementRouteChildren)
+
 interface EspaceRouteChildren {
-  EspaceAdministrationRoute: typeof EspaceAdministrationRoute
+  EspaceAdministrationRoute: typeof EspaceAdministrationRouteWithChildren
   EspaceArchitectureRoute: typeof EspaceArchitectureRoute
+  EspaceEncadrementRoute: typeof EspaceEncadrementRouteWithChildren
   EspacePasseportRoute: typeof EspacePasseportRoute
+  EspacePlateformeRoute: typeof EspacePlateformeRoute
   EspaceProfilRoute: typeof EspaceProfilRoute
   EspaceRessourcesRoute: typeof EspaceRessourcesRoute
   EspaceStageRoute: typeof EspaceStageRoute
@@ -217,9 +620,11 @@ interface EspaceRouteChildren {
 }
 
 const EspaceRouteChildren: EspaceRouteChildren = {
-  EspaceAdministrationRoute: EspaceAdministrationRoute,
+  EspaceAdministrationRoute: EspaceAdministrationRouteWithChildren,
   EspaceArchitectureRoute: EspaceArchitectureRoute,
+  EspaceEncadrementRoute: EspaceEncadrementRouteWithChildren,
   EspacePasseportRoute: EspacePasseportRoute,
+  EspacePlateformeRoute: EspacePlateformeRoute,
   EspaceProfilRoute: EspaceProfilRoute,
   EspaceRessourcesRoute: EspaceRessourcesRoute,
   EspaceStageRoute: EspaceStageRoute,
