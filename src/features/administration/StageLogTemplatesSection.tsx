@@ -128,7 +128,6 @@ export function StageLogTemplatesSection() {
                     {template.photoPolicy.allowedObjects.map((object) => (
                       <li key={object.id} className="rounded-md bg-muted/50 p-2">
                         <div className="font-medium">
-
                           {object.label}{" "}
                           <Badge variant="outline" className="align-middle text-[10px]">
                             {object.required ? "obligatoire" : "facultatif"}
@@ -138,7 +137,8 @@ export function StageLogTemplatesSection() {
                               autre objet personnalisé
                             </Badge>
                           ) : null}
-                        </p>
+                        </div>
+
                         <p className="text-xs text-muted-foreground">{object.framingInstruction}</p>
                       </li>
                     ))}
