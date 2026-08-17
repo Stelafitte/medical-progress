@@ -115,6 +115,11 @@ export function StageView() {
           <li className="text-sm text-muted-foreground">Aucune affectation pour l'instant.</li>
         ) : null}
       </ul>
+
+      <StageLogBook />
+
+      <StageLogsToValidate />
     </div>
   );
 }
+
