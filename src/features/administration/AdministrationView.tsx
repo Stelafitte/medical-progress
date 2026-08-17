@@ -92,6 +92,11 @@ export function AdministrationView() {
           </Table>
         </div>
       </section>
+
+      <StageLogTemplatesSection />
+
+      <StageLogsReceived />
     </div>
   );
 }
+
