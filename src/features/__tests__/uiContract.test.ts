@@ -42,9 +42,7 @@ describe("navigation", () => {
 
   it("place Ressources immédiatement avant Stage dans l'espace apprenant", () => {
     const order = [
-      ...navigation.matchAll(
-        /label: "(Tableau de bord|Passeport|Ressources|Stage)"/g,
-      ),
+      ...navigation.matchAll(/label: "(Tableau de bord|Passeport|Ressources|Stage)"/g),
     ].map((m) => m[1]);
     expect(order).toEqual(["Tableau de bord", "Passeport", "Ressources", "Stage"]);
   });
@@ -61,7 +59,6 @@ describe("navigation", () => {
     expect(shell).toContain("navSpacesFor");
   });
 });
-
 
 describe("profil — sécurité non active", () => {
   it("n'expose aucune saisie ni stockage de mot de passe", () => {

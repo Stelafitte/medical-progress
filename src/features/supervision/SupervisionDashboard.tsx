@@ -3,12 +3,15 @@ import { SectionHeading } from "@/components/section-heading";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { EmptyState, MockBadge, PanelCard, ScopeNotice, StatCard } from "@/features/professional/mock-ui";
-import { learnerName, useSupervision } from "@/features/supervision/useSupervision";
 import {
-  ALERT_SEVERITY_LABELS_FR,
-  SUPERVISION_ALERT_LABELS_FR,
-} from "@/domain/supervision";
+  EmptyState,
+  MockBadge,
+  PanelCard,
+  ScopeNotice,
+  StatCard,
+} from "@/features/professional/mock-ui";
+import { learnerName, useSupervision } from "@/features/supervision/useSupervision";
+import { ALERT_SEVERITY_LABELS_FR, SUPERVISION_ALERT_LABELS_FR } from "@/domain/supervision";
 import { useSession } from "@/application/session";
 
 const STATUS_FR: Record<string, string> = {
@@ -40,8 +43,9 @@ export function SupervisionDashboard() {
       />
 
       <ScopeNotice>
-        Périmètre limité aux étudiants affectés à vos stages ({data.enrollmentIds.length} étudiant(s)
-        encadré(s)). Les autres étudiants du programme ne sont jamais chargés ni affichés.
+        Périmètre limité aux étudiants affectés à vos stages ({data.enrollmentIds.length}{" "}
+        étudiant(s) encadré(s)). Les autres étudiants du programme ne sont jamais chargés ni
+        affichés.
       </ScopeNotice>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -91,7 +95,10 @@ export function SupervisionDashboard() {
           </ul>
         </PanelCard>
 
-        <PanelCard title="Alertes et échéances" description="Signaux calculés sur vos affectations.">
+        <PanelCard
+          title="Alertes et échéances"
+          description="Signaux calculés sur vos affectations."
+        >
           {data.alerts.length === 0 ? (
             <EmptyState>Aucune alerte sur votre périmètre.</EmptyState>
           ) : (

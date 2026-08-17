@@ -97,7 +97,11 @@ export function SupervisionStudents() {
                   )}
                 </TableCell>
                 <TableCell className="text-right">
-                  <Button size="sm" variant="outline" onClick={() => setSelected(row.enrollment.id)}>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setSelected(row.enrollment.id)}
+                  >
                     Ouvrir
                   </Button>
                 </TableCell>
@@ -105,7 +109,9 @@ export function SupervisionStudents() {
             ))}
           </TableBody>
         </Table>
-        {rows.length === 0 ? <EmptyState>Aucun étudiant ne correspond au filtre.</EmptyState> : null}
+        {rows.length === 0 ? (
+          <EmptyState>Aucun étudiant ne correspond au filtre.</EmptyState>
+        ) : null}
       </div>
 
       {detail ? (

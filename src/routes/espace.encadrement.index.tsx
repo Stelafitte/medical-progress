@@ -7,9 +7,15 @@ export const Route = createFileRoute("/espace/encadrement/")({
   head: () => ({
     meta: [
       { title: "Espace responsable de stage — Mon Passeport Éducatif" },
-      { name: "description", content: "Tableau de bord d'encadrement : étudiants encadrés, stages, tâches et alertes." },
+      {
+        name: "description",
+        content: "Tableau de bord d'encadrement : étudiants encadrés, stages, tâches et alertes.",
+      },
       { property: "og:title", content: "Espace responsable de stage — Mon Passeport Éducatif" },
-      { property: "og:description", content: "Tableau de bord d'encadrement : étudiants encadrés, stages, tâches et alertes." },
+      {
+        property: "og:description",
+        content: "Tableau de bord d'encadrement : étudiants encadrés, stages, tâches et alertes.",
+      },
       { name: "robots", content: "noindex" },
     ],
   }),
@@ -19,6 +25,7 @@ export const Route = createFileRoute("/espace/encadrement/")({
 /** Garde d'accès dérivée des RoleAssignment contextualisés du programme actif. */
 function Guarded() {
   const session = useSession();
-  if (!session.canAccessSupervision) return <AccessRestricted area="L'espace responsable de stage" />;
+  if (!session.canAccessSupervision)
+    return <AccessRestricted area="L'espace responsable de stage" />;
   return <SupervisionDashboard />;
 }

@@ -7,9 +7,15 @@ export const Route = createFileRoute("/espace/administration/pedagogie")({
   head: () => ({
     meta: [
       { title: "Configuration pédagogique — Mon Passeport Éducatif" },
-      { name: "description", content: "Référentiels, compétences, plans d'acquisition, carnets et ressources." },
+      {
+        name: "description",
+        content: "Référentiels, compétences, plans d'acquisition, carnets et ressources.",
+      },
       { property: "og:title", content: "Configuration pédagogique — Mon Passeport Éducatif" },
-      { property: "og:description", content: "Référentiels, compétences, plans d'acquisition, carnets et ressources." },
+      {
+        property: "og:description",
+        content: "Référentiels, compétences, plans d'acquisition, carnets et ressources.",
+      },
       { name: "robots", content: "noindex" },
     ],
   }),
@@ -19,6 +25,7 @@ export const Route = createFileRoute("/espace/administration/pedagogie")({
 /** Garde d'accès dérivée des RoleAssignment contextualisés du programme actif. */
 function Guarded() {
   const session = useSession();
-  if (!session.canAccessProgramAdministration) return <AccessRestricted area="L'administration du programme" />;
+  if (!session.canAccessProgramAdministration)
+    return <AccessRestricted area="L'administration du programme" />;
   return <AdminPedagogy />;
 }

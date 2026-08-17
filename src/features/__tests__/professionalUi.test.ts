@@ -30,7 +30,9 @@ describe("navigation par rôle", () => {
 });
 
 describe("protection des routes", () => {
-  const supervisionRoutes = routeFiles.filter((f) => f.startsWith("espace.encadrement.") && f !== "espace.encadrement.tsx");
+  const supervisionRoutes = routeFiles.filter(
+    (f) => f.startsWith("espace.encadrement.") && f !== "espace.encadrement.tsx",
+  );
   const adminRoutes = routeFiles.filter(
     (f) => f.startsWith("espace.administration.") && f !== "espace.administration.tsx",
   );
@@ -92,7 +94,9 @@ describe("aucune opération réelle", () => {
 
   it("affiche explicitement l'absence d'envoi réel", () => {
     expect(read("src/domain/administration.ts")).toContain("Aucun envoi réel");
-    expect(read("src/features/administration/AdminCommunications.tsx")).toContain("NO_REAL_SEND_FR");
+    expect(read("src/features/administration/AdminCommunications.tsx")).toContain(
+      "NO_REAL_SEND_FR",
+    );
   });
 
   it("marque la conservation comme à définir avant backend", () => {

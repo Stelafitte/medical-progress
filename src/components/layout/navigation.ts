@@ -67,24 +67,59 @@ export const SUPERVISION_NAV: readonly NavEntry[] = [
   },
   { to: "/espace/encadrement/cas", label: "Cas et questions", icon: MessagesSquare, exact: false },
   { to: "/espace/encadrement/alertes", label: "Alertes", icon: AlertTriangle, exact: false },
-  { to: "/espace/encadrement/bilans", label: "Bilans de stage", icon: ClipboardCheck, exact: false },
+  {
+    to: "/espace/encadrement/bilans",
+    label: "Bilans de stage",
+    icon: ClipboardCheck,
+    exact: false,
+  },
   { to: "/espace/encadrement/messages", label: "Messagerie", icon: Mail, exact: false },
-  { to: "/espace/encadrement/profil", label: "Mon profil d'encadrant", icon: UserRound, exact: false },
+  {
+    to: "/espace/encadrement/profil",
+    label: "Mon profil d'encadrant",
+    icon: UserRound,
+    exact: false,
+  },
 ];
 
 export const PROGRAM_ADMIN_NAV: readonly NavEntry[] = [
   { to: "/espace/administration", label: "Pilotage", icon: Gauge, exact: true },
-  { to: "/espace/administration/organisation", label: "Organisation", icon: Building2, exact: false },
+  {
+    to: "/espace/administration/organisation",
+    label: "Organisation",
+    icon: Building2,
+    exact: false,
+  },
   {
     to: "/espace/administration/pedagogie",
     label: "Configuration pédagogique",
     icon: GraduationCap,
     exact: false,
   },
-  { to: "/espace/administration/suivi", label: "Suivi pédagogique", icon: ClipboardCheck, exact: false },
-  { to: "/espace/administration/communications", label: "Communications", icon: Mail, exact: false },
-  { to: "/espace/administration/documents", label: "Documents et certificats", icon: FileText, exact: false },
-  { to: "/espace/administration/gouvernance", label: "Gouvernance", icon: ShieldCheck, exact: false },
+  {
+    to: "/espace/administration/suivi",
+    label: "Suivi pédagogique",
+    icon: ClipboardCheck,
+    exact: false,
+  },
+  {
+    to: "/espace/administration/communications",
+    label: "Communications",
+    icon: Mail,
+    exact: false,
+  },
+  {
+    to: "/espace/administration/documents",
+    label: "Documents et certificats",
+    icon: FileText,
+    exact: false,
+  },
+  {
+    to: "/espace/administration/gouvernance",
+    label: "Gouvernance",
+    icon: ShieldCheck,
+    exact: false,
+  },
 ];
 
 export const PLATFORM_ADMIN_NAV: readonly NavEntry[] = [

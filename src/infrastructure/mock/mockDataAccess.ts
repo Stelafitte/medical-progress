@@ -83,8 +83,7 @@ export const mockDataAccess: DataAccess = {
     listSendHistory: (programId) => ok(pfx.sendHistory.filter((s) => s.programId === programId)),
     listPeople: () => ok(fx.people),
     listAllRoleAssignments: () => ok(fx.roleAssignments),
-    listAllEnrollments: (programId) =>
-      ok(fx.enrollments.filter((e) => e.programId === programId)),
+    listAllEnrollments: (programId) => ok(fx.enrollments.filter((e) => e.programId === programId)),
     listPlatformSupervision: () => ok(pfx.platformSupervision),
   },
   resources: {

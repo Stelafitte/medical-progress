@@ -136,7 +136,10 @@ export function AdminDocuments() {
         {feedback ? <p className="text-sm text-muted-foreground">{feedback}</p> : null}
       </PanelCard>
 
-      <PanelCard title="Attestations et exports" description="Exports simulés, sans donnée patient.">
+      <PanelCard
+        title="Attestations et exports"
+        description="Exports simulés, sans donnée patient."
+      >
         <div className="flex flex-wrap gap-2">
           <Button size="sm" variant="outline" disabled>
             Exporter les attestations (prévu)

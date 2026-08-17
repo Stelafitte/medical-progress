@@ -7,9 +7,15 @@ export const Route = createFileRoute("/espace/administration/suivi")({
   head: () => ({
     meta: [
       { title: "Suivi pédagogique — Mon Passeport Éducatif" },
-      { name: "description", content: "Cockpit de promotion, états des carnets et dossiers institutionnels." },
+      {
+        name: "description",
+        content: "Cockpit de promotion, états des carnets et dossiers institutionnels.",
+      },
       { property: "og:title", content: "Suivi pédagogique — Mon Passeport Éducatif" },
-      { property: "og:description", content: "Cockpit de promotion, états des carnets et dossiers institutionnels." },
+      {
+        property: "og:description",
+        content: "Cockpit de promotion, états des carnets et dossiers institutionnels.",
+      },
       { name: "robots", content: "noindex" },
     ],
   }),
@@ -19,6 +25,7 @@ export const Route = createFileRoute("/espace/administration/suivi")({
 /** Garde d'accès dérivée des RoleAssignment contextualisés du programme actif. */
 function Guarded() {
   const session = useSession();
-  if (!session.canAccessProgramAdministration) return <AccessRestricted area="L'administration du programme" />;
+  if (!session.canAccessProgramAdministration)
+    return <AccessRestricted area="L'administration du programme" />;
   return <AdminMonitoring />;
 }

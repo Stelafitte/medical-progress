@@ -7,9 +7,15 @@ export const Route = createFileRoute("/espace/encadrement/profil")({
   head: () => ({
     meta: [
       { title: "Mon profil d'encadrant — Mon Passeport Éducatif" },
-      { name: "description", content: "Fonction, terrains, périodes d'encadrement et préférences de notification." },
+      {
+        name: "description",
+        content: "Fonction, terrains, périodes d'encadrement et préférences de notification.",
+      },
       { property: "og:title", content: "Mon profil d'encadrant — Mon Passeport Éducatif" },
-      { property: "og:description", content: "Fonction, terrains, périodes d'encadrement et préférences de notification." },
+      {
+        property: "og:description",
+        content: "Fonction, terrains, périodes d'encadrement et préférences de notification.",
+      },
       { name: "robots", content: "noindex" },
     ],
   }),
@@ -19,6 +25,7 @@ export const Route = createFileRoute("/espace/encadrement/profil")({
 /** Garde d'accès dérivée des RoleAssignment contextualisés du programme actif. */
 function Guarded() {
   const session = useSession();
-  if (!session.canAccessSupervision) return <AccessRestricted area="L'espace responsable de stage" />;
+  if (!session.canAccessSupervision)
+    return <AccessRestricted area="L'espace responsable de stage" />;
   return <SupervisorProfile />;
 }

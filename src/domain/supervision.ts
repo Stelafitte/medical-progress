@@ -32,11 +32,7 @@ export type ProfessionalMessageId = Id<"ProfessionalMessage">;
 /* ------------------------------------------------------------------ */
 
 export type SupervisionAlertKind =
-  | "low_activity"
-  | "missing_quota"
-  | "no_entry"
-  | "underexposed_competence"
-  | "late_validation";
+  "low_activity" | "missing_quota" | "no_entry" | "underexposed_competence" | "late_validation";
 
 export type AlertSeverity = "info" | "warning" | "critical";
 

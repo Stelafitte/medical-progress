@@ -15,7 +15,11 @@ import {
   canAccessProgramAdministration,
   canAccessSupervision,
 } from "../access";
-import { scopedToProgram, nextCertificateStatus, platformAdminCanOpenLearnerFile } from "../administration";
+import {
+  scopedToProgram,
+  nextCertificateStatus,
+  platformAdminCanOpenLearnerFile,
+} from "../administration";
 import type { PlacementAssignment, Provenance, RoleAssignment } from "../types";
 
 const provenance: Provenance = { sourceSystem: "native" };

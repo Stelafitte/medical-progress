@@ -7,9 +7,15 @@ export const Route = createFileRoute("/espace/encadrement/alertes")({
   head: () => ({
     meta: [
       { title: "Alertes d'encadrement — Mon Passeport Éducatif" },
-      { name: "description", content: "Faible activité, quotas manquants, absence de saisie et validations en retard." },
+      {
+        name: "description",
+        content: "Faible activité, quotas manquants, absence de saisie et validations en retard.",
+      },
       { property: "og:title", content: "Alertes d'encadrement — Mon Passeport Éducatif" },
-      { property: "og:description", content: "Faible activité, quotas manquants, absence de saisie et validations en retard." },
+      {
+        property: "og:description",
+        content: "Faible activité, quotas manquants, absence de saisie et validations en retard.",
+      },
       { name: "robots", content: "noindex" },
     ],
   }),
@@ -19,6 +25,7 @@ export const Route = createFileRoute("/espace/encadrement/alertes")({
 /** Garde d'accès dérivée des RoleAssignment contextualisés du programme actif. */
 function Guarded() {
   const session = useSession();
-  if (!session.canAccessSupervision) return <AccessRestricted area="L'espace responsable de stage" />;
+  if (!session.canAccessSupervision)
+    return <AccessRestricted area="L'espace responsable de stage" />;
   return <SupervisionAlerts />;
 }

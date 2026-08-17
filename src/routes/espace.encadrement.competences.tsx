@@ -7,9 +7,15 @@ export const Route = createFileRoute("/espace/encadrement/competences")({
   head: () => ({
     meta: [
       { title: "Compétences à confirmer — Mon Passeport Éducatif" },
-      { name: "description", content: "Confirmation humaine des compétences réelles et du niveau d'autonomie." },
+      {
+        name: "description",
+        content: "Confirmation humaine des compétences réelles et du niveau d'autonomie.",
+      },
       { property: "og:title", content: "Compétences à confirmer — Mon Passeport Éducatif" },
-      { property: "og:description", content: "Confirmation humaine des compétences réelles et du niveau d'autonomie." },
+      {
+        property: "og:description",
+        content: "Confirmation humaine des compétences réelles et du niveau d'autonomie.",
+      },
       { name: "robots", content: "noindex" },
     ],
   }),
@@ -19,6 +25,7 @@ export const Route = createFileRoute("/espace/encadrement/competences")({
 /** Garde d'accès dérivée des RoleAssignment contextualisés du programme actif. */
 function Guarded() {
   const session = useSession();
-  if (!session.canAccessSupervision) return <AccessRestricted area="L'espace responsable de stage" />;
+  if (!session.canAccessSupervision)
+    return <AccessRestricted area="L'espace responsable de stage" />;
   return <SupervisionCompetences />;
 }

@@ -34,9 +34,7 @@ export function canAccessProgramAdministration(
 }
 
 /** Administration PLATEFORME : uniquement une portée plateforme. */
-export function canAccessPlatformAdministration(
-  assignments: readonly RoleAssignment[],
-): boolean {
+export function canAccessPlatformAdministration(assignments: readonly RoleAssignment[]): boolean {
   return assignments.some((a) => a.role === "administrator" && a.scope.kind === "platform");
 }
 
@@ -68,4 +66,3 @@ export function canAccessLearnerSpace(
 export function canAccessOwnProfile(isAuthenticated: boolean): boolean {
   return isAuthenticated;
 }
-

@@ -29,7 +29,10 @@ export function AdminOrganisation() {
   if (isPending || !data) return <Skeleton className="h-80 w-full" />;
 
   const scopedRoles = data.roleAssignments.filter(
-    (r) => r.scope.kind !== "platform" && "programId" in r.scope && r.scope.programId === activeProgram.id,
+    (r) =>
+      r.scope.kind !== "platform" &&
+      "programId" in r.scope &&
+      r.scope.programId === activeProgram.id,
   );
 
   return (
@@ -167,7 +170,9 @@ export function AdminOrganisation() {
             <TableBody>
               {data.assignments.map((a) => (
                 <TableRow key={a.id}>
-                  <TableCell className="font-medium">{personNameFor(data, a.enrollmentId)}</TableCell>
+                  <TableCell className="font-medium">
+                    {personNameFor(data, a.enrollmentId)}
+                  </TableCell>
                   <TableCell>
                     {data.placements.find((p) => p.id === a.placementId)?.name ?? "—"}
                   </TableCell>

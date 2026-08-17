@@ -24,8 +24,8 @@ export function SupervisionCases() {
       />
 
       <ScopeNotice>
-        Formulations pédagogiques uniquement : aucun élément nominatif patient n'est saisissable dans
-        ce module.
+        Formulations pédagogiques uniquement : aucun élément nominatif patient n'est saisissable
+        dans ce module.
       </ScopeNotice>
 
       {data.cases.length === 0 ? (
@@ -58,7 +58,10 @@ export function SupervisionCases() {
                   </ul>
                 ) : null}
                 <div>
-                  <label htmlFor={`commentaire-${item.id}`} className="mb-1 block text-sm font-medium">
+                  <label
+                    htmlFor={`commentaire-${item.id}`}
+                    className="mb-1 block text-sm font-medium"
+                  >
                     Commentaire d'encadrant
                   </label>
                   <Textarea

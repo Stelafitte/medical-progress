@@ -168,13 +168,17 @@ export function SupervisionLogs() {
         )}
       </PanelCard>
 
-      <PanelCard title="Historique des décisions" description="Journal simulé, conservé par carnet.">
+      <PanelCard
+        title="Historique des décisions"
+        description="Journal simulé, conservé par carnet."
+      >
         <ul className="space-y-2 text-sm text-muted-foreground">
           {data.logsToValidate.flatMap((log) =>
             log.validations.map((v) => (
               <li key={`${log.id}-${v.decidedAt}`}>
                 {new Date(v.decidedAt).toLocaleDateString("fr-FR")} —{" "}
-                {learnerName(data, log.enrollmentId)} : {v.decision === "validated" ? "validé" : "à corriger"}
+                {learnerName(data, log.enrollmentId)} :{" "}
+                {v.decision === "validated" ? "validé" : "à corriger"}
                 {v.comment ? ` · ${v.comment}` : ""}
               </li>
             )),

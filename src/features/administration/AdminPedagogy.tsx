@@ -67,19 +67,23 @@ export function AdminPedagogy() {
             </strong>
           </li>
           <li>Stages : {data.program?.config.placementsEnabled ? "activés" : "désactivés"}</li>
-          <li>
-            Simulation : {data.program?.config.simulationEnabled ? "activée" : "désactivée"}
-          </li>
+          <li>Simulation : {data.program?.config.simulationEnabled ? "activée" : "désactivée"}</li>
         </ul>
       </PanelCard>
 
-      <PanelCard title="Plans d'acquisition et jalons" description="Calendrier officiel du programme.">
+      <PanelCard
+        title="Plans d'acquisition et jalons"
+        description="Calendrier officiel du programme."
+      >
         {data.planSchedule.length === 0 ? (
           <EmptyState>Aucun jalon configuré.</EmptyState>
         ) : (
           <ul className="space-y-2 text-sm">
             {data.planSchedule.map((entry) => (
-              <li key={`${entry.outcomeId}-${entry.dueOn}`} className="flex flex-wrap items-center gap-2">
+              <li
+                key={`${entry.outcomeId}-${entry.dueOn}`}
+                className="flex flex-wrap items-center gap-2"
+              >
                 <span className="font-medium">{entry.milestoneLabel}</span>
                 <Badge variant="outline" className="font-normal">
                   {entry.official ? "officiel" : "indicatif"}

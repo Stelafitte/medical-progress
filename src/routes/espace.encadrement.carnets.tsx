@@ -7,9 +7,15 @@ export const Route = createFileRoute("/espace/encadrement/carnets")({
   head: () => ({
     meta: [
       { title: "Carnets à valider — Mon Passeport Éducatif" },
-      { name: "description", content: "Validation unitaire, groupée ou finale des carnets de stage soumis." },
+      {
+        name: "description",
+        content: "Validation unitaire, groupée ou finale des carnets de stage soumis.",
+      },
       { property: "og:title", content: "Carnets à valider — Mon Passeport Éducatif" },
-      { property: "og:description", content: "Validation unitaire, groupée ou finale des carnets de stage soumis." },
+      {
+        property: "og:description",
+        content: "Validation unitaire, groupée ou finale des carnets de stage soumis.",
+      },
       { name: "robots", content: "noindex" },
     ],
   }),
@@ -19,6 +25,7 @@ export const Route = createFileRoute("/espace/encadrement/carnets")({
 /** Garde d'accès dérivée des RoleAssignment contextualisés du programme actif. */
 function Guarded() {
   const session = useSession();
-  if (!session.canAccessSupervision) return <AccessRestricted area="L'espace responsable de stage" />;
+  if (!session.canAccessSupervision)
+    return <AccessRestricted area="L'espace responsable de stage" />;
   return <SupervisionLogs />;
 }

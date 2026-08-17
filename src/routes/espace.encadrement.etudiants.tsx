@@ -7,9 +7,15 @@ export const Route = createFileRoute("/espace/encadrement/etudiants")({
   head: () => ({
     meta: [
       { title: "Mes étudiants — Mon Passeport Éducatif" },
-      { name: "description", content: "Liste filtrable des étudiants encadrés et fiche synthétique de progression." },
+      {
+        name: "description",
+        content: "Liste filtrable des étudiants encadrés et fiche synthétique de progression.",
+      },
       { property: "og:title", content: "Mes étudiants — Mon Passeport Éducatif" },
-      { property: "og:description", content: "Liste filtrable des étudiants encadrés et fiche synthétique de progression." },
+      {
+        property: "og:description",
+        content: "Liste filtrable des étudiants encadrés et fiche synthétique de progression.",
+      },
       { name: "robots", content: "noindex" },
     ],
   }),
@@ -19,6 +25,7 @@ export const Route = createFileRoute("/espace/encadrement/etudiants")({
 /** Garde d'accès dérivée des RoleAssignment contextualisés du programme actif. */
 function Guarded() {
   const session = useSession();
-  if (!session.canAccessSupervision) return <AccessRestricted area="L'espace responsable de stage" />;
+  if (!session.canAccessSupervision)
+    return <AccessRestricted area="L'espace responsable de stage" />;
   return <SupervisionStudents />;
 }

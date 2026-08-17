@@ -7,9 +7,15 @@ export const Route = createFileRoute("/espace/encadrement/bilans")({
   head: () => ({
     meta: [
       { title: "Bilans de fin de stage — Mon Passeport Éducatif" },
-      { name: "description", content: "Synthèse de stage, appréciation, signature simulée et transmission interne." },
+      {
+        name: "description",
+        content: "Synthèse de stage, appréciation, signature simulée et transmission interne.",
+      },
       { property: "og:title", content: "Bilans de fin de stage — Mon Passeport Éducatif" },
-      { property: "og:description", content: "Synthèse de stage, appréciation, signature simulée et transmission interne." },
+      {
+        property: "og:description",
+        content: "Synthèse de stage, appréciation, signature simulée et transmission interne.",
+      },
       { name: "robots", content: "noindex" },
     ],
   }),
@@ -19,6 +25,7 @@ export const Route = createFileRoute("/espace/encadrement/bilans")({
 /** Garde d'accès dérivée des RoleAssignment contextualisés du programme actif. */
 function Guarded() {
   const session = useSession();
-  if (!session.canAccessSupervision) return <AccessRestricted area="L'espace responsable de stage" />;
+  if (!session.canAccessSupervision)
+    return <AccessRestricted area="L'espace responsable de stage" />;
   return <SupervisionReports />;
 }

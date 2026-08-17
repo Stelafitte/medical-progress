@@ -48,8 +48,8 @@ export function PlatformAdminView() {
       />
 
       <ScopeNotice>
-        Cet espace est distinct de l'administration d'un programme. L'accès aux dossiers pédagogiques
-        n'est jamais accordé automatiquement (
+        Cet espace est distinct de l'administration d'un programme. L'accès aux dossiers
+        pédagogiques n'est jamais accordé automatiquement (
         {platformAdminCanOpenLearnerFile() ? "accès" : "aucun accès"} depuis cet écran).
       </ScopeNotice>
 

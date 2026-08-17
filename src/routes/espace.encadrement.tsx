@@ -4,9 +4,15 @@ export const Route = createFileRoute("/espace/encadrement")({
   head: () => ({
     meta: [
       { title: "Espace responsable de stage — Mon Passeport Éducatif" },
-      { name: "description", content: "Encadrement clinique : étudiants, carnets, compétences, bilans et alertes." },
+      {
+        name: "description",
+        content: "Encadrement clinique : étudiants, carnets, compétences, bilans et alertes.",
+      },
       { property: "og:title", content: "Espace responsable de stage — Mon Passeport Éducatif" },
-      { property: "og:description", content: "Encadrement clinique : étudiants, carnets, compétences, bilans et alertes." },
+      {
+        property: "og:description",
+        content: "Encadrement clinique : étudiants, carnets, compétences, bilans et alertes.",
+      },
       { name: "robots", content: "noindex" },
     ],
   }),

@@ -45,8 +45,8 @@ export function AdminMonitoring() {
       />
 
       <ScopeNotice>
-        La fiche apprenant administrative ouvre le dossier institutionnel complet, indépendamment des
-        préférences de partage personnelles de l'apprenant.
+        La fiche apprenant administrative ouvre le dossier institutionnel complet, indépendamment
+        des préférences de partage personnelles de l'apprenant.
       </ScopeNotice>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -134,8 +134,7 @@ export function AdminMonitoring() {
         >
           <ul className="space-y-1 text-sm">
             <li>
-              Affectations :{" "}
-              {data.assignments.filter((a) => a.enrollmentId === selected).length}
+              Affectations : {data.assignments.filter((a) => a.enrollmentId === selected).length}
             </li>
             <li>
               Carnets transmis :{" "}

@@ -7,9 +7,15 @@ export const Route = createFileRoute("/espace/encadrement/cas")({
   head: () => ({
     meta: [
       { title: "Cas et questions — Mon Passeport Éducatif" },
-      { name: "description", content: "Cas à discuter et questions des apprenants encadrés, avec suivi du traitement." },
+      {
+        name: "description",
+        content: "Cas à discuter et questions des apprenants encadrés, avec suivi du traitement.",
+      },
       { property: "og:title", content: "Cas et questions — Mon Passeport Éducatif" },
-      { property: "og:description", content: "Cas à discuter et questions des apprenants encadrés, avec suivi du traitement." },
+      {
+        property: "og:description",
+        content: "Cas à discuter et questions des apprenants encadrés, avec suivi du traitement.",
+      },
       { name: "robots", content: "noindex" },
     ],
   }),
@@ -19,6 +25,7 @@ export const Route = createFileRoute("/espace/encadrement/cas")({
 /** Garde d'accès dérivée des RoleAssignment contextualisés du programme actif. */
 function Guarded() {
   const session = useSession();
-  if (!session.canAccessSupervision) return <AccessRestricted area="L'espace responsable de stage" />;
+  if (!session.canAccessSupervision)
+    return <AccessRestricted area="L'espace responsable de stage" />;
   return <SupervisionCases />;
 }

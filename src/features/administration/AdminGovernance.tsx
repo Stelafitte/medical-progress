@@ -67,7 +67,10 @@ export function AdminGovernance() {
         </ul>
       </PanelCard>
 
-      <PanelCard title="Journal d'audit simulé" description="Traçabilité prévue de chaque décision.">
+      <PanelCard
+        title="Journal d'audit simulé"
+        description="Traçabilité prévue de chaque décision."
+      >
         {data.auditEvents.length === 0 ? (
           <EmptyState>Aucun événement.</EmptyState>
         ) : (

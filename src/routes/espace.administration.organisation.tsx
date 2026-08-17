@@ -7,9 +7,15 @@ export const Route = createFileRoute("/espace/administration/organisation")({
   head: () => ({
     meta: [
       { title: "Organisation du programme — Mon Passeport Éducatif" },
-      { name: "description", content: "Cursus, promotions, utilisateurs, rôles, terrains de stage et affectations." },
+      {
+        name: "description",
+        content: "Cursus, promotions, utilisateurs, rôles, terrains de stage et affectations.",
+      },
       { property: "og:title", content: "Organisation du programme — Mon Passeport Éducatif" },
-      { property: "og:description", content: "Cursus, promotions, utilisateurs, rôles, terrains de stage et affectations." },
+      {
+        property: "og:description",
+        content: "Cursus, promotions, utilisateurs, rôles, terrains de stage et affectations.",
+      },
       { name: "robots", content: "noindex" },
     ],
   }),
@@ -19,6 +25,7 @@ export const Route = createFileRoute("/espace/administration/organisation")({
 /** Garde d'accès dérivée des RoleAssignment contextualisés du programme actif. */
 function Guarded() {
   const session = useSession();
-  if (!session.canAccessProgramAdministration) return <AccessRestricted area="L'administration du programme" />;
+  if (!session.canAccessProgramAdministration)
+    return <AccessRestricted area="L'administration du programme" />;
   return <AdminOrganisation />;
 }

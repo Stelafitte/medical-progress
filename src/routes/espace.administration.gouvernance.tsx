@@ -7,9 +7,15 @@ export const Route = createFileRoute("/espace/administration/gouvernance")({
   head: () => ({
     meta: [
       { title: "Gouvernance du programme — Mon Passeport Éducatif" },
-      { name: "description", content: "Droits contextualisés, partage, conservation, audit et sécurité." },
+      {
+        name: "description",
+        content: "Droits contextualisés, partage, conservation, audit et sécurité.",
+      },
       { property: "og:title", content: "Gouvernance du programme — Mon Passeport Éducatif" },
-      { property: "og:description", content: "Droits contextualisés, partage, conservation, audit et sécurité." },
+      {
+        property: "og:description",
+        content: "Droits contextualisés, partage, conservation, audit et sécurité.",
+      },
       { name: "robots", content: "noindex" },
     ],
   }),
@@ -19,6 +25,7 @@ export const Route = createFileRoute("/espace/administration/gouvernance")({
 /** Garde d'accès dérivée des RoleAssignment contextualisés du programme actif. */
 function Guarded() {
   const session = useSession();
-  if (!session.canAccessProgramAdministration) return <AccessRestricted area="L'administration du programme" />;
+  if (!session.canAccessProgramAdministration)
+    return <AccessRestricted area="L'administration du programme" />;
   return <AdminGovernance />;
 }
