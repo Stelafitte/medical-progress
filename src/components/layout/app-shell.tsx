@@ -139,9 +139,7 @@ export function AppShell() {
             <span className="grid size-9 place-items-center rounded-lg hero-gradient text-primary-foreground">
               <HeartPulse className="size-5" aria-hidden />
             </span>
-            <span className="text-base font-semibold leading-tight">
-              Mon Passeport Éducatif
-            </span>
+            <span className="text-base font-semibold leading-tight">Mon Passeport Éducatif</span>
           </Link>
 
           <div className="ms-auto flex items-center gap-3">
