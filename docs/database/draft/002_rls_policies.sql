@@ -978,6 +978,10 @@ as $$
          case r.required_approver_role
            when 'placement_supervisor'
              then public.supervises_plan_item(r.plan_item_id)
+           -- teacher_or_admin couvre aussi le cas real_competence SANS stage
+           -- assigné (003 §7) : décision PROVISOIRE de calendrier, jamais une
+           -- validation d'acquisition. Dès qu'un stage est rattaché à l'élément,
+           -- la dérivation exige l'encadrant exact et ce cas ne s'applique plus.
            when 'teacher_or_admin'
              then public.can_administer_program(r.program_id)
                or public.is_enrollment_academic_staff(r.enrollment_id)
@@ -1133,10 +1137,11 @@ create policy api_select_supervisor on public.acquisition_plan_items
   for select to authenticated
   using (public.supervises_plan_item(id));
 
--- L'apprenant ajuste sa cible personnelle et son état de planification.
--- Les colonnes officielles ne lui sont pas accordées (001 §13.9) ; la cible
--- personnelle doit rester dans la fenêtre officielle (trigger 003 §7).
-create policy api_update_own_personal on public.acquisition_plan_items
+-- L'apprenant ajuste UNIQUEMENT son état de planification (progress_state) :
+-- c'est la seule colonne accordée en UPDATE (001 §13.9). learner_target_at,
+-- learner_pace et les colonnes officielles ne sont pas accordés et sont en plus
+-- gelés par le trigger 003 §11 : ils exigent une plan_change_request justifiée.
+create policy api_update_own_progress on public.acquisition_plan_items
   for update to authenticated
   using (public.owns_enrollment(enrollment_id))
   with check (public.owns_enrollment(enrollment_id));

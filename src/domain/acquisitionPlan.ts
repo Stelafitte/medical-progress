@@ -127,13 +127,32 @@ export const PLAN_CHANGE_STATUS_LABELS_FR: Record<PlanChangeStatus, string> = {
   rejected: "Refusée",
 };
 
-/** Règle d'approbation dérivée de l'impact déclaré. */
-export function approvalRuleForImpact(impact: PlanChangeImpact): PlanApprovalRule {
+/**
+ * Contexte minimal nécessaire pour dériver la règle sans ambiguïté.
+ * Par défaut, un impact clinique est supposé rattaché à un stage : le
+ * comportement existant de l'interface reste inchangé.
+ */
+export interface PlanChangeApprovalContext {
+  readonly hasPlacementAssignment?: boolean;
+}
+
+/**
+ * Règle d'approbation dérivée de l'impact déclaré.
+ *
+ * Miroir de `derive_plan_change_request_impact()` (docs/database/draft §7) :
+ * un impact clinique SANS stage assigné ne peut pas exiger un encadrant, sinon
+ * la demande serait indécidable. Dans ce cas, enseignant/administrateur statue
+ * provisoirement sur le calendrier — jamais sur l'acquisition.
+ */
+export function approvalRuleForImpact(
+  impact: PlanChangeImpact,
+  context: PlanChangeApprovalContext = {},
+): PlanApprovalRule {
   switch (impact) {
     case "personal_pace":
       return "auto_accept";
     case "clinical_competence":
-      return "placement_supervisor";
+      return context.hasPlacementAssignment === false ? "teacher_or_admin" : "placement_supervisor";
     case "official_deadline":
     default:
       return "teacher_or_admin";

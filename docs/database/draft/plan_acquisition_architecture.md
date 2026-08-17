@@ -41,11 +41,40 @@ calculée depuis les preuves, pas depuis `progress_state`.
 
 | Colonne | Propriétaire | Modifiable par |
 | --- | --- | --- |
-| `official_start_at`, `official_due_at`, `sequence`, `is_mandatory` | institution | uniquement l'application d'une décision approuvée (`003 §9`) |
-| `learner_target_at`, `progress_state` | apprenant | l'apprenant, dans la fenêtre officielle (`003 §11`) |
+| `official_start_at`, `official_due_at`, `sequence`, `is_mandatory`, `placement_assignment_id` | institution | uniquement l'application d'une décision approuvée (`003 §9`) |
+| `learner_target_at`, `learner_pace` | apprenant (contenu) | **jamais en UPDATE direct** : uniquement par `plan_change_request` justifiée, auto-acceptée (`003 §10`) ou approuvée (`003 §9`) |
+| `progress_state` | apprenant | l'apprenant, directement (seul GRANT UPDATE client) |
 
-L'apprenant ne peut donc jamais repousser une échéance opposable, mais il
-organise librement son propre rythme à l'intérieur de celle-ci.
+L'apprenant organise librement son rythme à l'intérieur de la fenêtre
+officielle, mais **chaque** changement de calendrier, d'ordre ou de rythme laisse
+une trace : une demande porteuse d'une justification, d'un impact dérivé et d'une
+entrée d'audit. Il n'existe donc aucun chemin d'écriture silencieux, et aucune
+échéance opposable ne peut être déplacée par l'apprenant.
+
+`learner_pace` est un `jsonb` borné (objet plat, ≤ 2 000 caractères, clés
+autorisées : `cadence`, `sessions_per_week`, `minutes_per_session`,
+`preferred_days`, `note`). `proposed_pace` respecte les mêmes clés et devient
+`learner_pace` **atomiquement** lors d'une auto-acceptation ou d'une décision
+`approved` ; un `rejected` n'écrit rien.
+
+## 3.bis Chemin d'écriture interne, sans drapeau
+
+Les écritures privilégiées sont reconnues par le contexte effectif
+`current_user = 'postgres'` (`003 §6.bis`, `is_internal_plan_writer()`), atteint
+seulement à l'intérieur des fonctions `SECURITY DEFINER` possédées par postgres
+et non appelables directement. Un custom GUC du type
+`app.plan_change_applying` a été supprimé : n'importe quel rôle SQL peut en
+positionner un, il ne peut donc jamais valoir autorisation.
+
+## 3.ter Compétence réelle sans stage assigné
+
+Une demande dont l'élément porte un `placement_assignment_id` exige l'encadrant
+**exact** de ce stage. Si l'acquis est de nature `real_competence` mais qu'aucun
+stage n'est encore assigné, exiger un encadrant rendrait la demande indécidable :
+le comportement retenu est qu'un enseignant ou administrateur de portée statue
+**provisoirement sur le calendrier uniquement**. Cette décision ne vaut jamais
+acquisition — la maîtrise reste dérivée des preuves validées. Dès qu'un stage est
+rattaché à l'élément, l'encadrant exact redevient obligatoire.
 
 ## 4. Versioning des templates
 
@@ -73,8 +102,13 @@ draft ──submit(justification ≥ 10 car.)──► pending ──┬─ déc
 * `approved` / `rejected` ne sont posés que par le trigger d'application, en
   conséquence d'une ligne insérée dans `plan_change_decisions`.
 * Une demande `pending` est immuable hors décision ou retrait.
-* `plan_change_decisions` est append-only : une erreur se corrige par une
-  nouvelle ligne, jamais par une réécriture.
+* `plan_change_decisions` est append-only. **Correction d'une décision
+  erronée** : elle ne peut PAS l'être par une seconde décision sur la même
+  demande, puisque celle-ci n'est plus `pending` (le trigger `003 §9` refuse une
+  décision sur une demande non pendante, et `forbid_write()` interdit tout
+  UPDATE/DELETE du journal). La correction passe donc par une **nouvelle
+  `plan_change_request`**, justifiée, liée à la précédente dans sa justification
+  et tracée dans `audit_events` — jamais par une réécriture du journal.
 
 ### Règle d'approbation dérivée
 
@@ -82,7 +116,8 @@ draft ──submit(justification ≥ 10 car.)──► pending ──┬─ déc
 | --- | --- | --- |
 | cible personnelle / rythme, dans la fenêtre officielle | `personal_target`, `personal_pace` | `auto_accept` (aucun humain) |
 | échéance officielle, ordre, prérequis, acquis obligatoire | `official_deadline`, `prerequisite`, `required_outcome` | `teacher_or_admin` (portée exacte) |
-| élément rattaché à un stage, ou acquis `real_competence` | `clinical_competence` | `placement_supervisor` de **ce** stage |
+| élément rattaché à un stage (`placement_assignment_id`) | `clinical_competence` | `placement_supervisor` de **ce** stage |
+| acquis `real_competence` **sans stage assigné** | `clinical_competence` | `teacher_or_admin` de portée — calendrier seulement, à titre provisoire |
 
 L'ordre d'évaluation est décroissant en exigence : le cas clinique l'emporte
 toujours, un ajustement personnel ne peut jamais requalifier une échéance
@@ -118,6 +153,8 @@ professionnels autorisés. Le test T32 le vérifie.
 | `PlanChangeImpact` `official_deadline` | `official_deadline`, `prerequisite`, `required_outcome` |
 | `PlanChangeImpact` `clinical_competence` | `clinical_competence` |
 | `PlanApprovalRule` | `plan_approval_rule` (valeurs identiques) |
+| `approvalRuleForImpact(impact, { hasPlacementAssignment })` | `derive_plan_change_request_impact()` (§7) |
+| pas de champ `learner_pace` en UI (prototype) | `acquisition_plan_items.learner_pace` (jsonb borné) |
 | `PlanChangeStatus` `accepted` | `plan_change_status` `approved` |
 | `PlanChangeStatus` (absent) | `withdrawn` (retrait par le demandeur) |
 

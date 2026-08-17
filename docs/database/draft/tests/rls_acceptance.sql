@@ -619,6 +619,87 @@ rollback;
 --   update public.acquisition_plan_items set official_due_at = now() + '1 year'
 --     where id = :item;                     attendu 42501 (colonne non accordée)
 
+-- T35. Aucun contournement du workflow par UPDATE direct
+--   apprenant (titulaire de :item) :
+--   update public.acquisition_plan_items
+--      set learner_target_at = now() + interval '3 days' where id = :item;
+--                     attendu 42501 (colonne non accordée, 001 §13.9)
+--   update public.acquisition_plan_items
+--      set learner_pace = '{"cadence":"weekly"}'::jsonb where id = :item;
+--                     attendu 42501 (colonne non accordée)
+--   update public.acquisition_plan_items set progress_state = 'in_progress'
+--    where id = :item;                                   attendu 1 ligne (OK)
+--   -- même chemin, mais par demande PERSONNELLE JUSTIFIÉE => auto-acceptée :
+--   insert into public.plan_change_requests
+--     (plan_item_id, enrollment_id, program_id, requested_by,
+--      proposed_learner_target_at, proposed_pace, justification)
+--   values (:item, :enrollment_a, :program_diu, :person_a,
+--           :inside_official_window, '{"cadence":"weekly"}'::jsonb,
+--           'Je réorganise mon rythme après une garde supplémentaire.')
+--   returning id \gset req_
+--   update public.plan_change_requests set status = 'pending' where id = :req_id;
+--   select status, decided_at is not null from public.plan_change_requests
+--    where id = :req_id;                       attendu ('approved', true) — §10
+--   select learner_target_at, learner_pace from public.acquisition_plan_items
+--    where id = :item;    attendu la cible ET le rythme demandés (appliqués §10)
+--   -- service_role subit la même règle (trigger §11) :
+--   set role service_role;
+--   update public.acquisition_plan_items set learner_target_at = now()
+--    where id = :item;                     attendu 42501 (trigger §11)
+
+-- T36. Le faux drapeau applicatif n'autorise rien
+--   apprenant :
+--   select set_config('app.plan_change_applying', 'on', true);   attendu OK
+--     (positionner un custom GUC est toujours permis : il n'autorise rien)
+--   update public.plan_change_requests set status = 'approved'
+--    where id = :req_pending;   attendu échec (trigger §8 : seule une décision
+--                               journalisée pose approved/rejected)
+--   update public.plan_change_requests set status = 'rejected'
+--    where id = :req_pending;                                attendu échec
+--   update public.acquisition_plan_items set official_due_at = now()
+--    where id = :item;          attendu 42501 (colonne non accordée)
+--   set role service_role;
+--   select set_config('app.plan_change_applying', 'on', true);
+--   update public.acquisition_plan_items set official_due_at = now()
+--    where id = :item;          attendu échec (trigger §11 :
+--                               is_internal_plan_writer() = false)
+--   -- contrôle statique : aucune occurrence du drapeau dans 003 :
+--   -- rg -n "plan_change_applying" 003_server_invariants.sql
+--   --   => uniquement le commentaire final expliquant son abandon
+
+-- T37. Rythme appliqué sur décision, inchangé sur refus
+--   apprenant : demande avec proposed_pace + proposed_official_due_at
+--     (=> impact official_deadline, required_approver_role teacher_or_admin)
+--   enseignant de portée : insert plan_change_decisions (decision 'rejected')
+--   select learner_pace, official_due_at from public.acquisition_plan_items
+--    where id = :item;                attendu INCHANGÉS (aucune écriture, §9)
+--   nouvelle demande identique, decision 'approved' :
+--   select learner_pace = :proposed_pace, official_due_at = :proposed_due
+--     from public.acquisition_plan_items where id = :item;   attendu (true,true)
+--   select detail->'applied_learner_pace' from public.audit_events
+--    where target_id = :req_id::text;                  attendu le rythme appliqué
+--   insert into public.acquisition_plan_items(..., learner_pace)
+--     values (..., '{"unknown_key":1}'::jsonb);
+--                     attendu 23514 (contrainte api_learner_pace_keys)
+
+-- T38. Compétence réelle sans stage assigné : demande décidable, sans acquisition
+--   :item_real = élément d'un outcome nature 'real_competence',
+--                placement_assignment_id IS NULL
+--   apprenant : demande de calendrier sur :item_real, soumise
+--   select change_impact, required_approver_role
+--     from public.plan_change_requests where id = :req_real;
+--                     attendu ('clinical_competence', 'teacher_or_admin')
+--   encadrant d'un autre stage : insert décision      attendu 42501 (policy)
+--   enseignant de portée : insert décision 'approved'          attendu 1 ligne
+--   select count(*) from public.evidence e
+--    where e.outcome_id = :outcome_real and e.status = 'validated';  attendu 0
+--                     (une décision de calendrier ne vaut jamais acquisition)
+--   -- après rattachement d'un stage à l'élément (opération serveur) :
+--   nouvelle demande sur :item_real
+--   select required_approver_role from public.plan_change_requests
+--    where id = :req_real_2;              attendu 'placement_supervisor'
+--   enseignant de portée : insert décision            attendu 42501 (policy §18)
+
 -- =====================================================================
 -- Checklist statique de cohérence — périmètre plan d'acquisition
 -- =====================================================================
@@ -629,7 +710,10 @@ rollback;
 --  4. Colonnes jamais accordées au client : change_impact,
 --     required_approver_role, submitted_at, decided_at, withdrawn_at,
 --     official_start_at, official_due_at, sequence, is_mandatory,
+--     placement_assignment_id, learner_target_at, learner_pace,
 --     published_at, retired_at, updated_at, colonnes de provenance.
+--     Sur acquisition_plan_items, le SEUL GRANT UPDATE client est
+--     progress_state (T35).
 --  5. Chaque nouvelle table porte le trigger de provenance ; les six tables
 --     avec updated_at portent z_*_set_updated_at (003 §12).
 --  6. FK composites présentes pour chaque rattachement inter-entités :
@@ -643,7 +727,13 @@ rollback;
 --     search_path = pg_catalog, public, et n'acceptent aucun identifiant
 --     d'utilisateur en paramètre.
 --  9. Toutes les fonctions de 003 §6-§11 sont révoquées pour PUBLIC, anon,
---     authenticated et service_role : appel direct impossible.
+--     authenticated et service_role : appel direct impossible. Seule exception
+--     documentée : is_internal_plan_writer() (§6.bis), STABLE, sans écriture,
+--     appelée dans le corps des triggers INVOKER ; elle répond toujours false
+--     pour authenticated et service_role.
+-- 11. Aucune autorisation ne repose sur un custom GUC : `rg -n
+--     "current_setting\('app\." 002_rls_policies.sql 003_server_invariants.sql`
+--     ne doit rien retourner d'exécutable (T36).
 -- 10. anon : aucun privilège sur les 8 nouvelles tables (001 §13.9, revoke
 --     explicite table par table).
 
