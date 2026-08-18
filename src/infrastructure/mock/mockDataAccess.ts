@@ -11,6 +11,7 @@ import { toLearnerNarratedDeck } from "@/domain/mediaLibrary";
 import { toLearnerAiResource } from "@/domain/contentAi";
 import * as mfx from "./mediaFixtures";
 import * as cafx from "./contentAiFixtures";
+import * as aicfx from "./aiCreditsFixtures";
 import * as efx from "./ecosFixtures";
 
 const clone = <T>(value: T): T => value;
@@ -105,6 +106,10 @@ export const mockDataAccess: DataAccess = {
           .map((m) => toLearnerNarratedDeck(m))
           .filter((d): d is NonNullable<typeof d> => d !== undefined),
       ),
+  },
+  aiCredits: {
+    listEntries: (programId) => ok(aicfx.aiCreditEntries.filter((e) => e.programId === programId)),
+    getBudget: (programId) => ok(aicfx.aiCreditBudgets.find((b) => b.programId === programId)),
   },
   contentAi: {
     listProfiles: (programId) =>

@@ -8,6 +8,7 @@
 import type { PlanScheduleEntry } from "@/domain/acquisitionPlan";
 import type { LearnerNarratedDeck, MediaResource } from "@/domain/mediaLibrary";
 import type { ContentAiProfile, LearnerAiResource, ProgramAiPolicy } from "@/domain/contentAi";
+import type { AiCreditBudget, AiCreditEntry } from "@/domain/aiCredits";
 import type { EcosScenarioMock, LegacyModuleInventoryItem } from "@/domain/ecosMigration";
 import type {
   AdminDocument,
@@ -138,6 +139,15 @@ export interface ContentAiRepository {
   listLearnerAiResources(programId: ProgramId): Promise<readonly LearnerAiResource[]>;
 }
 
+/**
+ * Comptabilité des crédits IA par enseignement.
+ * En production, seules des écritures serveur alimentent ce dépôt.
+ */
+export interface AiCreditsRepository {
+  listEntries(programId: ProgramId): Promise<readonly AiCreditEntry[]>;
+  getBudget(programId: ProgramId): Promise<AiCreditBudget | undefined>;
+}
+
 /** Préparation documentaire de la migration ECOS (aucun couplage runtime). */
 export interface EcosMigrationRepository {
   listInventory(): Promise<readonly LegacyModuleInventoryItem[]>;
@@ -182,6 +192,7 @@ export interface DataAccess {
   readonly resources: LearningResourceRepository;
   readonly media: MediaLibraryRepository;
   readonly contentAi: ContentAiRepository;
+  readonly aiCredits: AiCreditsRepository;
   readonly ecos: EcosMigrationRepository;
   readonly plan: AcquisitionPlanRepository;
   readonly stageLogs: StageLogRepository;
