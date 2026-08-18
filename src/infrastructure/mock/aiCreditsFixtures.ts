@@ -33,7 +33,7 @@ function entry(
     occurredAt,
     units,
     credits: CREDIT_UNIT_COST_BY_TIER[tier] * units,
-    mediaId,
+    ...(mediaId ? { mediaId } : {}),
     meteringActivated: false,
   };
 }
