@@ -20,6 +20,7 @@ import {
   Mail,
   MessagesSquare,
   Notebook,
+  BarChart3,
   ScrollText,
   ShieldCheck,
   Stethoscope,
@@ -74,6 +75,7 @@ export const SUPERVISION_NAV: readonly NavEntry[] = [
     exact: false,
   },
   { to: "/espace/encadrement/messages", label: "Messagerie", icon: Mail, exact: false },
+  { to: "/espace/statistiques", label: "Statistiques", icon: BarChart3, exact: false },
   {
     to: "/espace/encadrement/profil",
     label: "Mon profil d'encadrant",
@@ -114,6 +116,7 @@ export const PROGRAM_ADMIN_NAV: readonly NavEntry[] = [
     icon: FileText,
     exact: false,
   },
+  { to: "/espace/statistiques", label: "Statistiques", icon: BarChart3, exact: false },
   {
     to: "/espace/administration/gouvernance",
     label: "Gouvernance",
@@ -124,6 +127,7 @@ export const PROGRAM_ADMIN_NAV: readonly NavEntry[] = [
 
 export const PLATFORM_ADMIN_NAV: readonly NavEntry[] = [
   { to: "/espace/plateforme", label: "Administration plateforme", icon: ScrollText, exact: true },
+  { to: "/espace/statistiques", label: "Statistiques", icon: BarChart3, exact: false },
 ];
 
 /** Espaces visibles pour une personne dans le programme sélectionné. */

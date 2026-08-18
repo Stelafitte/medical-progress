@@ -20,6 +20,7 @@ import { Route as EspacePlateformeRouteImport } from './routes/espace.plateforme
 import { Route as EspaceProfilRouteImport } from './routes/espace.profil'
 import { Route as EspaceRessourcesRouteImport } from './routes/espace.ressources'
 import { Route as EspaceStageRouteImport } from './routes/espace.stage'
+import { Route as EspaceStatistiquesRouteImport } from './routes/espace.statistiques'
 import { Route as EspaceAdministrationIndexRouteImport } from './routes/espace.administration.index'
 import { Route as EspaceAdministrationCommunicationsRouteImport } from './routes/espace.administration.communications'
 import { Route as EspaceAdministrationDocumentsRouteImport } from './routes/espace.administration.documents'
@@ -90,6 +91,11 @@ const EspaceRessourcesRoute = EspaceRessourcesRouteImport.update({
 const EspaceStageRoute = EspaceStageRouteImport.update({
   id: '/stage',
   path: '/stage',
+  getParentRoute: () => EspaceRoute,
+} as any)
+const EspaceStatistiquesRoute = EspaceStatistiquesRouteImport.update({
+  id: '/statistiques',
+  path: '/statistiques',
   getParentRoute: () => EspaceRoute,
 } as any)
 const EspaceAdministrationIndexRoute =
@@ -196,6 +202,7 @@ export interface FileRoutesByFullPath {
   '/espace/profil': typeof EspaceProfilRoute
   '/espace/ressources': typeof EspaceRessourcesRoute
   '/espace/stage': typeof EspaceStageRoute
+  '/espace/statistiques': typeof EspaceStatistiquesRoute
   '/espace/': typeof EspaceIndexRoute
   '/espace/administration/communications': typeof EspaceAdministrationCommunicationsRoute
   '/espace/administration/documents': typeof EspaceAdministrationDocumentsRoute
@@ -222,6 +229,7 @@ export interface FileRoutesByTo {
   '/espace/profil': typeof EspaceProfilRoute
   '/espace/ressources': typeof EspaceRessourcesRoute
   '/espace/stage': typeof EspaceStageRoute
+  '/espace/statistiques': typeof EspaceStatistiquesRoute
   '/espace': typeof EspaceIndexRoute
   '/espace/administration/communications': typeof EspaceAdministrationCommunicationsRoute
   '/espace/administration/documents': typeof EspaceAdministrationDocumentsRoute
@@ -252,6 +260,7 @@ export interface FileRoutesById {
   '/espace/profil': typeof EspaceProfilRoute
   '/espace/ressources': typeof EspaceRessourcesRoute
   '/espace/stage': typeof EspaceStageRoute
+  '/espace/statistiques': typeof EspaceStatistiquesRoute
   '/espace/': typeof EspaceIndexRoute
   '/espace/administration/communications': typeof EspaceAdministrationCommunicationsRoute
   '/espace/administration/documents': typeof EspaceAdministrationDocumentsRoute
@@ -283,6 +292,7 @@ export interface FileRouteTypes {
     | '/espace/profil'
     | '/espace/ressources'
     | '/espace/stage'
+    | '/espace/statistiques'
     | '/espace/'
     | '/espace/administration/communications'
     | '/espace/administration/documents'
@@ -309,6 +319,7 @@ export interface FileRouteTypes {
     | '/espace/profil'
     | '/espace/ressources'
     | '/espace/stage'
+    | '/espace/statistiques'
     | '/espace'
     | '/espace/administration/communications'
     | '/espace/administration/documents'
@@ -338,6 +349,7 @@ export interface FileRouteTypes {
     | '/espace/profil'
     | '/espace/ressources'
     | '/espace/stage'
+    | '/espace/statistiques'
     | '/espace/'
     | '/espace/administration/communications'
     | '/espace/administration/documents'
@@ -439,6 +451,13 @@ declare module '@tanstack/react-router' {
       path: '/stage'
       fullPath: '/espace/stage'
       preLoaderRoute: typeof EspaceStageRouteImport
+      parentRoute: typeof EspaceRoute
+    }
+    '/espace/statistiques': {
+      id: '/espace/statistiques'
+      path: '/statistiques'
+      fullPath: '/espace/statistiques'
+      preLoaderRoute: typeof EspaceStatistiquesRouteImport
       parentRoute: typeof EspaceRoute
     }
     '/espace/administration/': {
@@ -616,6 +635,7 @@ interface EspaceRouteChildren {
   EspaceProfilRoute: typeof EspaceProfilRoute
   EspaceRessourcesRoute: typeof EspaceRessourcesRoute
   EspaceStageRoute: typeof EspaceStageRoute
+  EspaceStatistiquesRoute: typeof EspaceStatistiquesRoute
   EspaceIndexRoute: typeof EspaceIndexRoute
 }
 
@@ -628,6 +648,7 @@ const EspaceRouteChildren: EspaceRouteChildren = {
   EspaceProfilRoute: EspaceProfilRoute,
   EspaceRessourcesRoute: EspaceRessourcesRoute,
   EspaceStageRoute: EspaceStageRoute,
+  EspaceStatistiquesRoute: EspaceStatistiquesRoute,
   EspaceIndexRoute: EspaceIndexRoute,
 }
 
