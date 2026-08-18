@@ -115,6 +115,7 @@ n'est activée, aucun fichier n'existe dans `supabase/migrations/`, aucun SQL n'
 | `architecture.md` | ER Mermaid, normalisation, portées d'autorisation, flux, import legacy, rollback, limites |
 | `plan_acquisition_architecture.md` | Plan d'acquisition : template versionné → plan individuel → demande → décision, Liste/Kanban/Gantt/Calendrier comme projections d'une source unique, dates officielles vs cible personnelle, mapping frontend ↔ SQL |
 | `storage_architecture.md` | Hébergement des contenus : buckets privés UE, URL signées courtes, métadonnées en base |
+| `legacy_ecos_integration.md` | Inventaire des modules ECOS historiques, décisions conserver/adapter/remplacer, frontières d'adaptation, provenance legacy, règle de preuve simulée |
 | `tests/rls_acceptance.sql` | Plan de tests transactionnels futurs (`ROLLBACK` final), non exécuté |
 | `decision_log.md` | Décisions, alternatives rejetées, questions à valider avant provisioning |
 
