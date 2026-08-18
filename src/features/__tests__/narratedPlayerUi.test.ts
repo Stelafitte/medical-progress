@@ -9,6 +9,8 @@ const panel = read("src/features/administration/NarratedConversionPanel.tsx");
 const librarySection = read("src/features/administration/MediaLibrarySection.tsx");
 const detail = read("src/features/administration/MediaDetailDialog.tsx");
 const resources = read("src/features/resources/ResourcesView.tsx");
+const reader = read("src/features/resources/NarratedReaderView.tsx");
+const route = read("src/routes/espace.ressources.$resourceId.lecture.tsx");
 
 describe("lecteur de diaporama commenté", () => {
   it("offre lecture/pause, navigation, sommaire, transcription et vitesse", () => {
@@ -33,9 +35,62 @@ describe("lecteur de diaporama commenté", () => {
     expect(player).toContain("NARRATED_ONLINE_ONLY_FR");
   });
 
-  it("est branché dans l'espace Ressources", () => {
-    expect(resources).toContain("NarratedSlidesPlayer");
-    expect(resources).toContain("narratedDecks");
+  it("est ouvert depuis les Ressources par « Consulter le cours »", () => {
+    expect(resources).toContain("Consulter le cours");
+    expect(resources).toContain("/espace/ressources/$resourceId/lecture");
+    expect(resources).toContain("params={{ resourceId: deck.mediaId }}");
+    // La liste reste un catalogue : le lecteur n'y est plus intégré en aperçu.
+    expect(resources).not.toContain("NarratedSlidesPlayer");
+  });
+
+  it("propose complétion et plein écran en mode écran dédié", () => {
+    expect(player).toContain("focused");
+    expect(player).toContain("requestFullscreen");
+    expect(player).toContain("exitFullscreen");
+    expect(player).toContain("Cours parcouru");
+    expect(player).toContain("diapositives vues");
+  });
+});
+
+describe("écran de lecture dédié", () => {
+  it("expose une route apprenant paramétrée et non indexée", () => {
+    expect(route).toContain('createFileRoute("/espace/ressources/$resourceId/lecture")');
+    expect(route).toContain("Route.useParams()");
+    expect(route).toContain('name: "robots", content: "noindex"');
+  });
+
+  it("porte une garde de rôle apprenant", () => {
+    expect(route).toContain("canAccessLearnerSpace");
+    expect(route).toContain("AccessRestricted");
+    expect(route.indexOf("canAccessLearnerSpace")).toBeLessThan(
+      route.indexOf("<NarratedReaderView"),
+    );
+  });
+
+  it("offre une lecture concentrée : retour, lecteur agrandi, objectifs", () => {
+    expect(reader).toContain("Retour aux ressources");
+    expect(reader).toContain("<NarratedSlidesPlayer deck={deck} focused />");
+    expect(reader).toContain("Objectifs travaillés");
+    expect(reader).toContain("Cours indisponible");
+  });
+
+  it("ne consomme que le DTO d'artefacts dérivés, jamais le PPTX source", () => {
+    for (const file of [reader, route]) {
+      expect(file.toLowerCase()).not.toContain(".pptx");
+      expect(file).not.toContain("fileName");
+      expect(file).not.toContain("narrated.source");
+      expect(file).not.toContain("sizeHint");
+      expect(file).not.toContain("mp4");
+      expect(file).not.toContain("download");
+      expect(file).not.toContain("mediaResources");
+    }
+    expect(reader).toContain("narratedDecks.find");
+  });
+
+  it("laisse la prévisualisation enseignant côté administration", () => {
+    expect(panel).toContain("NARRATED_ACTION_LABELS_FR");
+    expect(reader).not.toContain("Prévisualiser");
+    expect(reader).not.toContain("NarratedConversionPanel");
   });
 });
 

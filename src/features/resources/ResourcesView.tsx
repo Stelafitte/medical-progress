@@ -1,10 +1,12 @@
-import { BookOpen } from "lucide-react";
+import { BookOpen, PlayCircle } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import { SectionHeading } from "@/components/section-heading";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { formatPlayerDuration } from "@/domain/mediaLibrary";
 import { useLearnerPassport } from "@/features/dashboard/useLearnerPassport";
-import { NarratedSlidesPlayer } from "@/features/resources/NarratedSlidesPlayer";
 
 const FORMAT_FR: Record<string, string> = {
   course: "Cours",
@@ -46,10 +48,35 @@ export function ResourcesView() {
             level={2}
             description="Lecture en ligne synchronisée : diapositives, commentaire audio, sommaire et transcription. Le fichier PowerPoint source n'est pas distribué."
           />
-          <ul className="grid gap-4 xl:grid-cols-2">
+          <ul className="grid gap-4 md:grid-cols-2">
             {narratedDecks.map((deck) => (
               <li key={deck.mediaId}>
-                <NarratedSlidesPlayer deck={deck} />
+                <Card className="flex h-full flex-col">
+                  <CardHeader>
+                    <div className="flex items-center gap-2">
+                      <PlayCircle className="size-4 text-primary" aria-hidden />
+                      <Badge variant="outline" className="font-normal">
+                        Diaporama commenté
+                      </Badge>
+                    </div>
+                    <CardTitle className="text-base">{deck.title}</CardTitle>
+                    <CardDescription>
+                      {deck.module} · {deck.slideCount} diapositives ·{" "}
+                      {formatPlayerDuration(deck.totalDurationSeconds)}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="mt-auto">
+                    <Button asChild className="min-h-11 w-full gap-2 sm:w-auto">
+                      <Link
+                        to="/espace/ressources/$resourceId/lecture"
+                        params={{ resourceId: deck.mediaId }}
+                      >
+                        <PlayCircle className="size-4" aria-hidden />
+                        Consulter le cours
+                      </Link>
+                    </Button>
+                  </CardContent>
+                </Card>
               </li>
             ))}
           </ul>

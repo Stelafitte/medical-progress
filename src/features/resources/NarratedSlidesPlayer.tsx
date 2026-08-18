@@ -5,7 +5,18 @@
  * téléchargeable côté apprenant.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, List, Pause, Play, RotateCcw, Type } from "lucide-react";
+import {
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  List,
+  Maximize,
+  Minimize,
+  Pause,
+  Play,
+  RotateCcw,
+  Type,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -17,7 +28,14 @@ import {
   type LearnerNarratedDeck,
 } from "@/domain/mediaLibrary";
 
-export function NarratedSlidesPlayer({ deck }: { deck: LearnerNarratedDeck }) {
+export function NarratedSlidesPlayer({
+  deck,
+  /** Mode écran dédié : diapositive agrandie et bouton plein écran. */
+  focused = false,
+}: {
+  deck: LearnerNarratedDeck;
+  focused?: boolean;
+}) {
   const [slideIndex, setSlideIndex] = useState(1);
   const [playing, setPlaying] = useState(false);
   const [elapsed, setElapsed] = useState(0);
@@ -25,9 +43,13 @@ export function NarratedSlidesPlayer({ deck }: { deck: LearnerNarratedDeck }) {
   const [showChapters, setShowChapters] = useState(false);
   const [showTranscript, setShowTranscript] = useState(false);
   const [resumePoint, setResumePoint] = useState<number | null>(null);
+  const [visited, setVisited] = useState<readonly number[]>([1]);
+  const [fullscreen, setFullscreen] = useState(false);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const container = useRef<HTMLElement | null>(null);
 
   const slides = deck.slides;
+  const completed = visited.length >= deck.slideCount;
   const current = slides.find((s) => s.index === slideIndex) ?? slides[0];
   const chapter = chapterForSlide(deck.chapters, slideIndex);
 
@@ -45,6 +67,24 @@ export function NarratedSlidesPlayer({ deck }: { deck: LearnerNarratedDeck }) {
       if (timer.current) clearInterval(timer.current);
     };
   }, [playing, speed, slideIndex]);
+
+  useEffect(() => {
+    setVisited((prev) => (prev.includes(slideIndex) ? prev : [...prev, slideIndex]));
+  }, [slideIndex]);
+
+  // Plein écran natif du lecteur, sans quitter la route.
+  useEffect(() => {
+    const onChange = () => setFullscreen(Boolean(document.fullscreenElement));
+    document.addEventListener("fullscreenchange", onChange);
+    return () => document.removeEventListener("fullscreenchange", onChange);
+  }, []);
+
+  const toggleFullscreen = () => {
+    const node = container.current;
+    if (!node) return;
+    if (document.fullscreenElement) void document.exitFullscreen?.();
+    else void node.requestFullscreen?.();
+  };
 
   // Enchaînement simulé vers la diapositive suivante.
   useEffect(() => {
@@ -66,7 +106,10 @@ export function NarratedSlidesPlayer({ deck }: { deck: LearnerNarratedDeck }) {
   };
 
   return (
-    <article className="space-y-3 rounded-lg border border-border bg-card p-3 sm:p-4">
+    <article
+      ref={container}
+      className="space-y-3 rounded-lg border border-border bg-card p-3 sm:p-4"
+    >
       <header className="space-y-1">
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="secondary" className="font-normal">
@@ -75,6 +118,33 @@ export function NarratedSlidesPlayer({ deck }: { deck: LearnerNarratedDeck }) {
           <Badge variant="outline" className="font-normal">
             Lecteur web HTML5 (maquette)
           </Badge>
+          {completed ? (
+            <Badge className="gap-1 font-normal">
+              <CheckCircle2 className="size-3.5" aria-hidden />
+              Cours parcouru
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="font-normal">
+              {visited.length}/{deck.slideCount} diapositives vues
+            </Badge>
+          )}
+          {focused ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="ml-auto min-h-11 gap-2"
+              aria-pressed={fullscreen}
+              onClick={toggleFullscreen}
+            >
+              {fullscreen ? (
+                <Minimize className="size-4" aria-hidden />
+              ) : (
+                <Maximize className="size-4" aria-hidden />
+              )}
+              {fullscreen ? "Quitter le plein écran" : "Plein écran"}
+            </Button>
+          ) : null}
         </div>
         <h3 className="break-words text-base font-semibold">{deck.title}</h3>
         <p className="text-sm text-muted-foreground">
@@ -84,7 +154,11 @@ export function NarratedSlidesPlayer({ deck }: { deck: LearnerNarratedDeck }) {
 
       {/* Grande zone diapositive : rendu web dérivé, jamais le PPTX source. */}
       <div
-        className="flex min-h-48 flex-col justify-center gap-2 rounded-md border border-dashed border-border bg-secondary/40 p-4 text-center sm:min-h-64"
+        className={
+          focused
+            ? "flex min-h-64 flex-col justify-center gap-2 rounded-md border border-dashed border-border bg-secondary/40 p-4 text-center sm:min-h-80 lg:min-h-[26rem]"
+            : "flex min-h-48 flex-col justify-center gap-2 rounded-md border border-dashed border-border bg-secondary/40 p-4 text-center sm:min-h-64"
+        }
         role="img"
         aria-label={`Diapositive ${slideIndex} : ${current?.title ?? ""}`}
       >
@@ -177,6 +251,7 @@ export function NarratedSlidesPlayer({ deck }: { deck: LearnerNarratedDeck }) {
 
       <p role="status" className="text-xs text-muted-foreground">
         Progression simulée : diapositive {slideIndex} sur {deck.slideCount}
+        {completed ? " — état de complétion : cours parcouru" : ""}
         {resumePoint ? ` — reprise possible à la diapositive ${resumePoint}` : ""}.
       </p>
 
