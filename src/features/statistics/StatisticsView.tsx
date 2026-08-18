@@ -79,12 +79,12 @@ export function StatisticsView() {
             <StatCard
               label="Réussite moyenne (promotions clôturées)"
               value={formatRate(data.summary.meanCompletionRate)}
-              hint={data.summary.bestYear ? `Meilleure année : ${data.summary.bestYear}` : undefined}
+              hint={`Meilleure année : ${data.summary.bestYear ?? "—"}`}
             />
             <StatCard
               label="Année en cours vs moyenne"
               value={formatDelta(data.summary.deltaToHistoricalMean)}
-              hint={data.summary.currentYear ?? undefined}
+              hint={data.summary.currentYear ?? "—"}
             />
           </div>
 
