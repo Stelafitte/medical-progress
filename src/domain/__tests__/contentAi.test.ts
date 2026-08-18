@@ -67,7 +67,8 @@ describe("garde de publication", () => {
   it("exige une décision explicite pour un lien externe simple", () => {
     const profile = profileOf("med-diu-lien-guidelines");
     expect(profile.linkDecision).toBe("convert_to_web_page");
-    const withoutDecision: ContentAiProfile = { ...profile, linkDecision: undefined };
+    const { linkDecision: _decision, ...rest } = profile;
+    const withoutDecision: ContentAiProfile = rest;
     const resource = mediaResources.find((m) => m.id === "med-diu-lien-guidelines")!;
     expect(evaluatePublicationGate(resource, withoutDecision).reasons.join(" ")).toContain(
       "décision explicite",
