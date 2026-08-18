@@ -38,8 +38,16 @@ const DEMO_PROFILE_HINTS: Record<string, string> = {
 };
 
 export function AppShell() {
-  const { person, people, setActivePersonId, roles, rolesInActiveProgram, activeProgram } =
-    useSession();
+  const {
+    person,
+    people,
+    setActivePersonId,
+    roles,
+    rolesInActiveProgram,
+    activeProgram,
+    isSimulated,
+  } = useSession();
+
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const spaces = navSpacesFor(roles, activeProgram.id);
@@ -162,12 +170,18 @@ export function AppShell() {
                     Mon profil
                   </Link>
                 </DropdownMenuItem>
-                {IS_DEV ? (
+                {isSimulated ? (
                   <>
                     <DropdownMenuSeparator />
                     <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
-                      Profil de démonstration (dev)
+                      Changer de profil de démonstration
                     </DropdownMenuLabel>
+                    {rolesInActiveProgram.length === 0 ? (
+                      <p className="px-2 pb-1 text-xs text-muted-foreground">
+                        Ce profil n'a aucun rôle dans {activeProgram.code} : sélectionnez le
+                        programme correspondant.
+                      </p>
+                    ) : null}
                     <DropdownMenuRadioGroup
                       value={person.id}
                       onValueChange={(value) => setActivePersonId(value as PersonId)}

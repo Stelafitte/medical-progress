@@ -43,7 +43,8 @@ export interface SessionValue {
   /** Espace responsable de stage, limité aux affectations de la personne. */
   readonly canAccessSupervision: boolean;
   readonly canAccessProfile: boolean;
-  readonly isSimulated: true;
+  /** Vrai tant que la session est mockée ; faux dès l'authentification réelle. */
+  readonly isSimulated: boolean;
   setActiveProgramId(id: ProgramId): void;
   /** Bascule d'identité simulée (démonstration des rôles, pas une authentification). */
   setActivePersonId(id: PersonId): void;
