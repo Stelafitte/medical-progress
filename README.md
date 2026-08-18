@@ -99,6 +99,11 @@ bun run lint       # eslint + prettier
   mode vocal **simulé** (aucun microphone, aucune session temps réel). Aucun index, aucun
   découpage, aucun appel IA réel : pipeline et routeur de coûts documentés dans
   `docs/database/draft/content_ai_pipeline.md`.
+  La couverture IA des supports publiés est un **invariant testé** (100 % : profil `ready`,
+  facettes complètes, citations vérifiées, garde de publication autorisée, DTO apprenant
+  disponible). Les exemples « À traiter / À relire / Obsolètes » sont uniquement des
+  brouillons ; un lien externe simple n'est jamais publié (converti en page web HTML ou
+  laissé en brouillon).
 - **Pages web HTML** : une page déclarée n'est jamais relue librement par l'IA. Seul un
   instantané extrait, nettoyé (navigation/publicité), structuré, versionné puis validé
   alimente le corpus ; un changement distant affiche « actualisation à contrôler » sans
