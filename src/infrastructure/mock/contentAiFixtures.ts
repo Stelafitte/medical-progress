@@ -196,6 +196,14 @@ const SAMPLE_CITATIONS: Partial<Record<MediaKind, readonly ContentAiCitation[]>>
       verified: true,
     },
   ],
+  web_page: [
+    {
+      kind: "html_anchor",
+      locator: "#points-cles",
+      label: "Points clés du chapitre",
+      verified: true,
+    },
+  ],
   clinical_case: [
     { kind: "case_step", locator: "Étape 2", label: "Hypothèses diagnostiques", verified: true },
   ],
