@@ -12,7 +12,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Table,
@@ -199,8 +205,8 @@ export function CohortRosterSection({ data }: { data: ProgramAdminScope }) {
 
             {preview.missingRequiredColumns.length > 0 ? (
               <p className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-xs text-destructive">
-                Colonnes obligatoires absentes :{" "}
-                {preview.missingRequiredColumns.join(", ")}. Utilisez le modèle fourni.
+                Colonnes obligatoires absentes : {preview.missingRequiredColumns.join(", ")}.
+                Utilisez le modèle fourni.
               </p>
             ) : null}
 
@@ -303,10 +309,7 @@ export function CohortRosterSection({ data }: { data: ProgramAdminScope }) {
             className="min-h-11"
             disabled={exportRows.length === 0}
             onClick={() =>
-              download(
-                `promotion-${exportCohortId}.csv`,
-                buildCohortExportCsv(exportRows),
-              )
+              download(`promotion-${exportCohortId}.csv`, buildCohortExportCsv(exportRows))
             }
           >
             <Download className="mr-2 size-4" aria-hidden /> Exporter en CSV
