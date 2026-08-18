@@ -77,7 +77,9 @@ describe("écran de lecture dédié", () => {
   it("ne consomme que le DTO d'artefacts dérivés, jamais le PPTX source", () => {
     for (const file of [reader, route]) {
       expect(file.toLowerCase()).not.toContain(".pptx");
-      expect(file).not.toContain("source");
+      expect(file).not.toContain("fileName");
+      expect(file).not.toContain("narrated.source");
+      expect(file).not.toContain("sizeHint");
       expect(file).not.toContain("mp4");
       expect(file).not.toContain("download");
       expect(file).not.toContain("mediaResources");
@@ -86,8 +88,9 @@ describe("écran de lecture dédié", () => {
   });
 
   it("laisse la prévisualisation enseignant côté administration", () => {
-    expect(panel).toContain("preview_as_learner");
-    expect(reader).not.toContain("preview_as_learner");
+    expect(panel).toContain("NARRATED_ACTION_LABELS_FR");
+    expect(reader).not.toContain("Prévisualiser");
+    expect(reader).not.toContain("NarratedConversionPanel");
   });
 });
 
