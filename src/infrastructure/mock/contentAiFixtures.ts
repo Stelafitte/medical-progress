@@ -163,9 +163,7 @@ export const contentAiProfiles: readonly ContentAiProfile[] = [
     citations: [],
     outcomeIds: [],
     enabledModes: [],
-    alerts: [
-      "Brouillon : explications et objectifs manquants, extraction non lancée (maquette).",
-    ],
+    alerts: ["Brouillon : explications et objectifs manquants, extraction non lancée (maquette)."],
     ...invariants,
   },
   {
@@ -177,9 +175,7 @@ export const contentAiProfiles: readonly ContentAiProfile[] = [
     sourceVersion: "v0.4",
     extractedFacets: ["scenario", "steps", "reasoning", "competencies"],
     segmentCount: 9,
-    citations: [
-      { kind: "case_step", locator: "Étape 1", label: "Anamnèse", verified: false },
-    ],
+    citations: [{ kind: "case_step", locator: "Étape 1", label: "Anamnèse", verified: false }],
     outcomeIds: [],
     enabledModes: [],
     alerts: ["Brouillon révisé après extraction : réindexation nécessaire avant publication."],

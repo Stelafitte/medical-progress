@@ -464,8 +464,18 @@ export const mediaResources: readonly MediaResource[] = [
         language: "fr",
         detectedTitle: "Recommandations de quantification des cavités",
         sections: [
-          { anchor: "#valeurs-reference", heading: "Valeurs de référence", paragraphs: 11, tables: 3 },
-          { anchor: "#methode-fevg", heading: "Méthode de mesure de la FEVG", paragraphs: 9, tables: 1 },
+          {
+            anchor: "#valeurs-reference",
+            heading: "Valeurs de référence",
+            paragraphs: 11,
+            tables: 3,
+          },
+          {
+            anchor: "#methode-fevg",
+            heading: "Méthode de mesure de la FEVG",
+            paragraphs: 9,
+            tables: 1,
+          },
         ],
         reviewedBy: "per-teacher",
         reviewedAt: "2026-04-01T10:00:00Z",
