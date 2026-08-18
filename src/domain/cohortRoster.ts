@@ -70,7 +70,7 @@ export type RosterIssueLevel = "error" | "warning";
 export interface RosterIssue {
   /** Numéro de ligne dans le fichier source (1 = en-tête). */
   readonly line: number;
-  readonly column?: RosterColumn;
+  readonly column?: RosterColumn | undefined;
   readonly level: RosterIssueLevel;
   readonly message: string;
 }
@@ -80,9 +80,9 @@ export interface RosterCandidate {
   readonly lastName: string;
   readonly firstName: string;
   readonly email: string;
-  readonly studentNumber?: string;
-  readonly group?: string;
-  readonly placementWish?: string;
+  readonly studentNumber?: string | undefined;
+  readonly group?: string | undefined;
+  readonly placementWish?: string | undefined;
   readonly status: "ready" | "duplicate_in_file" | "already_enrolled" | "invalid";
   readonly issues: readonly RosterIssue[];
 }
