@@ -427,7 +427,7 @@ export const mediaResources: readonly MediaResource[] = [
       canonicalUrl: "https://exemple-recommandations.test/quantification",
       access: "public",
       checkFrequency: "quarterly",
-      depth: "single_page",
+      depth: "page_only",
       selectedSubpages: [],
       precheck: checkWebPageUrl({
         url: "https://exemple-recommandations.test/quantification",
