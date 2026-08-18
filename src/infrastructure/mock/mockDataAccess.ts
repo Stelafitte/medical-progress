@@ -7,6 +7,8 @@ import * as fx from "./fixtures";
 import * as pfx from "./professionalFixtures";
 import * as slfx from "./stageLogFixtures";
 import * as stfx from "./statisticsFixtures";
+import * as mfx from "./mediaFixtures";
+import * as efx from "./ecosFixtures";
 
 const clone = <T>(value: T): T => value;
 const ok = <T>(value: T): Promise<T> => Promise.resolve(clone(value));
@@ -89,6 +91,14 @@ export const mockDataAccess: DataAccess = {
   },
   resources: {
     listResources: (programId) => ok(fx.learningResources.filter((r) => r.programId === programId)),
+  },
+  media: {
+    listMedia: (programId) => ok(mfx.mediaResources.filter((m) => m.programId === programId)),
+    getMedia: (id) => ok(mfx.mediaResources.find((m) => m.id === id)),
+  },
+  ecos: {
+    listInventory: () => ok(efx.legacyEcosInventory),
+    listScenarios: (programId) => ok(efx.ecosScenarios.filter((s) => s.programId === programId)),
   },
   plan: {
     listPlanSchedule: (programId) => {

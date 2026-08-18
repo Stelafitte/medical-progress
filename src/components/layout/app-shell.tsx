@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, Outlet } from "@tanstack/react-router";
-import { Boxes, HeartPulse, Menu, UserRound } from "lucide-react";
+import { Boxes, HeartPulse, Menu, RotateCcw, UserRound } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,7 +23,7 @@ import { IS_DEV } from "@/lib/env";
 import type { PersonId } from "@/domain/types";
 
 const linkClass =
-  "flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground";
+  "flex min-h-11 items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground";
 const activeClass = { className: "bg-secondary text-secondary-foreground" };
 
 /** Libellé de démonstration affiché à côté de chaque identité simulée. */
@@ -42,6 +42,7 @@ export function AppShell() {
     person,
     people,
     setActivePersonId,
+    resetDemoSession,
     roles,
     rolesInActiveProgram,
     activeProgram,
@@ -51,6 +52,8 @@ export function AppShell() {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const spaces = navSpacesFor(roles, activeProgram.id);
+  const defaultPersonName = people[0]?.fullName ?? "profil par défaut";
+
 
   return (
     <div className="min-h-screen bg-surface">
@@ -62,19 +65,31 @@ export function AppShell() {
       </a>
 
       <header className="sticky top-0 z-40 border-b border-border bg-card/95 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-4 py-3 sm:px-6">
+        <div className="mx-auto flex max-w-6xl items-center gap-2 px-3 py-3 sm:gap-3 sm:px-6">
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="md:hidden" aria-label="Ouvrir le menu">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-11 shrink-0 md:hidden"
+                aria-label="Ouvrir le menu de navigation"
+              >
                 <Menu className="size-5" aria-hidden />
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-72 overflow-y-auto">
+            <SheetContent side="left" className="w-[85vw] max-w-80 overflow-y-auto">
               <SheetHeader>
                 <SheetTitle>Navigation</SheetTitle>
               </SheetHeader>
+              <div className="mt-4 space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Programme actif
+                </p>
+                <ProgramSwitcher variant="full" />
+              </div>
               <nav aria-label="Navigation mobile" className="mt-4 flex flex-col gap-4">
                 {spaces.map((space) => (
+
                   <div key={space.key} className="flex flex-col gap-1">
                     <p className="px-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                       {space.label}
@@ -123,14 +138,16 @@ export function AppShell() {
             </SheetContent>
           </Sheet>
 
-          <Link to="/" className="flex items-center gap-2 text-foreground">
-            <span className="grid size-9 place-items-center rounded-lg hero-gradient text-primary-foreground">
+          <Link to="/" className="flex min-w-0 items-center gap-2 text-foreground">
+            <span className="grid size-9 shrink-0 place-items-center rounded-lg hero-gradient text-primary-foreground">
               <HeartPulse className="size-5" aria-hidden />
             </span>
-            <span className="text-base font-semibold leading-tight">Mon Passeport Éducatif</span>
+            <span className="truncate text-sm font-semibold leading-tight sm:text-base">
+              Mon Passeport Éducatif
+            </span>
           </Link>
 
-          <div className="ms-auto flex items-center gap-3">
+          <div className="ms-auto flex min-w-0 shrink-0 items-center gap-2 sm:gap-3">
             <ProgramSwitcher />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -197,6 +214,15 @@ export function AppShell() {
                         </DropdownMenuRadioItem>
                       ))}
                     </DropdownMenuRadioGroup>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onSelect={() => resetDemoSession()}>
+                      <RotateCcw className="size-4" aria-hidden />
+                      Revenir au profil par défaut ({defaultPersonName})
+                    </DropdownMenuItem>
+                    <p className="px-2 pb-2 text-xs text-muted-foreground">
+                      Le profil et le programme choisis sont conservés pendant la session de
+                      l'onglet (sessionStorage), jamais au-delà.
+                    </p>
                   </>
                 ) : null}
               </DropdownMenuContent>
