@@ -114,9 +114,7 @@ export const contentAiProfiles: readonly ContentAiProfile[] = [
     ],
     outcomeIds: [],
     enabledModes: [],
-    alerts: [
-      "Lien externe simple : hors corpus IA tant qu'aucune transformation n'est décidée.",
-    ],
+    alerts: ["Lien externe simple : hors corpus IA tant qu'aucune transformation n'est décidée."],
     linkDecision: "convert_to_web_page",
     ...invariants,
   },
@@ -130,14 +128,29 @@ export const contentAiProfiles: readonly ContentAiProfile[] = [
 const SAMPLE_CITATIONS: Partial<Record<MediaKind, readonly ContentAiCitation[]>> = {
   pdf: [
     { kind: "pdf_page", locator: "p. 12", label: "Section méthode", verified: true },
-    { kind: "pdf_page", locator: "p. 34", label: "Tableau de valeurs de référence", verified: true },
+    {
+      kind: "pdf_page",
+      locator: "p. 34",
+      label: "Tableau de valeurs de référence",
+      verified: true,
+    },
   ],
   slides: [{ kind: "slide", locator: "Diapositive 6", label: "Points clés", verified: true }],
   video: [
-    { kind: "chapter_timestamp", locator: "Chapitre 3 — 08:20", label: "Analyse du rythme", verified: true },
+    {
+      kind: "chapter_timestamp",
+      locator: "Chapitre 3 — 08:20",
+      label: "Analyse du rythme",
+      verified: true,
+    },
   ],
   quiz: [
-    { kind: "quiz_question", locator: "Question 7", label: "Diagnostic différentiel", verified: true },
+    {
+      kind: "quiz_question",
+      locator: "Question 7",
+      label: "Diagnostic différentiel",
+      verified: true,
+    },
   ],
   clinical_case: [
     { kind: "case_step", locator: "Étape 2", label: "Hypothèses diagnostiques", verified: true },

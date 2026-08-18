@@ -87,7 +87,9 @@ describe("files de traitement", () => {
   it("classe chaque profil dans une file", () => {
     const queues = groupByQueue(allContentAiProfiles);
     const total =
-      queues.to_process.length + queues.to_review.length + queues.ready.length +
+      queues.to_process.length +
+      queues.to_review.length +
+      queues.ready.length +
       queues.outdated.length;
     expect(total).toBe(allContentAiProfiles.length);
     expect(queues.to_review.some((p) => p.mediaId === "med-diu-ppt-doppler")).toBe(true);

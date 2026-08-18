@@ -11,6 +11,7 @@ import { ContentAiTutorPanel } from "@/features/resources/ContentAiTutorPanel";
 import {
   AI_GROUNDING_NOTICE_FR,
   CITATION_KIND_LABELS_FR,
+  AI_STUDY_CTA_FR,
   WEB_REFERENCE_CTA_FR,
 } from "@/domain/contentAi";
 import { MEDIA_KIND_LABELS_FR } from "@/domain/mediaLibrary";
@@ -93,7 +94,7 @@ export function ResourcesView() {
       {aiResources.length > 0 ? (
         <section className="space-y-4">
           <SectionHeading
-            title="Étudier avec l'IA"
+            title={AI_STUDY_CTA_FR}
             level={2}
             description="Chaque support validé peut être interrogé, transformé en QCM, en cas clinique guidé ou en révision adaptative. Les réponses sont maquettées et citent leur référence dans le contenu validé."
           />

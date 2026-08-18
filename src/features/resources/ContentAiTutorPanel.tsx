@@ -133,7 +133,9 @@ export function ContentAiTutorPanel({
                 variant="outline"
                 className="min-h-11 gap-2"
                 onClick={() =>
-                  setVoiceState((prev) => (prev === "listening" ? "assistant_speaking" : "listening"))
+                  setVoiceState((prev) =>
+                    prev === "listening" ? "assistant_speaking" : "listening",
+                  )
                 }
               >
                 <Mic className="size-4" aria-hidden />
@@ -193,7 +195,12 @@ export function ContentAiTutorPanel({
         </ul>
 
         <DialogFooter>
-          <Button type="button" variant="outline" className="min-h-11" onClick={() => setOpen(false)}>
+          <Button
+            type="button"
+            variant="outline"
+            className="min-h-11"
+            onClick={() => setOpen(false)}
+          >
             Fermer
           </Button>
         </DialogFooter>

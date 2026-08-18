@@ -7,11 +7,7 @@
  */
 import type { PlanScheduleEntry } from "@/domain/acquisitionPlan";
 import type { LearnerNarratedDeck, MediaResource } from "@/domain/mediaLibrary";
-import type {
-  ContentAiProfile,
-  LearnerAiResource,
-  ProgramAiPolicy,
-} from "@/domain/contentAi";
+import type { ContentAiProfile, LearnerAiResource, ProgramAiPolicy } from "@/domain/contentAi";
 import type { EcosScenarioMock, LegacyModuleInventoryItem } from "@/domain/ecosMigration";
 import type {
   AdminDocument,

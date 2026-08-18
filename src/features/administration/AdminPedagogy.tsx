@@ -166,17 +166,20 @@ export function AdminPedagogy() {
               <TabsTrigger value="catalogue" className="min-h-11 flex-none text-xs sm:text-sm">
                 Catalogue
               </TabsTrigger>
-              <TabsTrigger value="exploitation-ia" className="min-h-11 flex-none text-xs sm:text-sm">
+              <TabsTrigger
+                value="exploitation-ia"
+                className="min-h-11 flex-none text-xs sm:text-sm"
+              >
                 Exploitation IA
               </TabsTrigger>
             </TabsList>
             <TabsContent value="catalogue" className="space-y-6">
-          <MediaLibrarySection
-            programName={data.program?.name ?? "ce programme"}
-            media={data.media}
-            outcomes={data.outcomes}
-            people={data.people}
-          />
+              <MediaLibrarySection
+                programName={data.program?.name ?? "ce programme"}
+                media={data.media}
+                outcomes={data.outcomes}
+                people={data.people}
+              />
             </TabsContent>
             <TabsContent value="exploitation-ia" className="space-y-6">
               <ContentAiSection

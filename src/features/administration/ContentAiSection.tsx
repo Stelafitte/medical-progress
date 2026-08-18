@@ -144,7 +144,9 @@ export function ContentAiSection({
                           key={profile.mediaId}
                           className="space-y-2 rounded-md border border-border p-3"
                         >
-                          <p className="text-sm font-medium">{resource?.title ?? profile.mediaId}</p>
+                          <p className="text-sm font-medium">
+                            {resource?.title ?? profile.mediaId}
+                          </p>
                           <div className="flex flex-wrap gap-1.5">
                             <Badge variant="outline">
                               {MEDIA_KIND_LABELS_FR[profile.mediaKind]}

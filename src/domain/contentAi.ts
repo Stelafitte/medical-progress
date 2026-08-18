@@ -38,12 +38,7 @@ export const CONTENT_AI_STATUS_LABELS_FR: Record<ContentAiStatus, string> = {
 
 /** Modes d'usage IA activables par ressource. */
 export type ContentAiMode =
-  | "ask"
-  | "be_questioned"
-  | "generate_quiz"
-  | "guided_clinical_case"
-  | "adaptive_review"
-  | "voice";
+  "ask" | "be_questioned" | "generate_quiz" | "guided_clinical_case" | "adaptive_review" | "voice";
 
 export const CONTENT_AI_MODE_LABELS_FR: Record<ContentAiMode, string> = {
   ask: "Poser une question",
@@ -317,11 +312,7 @@ export function groupByQueue(
 
 /** Actions mock proposées à l'administrateur. */
 export type ContentAiAction =
-  | "analyze"
-  | "review"
-  | "approve_for_ai"
-  | "reindex"
-  | "preview_assistant";
+  "analyze" | "review" | "approve_for_ai" | "reindex" | "preview_assistant";
 
 export const CONTENT_AI_ACTION_LABELS_FR: Record<ContentAiAction, string> = {
   analyze: "Analyser",
