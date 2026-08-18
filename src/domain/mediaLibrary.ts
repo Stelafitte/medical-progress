@@ -7,19 +7,30 @@
  * FUTUR du binaire, jamais son contenu.
  */
 import type { IsoDateTime, OutcomeId, PersonId, ProgramId, Provenance } from "@/domain/types";
+import type { WebPageSource } from "@/domain/webPage";
 
 export type MediaResourceId = string & { readonly __brand?: "MediaResource" };
 
 /** Types de supports du corpus réel des deux programmes. */
 export type MediaKind =
-  "pdf" | "slides" | "slides_audio" | "video" | "link" | "quiz" | "clinical_case";
+  | "pdf"
+  | "slides"
+  | "slides_audio"
+  | "video"
+  /** Page web HTML dont le contenu est extrait, nettoyé et versionné. */
+  | "web_page"
+  /** Lien externe simple : hors corpus IA sans décision de transformation. */
+  | "link"
+  | "quiz"
+  | "clinical_case";
 
 export const MEDIA_KIND_LABELS_FR: Record<MediaKind, string> = {
   pdf: "PDF",
   slides: "PowerPoint",
   slides_audio: "PowerPoint commenté (audio)",
   video: "Vidéo",
-  link: "Lien",
+  web_page: "Page web HTML",
+  link: "Lien externe simple",
   quiz: "QCM",
   clinical_case: "Cas clinique",
 };
@@ -88,6 +99,11 @@ export interface MediaResource {
    * privée et l'artefact web dérivé. Aucun binaire n'existe dans la maquette.
    */
   readonly narrated?: NarratedDeck;
+  /**
+   * Présent uniquement pour une page web HTML : URL canonique, pipeline
+   * d'extraction et instantané versionné. Aucun crawl n'est effectué.
+   */
+  readonly webPage?: WebPageSource;
   readonly versions: readonly MediaVersion[];
   readonly provenance: Provenance;
 }

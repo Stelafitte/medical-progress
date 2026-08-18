@@ -20,6 +20,7 @@ export function useLearnerPassport() {
         relations,
         schedule,
         narratedDecks,
+        aiResources,
       ] = await Promise.all([
         data.outcomes.listOutcomes(activeProgram.id),
         data.evidence.listEvidenceForEnrollment(activeEnrollment.id),
@@ -29,6 +30,7 @@ export function useLearnerPassport() {
         data.outcomes.listOutcomeRelations(activeProgram.id),
         data.plan.listPlanSchedule(activeProgram.id),
         data.media.listLearnerNarratedDecks(activeProgram.id),
+        data.contentAi.listLearnerAiResources(activeProgram.id),
       ]);
 
       const progress = outcomes.map((outcome) => computeOutcomeProgress(outcome, evidence));
@@ -52,6 +54,7 @@ export function useLearnerPassport() {
         assignments,
         resources,
         narratedDecks,
+        aiResources,
         progress,
         summary: summarizeProgress(progress),
       };

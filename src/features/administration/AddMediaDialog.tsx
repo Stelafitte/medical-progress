@@ -43,6 +43,18 @@ import {
   type MediaKind,
   type MediaVisibility,
 } from "@/domain/mediaLibrary";
+import {
+  WEB_ACCESS_MODE_LABELS_FR,
+  WEB_CHECK_FREQUENCY_LABELS_FR,
+  WEB_CRAWL_DEPTH_LABELS_FR,
+  WEB_PRECHECK_NOTICE_FR,
+  WEB_SNAPSHOT_NOTICE_FR,
+  checkWebPageUrl,
+  type WebAccessMode,
+  type WebCheckFrequency,
+  type WebCrawlDepth,
+} from "@/domain/webPage";
+import { AI_MOCK_NOTICE_FR, PUBLICATION_BLOCKED_NOTICE_FR } from "@/domain/contentAi";
 import type { Outcome, OutcomeId } from "@/domain/types";
 
 export const ADD_MEDIA_SUBMIT_LABEL_FR = "Enregistrer la maquette";
@@ -78,8 +90,14 @@ export function AddMediaDialog({
   const [generateTranscript, setGenerateTranscript] = useState(true);
   const [autoChapters, setAutoChapters] = useState(true);
   const [exposeTranscript, setExposeTranscript] = useState(true);
+  // Options d'ingestion d'une page web HTML (toutes simulées).
+  const [webAccess, setWebAccess] = useState<WebAccessMode>("public");
+  const [webFrequency, setWebFrequency] = useState<WebCheckFrequency>("quarterly");
+  const [webDepth, setWebDepth] = useState<WebCrawlDepth>("page_only");
+  const [subpages, setSubpages] = useState("");
 
   const isNarrated = kind === "slides_audio";
+  const isWebPage = kind === "web_page";
   /**
    * Contrôle simulé : les caractéristiques déclarées sont dérivées du nom de
    * fichier, aucun binaire n'est ouvert ni transmis.
@@ -91,6 +109,15 @@ export function AddMediaDialog({
     slidesWithoutNarration: [4],
     estimatedDurationMinutes: 21,
     fontsEmbedded: false,
+  });
+
+  /** Pré-contrôle purement syntaxique : l'URL n'est jamais appelée. */
+  const webPrecheck = checkWebPageUrl({
+    url,
+    reachableDeclared: true,
+    ...(title ? { detectedTitle: title } : {}),
+    detectedLanguage: "fr",
+    sectionCount: 12,
   });
 
   const reset = () => {
@@ -279,6 +306,121 @@ export function AddMediaDialog({
               ) : null}
             </div>
           </section>
+        ) : null}
+
+        {isWebPage ? (
+          <section className="space-y-3 rounded-md border border-border p-3">
+            <div className="space-y-1">
+              <p className="text-sm font-medium">Page web HTML — ingestion du contenu</p>
+              <p className="text-xs text-muted-foreground">{WEB_SNAPSHOT_NOTICE_FR}.</p>
+              <p className="text-xs text-muted-foreground">{WEB_PRECHECK_NOTICE_FR}.</p>
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="web-url">URL de la page</Label>
+              <Input
+                id="web-url"
+                inputMode="url"
+                className="min-h-11"
+                value={url}
+                onChange={(event) => setUrl(event.target.value)}
+                placeholder="https://…"
+              />
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1">
+                <Label htmlFor="web-access">Accès</Label>
+                <Select
+                  value={webAccess}
+                  onValueChange={(value) => setWebAccess(value as WebAccessMode)}
+                >
+                  <SelectTrigger id="web-access">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(Object.keys(WEB_ACCESS_MODE_LABELS_FR) as WebAccessMode[]).map((a) => (
+                      <SelectItem key={a} value={a}>
+                        {WEB_ACCESS_MODE_LABELS_FR[a]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="web-frequency">Fréquence de vérification</Label>
+                <Select
+                  value={webFrequency}
+                  onValueChange={(value) => setWebFrequency(value as WebCheckFrequency)}
+                >
+                  <SelectTrigger id="web-frequency">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(Object.keys(WEB_CHECK_FREQUENCY_LABELS_FR) as WebCheckFrequency[]).map(
+                      (f) => (
+                        <SelectItem key={f} value={f}>
+                          {WEB_CHECK_FREQUENCY_LABELS_FR[f]}
+                        </SelectItem>
+                      ),
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <fieldset className="space-y-2">
+              <legend className="text-sm font-medium">Profondeur d'extraction</legend>
+              <RadioGroup
+                value={webDepth}
+                onValueChange={(value) => setWebDepth(value as WebCrawlDepth)}
+              >
+                {(Object.keys(WEB_CRAWL_DEPTH_LABELS_FR) as WebCrawlDepth[]).map((d) => (
+                  <div key={d} className="flex items-center gap-2">
+                    <RadioGroupItem value={d} id={`depth-${d}`} />
+                    <Label htmlFor={`depth-${d}`} className="font-normal leading-snug">
+                      {WEB_CRAWL_DEPTH_LABELS_FR[d]}
+                    </Label>
+                  </div>
+                ))}
+              </RadioGroup>
+            </fieldset>
+
+            {webDepth === "selected_subpages" ? (
+              <div className="space-y-1">
+                <Label htmlFor="web-subpages">Sous-pages sélectionnées (une par ligne)</Label>
+                <Textarea
+                  id="web-subpages"
+                  rows={3}
+                  value={subpages}
+                  onChange={(event) => setSubpages(event.target.value)}
+                  placeholder="/pathologie/douleur-thoracique"
+                />
+              </div>
+            ) : null}
+
+            <div className="space-y-1 rounded-md border border-dashed border-border p-3 text-xs">
+              <p className="text-sm font-medium">Contrôle avant ingestion (simulé)</p>
+              <p>URL http/https : {webPrecheck.urlValid ? "conforme" : "non conforme"}</p>
+              <p>Domaine : {webPrecheck.host ?? "—"}</p>
+              <p>URL canonique : {webPrecheck.canonicalUrl ?? "—"}</p>
+              <p>Accessibilité déclarée : {webPrecheck.reachableDeclared ? "oui" : "non"}</p>
+              <p>Sections structurées estimées : {webPrecheck.sectionCount ?? "—"}</p>
+              <p>
+                Étapes prévues : extraction du contenu principal, nettoyage navigation/publicité,
+                structuration, instantané versionné, contrôle pédagogique, indexation IA.
+              </p>
+              <p className="text-muted-foreground">{PUBLICATION_BLOCKED_NOTICE_FR}.</p>
+            </div>
+          </section>
+        ) : null}
+
+        {kind === "link" ? (
+          <p className="rounded-md border border-dashed border-border p-3 text-xs text-muted-foreground">
+            Lien externe simple : il reste <strong>hors du corpus IA</strong> tant qu'une décision
+            explicite n'a pas été prise (transformation en page web HTML, en document déposé, ou
+            non-publication). {AI_MOCK_NOTICE_FR}.
+          </p>
         ) : null}
 
         <div className="space-y-1">

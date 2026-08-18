@@ -89,6 +89,21 @@ bun run lint       # eslint + prettier
   apprenants est un **lecteur web HTML5 synchronisé** (diapositives, audio, sommaire,
   transcription) ; le PPTX source n'est jamais exposé côté apprenant. Pipeline documenté
   dans `docs/database/draft/narrated_pptx_conversion.md`.
+- **Exploitation IA des contenus = maquette intégrale.** Chaque support publié possède un
+  profil IA (`ContentAiProfile`) : contenu extrait attendu par format, références citables
+  (page PDF, diapositive, chapitre/timestamp, ancre HTML, question de QCM, étape de cas),
+  statuts (`awaiting_extraction` → `ready`), files « à traiter / à relire / prêts /
+  obsolètes » et indicateur « Couverture IA des contenus publiés » dans
+  Administration → Médiathèque → Exploitation IA. Côté apprenant, « Étudier avec l'IA »
+  propose questions, interrogation, QCM, cas clinique guidé, révision adaptative et un
+  mode vocal **simulé** (aucun microphone, aucune session temps réel). Aucun index, aucun
+  découpage, aucun appel IA réel : pipeline et routeur de coûts documentés dans
+  `docs/database/draft/content_ai_pipeline.md`.
+- **Pages web HTML** : une page déclarée n'est jamais relue librement par l'IA. Seul un
+  instantané extrait, nettoyé (navigation/publicité), structuré, versionné puis validé
+  alimente le corpus ; un changement distant affiche « actualisation à contrôler » sans
+  jamais écraser la version validée. Un **lien externe simple** reste hors corpus IA sans
+  décision explicite (page web HTML, document déposé, ou non publié).
 - **Évaluations et ECOS = maquette documentaire** : inventaire de migration, workflow
   sélectif et fiches de scénarios. Le moteur ECOS, le temps réel, les voix et les avatars
   ne sont pas implémentés ; aucun import réel n'est possible.

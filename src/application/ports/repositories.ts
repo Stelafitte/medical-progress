@@ -7,6 +7,7 @@
  */
 import type { PlanScheduleEntry } from "@/domain/acquisitionPlan";
 import type { LearnerNarratedDeck, MediaResource } from "@/domain/mediaLibrary";
+import type { ContentAiProfile, LearnerAiResource, ProgramAiPolicy } from "@/domain/contentAi";
 import type { EcosScenarioMock, LegacyModuleInventoryItem } from "@/domain/ecosMigration";
 import type {
   AdminDocument,
@@ -125,6 +126,18 @@ export interface MediaLibraryRepository {
   listLearnerNarratedDecks(programId: ProgramId): Promise<readonly LearnerNarratedDeck[]>;
 }
 
+/**
+ * Exploitation IA des contenus : profils, politique par programme et DTO
+ * apprenant. Aucun index ni appel IA n'existe dans cette itération.
+ */
+export interface ContentAiRepository {
+  listProfiles(programId: ProgramId): Promise<readonly ContentAiProfile[]>;
+  getProfile(mediaId: string): Promise<ContentAiProfile | undefined>;
+  getPolicy(programId: ProgramId): Promise<ProgramAiPolicy | undefined>;
+  /** Supports exploitables par l'apprenant : contenu validé et prêt uniquement. */
+  listLearnerAiResources(programId: ProgramId): Promise<readonly LearnerAiResource[]>;
+}
+
 /** Préparation documentaire de la migration ECOS (aucun couplage runtime). */
 export interface EcosMigrationRepository {
   listInventory(): Promise<readonly LegacyModuleInventoryItem[]>;
@@ -168,6 +181,7 @@ export interface DataAccess {
   readonly placements: PlacementRepository;
   readonly resources: LearningResourceRepository;
   readonly media: MediaLibraryRepository;
+  readonly contentAi: ContentAiRepository;
   readonly ecos: EcosMigrationRepository;
   readonly plan: AcquisitionPlanRepository;
   readonly stageLogs: StageLogRepository;
