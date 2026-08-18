@@ -22,6 +22,7 @@ import type {
   SupervisionAlert,
 } from "@/domain/supervision";
 import type { StageLog, StageLogTemplate } from "@/domain/stageLog";
+import type { CohortStatisticsSnapshot } from "@/domain/statistics";
 
 import type {
   AuditEvent,
@@ -124,6 +125,14 @@ export interface StageLogRepository {
   listLogsReceived(programId: ProgramId): Promise<readonly StageLog[]>;
 }
 
+/**
+ * Statistiques conservées : les instantanés de promotion ne sont jamais
+ * supprimés, ce qui rend les comparaisons pluriannuelles possibles.
+ */
+export interface StatisticsRepository {
+  listCohortStatistics(programId: ProgramId): Promise<readonly CohortStatisticsSnapshot[]>;
+}
+
 export interface AuditRepository {
   listRecentEvents(limit?: number): Promise<readonly AuditEvent[]>;
 }
@@ -140,6 +149,7 @@ export interface DataAccess {
   readonly stageLogs: StageLogRepository;
   readonly supervision: SupervisionRepository;
   readonly administration: AdministrationRepository;
+  readonly statistics: StatisticsRepository;
   readonly audit: AuditRepository;
   /** Marque explicitement une implémentation non persistante. */
   readonly isMock: boolean;

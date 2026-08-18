@@ -62,6 +62,23 @@ export function canAccessLearnerSpace(
   return hasRole(assignments, "learner", { programId });
 }
 
+/**
+ * Outil statistique : responsables de stage, enseignants, administrateurs du
+ * programme et administrateurs plateforme. Jamais un apprenant seul.
+ * Le périmètre affiché reste ensuite restreint aux stages de l'encadrant.
+ */
+export function canAccessStatistics(
+  assignments: readonly RoleAssignment[],
+  programId: ProgramId,
+): boolean {
+  return (
+    canAccessSupervision(assignments, programId) ||
+    canAccessProgramAdministration(assignments, programId) ||
+    canAccessPlatformAdministration(assignments) ||
+    hasRole(assignments, "teacher", { programId })
+  );
+}
+
 /** Le profil de compte est accessible à tout utilisateur authentifié, quels que soient ses rôles. */
 export function canAccessOwnProfile(isAuthenticated: boolean): boolean {
   return isAuthenticated;
