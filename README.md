@@ -72,13 +72,32 @@ bun run lint       # eslint + prettier
 
 - **Aucune base de données activée, aucune migration créée.** Le schéma sera validé
   séparément avant provisioning.
-- Aucune authentification réelle : la session est simulée en mémoire.
+- Aucune authentification réelle : la session est simulée en mémoire. Seuls le profil de
+  démonstration et le programme sélectionné sont conservés dans `sessionStorage`
+  (`src/application/sessionPersistence.ts`), avec une action explicite de retour au profil
+  par défaut.
 - **Aucun appel IA réel.** Le calcul de progression est déterministe.
 - Aucune écriture : les repositories mock sont en lecture seule, rien n'est persisté.
 - Aucun secret côté frontend, aucun appel réseau sortant.
 - Aucun compte étudiant payant, aucun déploiement, aucune publication.
-- Le moteur ECOS n'est pas implémenté : la simulation n'existe que comme nature d'acquis
-  et type de preuve.
+- **Médiathèque pédagogique = maquette** : métadonnées seules, aucun fichier transmis,
+  « Stockage non activé dans cette maquette ». Ajout, versionnage, publication et
+  archivage sont simulés localement.
+- **Évaluations et ECOS = maquette documentaire** : inventaire de migration, workflow
+  sélectif et fiches de scénarios. Le moteur ECOS, le temps réel, les voix et les avatars
+  ne sont pas implémentés ; aucun import réel n'est possible.
+- Une performance ECOS n'alimente qu'une **compétence simulée** : une compétence réelle
+  exige toujours une validation humaine.
+
+## Portabilité smartphone
+
+Recette effectuée aux largeurs **360, 390, 768 et 1280 px** sur les parcours apprenant
+DIU, apprenant DFASM, responsable de stage et administration du programme : aucun
+débordement horizontal (`scrollWidth` contrôlé) et aucune erreur console. Points mis en
+place : menu latéral explicite avec sélecteur de programme, sélecteur de programme
+compact dès 360 px, cibles tactiles d'au moins 44 px, tableaux denses basculant en cartes
+sur mobile, actions principales empilées et pleine largeur.
+
 
 ## Dossier de conception base de données (non exécuté)
 
