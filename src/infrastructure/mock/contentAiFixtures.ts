@@ -70,7 +70,9 @@ export const contentAiProfiles: readonly ContentAiProfile[] = [
     mediaId: "med-dfasm-web-referentiel-cv",
     programId: "prog-dfasm-cardio",
     mediaKind: "web_page",
-    status: "outdated",
+    // L'instantané validé reste exploitable : un changement distant crée une
+    // alerte « actualisation à contrôler » sans jamais désindexer le corpus.
+    status: "ready",
     sourceVersion: "instantané 2026-08",
     extractedFacets: ["headings", "paragraphs", "tables", "anchors"],
     segmentCount: 52,
@@ -92,23 +94,54 @@ export const contentAiProfiles: readonly ContentAiProfile[] = [
     indexedAt: "2026-07-04T10:20:00Z",
     enabledModes: ["ask", "be_questioned", "generate_quiz", "adaptive_review", "voice"],
     alerts: [
-      "Changement détecté sur la page distante le 18/08/2026 : l'instantané validé n'a pas été écrasé.",
+      "Actualisation à contrôler : changement détecté sur la page distante le 18/08/2026. L'instantané validé « 2026-08 » reste exploitable et n'a été ni écrasé ni désindexé.",
     ],
     ...invariants,
   },
   {
+    // Ancien lien externe simple : converti en page web HTML avec instantané
+    // validé, donc réellement exploitable et publiable.
     mediaId: "med-diu-lien-guidelines",
+    programId: "prog-diu-echo",
+    mediaKind: "web_page",
+    status: "ready",
+    sourceVersion: "instantané 2026-04",
+    extractedFacets: ["headings", "paragraphs", "tables", "anchors"],
+    segmentCount: 21,
+    citations: [
+      {
+        kind: "html_anchor",
+        locator: "#valeurs-reference",
+        label: "Valeurs de référence des cavités",
+        verified: true,
+      },
+      {
+        kind: "html_anchor",
+        locator: "#methode-fevg",
+        label: "Méthode de mesure de la FEVG",
+        verified: true,
+      },
+    ],
+    outcomeIds: ["out-echo-fevg"],
+    indexedAt: "2026-04-02T09:00:00Z",
+    enabledModes: ["ask", "be_questioned", "generate_quiz", "adaptive_review", "voice"],
+    alerts: [],
+    ...invariants,
+  },
+  {
+    // Lien externe simple NON PUBLIÉ : décision explicite requise, hors corpus.
+    mediaId: "med-diu-lien-societe",
     programId: "prog-diu-echo",
     mediaKind: "link",
     status: "awaiting_extraction",
-    sourceVersion: "v1.0",
+    sourceVersion: "v0.1",
     extractedFacets: ["metadata_only"],
     segmentCount: 0,
     citations: [
       {
         kind: "metadata",
         locator: "Métadonnées du lien",
-        label: "Recommandations européennes (titre et éditeur déclarés)",
+        label: "Société savante (titre et éditeur déclarés)",
         verified: true,
       },
     ],
@@ -116,6 +149,36 @@ export const contentAiProfiles: readonly ContentAiProfile[] = [
     enabledModes: [],
     alerts: ["Lien externe simple : hors corpus IA tant qu'aucune transformation n'est décidée."],
     linkDecision: "convert_to_web_page",
+    ...invariants,
+  },
+  {
+    // Exemple « À traiter » — brouillon uniquement, jamais un support publié.
+    mediaId: "med-diu-qcm-valves",
+    programId: "prog-diu-echo",
+    mediaKind: "quiz",
+    status: "awaiting_extraction",
+    sourceVersion: "v0.9",
+    extractedFacets: ["questions", "answers"],
+    segmentCount: 0,
+    citations: [],
+    outcomeIds: [],
+    enabledModes: [],
+    alerts: ["Brouillon : explications et objectifs manquants, extraction non lancée (maquette)."],
+    ...invariants,
+  },
+  {
+    // Exemple « Obsolète / à réindexer » — brouillon uniquement.
+    mediaId: "med-dfasm-cas-syncope",
+    programId: "prog-dfasm-cardio",
+    mediaKind: "clinical_case",
+    status: "outdated",
+    sourceVersion: "v0.4",
+    extractedFacets: ["scenario", "steps", "reasoning", "competencies"],
+    segmentCount: 9,
+    citations: [{ kind: "case_step", locator: "Étape 1", label: "Anamnèse", verified: false }],
+    outcomeIds: [],
+    enabledModes: [],
+    alerts: ["Brouillon révisé après extraction : réindexation nécessaire avant publication."],
     ...invariants,
   },
 ];
@@ -152,6 +215,14 @@ const SAMPLE_CITATIONS: Partial<Record<MediaKind, readonly ContentAiCitation[]>>
       verified: true,
     },
   ],
+  web_page: [
+    {
+      kind: "html_anchor",
+      locator: "#points-cles",
+      label: "Points clés du chapitre",
+      verified: true,
+    },
+  ],
   clinical_case: [
     { kind: "case_step", locator: "Étape 2", label: "Hypothèses diagnostiques", verified: true },
   ],
@@ -159,6 +230,11 @@ const SAMPLE_CITATIONS: Partial<Record<MediaKind, readonly ContentAiCitation[]>>
 
 function derivedProfile(resource: MediaResource): ContentAiProfile {
   const citations = SAMPLE_CITATIONS[resource.kind] ?? [];
+  if (resource.status === "published" && citations.length === 0) {
+    throw new Error(
+      `Fixture invalide : le support publié ${resource.id} (${resource.kind}) n'a aucune référence citable.`,
+    );
+  }
   const isPublished = resource.status === "published";
   return {
     mediaId: resource.id,
