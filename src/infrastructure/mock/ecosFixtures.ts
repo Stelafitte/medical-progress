@@ -1,0 +1,296 @@
+/**
+ * Inventaire de migration ECOS et scénarios de démonstration.
+ *
+ * Contenu entièrement ressaisi : aucun code, secret, table ni fonction du
+ * projet source n'est copié. Les noms de modules servent de repères
+ * documentaires pour la migration sélective à venir.
+ */
+import type { EcosScenarioMock, LegacyModuleInventoryItem } from "@/domain/ecosMigration";
+
+export const legacyEcosInventory: readonly LegacyModuleInventoryItem[] = [
+  /* Écrans */
+  {
+    id: "inv-ecos-admin-list",
+    category: "screen",
+    sourceModule: "EcosAdminList",
+    decision: "adapt",
+    destination: "Administration du programme › Évaluations et ECOS › liste des scénarios",
+    status: "mapped",
+    note: "Doit être cloisonné par programme et par rôle contextualisé.",
+  },
+  {
+    id: "inv-ecos-admin-editor",
+    category: "screen",
+    sourceModule: "EcosAdminEditor",
+    decision: "adapt",
+    destination: "Éditeur de scénario rattaché aux Outcome du programme",
+    status: "inventoried",
+    note: "La grille doit référencer des Outcome, plus des compétences globales.",
+  },
+  {
+    id: "inv-ecos-list",
+    category: "screen",
+    sourceModule: "EcosList",
+    decision: "adapt",
+    destination: "Espace apprenant › Simulation (à ouvrir après le gateway IA)",
+    status: "inventoried",
+    note: "Visible seulement si simulationEnabled sur le programme.",
+  },
+  {
+    id: "inv-ecos-preview",
+    category: "screen",
+    sourceModule: "EcosPreview",
+    decision: "keep",
+    destination: "Prévisualisation de scénario (lecture seule)",
+    status: "mapped",
+    note: "Aucun appel temps réel nécessaire en prévisualisation.",
+  },
+  {
+    id: "inv-ecos-session",
+    category: "screen",
+    sourceModule: "EcosSession",
+    decision: "adapt",
+    destination: "Session de simulation instrumentée (quotas et coûts)",
+    status: "blocked",
+    note: "Bloqué jusqu'à mise en place du gateway, des quotas et de la comptabilité d'appels.",
+  },
+
+  /* Domaine */
+  {
+    id: "inv-ecos-scenario",
+    category: "domain",
+    sourceModule: "ecosScenario",
+    decision: "adapt",
+    destination: "src/domain/ecosScenario (à créer) aligné sur Outcome et Evidence",
+    status: "mapped",
+    note: "Provenance legacy conservée sur chaque scénario importé.",
+  },
+  {
+    id: "inv-ecos-case-config",
+    category: "domain",
+    sourceModule: "ecosCaseConfig",
+    decision: "adapt",
+    destination: "Configuration de cas par programme et version de curriculum",
+    status: "inventoried",
+    note: "Les paramètres globaux historiques deviennent des réglages de programme.",
+  },
+  {
+    id: "inv-ecos-lifecycle",
+    category: "domain",
+    sourceModule: "ecosLifecycle",
+    decision: "keep",
+    destination: "Cycle de vie brouillon → publié → archivé (identique à la médiathèque)",
+    status: "mapped",
+    note: "Cycle déjà compatible avec le socle.",
+  },
+  {
+    id: "inv-ecos-ui",
+    category: "domain",
+    sourceModule: "ecosUi",
+    decision: "replace",
+    destination: "Design system du socle (shadcn + tokens sémantiques)",
+    status: "inventoried",
+    note: "L'habillage historique n'est pas repris.",
+  },
+  {
+    id: "inv-ecos-voices",
+    category: "domain",
+    sourceModule: "ecosVoices",
+    decision: "adapt",
+    destination: "Catalogue de voix côté serveur, jamais exposé au client",
+    status: "blocked",
+    note: "Dépend du gateway IA propriétaire.",
+  },
+  {
+    id: "inv-ecos-avatars",
+    category: "domain",
+    sourceModule: "ecosAvatars",
+    decision: "keep",
+    destination: "Avatars de patient simulé (assets neutres)",
+    status: "mapped",
+    note: "Aucune image de personne réelle.",
+  },
+  {
+    id: "inv-ecos-pricing",
+    category: "domain",
+    sourceModule: "ecosRealtimePricing",
+    decision: "adapt",
+    destination: "Comptabilité et quotas d'appels IA par programme",
+    status: "blocked",
+    note: "Prérequis à toute ouverture du mode vocal.",
+  },
+
+  /* Composants */
+  {
+    id: "inv-cmp-timer",
+    category: "component",
+    sourceModule: "timer",
+    decision: "keep",
+    destination: "Composant de minuterie de session",
+    status: "mapped",
+    note: "Réutilisable tel quel après réécriture visuelle.",
+  },
+  {
+    id: "inv-cmp-controls",
+    category: "component",
+    sourceModule: "controls",
+    decision: "adapt",
+    destination: "Contrôles de session (tactile 44 px minimum)",
+    status: "inventoried",
+    note: "À rendre utilisable dès 360 px.",
+  },
+  {
+    id: "inv-cmp-avatar",
+    category: "component",
+    sourceModule: "patient avatar",
+    decision: "keep",
+    destination: "Affichage du patient simulé",
+    status: "mapped",
+    note: "Aucune donnée patient réelle.",
+  },
+  {
+    id: "inv-cmp-score-ring",
+    category: "component",
+    sourceModule: "score ring",
+    decision: "adapt",
+    destination: "Indicateur de score relié à la grille par Outcome",
+    status: "inventoried",
+    note: "Le score ne conclut jamais une compétence réelle.",
+  },
+  {
+    id: "inv-cmp-debrief-speaker",
+    category: "component",
+    sourceModule: "debrief speaker",
+    decision: "adapt",
+    destination: "Restitution du débriefing (texte d'abord, audio optionnel)",
+    status: "inventoried",
+    note: "Mode texte disponible sans coût d'appel.",
+  },
+  {
+    id: "inv-cmp-assets-usage",
+    category: "component",
+    sourceModule: "assets/usage",
+    decision: "adapt",
+    destination: "Suivi d'usage rattaché à l'audit du socle",
+    status: "inventoried",
+    note: "Journalisation via AuditEvent.",
+  },
+
+  /* Fonctions */
+  {
+    id: "inv-fn-config-check",
+    category: "function",
+    sourceModule: "ecos-config-check",
+    decision: "adapt",
+    destination: "Vérification de configuration côté serveur du socle",
+    status: "inventoried",
+    note: "Ne doit jamais renvoyer de secret au client.",
+  },
+  {
+    id: "inv-fn-realtime-session",
+    category: "function",
+    sourceModule: "ecos-realtime-session",
+    decision: "replace",
+    destination: "Gateway IA propriétaire avec quotas et journalisation",
+    status: "blocked",
+    note: "Les anciens endpoints de jeton temps réel ne sont pas repris.",
+  },
+  {
+    id: "inv-fn-end-session",
+    category: "function",
+    sourceModule: "ecos-end-session",
+    decision: "adapt",
+    destination: "Clôture de session et production d'Evidence de simulation",
+    status: "mapped",
+    note: "Produit une preuve de compétence simulée uniquement.",
+  },
+  {
+    id: "inv-fn-debrief",
+    category: "function",
+    sourceModule: "ecos-debrief",
+    decision: "adapt",
+    destination: "Débriefing serveur, coût mesuré",
+    status: "blocked",
+    note: "Soumis au gateway et aux quotas.",
+  },
+  {
+    id: "inv-fn-scoring",
+    category: "function",
+    sourceModule: "scoring",
+    decision: "adapt",
+    destination: "Scoring déterministe aligné sur la grille par Outcome",
+    status: "mapped",
+    note: "Le scoring reste explicable et auditable.",
+  },
+];
+
+export const ecosScenarios: readonly EcosScenarioMock[] = [
+  {
+    id: "ecos-dfasm-douleur",
+    programId: "prog-dfasm-cardio",
+    title: "Douleur thoracique aux urgences",
+    patientProfile:
+      "Patient simulé fictif, 58 ans, douleur rétrosternale depuis 2 heures, anxieux et volubile.",
+    instructions:
+      "Conduire l'interrogatoire, hiérarchiser les hypothèses, annoncer la conduite à tenir en 10 minutes.",
+    durationMinutes: 10,
+    mode: "text_and_voice",
+    outcomeIds: ["out-dfasm-douleur", "out-dfasm-obs"],
+    grading: [
+      {
+        label: "Recueil des caractéristiques de la douleur",
+        weight: 30,
+        outcomeId: "out-dfasm-douleur",
+      },
+      { label: "Recherche des signes de gravité", weight: 30, outcomeId: "out-dfasm-douleur" },
+      { label: "Hypothèses hiérarchisées", weight: 20, outcomeId: "out-dfasm-obs" },
+      { label: "Communication et clarté de l'annonce", weight: 20 },
+    ],
+    debriefSummary:
+      "Restitution structurée : points acquis, éléments manqués, reformulation de la conduite à tenir.",
+    status: "to_adapt",
+    legacySourceId: "ecos:douleur-thoracique",
+    updatedAt: "2026-07-02T09:00:00Z",
+  },
+  {
+    id: "ecos-dfasm-ecg",
+    programId: "prog-dfasm-cardio",
+    title: "Annonce d'un ECG anormal",
+    patientProfile:
+      "Patient simulé fictif, 71 ans, palpitations, demande des explications simples.",
+    instructions:
+      "Expliquer l'anomalie de rythme et la suite de la prise en charge sans jargon, en 8 minutes.",
+    durationMinutes: 8,
+    mode: "voice",
+    outcomeIds: ["out-dfasm-ecg"],
+    grading: [
+      { label: "Exactitude de l'interprétation", weight: 40, outcomeId: "out-dfasm-ecg" },
+      { label: "Pédagogie de l'explication", weight: 35 },
+      { label: "Vérification de la compréhension", weight: 25 },
+    ],
+    debriefSummary:
+      "Comparaison de la formulation de l'apprenant avec une formulation de référence.",
+    status: "mock",
+    updatedAt: "2026-07-18T09:00:00Z",
+  },
+  {
+    id: "ecos-diu-compte-rendu",
+    programId: "prog-diu-echo",
+    title: "Restitution d'un compte rendu d'échocardiographie",
+    patientProfile:
+      "Médecin demandeur simulé, attend une conclusion synthétique et une conduite à tenir.",
+    instructions:
+      "Présenter les mesures clés, la conclusion et les limites de l'examen en 6 minutes.",
+    durationMinutes: 6,
+    mode: "text",
+    outcomeIds: ["out-echo-fevg", "out-echo-valve"],
+    grading: [
+      { label: "Mesures citées et cohérentes", weight: 40, outcomeId: "out-echo-fevg" },
+      { label: "Conclusion hiérarchisée", weight: 35, outcomeId: "out-echo-valve" },
+      { label: "Mention explicite des limites", weight: 25 },
+    ],
+    debriefSummary: "Analyse de la structuration du compte rendu et des omissions de limites.",
+    status: "mock",
+    updatedAt: "2026-08-01T09:00:00Z",
+  },
+];

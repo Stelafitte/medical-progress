@@ -6,6 +6,8 @@
  * modifier l'UI ni la logique métier.
  */
 import type { PlanScheduleEntry } from "@/domain/acquisitionPlan";
+import type { MediaResource } from "@/domain/mediaLibrary";
+import type { EcosScenarioMock, LegacyModuleInventoryItem } from "@/domain/ecosMigration";
 import type {
   AdminDocument,
   AdminTask,
@@ -109,6 +111,21 @@ export interface LearningResourceRepository {
   listResources(programId: ProgramId): Promise<readonly LearningResource[]>;
 }
 
+/**
+ * Médiathèque pédagogique : MÉTADONNÉES uniquement.
+ * Aucun binaire n'est lu, écrit ou transmis dans cette itération.
+ */
+export interface MediaLibraryRepository {
+  listMedia(programId: ProgramId): Promise<readonly MediaResource[]>;
+  getMedia(id: string): Promise<MediaResource | undefined>;
+}
+
+/** Préparation documentaire de la migration ECOS (aucun couplage runtime). */
+export interface EcosMigrationRepository {
+  listInventory(): Promise<readonly LegacyModuleInventoryItem[]>;
+  listScenarios(programId: ProgramId): Promise<readonly EcosScenarioMock[]>;
+}
+
 export interface AcquisitionPlanRepository {
   /** Calendrier de référence des acquis d'un programme. */
   listPlanSchedule(programId: ProgramId): Promise<readonly PlanScheduleEntry[]>;
@@ -145,6 +162,8 @@ export interface DataAccess {
   readonly evidence: EvidenceRepository;
   readonly placements: PlacementRepository;
   readonly resources: LearningResourceRepository;
+  readonly media: MediaLibraryRepository;
+  readonly ecos: EcosMigrationRepository;
   readonly plan: AcquisitionPlanRepository;
   readonly stageLogs: StageLogRepository;
   readonly supervision: SupervisionRepository;

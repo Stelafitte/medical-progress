@@ -1,0 +1,354 @@
+/**
+ * Médiathèque pédagogique (MAQUETTE).
+ * Uniquement des métadonnées : aucun fichier n'est lu, transmis ni stocké.
+ * Toutes les actions sont simulées et journalisées à l'écran.
+ */
+import { useMemo, useState } from "react";
+import {
+  FileText,
+  Filter,
+  Link2,
+  PlayCircle,
+  Presentation,
+  Search,
+  Stethoscope,
+} from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  EmptyState,
+  MockBadge,
+  PanelCard,
+  ScopeNotice,
+  StatCard,
+} from "@/features/professional/mock-ui";
+import { AddMediaDialog } from "@/features/administration/AddMediaDialog";
+import { MediaDetailDialog } from "@/features/administration/MediaDetailDialog";
+import {
+  MEDIA_KIND_LABELS_FR,
+  MEDIA_STATUS_LABELS_FR,
+  MEDIA_STORAGE_NOTICE_FR,
+  MEDIA_VISIBILITY_LABELS_FR,
+  filterMedia,
+  mediaIndicators,
+  mediaModules,
+  type MediaKind,
+  type MediaResource,
+  type MediaStatus,
+} from "@/domain/mediaLibrary";
+import type { Outcome, Person } from "@/domain/types";
+
+const KIND_ICONS: Record<MediaKind, typeof FileText> = {
+  pdf: FileText,
+  slides: Presentation,
+  slides_audio: Presentation,
+  video: PlayCircle,
+  link: Link2,
+  quiz: FileText,
+  clinical_case: Stethoscope,
+};
+
+const statusVariant = (status: MediaStatus) =>
+  status === "published" ? "secondary" : status === "draft" ? "outline" : "outline";
+
+const formatDate = (iso: string) => new Date(iso).toLocaleDateString("fr-FR");
+
+export function MediaLibrarySection({
+  programName,
+  media,
+  outcomes,
+  people,
+}: {
+  programName: string;
+  media: readonly MediaResource[];
+  outcomes: readonly Outcome[];
+  people: readonly Person[];
+}) {
+  const [search, setSearch] = useState("");
+  const [kind, setKind] = useState<MediaKind | "all">("all");
+  const [status, setStatus] = useState<MediaStatus | "all">("all");
+  const [moduleName, setModuleName] = useState<string>("all");
+  const [onlyUnlinked, setOnlyUnlinked] = useState(false);
+  const [lastAction, setLastAction] = useState<string | null>(null);
+
+  const indicators = useMemo(() => mediaIndicators(media), [media]);
+  const modules = useMemo(() => mediaModules(media), [media]);
+  const visible = useMemo(
+    () => filterMedia(media, { search, kind, status, module: moduleName, onlyUnlinked }),
+    [media, search, kind, status, moduleName, onlyUnlinked],
+  );
+
+  const authorName = (id: string) =>
+    people.find((p) => p.id === id)?.fullName ?? "Équipe pédagogique";
+  const outcomeCodes = (resource: MediaResource) =>
+    resource.outcomeIds.map((id) => outcomes.find((o) => o.id === id)?.code ?? id).join(" · ");
+
+  return (
+    <div className="space-y-6">
+      <ScopeNotice>
+        Médiathèque de <strong>{programName}</strong> uniquement : aucun support d'un autre
+        programme n'est chargé. Les métadonnées sont distinctes du futur fichier binaire —{" "}
+        {MEDIA_STORAGE_NOTICE_FR}.
+      </ScopeNotice>
+
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <StatCard label="Supports publiés" value={indicators.published} />
+        <StatCard label="Brouillons" value={indicators.drafts} />
+        <StatCard label="À réviser" value={indicators.needsReview} />
+        <StatCard
+          label="Sans objectif"
+          value={indicators.unlinked}
+          hint="Non rattachés à un acquis"
+        />
+      </div>
+
+      <PanelCard
+        title="Catalogue des supports"
+        description={`${visible.length} support(s) affiché(s) sur ${indicators.total}`}
+        action={
+          <div className="flex flex-wrap items-center gap-2">
+            <MockBadge />
+            <AddMediaDialog
+              programName={programName}
+              modules={modules}
+              outcomes={outcomes}
+              onSaved={(title) =>
+                setLastAction(
+                  `Maquette enregistrée localement : « ${title} » (aucun fichier transmis).`,
+                )
+              }
+            />
+          </div>
+        }
+      >
+        <div className="space-y-3">
+          <div className="space-y-1">
+            <Label htmlFor="media-search" className="text-xs">
+              Rechercher
+            </Label>
+            <div className="relative">
+              <Search
+                className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+                aria-hidden
+              />
+              <Input
+                id="media-search"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Titre, module, version…"
+                className="pl-9"
+              />
+            </div>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="space-y-1">
+              <Label className="text-xs" htmlFor="media-kind">
+                Type
+              </Label>
+              <Select value={kind} onValueChange={(value) => setKind(value as MediaKind | "all")}>
+                <SelectTrigger id="media-kind">
+                  <SelectValue placeholder="Tous les types" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tous les types</SelectItem>
+                  {(Object.keys(MEDIA_KIND_LABELS_FR) as MediaKind[]).map((k) => (
+                    <SelectItem key={k} value={k}>
+                      {MEDIA_KIND_LABELS_FR[k]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-xs" htmlFor="media-status">
+                Statut
+              </Label>
+              <Select
+                value={status}
+                onValueChange={(value) => setStatus(value as MediaStatus | "all")}
+              >
+                <SelectTrigger id="media-status">
+                  <SelectValue placeholder="Tous les statuts" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tous les statuts</SelectItem>
+                  {(Object.keys(MEDIA_STATUS_LABELS_FR) as MediaStatus[]).map((s) => (
+                    <SelectItem key={s} value={s}>
+                      {MEDIA_STATUS_LABELS_FR[s]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-xs" htmlFor="media-module">
+                Module
+              </Label>
+              <Select value={moduleName} onValueChange={setModuleName}>
+                <SelectTrigger id="media-module">
+                  <SelectValue placeholder="Tous les modules" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tous les modules</SelectItem>
+                  {modules.map((m) => (
+                    <SelectItem key={m} value={m}>
+                      {m}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <Button
+            type="button"
+            variant={onlyUnlinked ? "secondary" : "outline"}
+            size="sm"
+            className="min-h-11 w-full gap-2 sm:w-auto"
+            aria-pressed={onlyUnlinked}
+            onClick={() => setOnlyUnlinked((v) => !v)}
+          >
+            <Filter className="size-4" aria-hidden />
+            Supports sans objectif rattaché
+          </Button>
+        </div>
+
+        {lastAction ? (
+          <p
+            role="status"
+            className="rounded-md border border-border bg-secondary/40 px-3 py-2 text-sm"
+          >
+            {lastAction}
+          </p>
+        ) : null}
+
+        {visible.length === 0 ? (
+          <EmptyState>Aucun support ne correspond à cette recherche.</EmptyState>
+        ) : (
+          <>
+            {/* Mobile : cartes, aucune table à faire défiler à l'aveugle. */}
+            <ul className="grid gap-3 md:hidden">
+              {visible.map((resource) => {
+                const Icon = KIND_ICONS[resource.kind];
+                return (
+                  <li key={resource.id} className="rounded-lg border border-border p-3">
+                    <div className="flex items-start gap-2">
+                      <Icon className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
+                      <div className="min-w-0 flex-1 space-y-1">
+                        <p className="break-words font-medium">{resource.title}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {MEDIA_KIND_LABELS_FR[resource.kind]} · {resource.module}
+                        </p>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <Badge variant={statusVariant(resource.status)} className="font-normal">
+                            {MEDIA_STATUS_LABELS_FR[resource.status]}
+                          </Badge>
+                          <Badge variant="outline" className="font-mono text-[10px]">
+                            {resource.version}
+                          </Badge>
+                          {resource.needsReview ? (
+                            <Badge variant="outline" className="font-normal">
+                              à réviser
+                            </Badge>
+                          ) : null}
+                          {resource.outcomeIds.length === 0 ? (
+                            <Badge variant="outline" className="font-normal">
+                              sans objectif
+                            </Badge>
+                          ) : null}
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Objectifs : {outcomeCodes(resource) || "aucun"} — MAJ{" "}
+                          {formatDate(resource.updatedAt)}
+                        </p>
+                        <MediaDetailDialog
+                          resource={resource}
+                          outcomes={outcomes}
+                          authorName={authorName(resource.authorPersonId)}
+                          onAction={(label) => setLastAction(label)}
+                        />
+                      </div>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+
+            {/* Desktop : tableau complet. */}
+            <div className="hidden md:block">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Titre</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Module</TableHead>
+                    <TableHead>Objectifs</TableHead>
+                    <TableHead>Version</TableHead>
+                    <TableHead>Statut</TableHead>
+                    <TableHead>Visibilité</TableHead>
+                    <TableHead>MAJ</TableHead>
+                    <TableHead>Auteur</TableHead>
+                    <TableHead className="text-right">Détail</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {visible.map((resource) => (
+                    <TableRow key={resource.id}>
+                      <TableCell className="max-w-56 font-medium">{resource.title}</TableCell>
+                      <TableCell>{MEDIA_KIND_LABELS_FR[resource.kind]}</TableCell>
+                      <TableCell>{resource.module}</TableCell>
+                      <TableCell className="text-xs">{outcomeCodes(resource) || "—"}</TableCell>
+                      <TableCell className="font-mono text-xs">{resource.version}</TableCell>
+                      <TableCell>
+                        <Badge variant={statusVariant(resource.status)} className="font-normal">
+                          {MEDIA_STATUS_LABELS_FR[resource.status]}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-xs">
+                        {MEDIA_VISIBILITY_LABELS_FR[resource.visibility]}
+                      </TableCell>
+                      <TableCell className="text-xs">{formatDate(resource.updatedAt)}</TableCell>
+                      <TableCell className="text-xs">
+                        {authorName(resource.authorPersonId)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <MediaDetailDialog
+                          resource={resource}
+                          outcomes={outcomes}
+                          authorName={authorName(resource.authorPersonId)}
+                          onAction={(label) => setLastAction(label)}
+                        />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </>
+        )}
+
+        <p className="text-xs text-muted-foreground">{MEDIA_STORAGE_NOTICE_FR}.</p>
+      </PanelCard>
+    </div>
+  );
+}

@@ -3,9 +3,23 @@
  * L'API du contexte est volontairement proche d'une future session serveur :
  * personne courante, inscriptions, rôles contextualisés, programme actif.
  */
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import { mockDataAccess } from "@/infrastructure/mock/mockDataAccess";
 import * as fx from "@/infrastructure/mock/fixtures";
+import {
+  clearDemoSession,
+  readDemoSession,
+  reconcileDemoSession,
+  writeDemoSession,
+} from "@/application/sessionPersistence";
 import {
   canAccessAdministration,
   canAccessOwnProfile,
@@ -51,14 +65,41 @@ export interface SessionValue {
   setActiveProgramId(id: ProgramId): void;
   /** Bascule d'identité simulée (démonstration des rôles, pas une authentification). */
   setActivePersonId(id: PersonId): void;
+  /** Revient au profil et au programme par défaut, et efface la persistance locale. */
+  resetDemoSession(): void;
   hasRoleInProgram(role: RoleName, programId: ProgramId): boolean;
 }
 
 const SessionContext = createContext<SessionValue | null>(null);
 
+const DEFAULT_PROGRAM_ID = fx.programs[0]!.id;
+const DEFAULT_PERSON_ID = fx.people[0]!.id;
+
 export function SessionProvider({ children }: { children: ReactNode }) {
-  const [activeProgramId, setActiveProgramId] = useState<ProgramId>(fx.programs[0]!.id);
-  const [activePersonId, setActivePersonId] = useState<PersonId>(fx.people[0]!.id);
+  const [activeProgramId, setActiveProgramId] = useState<ProgramId>(DEFAULT_PROGRAM_ID);
+  const [activePersonId, setActivePersonId] = useState<PersonId>(DEFAULT_PERSON_ID);
+  const [hydrated, setHydrated] = useState(false);
+
+  /**
+   * Restauration APRÈS hydratation (jamais pendant le rendu serveur) :
+   * un rechargement de l'aperçu conserve le profil et le programme choisis.
+   */
+  useEffect(() => {
+    const stored = reconcileDemoSession(readDemoSession(), {
+      personIds: fx.people.map((p) => p.id),
+      programIds: fx.programs.map((p) => p.id),
+    });
+    if (stored) {
+      setActivePersonId(stored.personId);
+      setActiveProgramId(stored.programId);
+    }
+    setHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    writeDemoSession({ personId: activePersonId, programId: activeProgramId });
+  }, [hydrated, activePersonId, activeProgramId]);
 
   /**
    * Bascule d'identité simulée : on sélectionne aussi un programme dans lequel
@@ -80,6 +121,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     },
     [activeProgramId],
   );
+
+  const resetDemoSession = useCallback(() => {
+    clearDemoSession();
+    setActivePersonId(DEFAULT_PERSON_ID);
+    setActiveProgramId(DEFAULT_PROGRAM_ID);
+  }, []);
 
   const value = useMemo<SessionValue>(() => {
     const person = fx.people.find((p) => p.id === activePersonId) ?? fx.people[0]!;
@@ -109,6 +156,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       isSimulated: true,
       setActiveProgramId,
       setActivePersonId: selectPerson,
+      resetDemoSession,
       hasRoleInProgram: (role, programId) =>
         roles.some(
           (r) =>
@@ -117,7 +165,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
               ("programId" in r.scope && r.scope.programId === programId)),
         ),
     };
-  }, [activeProgramId, activePersonId, selectPerson]);
+  }, [activeProgramId, activePersonId, selectPerson, resetDemoSession]);
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }
