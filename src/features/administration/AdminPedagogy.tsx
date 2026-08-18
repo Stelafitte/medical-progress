@@ -7,6 +7,7 @@ import { useProgramAdmin } from "@/features/administration/useProgramAdmin";
 import { StageLogTemplatesSection } from "@/features/administration/StageLogTemplatesSection";
 import { MediaLibrarySection } from "@/features/administration/MediaLibrarySection";
 import { EcosMigrationSection } from "@/features/administration/EcosMigrationSection";
+import { ContentAiSection } from "@/features/administration/ContentAiSection";
 import { NATURE_LABELS_FR } from "@/domain/mastery";
 
 /** Sous-sections de la configuration pédagogique (ordre gelé). */
@@ -160,12 +161,32 @@ export function AdminPedagogy() {
         </TabsContent>
 
         <TabsContent value="mediatheque" className="space-y-6">
+          <Tabs defaultValue="catalogue" className="space-y-6">
+            <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1">
+              <TabsTrigger value="catalogue" className="min-h-11 flex-none text-xs sm:text-sm">
+                Catalogue
+              </TabsTrigger>
+              <TabsTrigger value="exploitation-ia" className="min-h-11 flex-none text-xs sm:text-sm">
+                Exploitation IA
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="catalogue" className="space-y-6">
           <MediaLibrarySection
             programName={data.program?.name ?? "ce programme"}
             media={data.media}
             outcomes={data.outcomes}
             people={data.people}
           />
+            </TabsContent>
+            <TabsContent value="exploitation-ia" className="space-y-6">
+              <ContentAiSection
+                programName={data.program?.name ?? "Programme"}
+                media={data.media}
+                profiles={data.aiProfiles}
+                policy={data.aiPolicy}
+              />
+            </TabsContent>
+          </Tabs>
         </TabsContent>
 
         <TabsContent value="ecos" className="space-y-6">

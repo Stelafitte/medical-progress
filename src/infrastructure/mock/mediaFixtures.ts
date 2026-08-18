@@ -4,6 +4,7 @@
  * Les exemples reflètent le corpus réel des deux programmes.
  */
 import type { MediaResource, NarratedSlide } from "@/domain/mediaLibrary";
+import { checkWebPageUrl } from "@/domain/webPage";
 
 const native = { sourceSystem: "native" } as const;
 const legacy = (sourceId: string) =>
@@ -590,5 +591,109 @@ export const mediaResources: readonly MediaResource[] = [
       },
     ],
     provenance: legacy("content:slides-ic"),
+  },
+  {
+    id: "med-dfasm-web-referentiel-cv",
+    programId: "prog-dfasm-cardio",
+    title: "Référentiel de pathologie cardiovasculaire en ligne",
+    kind: "web_page",
+    module: "Référentiel et items",
+    description:
+      "Référentiel de discipline publié en ligne. L'IA n'exploite jamais la page distante : seul l'instantané extrait, nettoyé, versionné et validé sert de corpus.",
+    outcomeIds: ["out-dfasm-douleur", "out-dfasm-ecg"],
+    version: "instantané 2026-08",
+    status: "published",
+    visibility: "program",
+    authorPersonId: "per-admin",
+    updatedAt: "2026-08-20T09:00:00Z",
+    needsReview: false,
+    asset: {
+      kind: "url",
+      label: "referentiel-cardiovasculaire.exemple.fr/pathologie",
+      storageActivated: false,
+    },
+    webPage: {
+      canonicalUrl: "https://referentiel-cardiovasculaire.exemple.fr/pathologie",
+      access: "public",
+      checkFrequency: "quarterly",
+      depth: "selected_subpages",
+      selectedSubpages: [
+        "/pathologie/douleur-thoracique",
+        "/pathologie/syndromes-coronariens",
+        "/pathologie/troubles-du-rythme",
+      ],
+      precheck: checkWebPageUrl({
+        url: "https://referentiel-cardiovasculaire.exemple.fr/pathologie",
+        reachableDeclared: true,
+        detectedTitle: "Pathologie cardiovasculaire — référentiel",
+        detectedLanguage: "fr",
+        sectionCount: 24,
+        lastAnalyzedAt: "2026-08-18T08:00:00Z",
+        changeDetected: true,
+      }),
+      steps: [
+        { step: "declared", state: "done", at: "2026-07-02T09:00:00Z" },
+        { step: "extract_main_content", state: "done", at: "2026-07-02T09:10:00Z" },
+        {
+          step: "clean_navigation",
+          state: "done",
+          at: "2026-07-02T09:14:00Z",
+          note: "Menus, bandeaux et encarts publicitaires écartés.",
+        },
+        { step: "structure_content", state: "done", at: "2026-07-02T09:22:00Z" },
+        {
+          step: "snapshot_version",
+          state: "done",
+          at: "2026-07-02T09:25:00Z",
+          note: "Instantané « 2026-08 » figé, aucun HTML brut conservé.",
+        },
+        { step: "pedagogical_review", state: "done", at: "2026-07-04T10:00:00Z" },
+        { step: "ai_indexing", state: "done", at: "2026-07-04T10:20:00Z" },
+        { step: "publication", state: "done", at: "2026-07-04T10:30:00Z" },
+      ],
+      validatedSnapshot: {
+        version: "instantané 2026-08",
+        capturedAt: "2026-07-02T09:25:00Z",
+        language: "fr",
+        detectedTitle: "Pathologie cardiovasculaire — référentiel",
+        sections: [
+          {
+            anchor: "#douleur-thoracique",
+            heading: "Douleur thoracique",
+            paragraphs: 14,
+            tables: 2,
+          },
+          {
+            anchor: "#syndromes-coronariens",
+            heading: "Syndromes coronariens aigus",
+            paragraphs: 21,
+            tables: 3,
+          },
+          {
+            anchor: "#troubles-du-rythme",
+            heading: "Troubles du rythme",
+            paragraphs: 17,
+            tables: 1,
+          },
+        ],
+        reviewedBy: "per-teacher",
+        reviewedAt: "2026-07-04T10:00:00Z",
+        validated: true,
+        rawHtmlStored: false,
+      },
+      refreshToReview: true,
+      lastCheckedAt: "2026-08-18T08:00:00Z",
+      networkFetchActivated: false,
+    },
+    versions: [
+      {
+        version: "instantané 2026-08",
+        changedAt: "2026-07-04T10:30:00Z",
+        authorPersonId: "per-admin",
+        summary: "Premier instantané validé (3 sous-pages retenues).",
+        status: "published",
+      },
+    ],
+    provenance: native,
   },
 ];

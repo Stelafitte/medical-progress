@@ -7,6 +7,7 @@ import { useMemo, useState } from "react";
 import {
   FileText,
   Filter,
+  Globe,
   Link2,
   PlayCircle,
   Presentation,
@@ -62,6 +63,7 @@ const KIND_ICONS: Record<MediaKind, typeof FileText> = {
   slides: Presentation,
   slides_audio: Presentation,
   video: PlayCircle,
+  web_page: Globe,
   link: Link2,
   quiz: FileText,
   clinical_case: Stethoscope,

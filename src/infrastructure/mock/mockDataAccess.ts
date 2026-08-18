@@ -8,7 +8,9 @@ import * as pfx from "./professionalFixtures";
 import * as slfx from "./stageLogFixtures";
 import * as stfx from "./statisticsFixtures";
 import { toLearnerNarratedDeck } from "@/domain/mediaLibrary";
+import { toLearnerAiResource } from "@/domain/contentAi";
 import * as mfx from "./mediaFixtures";
+import * as cafx from "./contentAiFixtures";
 import * as efx from "./ecosFixtures";
 
 const clone = <T>(value: T): T => value;
@@ -103,6 +105,28 @@ export const mockDataAccess: DataAccess = {
           .map((m) => toLearnerNarratedDeck(m))
           .filter((d): d is NonNullable<typeof d> => d !== undefined),
       ),
+  },
+  contentAi: {
+    listProfiles: (programId) =>
+      ok(cafx.allContentAiProfiles.filter((p) => p.programId === programId)),
+    getProfile: (mediaId) => ok(cafx.allContentAiProfiles.find((p) => p.mediaId === mediaId)),
+    getPolicy: (programId) => ok(cafx.programAiPolicies.find((p) => p.programId === programId)),
+    listLearnerAiResources: (programId) => {
+      const policy = cafx.programAiPolicies.find((p) => p.programId === programId);
+      if (!policy) return ok([]);
+      return ok(
+        mfx.mediaResources
+          .filter((m) => m.programId === programId)
+          .map((m) =>
+            toLearnerAiResource(
+              m,
+              cafx.allContentAiProfiles.find((p) => p.mediaId === m.id),
+              policy,
+            ),
+          )
+          .filter((r): r is NonNullable<typeof r> => r !== undefined),
+      );
+    },
   },
   ecos: {
     listInventory: () => ok(efx.legacyEcosInventory),
