@@ -495,6 +495,40 @@ export const mediaResources: readonly MediaResource[] = [
     provenance: native,
   },
 
+  {
+    // Cas d'école conservé en BROUILLON : lien externe simple, hors corpus IA
+    // tant qu'aucune transformation n'est décidée. Jamais publié.
+    id: "med-diu-lien-societe",
+    programId: "prog-diu-echo",
+    title: "Site de la société savante — lien externe simple",
+    kind: "link",
+    module: "Acquisition et mesures",
+    description:
+      "Lien externe simple proposé par un enseignant : reste hors corpus IA jusqu'à conversion en page web HTML ou en document déposé.",
+    outcomeIds: [],
+    version: "v0.1",
+    status: "draft",
+    visibility: "supervisors",
+    authorPersonId: "per-admin",
+    updatedAt: "2026-08-10T09:00:00Z",
+    needsReview: true,
+    asset: {
+      kind: "url",
+      label: "https://societe-savante.exemple.fr/recommandations",
+      storageActivated: false,
+    },
+    versions: [
+      {
+        version: "v0.1",
+        changedAt: "2026-08-10T09:00:00Z",
+        authorPersonId: "per-admin",
+        summary: "Proposition de lien, décision de transformation en attente.",
+        status: "draft",
+      },
+    ],
+    provenance: native,
+  },
+
   /* ------------------------------ DFASM Cardiologie ----------------------- */
   {
     id: "med-dfasm-referentiel",

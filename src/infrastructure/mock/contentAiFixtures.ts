@@ -129,6 +129,29 @@ export const contentAiProfiles: readonly ContentAiProfile[] = [
     ...invariants,
   },
   {
+    // Lien externe simple NON PUBLIÉ : décision explicite requise, hors corpus.
+    mediaId: "med-diu-lien-societe",
+    programId: "prog-diu-echo",
+    mediaKind: "link",
+    status: "awaiting_extraction",
+    sourceVersion: "v0.1",
+    extractedFacets: ["metadata_only"],
+    segmentCount: 0,
+    citations: [
+      {
+        kind: "metadata",
+        locator: "Métadonnées du lien",
+        label: "Société savante (titre et éditeur déclarés)",
+        verified: true,
+      },
+    ],
+    outcomeIds: [],
+    enabledModes: [],
+    alerts: ["Lien externe simple : hors corpus IA tant qu'aucune transformation n'est décidée."],
+    linkDecision: "convert_to_web_page",
+    ...invariants,
+  },
+  {
     // Exemple « À traiter » — brouillon uniquement, jamais un support publié.
     mediaId: "med-diu-qcm-valves",
     programId: "prog-diu-echo",
