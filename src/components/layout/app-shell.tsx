@@ -162,12 +162,18 @@ export function AppShell() {
                     Mon profil
                   </Link>
                 </DropdownMenuItem>
-                {IS_DEV ? (
+                {isSimulated ? (
                   <>
                     <DropdownMenuSeparator />
                     <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
-                      Profil de démonstration (dev)
+                      Changer de profil de démonstration
                     </DropdownMenuLabel>
+                    {rolesInActiveProgram.length === 0 ? (
+                      <p className="px-2 pb-1 text-xs text-muted-foreground">
+                        Ce profil n'a aucun rôle dans {activeProgram.code} : sélectionnez le
+                        programme correspondant.
+                      </p>
+                    ) : null}
                     <DropdownMenuRadioGroup
                       value={person.id}
                       onValueChange={(value) => setActivePersonId(value as PersonId)}
@@ -185,6 +191,7 @@ export function AppShell() {
                     </DropdownMenuRadioGroup>
                   </>
                 ) : null}
+
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
