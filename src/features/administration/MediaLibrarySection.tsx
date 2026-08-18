@@ -42,10 +42,12 @@ import {
 import { AddMediaDialog } from "@/features/administration/AddMediaDialog";
 import { MediaDetailDialog } from "@/features/administration/MediaDetailDialog";
 import {
+  CONVERSION_STATUS_LABELS_FR,
   MEDIA_KIND_LABELS_FR,
   MEDIA_STATUS_LABELS_FR,
   MEDIA_STORAGE_NOTICE_FR,
   MEDIA_VISIBILITY_LABELS_FR,
+  conversionStatusOf,
   filterMedia,
   mediaIndicators,
   mediaModules,
@@ -266,6 +268,11 @@ export function MediaLibrarySection({
                           <Badge variant="outline" className="font-mono text-[10px]">
                             {resource.version}
                           </Badge>
+                          {resource.narrated ? (
+                            <Badge variant="outline" className="font-normal">
+                              {CONVERSION_STATUS_LABELS_FR[conversionStatusOf(resource)]}
+                            </Badge>
+                          ) : null}
                           {resource.needsReview ? (
                             <Badge variant="outline" className="font-normal">
                               à réviser
@@ -305,6 +312,7 @@ export function MediaLibrarySection({
                     <TableHead>Objectifs</TableHead>
                     <TableHead>Version</TableHead>
                     <TableHead>Statut</TableHead>
+                    <TableHead>Conversion</TableHead>
                     <TableHead>Visibilité</TableHead>
                     <TableHead>MAJ</TableHead>
                     <TableHead>Auteur</TableHead>
@@ -323,6 +331,11 @@ export function MediaLibrarySection({
                         <Badge variant={statusVariant(resource.status)} className="font-normal">
                           {MEDIA_STATUS_LABELS_FR[resource.status]}
                         </Badge>
+                      </TableCell>
+                      <TableCell className="text-xs">
+                        {resource.narrated
+                          ? CONVERSION_STATUS_LABELS_FR[conversionStatusOf(resource)]
+                          : "—"}
                       </TableCell>
                       <TableCell className="text-xs">
                         {MEDIA_VISIBILITY_LABELS_FR[resource.visibility]}

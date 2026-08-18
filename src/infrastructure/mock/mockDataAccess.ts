@@ -7,6 +7,7 @@ import * as fx from "./fixtures";
 import * as pfx from "./professionalFixtures";
 import * as slfx from "./stageLogFixtures";
 import * as stfx from "./statisticsFixtures";
+import { toLearnerNarratedDeck } from "@/domain/mediaLibrary";
 import * as mfx from "./mediaFixtures";
 import * as efx from "./ecosFixtures";
 
@@ -95,6 +96,13 @@ export const mockDataAccess: DataAccess = {
   media: {
     listMedia: (programId) => ok(mfx.mediaResources.filter((m) => m.programId === programId)),
     getMedia: (id) => ok(mfx.mediaResources.find((m) => m.id === id)),
+    listLearnerNarratedDecks: (programId) =>
+      ok(
+        mfx.mediaResources
+          .filter((m) => m.programId === programId)
+          .map((m) => toLearnerNarratedDeck(m))
+          .filter((d): d is NonNullable<typeof d> => d !== undefined),
+      ),
   },
   ecos: {
     listInventory: () => ok(efx.legacyEcosInventory),

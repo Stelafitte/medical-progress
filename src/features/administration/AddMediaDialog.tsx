@@ -29,9 +29,17 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  CONVERSION_ALERT_LABELS_FR,
+  CONVERSION_TARGET_LABELS_FR,
   MEDIA_KIND_LABELS_FR,
   MEDIA_STORAGE_NOTICE_FR,
   MEDIA_VISIBILITY_LABELS_FR,
+  NARRATED_RECOMMENDED_FORMAT_FR,
+  NARRATED_SOURCE_RESTRICTION_FR,
+  NARRATED_SUBMIT_LABEL_FR,
+  NARRATED_UPLOAD_LABEL_FR,
+  checkPptxUpload,
+  type ConversionTarget,
   type MediaKind,
   type MediaVisibility,
 } from "@/domain/mediaLibrary";
@@ -64,6 +72,26 @@ export function AddMediaDialog({
   const [publish, setPublish] = useState(false);
   const [linked, setLinked] = useState<readonly OutcomeId[]>([]);
   const [description, setDescription] = useState("");
+  // Options de conversion du PPTX sonorisé (toutes simulées).
+  const [target, setTarget] = useState<ConversionTarget>("html5");
+  const [extractNotes, setExtractNotes] = useState(true);
+  const [generateTranscript, setGenerateTranscript] = useState(true);
+  const [autoChapters, setAutoChapters] = useState(true);
+  const [exposeTranscript, setExposeTranscript] = useState(true);
+
+  const isNarrated = kind === "slides_audio";
+  /**
+   * Contrôle simulé : les caractéristiques déclarées sont dérivées du nom de
+   * fichier, aucun binaire n'est ouvert ni transmis.
+   */
+  const precheck = checkPptxUpload({
+    fileName: fileName || url,
+    hasAudio: true,
+    slideCount: 8,
+    slidesWithoutNarration: [4],
+    estimatedDurationMinutes: 21,
+    fontsEmbedded: false,
+  });
 
   const reset = () => {
     setOrigin("file");
@@ -135,11 +163,12 @@ export function AddMediaDialog({
 
         {origin === "file" ? (
           <div className="space-y-1">
-            <Label htmlFor="media-file">Fichier</Label>
+            <Label htmlFor="media-file">{isNarrated ? NARRATED_UPLOAD_LABEL_FR : "Fichier"}</Label>
             <Input
               id="media-file"
               type="file"
               className="min-h-11"
+              {...(isNarrated ? { accept: ".pptx" } : {})}
               onChange={(event) => setFileName(event.target.files?.[0]?.name ?? "")}
             />
             <p className="text-xs text-muted-foreground">
@@ -160,6 +189,97 @@ export function AddMediaDialog({
             <p className="text-xs text-muted-foreground">L'URL n'est jamais appelée.</p>
           </div>
         )}
+
+        {isNarrated ? (
+          <section className="space-y-3 rounded-md border border-border p-3">
+            <div className="space-y-1">
+              <p className="text-sm font-medium">Conversion en lecteur web</p>
+              <p className="text-xs text-muted-foreground">{NARRATED_SOURCE_RESTRICTION_FR}.</p>
+              <p className="text-xs text-muted-foreground">{NARRATED_RECOMMENDED_FORMAT_FR}.</p>
+            </div>
+
+            <fieldset className="space-y-2">
+              <legend className="text-sm font-medium">Sortie de conversion</legend>
+              <RadioGroup
+                value={target}
+                onValueChange={(value) => setTarget(value as ConversionTarget)}
+              >
+                {(Object.keys(CONVERSION_TARGET_LABELS_FR) as ConversionTarget[]).map((t) => (
+                  <div key={t} className="flex items-center gap-2">
+                    <RadioGroupItem value={t} id={`target-${t}`} />
+                    <Label htmlFor={`target-${t}`} className="font-normal leading-snug">
+                      {CONVERSION_TARGET_LABELS_FR[t]}
+                    </Label>
+                  </div>
+                ))}
+              </RadioGroup>
+            </fieldset>
+
+            <fieldset className="space-y-2">
+              <legend className="text-sm font-medium">Options (simulées)</legend>
+              {(
+                [
+                  ["notes", "Extraire les notes du diaporama", extractNotes, setExtractNotes],
+                  [
+                    "transcript",
+                    "Générer la transcription",
+                    generateTranscript,
+                    setGenerateTranscript,
+                  ],
+                  [
+                    "chapters",
+                    "Créer les chapitres automatiquement",
+                    autoChapters,
+                    setAutoChapters,
+                  ],
+                  [
+                    "expose",
+                    "Autoriser la transcription côté apprenant",
+                    exposeTranscript,
+                    setExposeTranscript,
+                  ],
+                ] as const
+              ).map(([id, label, checked, setter]) => (
+                <div key={id} className="flex items-start gap-2">
+                  <Checkbox
+                    id={`conv-${id}`}
+                    className="mt-0.5"
+                    checked={checked}
+                    onCheckedChange={(value) => setter(value === true)}
+                  />
+                  <Label htmlFor={`conv-${id}`} className="font-normal leading-snug">
+                    {label}
+                  </Label>
+                </div>
+              ))}
+            </fieldset>
+
+            <div className="space-y-1 rounded-md border border-dashed border-border p-3 text-xs">
+              <p className="text-sm font-medium">Contrôle avant conversion (simulé)</p>
+              <p>Extension .pptx : {precheck.extensionOk ? "conforme" : "non conforme"}</p>
+              <p>Audio détecté : {precheck.audioDetected ? "oui" : "non"}</p>
+              <p>Diapositives : {precheck.slideCount}</p>
+              <p>Durée estimée : {precheck.estimatedDurationMinutes} min</p>
+              <p>
+                Diapositives sans commentaire :{" "}
+                {precheck.slidesWithoutNarration.length > 0
+                  ? precheck.slidesWithoutNarration.join(", ")
+                  : "aucune"}
+              </p>
+              {precheck.alerts.length > 0 ? (
+                <ul className="flex flex-wrap gap-1.5 pt-1">
+                  {precheck.alerts.map((alert) => (
+                    <li key={alert}>
+                      <Badge variant="outline" className="font-normal">
+                        {CONVERSION_ALERT_LABELS_FR[alert]}
+                      </Badge>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
+          </section>
+        ) : null}
 
         <div className="space-y-1">
           <Label htmlFor="media-title">Titre</Label>
@@ -308,7 +428,7 @@ export function AddMediaDialog({
             disabled={!canSave}
             onClick={save}
           >
-            {ADD_MEDIA_SUBMIT_LABEL_FR}
+            {isNarrated ? NARRATED_SUBMIT_LABEL_FR : ADD_MEDIA_SUBMIT_LABEL_FR}
           </Button>
         </DialogFooter>
       </DialogContent>

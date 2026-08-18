@@ -83,6 +83,12 @@ bun run lint       # eslint + prettier
 - **Médiathèque pédagogique = maquette** : métadonnées seules, aucun fichier transmis,
   « Stockage non activé dans cette maquette ». Ajout, versionnage, publication et
   archivage sont simulés localement.
+- **PowerPoint sonorisés = maquette de conversion** : le dépôt d'un PPTX, le pré-contrôle,
+  la file de conversion, le journal des étapes et la validation pédagogique sont simulés.
+  Aucun fichier n'est ouvert, converti, stocké ni transmis. Le format cible distribué aux
+  apprenants est un **lecteur web HTML5 synchronisé** (diapositives, audio, sommaire,
+  transcription) ; le PPTX source n'est jamais exposé côté apprenant. Pipeline documenté
+  dans `docs/database/draft/narrated_pptx_conversion.md`.
 - **Évaluations et ECOS = maquette documentaire** : inventaire de migration, workflow
   sélectif et fiches de scénarios. Le moteur ECOS, le temps réel, les voix et les avatars
   ne sont pas implémentés ; aucun import réel n'est possible.

@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLearnerPassport } from "@/features/dashboard/useLearnerPassport";
+import { NarratedSlidesPlayer } from "@/features/resources/NarratedSlidesPlayer";
 
 const FORMAT_FR: Record<string, string> = {
   course: "Cours",
@@ -18,7 +19,7 @@ export function ResourcesView() {
 
   if (isPending || !data) return <Skeleton className="h-64 w-full" />;
 
-  const { resources, outcomes } = data;
+  const { resources, outcomes, narratedDecks } = data;
 
   return (
     <div className="space-y-8">
@@ -37,6 +38,23 @@ export function ResourcesView() {
         Catalogue simulé : les ressources proviennent des repositories mock. La lecture réelle des
         contenus et le suivi de consultation sont prévus après validation du schéma de données.
       </p>
+
+      {narratedDecks.length > 0 ? (
+        <section className="space-y-4">
+          <SectionHeading
+            title="Diaporamas commentés"
+            level={2}
+            description="Lecture en ligne synchronisée : diapositives, commentaire audio, sommaire et transcription. Le fichier PowerPoint source n'est pas distribué."
+          />
+          <ul className="grid gap-4 xl:grid-cols-2">
+            {narratedDecks.map((deck) => (
+              <li key={deck.mediaId}>
+                <NarratedSlidesPlayer deck={deck} />
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       <ul className="grid gap-4 md:grid-cols-2">
         {resources.map((resource) => (

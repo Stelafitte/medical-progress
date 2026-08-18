@@ -23,6 +23,7 @@ import {
   availableMediaActions,
   type MediaResource,
 } from "@/domain/mediaLibrary";
+import { NarratedConversionPanel } from "@/features/administration/NarratedConversionPanel";
 import type { Outcome } from "@/domain/types";
 
 const formatDate = (iso?: string) => (iso ? new Date(iso).toLocaleDateString("fr-FR") : "—");
@@ -121,6 +122,10 @@ export function MediaDetailDialog({
             {MEDIA_STORAGE_NOTICE_FR}.
           </p>
         </div>
+
+        {resource.narrated ? (
+          <NarratedConversionPanel deck={resource.narrated} onAction={onAction} />
+        ) : null}
 
         <div className="space-y-2 text-sm">
           <p className="font-medium">Historique des versions</p>

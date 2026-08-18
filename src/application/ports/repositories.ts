@@ -6,7 +6,7 @@
  * modifier l'UI ni la logique métier.
  */
 import type { PlanScheduleEntry } from "@/domain/acquisitionPlan";
-import type { MediaResource } from "@/domain/mediaLibrary";
+import type { LearnerNarratedDeck, MediaResource } from "@/domain/mediaLibrary";
 import type { EcosScenarioMock, LegacyModuleInventoryItem } from "@/domain/ecosMigration";
 import type {
   AdminDocument,
@@ -118,6 +118,11 @@ export interface LearningResourceRepository {
 export interface MediaLibraryRepository {
   listMedia(programId: ProgramId): Promise<readonly MediaResource[]>;
   getMedia(id: string): Promise<MediaResource | undefined>;
+  /**
+   * Vue apprenant des PowerPoint sonorisés convertis : DTO dérivés uniquement,
+   * jamais le paquet PPTX source.
+   */
+  listLearnerNarratedDecks(programId: ProgramId): Promise<readonly LearnerNarratedDeck[]>;
 }
 
 /** Préparation documentaire de la migration ECOS (aucun couplage runtime). */
