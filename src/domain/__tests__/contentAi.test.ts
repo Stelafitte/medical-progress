@@ -39,6 +39,63 @@ describe("couverture IA des contenus publiés", () => {
     expect(coverage.coverageRatio).toBe(1);
   });
 
+  it("compte 100 % des supports publiés comme réellement prêts", () => {
+    const coverage = computeContentAiCoverage(mediaResources, allContentAiProfiles);
+    expect(coverage.ready).toBe(coverage.publishedCount);
+    expect(coverage.readyRatio).toBe(1);
+    expect(coverage.coverageRatio).toBe(1);
+    expect(Math.round(coverage.readyRatio * 100)).toBe(100);
+    for (const line of coverage.byKind) {
+      expect(line.ready).toBe(line.published);
+    }
+  });
+
+  it("vérifie support par support le contrat d'exploitation IA des publiés", () => {
+    const published = mediaResources.filter((r) => r.status === "published");
+    expect(published.length).toBeGreaterThan(0);
+    for (const resource of published) {
+      const profile = profileOf(resource.id);
+      expect(profile.status).toBe("ready");
+      expect(profile.programId).toBe(resource.programId);
+      expect(profile.mediaKind).toBe(resource.kind);
+      expect(coversExpectedFacets(profile)).toBe(true);
+      expect(areCitationsVerified(profile)).toBe(true);
+      expect(usesExpectedCitationKind(profile)).toBe(true);
+      expect(evaluatePublicationGate(resource, profile).allowed).toBe(true);
+      const dto = toLearnerAiResource(resource, profile, policyOf(resource.programId));
+      expect(dto, `DTO apprenant manquant : ${resource.id}`).toBeDefined();
+      expect(dto?.modes.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("expose côté apprenant autant de ressources IA que de supports publiés du programme", () => {
+    for (const policy of programAiPolicies) {
+      const publishedOfProgram = mediaResources.filter(
+        (r) => r.programId === policy.programId && r.status === "published",
+      );
+      const learnerResources = mediaResources
+        .filter((r) => r.programId === policy.programId)
+        .map((r) =>
+          toLearnerAiResource(
+            r,
+            allContentAiProfiles.find((p) => p.mediaId === r.id),
+            policy,
+          ),
+        )
+        .filter((r) => r !== undefined);
+      expect(learnerResources).toHaveLength(publishedOfProgram.length);
+    }
+  });
+
+  it("ne conserve des profils non prêts que parmi les supports non publiés", () => {
+    const notReady = allContentAiProfiles.filter((p) => p.status !== "ready");
+    expect(notReady.length).toBeGreaterThan(0);
+    for (const profile of notReady) {
+      const resource = mediaResources.find((r) => r.id === profile.mediaId)!;
+      expect(resource.status, `${resource.id} ne doit pas être publié`).not.toBe("published");
+    }
+  });
+
   it("respecte le contenu extrait et le type de citation attendus par format", () => {
     for (const profile of allContentAiProfiles) {
       expect(usesExpectedCitationKind(profile)).toBe(true);
@@ -64,12 +121,13 @@ describe("garde de publication", () => {
     expect(gate.reasons.join(" ")).toContain("références");
   });
 
-  it("exige une décision explicite pour un lien externe simple", () => {
-    const profile = profileOf("med-diu-lien-guidelines");
+  it("exige une décision explicite pour un lien externe simple non publié", () => {
+    const profile = profileOf("med-diu-lien-societe");
     expect(profile.linkDecision).toBe("convert_to_web_page");
     const { linkDecision: _decision, ...rest } = profile;
     const withoutDecision: ContentAiProfile = rest;
-    const resource = mediaResources.find((m) => m.id === "med-diu-lien-guidelines")!;
+    const resource = mediaResources.find((m) => m.id === "med-diu-lien-societe")!;
+    expect(resource.status).not.toBe("published");
     expect(evaluatePublicationGate(resource, withoutDecision).reasons.join(" ")).toContain(
       "décision explicite",
     );
@@ -93,7 +151,13 @@ describe("files de traitement", () => {
       queues.outdated.length;
     expect(total).toBe(allContentAiProfiles.length);
     expect(queues.to_review.some((p) => p.mediaId === "med-diu-ppt-doppler")).toBe(true);
-    expect(queues.outdated.some((p) => p.mediaId === "med-dfasm-web-referentiel-cv")).toBe(true);
+    expect(queues.to_process.some((p) => p.mediaId === "med-diu-qcm-valves")).toBe(true);
+    expect(queues.outdated.some((p) => p.mediaId === "med-dfasm-cas-syncope")).toBe(true);
+    // Les files de travail ne contiennent aucun support publié hors « Prêts ».
+    for (const profile of [...queues.to_process, ...queues.to_review, ...queues.outdated]) {
+      const resource = mediaResources.find((r) => r.id === profile.mediaId)!;
+      expect(resource.status).not.toBe("published");
+    }
   });
 });
 
@@ -153,7 +217,7 @@ describe("DTO apprenant", () => {
   it("expose l'URL canonique d'une page web mais jamais son HTML", () => {
     const dto = toLearnerAiResource(
       mediaResources.find((m) => m.id === "med-dfasm-web-referentiel-cv")!,
-      { ...profileOf("med-dfasm-web-referentiel-cv"), status: "ready" },
+      profileOf("med-dfasm-web-referentiel-cv"),
       policyOf("prog-dfasm-cardio"),
     );
     expect(dto?.canonicalUrl).toContain("https://");
@@ -176,5 +240,22 @@ describe("instantané de page web", () => {
     expect(web.refreshToReview).toBe(true);
     expect(web.validatedSnapshot?.rawHtmlStored).toBe(false);
     expect(web.networkFetchActivated).toBe(false);
+  });
+
+  it("garde l'instantané validé exploitable malgré une actualisation à contrôler", () => {
+    const profile = profileOf("med-dfasm-web-referentiel-cv");
+    expect(profile.status).toBe("ready");
+    expect(profile.sourceVersion).toBe("instantané 2026-08");
+    expect(profile.alerts.join(" ")).toContain("Actualisation à contrôler");
+  });
+
+  it("exploite l'ancien lien externe converti en page web HTML validée", () => {
+    const resource = mediaResources.find((m) => m.id === "med-diu-lien-guidelines")!;
+    expect(resource.kind).toBe("web_page");
+    expect(resource.status).toBe("published");
+    expect(hasValidatedSnapshot(resource.webPage!)).toBe(true);
+    const profile = profileOf("med-diu-lien-guidelines");
+    expect(profile.status).toBe("ready");
+    expect(evaluatePublicationGate(resource, profile).allowed).toBe(true);
   });
 });
