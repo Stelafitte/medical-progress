@@ -38,8 +38,9 @@ const DEMO_PROFILE_HINTS: Record<string, string> = {
 };
 
 export function AppShell() {
-  const { person, people, setActivePersonId, roles, rolesInActiveProgram, activeProgram } =
+  const { person, people, setActivePersonId, roles, rolesInActiveProgram, activeProgram, isSimulated } =
     useSession();
+
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const spaces = navSpacesFor(roles, activeProgram.id);
