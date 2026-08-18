@@ -15,7 +15,8 @@ export const Route = createFileRoute("/espace/statistiques")({
       { property: "og:title", content: "Statistiques pluriannuelles — Mon Passeport Éducatif" },
       {
         property: "og:description",
-        content: "Suivi longitudinal des promotions, agrégats anonymes et conservation des données.",
+        content:
+          "Suivi longitudinal des promotions, agrégats anonymes et conservation des données.",
       },
       { name: "robots", content: "noindex" },
     ],

@@ -92,9 +92,7 @@ export interface HistorySummary {
 }
 
 /** Synthèse pluriannuelle exploitable pour le pilotage. */
-export function summarizeHistory(
-  snapshots: readonly CohortStatisticsSnapshot[],
-): HistorySummary {
+export function summarizeHistory(snapshots: readonly CohortStatisticsSnapshot[]): HistorySummary {
   const ordered = sortByAcademicYear(snapshots);
   if (ordered.length === 0) {
     return {
@@ -109,9 +107,7 @@ export function summarizeHistory(
 
   const closed = ordered.filter((s) => s.status === "closed");
   const reference = closed.length > 0 ? closed : ordered;
-  const mean = round(
-    reference.reduce((sum, s) => sum + s.completionRate, 0) / reference.length,
-  );
+  const mean = round(reference.reduce((sum, s) => sum + s.completionRate, 0) / reference.length);
   const best = reference.reduce((a, b) => (b.completionRate > a.completionRate ? b : a));
   const current = ordered[ordered.length - 1]!;
 

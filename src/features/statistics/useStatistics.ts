@@ -23,9 +23,7 @@ export function useStatistics() {
 
       const supervisedPlacementIds = [
         ...new Set(
-          assignments
-            .map((a) => a.placementId)
-            .filter((id) => placements.some((p) => p.id === id)),
+          assignments.map((a) => a.placementId).filter((id) => placements.some((p) => p.id === id)),
         ),
       ];
 

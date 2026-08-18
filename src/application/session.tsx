@@ -3,14 +3,7 @@
  * L'API du contexte est volontairement proche d'une future session serveur :
  * personne courante, inscriptions, rôles contextualisés, programme actif.
  */
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useMemo,
-  useState,
-  type ReactNode,
-} from "react";
+import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 import { mockDataAccess } from "@/infrastructure/mock/mockDataAccess";
 import * as fx from "@/infrastructure/mock/fixtures";
 import {
@@ -72,18 +65,21 @@ export function SessionProvider({ children }: { children: ReactNode }) {
    * la personne possède réellement un rôle, sinon l'écran afficherait un
    * programme sans aucun droit pour ce profil.
    */
-  const selectPerson = useCallback((id: PersonId) => {
-    setActivePersonId(id);
-    const assignments = fx.roleAssignments.filter((r) => r.personId === id);
-    const hasRoleHere = assignments.some(
-      (r) =>
-        r.scope.kind === "platform" ||
-        ("programId" in r.scope && r.scope.programId === activeProgramId),
-    );
-    if (hasRoleHere) return;
-    const scoped = assignments.find((r) => "programId" in r.scope);
-    if (scoped && "programId" in scoped.scope) setActiveProgramId(scoped.scope.programId);
-  }, [activeProgramId]);
+  const selectPerson = useCallback(
+    (id: PersonId) => {
+      setActivePersonId(id);
+      const assignments = fx.roleAssignments.filter((r) => r.personId === id);
+      const hasRoleHere = assignments.some(
+        (r) =>
+          r.scope.kind === "platform" ||
+          ("programId" in r.scope && r.scope.programId === activeProgramId),
+      );
+      if (hasRoleHere) return;
+      const scoped = assignments.find((r) => "programId" in r.scope);
+      if (scoped && "programId" in scoped.scope) setActiveProgramId(scoped.scope.programId);
+    },
+    [activeProgramId],
+  );
 
   const value = useMemo<SessionValue>(() => {
     const person = fx.people.find((p) => p.id === activePersonId) ?? fx.people[0]!;
