@@ -54,7 +54,6 @@ export function AppShell() {
   const spaces = navSpacesFor(roles, activeProgram.id);
   const defaultPersonName = people[0]?.fullName ?? "profil par défaut";
 
-
   return (
     <div className="min-h-screen bg-surface">
       <a
@@ -89,7 +88,6 @@ export function AppShell() {
               </div>
               <nav aria-label="Navigation mobile" className="mt-4 flex flex-col gap-4">
                 {spaces.map((space) => (
-
                   <div key={space.key} className="flex flex-col gap-1">
                     <p className="px-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                       {space.label}

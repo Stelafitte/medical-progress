@@ -43,7 +43,11 @@ export function AdminPedagogy() {
       <Tabs defaultValue="referentiels" className="space-y-6">
         <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1">
           {PEDAGOGY_TABS.map((tab) => (
-            <TabsTrigger key={tab.value} value={tab.value} className="min-h-11 flex-none text-xs sm:text-sm">
+            <TabsTrigger
+              key={tab.value}
+              value={tab.value}
+              className="min-h-11 flex-none text-xs sm:text-sm"
+            >
               {tab.label}
             </TabsTrigger>
           ))}

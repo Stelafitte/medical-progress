@@ -41,7 +41,12 @@ export function MediaDetailDialog({
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button type="button" variant="outline" size="sm" className="mt-2 min-h-11 md:mt-0 md:min-h-9">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="mt-2 min-h-11 md:mt-0 md:min-h-9"
+        >
           Voir le détail
         </Button>
       </DialogTrigger>
@@ -111,9 +116,7 @@ export function MediaDetailDialog({
           </p>
           <p className="text-xs text-muted-foreground">
             {resource.asset.sizeHint ? `Taille indicative ${resource.asset.sizeHint}. ` : ""}
-            {resource.asset.durationMinutes
-              ? `Durée ${resource.asset.durationMinutes} min. `
-              : ""}
+            {resource.asset.durationMinutes ? `Durée ${resource.asset.durationMinutes} min. ` : ""}
             {resource.asset.hasTranscript ? "Transcription disponible. " : ""}
             {MEDIA_STORAGE_NOTICE_FR}.
           </p>

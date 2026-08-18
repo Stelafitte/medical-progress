@@ -128,7 +128,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setActiveProgramId(DEFAULT_PROGRAM_ID);
   }, []);
 
-
   const value = useMemo<SessionValue>(() => {
     const person = fx.people.find((p) => p.id === activePersonId) ?? fx.people[0]!;
     const roles = fx.roleAssignments.filter((r) => r.personId === person.id);

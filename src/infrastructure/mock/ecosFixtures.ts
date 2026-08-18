@@ -237,7 +237,11 @@ export const ecosScenarios: readonly EcosScenarioMock[] = [
     mode: "text_and_voice",
     outcomeIds: ["out-dfasm-douleur", "out-dfasm-obs"],
     grading: [
-      { label: "Recueil des caractéristiques de la douleur", weight: 30, outcomeId: "out-dfasm-douleur" },
+      {
+        label: "Recueil des caractéristiques de la douleur",
+        weight: 30,
+        outcomeId: "out-dfasm-douleur",
+      },
       { label: "Recherche des signes de gravité", weight: 30, outcomeId: "out-dfasm-douleur" },
       { label: "Hypothèses hiérarchisées", weight: 20, outcomeId: "out-dfasm-obs" },
       { label: "Communication et clarté de l'annonce", weight: 20 },
@@ -252,7 +256,8 @@ export const ecosScenarios: readonly EcosScenarioMock[] = [
     id: "ecos-dfasm-ecg",
     programId: "prog-dfasm-cardio",
     title: "Annonce d'un ECG anormal",
-    patientProfile: "Patient simulé fictif, 71 ans, palpitations, demande des explications simples.",
+    patientProfile:
+      "Patient simulé fictif, 71 ans, palpitations, demande des explications simples.",
     instructions:
       "Expliquer l'anomalie de rythme et la suite de la prise en charge sans jargon, en 8 minutes.",
     durationMinutes: 8,
@@ -263,7 +268,8 @@ export const ecosScenarios: readonly EcosScenarioMock[] = [
       { label: "Pédagogie de l'explication", weight: 35 },
       { label: "Vérification de la compréhension", weight: 25 },
     ],
-    debriefSummary: "Comparaison de la formulation de l'apprenant avec une formulation de référence.",
+    debriefSummary:
+      "Comparaison de la formulation de l'apprenant avec une formulation de référence.",
     status: "mock",
     updatedAt: "2026-07-18T09:00:00Z",
   },

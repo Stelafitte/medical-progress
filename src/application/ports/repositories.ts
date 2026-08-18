@@ -126,7 +126,6 @@ export interface EcosMigrationRepository {
   listScenarios(programId: ProgramId): Promise<readonly EcosScenarioMock[]>;
 }
 
-
 export interface AcquisitionPlanRepository {
   /** Calendrier de référence des acquis d'un programme. */
   listPlanSchedule(programId: ProgramId): Promise<readonly PlanScheduleEntry[]>;

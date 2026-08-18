@@ -23,7 +23,15 @@ describe("médiathèque — cloisonnement par programme", () => {
 
   it("couvre les types de supports attendus du corpus réel", () => {
     const kinds = new Set(mediaResources.map((r) => r.kind));
-    for (const kind of ["pdf", "slides", "slides_audio", "video", "link", "quiz", "clinical_case"]) {
+    for (const kind of [
+      "pdf",
+      "slides",
+      "slides_audio",
+      "video",
+      "link",
+      "quiz",
+      "clinical_case",
+    ]) {
       expect(kinds.has(kind as MediaResource["kind"])).toBe(true);
     }
   });

@@ -267,11 +267,7 @@ export function StageLogBook() {
           ) : null}
 
           <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-            <Button
-              type="button"
-              className="min-h-11 w-full gap-2 sm:w-auto"
-              onClick={addEntry}
-            >
+            <Button type="button" className="min-h-11 w-full gap-2 sm:w-auto" onClick={addEntry}>
               <ClipboardList className="size-4" aria-hidden />
               Ajouter au carnet (brouillon)
             </Button>

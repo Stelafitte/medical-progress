@@ -12,13 +12,7 @@ export type MediaResourceId = string & { readonly __brand?: "MediaResource" };
 
 /** Types de supports du corpus réel des deux programmes. */
 export type MediaKind =
-  | "pdf"
-  | "slides"
-  | "slides_audio"
-  | "video"
-  | "link"
-  | "quiz"
-  | "clinical_case";
+  "pdf" | "slides" | "slides_audio" | "video" | "link" | "quiz" | "clinical_case";
 
 export const MEDIA_KIND_LABELS_FR: Record<MediaKind, string> = {
   pdf: "PDF",
@@ -151,12 +145,7 @@ export function mediaModules(resources: readonly MediaResource[]): readonly stri
 
 /** Actions d'administration disponibles pour un support, selon son statut. */
 export type MediaAction =
-  | "edit_metadata"
-  | "new_version"
-  | "publish"
-  | "unpublish"
-  | "archive"
-  | "preview";
+  "edit_metadata" | "new_version" | "publish" | "unpublish" | "archive" | "preview";
 
 export const MEDIA_ACTION_LABELS_FR: Record<MediaAction, string> = {
   edit_metadata: "Modifier les métadonnées",

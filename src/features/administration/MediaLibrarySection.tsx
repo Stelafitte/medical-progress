@@ -4,7 +4,15 @@
  * Toutes les actions sont simulées et journalisées à l'écran.
  */
 import { useMemo, useState } from "react";
-import { FileText, Filter, Link2, PlayCircle, Presentation, Search, Stethoscope } from "lucide-react";
+import {
+  FileText,
+  Filter,
+  Link2,
+  PlayCircle,
+  Presentation,
+  Search,
+  Stethoscope,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,8 +24,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { EmptyState, MockBadge, PanelCard, ScopeNotice, StatCard } from "@/features/professional/mock-ui";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  EmptyState,
+  MockBadge,
+  PanelCard,
+  ScopeNotice,
+  StatCard,
+} from "@/features/professional/mock-ui";
 import { AddMediaDialog } from "@/features/administration/AddMediaDialog";
 import { MediaDetailDialog } from "@/features/administration/MediaDetailDialog";
 import {
@@ -74,17 +95,16 @@ export function MediaLibrarySection({
     [media, search, kind, status, moduleName, onlyUnlinked],
   );
 
-  const authorName = (id: string) => people.find((p) => p.id === id)?.fullName ?? "Équipe pédagogique";
+  const authorName = (id: string) =>
+    people.find((p) => p.id === id)?.fullName ?? "Équipe pédagogique";
   const outcomeCodes = (resource: MediaResource) =>
-    resource.outcomeIds
-      .map((id) => outcomes.find((o) => o.id === id)?.code ?? id)
-      .join(" · ");
+    resource.outcomeIds.map((id) => outcomes.find((o) => o.id === id)?.code ?? id).join(" · ");
 
   return (
     <div className="space-y-6">
       <ScopeNotice>
-        Médiathèque de <strong>{programName}</strong> uniquement : aucun support d'un autre programme
-        n'est chargé. Les métadonnées sont distinctes du futur fichier binaire —{" "}
+        Médiathèque de <strong>{programName}</strong> uniquement : aucun support d'un autre
+        programme n'est chargé. Les métadonnées sont distinctes du futur fichier binaire —{" "}
         {MEDIA_STORAGE_NOTICE_FR}.
       </ScopeNotice>
 
@@ -110,7 +130,9 @@ export function MediaLibrarySection({
               modules={modules}
               outcomes={outcomes}
               onSaved={(title) =>
-                setLastAction(`Maquette enregistrée localement : « ${title} » (aucun fichier transmis).`)
+                setLastAction(
+                  `Maquette enregistrée localement : « ${title} » (aucun fichier transmis).`,
+                )
               }
             />
           </div>
@@ -212,7 +234,10 @@ export function MediaLibrarySection({
         </div>
 
         {lastAction ? (
-          <p role="status" className="rounded-md border border-border bg-secondary/40 px-3 py-2 text-sm">
+          <p
+            role="status"
+            className="rounded-md border border-border bg-secondary/40 px-3 py-2 text-sm"
+          >
             {lastAction}
           </p>
         ) : null}

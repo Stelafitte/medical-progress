@@ -64,8 +64,7 @@ export const mediaResources: readonly MediaResource[] = [
     title: "Transcription textuelle du diaporama commenté (module 1)",
     kind: "pdf",
     module: "Bases physiques et anatomiques",
-    description:
-      "Version texte de la piste audio, utilisable en révision et pour l'accessibilité.",
+    description: "Version texte de la piste audio, utilisable en révision et pour l'accessibilité.",
     outcomeIds: ["out-echo-anat"],
     version: "v3.1",
     status: "published",
@@ -169,7 +168,11 @@ export const mediaResources: readonly MediaResource[] = [
     authorPersonId: "per-admin",
     updatedAt: "2026-03-08T09:15:00Z",
     needsReview: false,
-    asset: { kind: "url", label: "https://exemple-recommandations.test/quantification", storageActivated: false },
+    asset: {
+      kind: "url",
+      label: "https://exemple-recommandations.test/quantification",
+      storageActivated: false,
+    },
     versions: [
       {
         version: "v1.0",
