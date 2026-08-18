@@ -37,6 +37,7 @@ import { Route as EspaceEncadrementCompetencesRouteImport } from './routes/espac
 import { Route as EspaceEncadrementEtudiantsRouteImport } from './routes/espace.encadrement.etudiants'
 import { Route as EspaceEncadrementMessagesRouteImport } from './routes/espace.encadrement.messages'
 import { Route as EspaceEncadrementProfilRouteImport } from './routes/espace.encadrement.profil'
+import { Route as EspaceRessourcesIndexRouteImport } from './routes/espace.ressources.index'
 import { Route as EspaceRessourcesResourceIdLectureRouteImport } from './routes/espace.ressources.$resourceId.lecture'
 
 const IndexRoute = IndexRouteImport.update({
@@ -191,6 +192,11 @@ const EspaceEncadrementProfilRoute = EspaceEncadrementProfilRouteImport.update({
   path: '/profil',
   getParentRoute: () => EspaceEncadrementRoute,
 } as any)
+const EspaceRessourcesIndexRoute = EspaceRessourcesIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => EspaceRessourcesRoute,
+} as any)
 const EspaceRessourcesResourceIdLectureRoute =
   EspaceRessourcesResourceIdLectureRouteImport.update({
     id: '/$resourceId/lecture',
@@ -227,6 +233,7 @@ export interface FileRoutesByFullPath {
   '/espace/encadrement/profil': typeof EspaceEncadrementProfilRoute
   '/espace/administration/': typeof EspaceAdministrationIndexRoute
   '/espace/encadrement/': typeof EspaceEncadrementIndexRoute
+  '/espace/ressources/': typeof EspaceRessourcesIndexRoute
   '/espace/ressources/$resourceId/lecture': typeof EspaceRessourcesResourceIdLectureRoute
 }
 export interface FileRoutesByTo {
@@ -235,7 +242,6 @@ export interface FileRoutesByTo {
   '/espace/passeport': typeof EspacePasseportRoute
   '/espace/plateforme': typeof EspacePlateformeRoute
   '/espace/profil': typeof EspaceProfilRoute
-  '/espace/ressources': typeof EspaceRessourcesRouteWithChildren
   '/espace/stage': typeof EspaceStageRoute
   '/espace/statistiques': typeof EspaceStatistiquesRoute
   '/espace': typeof EspaceIndexRoute
@@ -255,6 +261,7 @@ export interface FileRoutesByTo {
   '/espace/encadrement/profil': typeof EspaceEncadrementProfilRoute
   '/espace/administration': typeof EspaceAdministrationIndexRoute
   '/espace/encadrement': typeof EspaceEncadrementIndexRoute
+  '/espace/ressources': typeof EspaceRessourcesIndexRoute
   '/espace/ressources/$resourceId/lecture': typeof EspaceRessourcesResourceIdLectureRoute
 }
 export interface FileRoutesById {
@@ -287,6 +294,7 @@ export interface FileRoutesById {
   '/espace/encadrement/profil': typeof EspaceEncadrementProfilRoute
   '/espace/administration/': typeof EspaceAdministrationIndexRoute
   '/espace/encadrement/': typeof EspaceEncadrementIndexRoute
+  '/espace/ressources/': typeof EspaceRessourcesIndexRoute
   '/espace/ressources/$resourceId/lecture': typeof EspaceRessourcesResourceIdLectureRoute
 }
 export interface FileRouteTypes {
@@ -320,6 +328,7 @@ export interface FileRouteTypes {
     | '/espace/encadrement/profil'
     | '/espace/administration/'
     | '/espace/encadrement/'
+    | '/espace/ressources/'
     | '/espace/ressources/$resourceId/lecture'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -328,7 +337,6 @@ export interface FileRouteTypes {
     | '/espace/passeport'
     | '/espace/plateforme'
     | '/espace/profil'
-    | '/espace/ressources'
     | '/espace/stage'
     | '/espace/statistiques'
     | '/espace'
@@ -348,6 +356,7 @@ export interface FileRouteTypes {
     | '/espace/encadrement/profil'
     | '/espace/administration'
     | '/espace/encadrement'
+    | '/espace/ressources'
     | '/espace/ressources/$resourceId/lecture'
   id:
     | '__root__'
@@ -379,6 +388,7 @@ export interface FileRouteTypes {
     | '/espace/encadrement/profil'
     | '/espace/administration/'
     | '/espace/encadrement/'
+    | '/espace/ressources/'
     | '/espace/ressources/$resourceId/lecture'
   fileRoutesById: FileRoutesById
 }
@@ -585,6 +595,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EspaceEncadrementProfilRouteImport
       parentRoute: typeof EspaceEncadrementRoute
     }
+    '/espace/ressources/': {
+      id: '/espace/ressources/'
+      path: '/'
+      fullPath: '/espace/ressources/'
+      preLoaderRoute: typeof EspaceRessourcesIndexRouteImport
+      parentRoute: typeof EspaceRessourcesRoute
+    }
     '/espace/ressources/$resourceId/lecture': {
       id: '/espace/ressources/$resourceId/lecture'
       path: '/$resourceId/lecture'
@@ -647,10 +664,12 @@ const EspaceEncadrementRouteWithChildren =
   EspaceEncadrementRoute._addFileChildren(EspaceEncadrementRouteChildren)
 
 interface EspaceRessourcesRouteChildren {
+  EspaceRessourcesIndexRoute: typeof EspaceRessourcesIndexRoute
   EspaceRessourcesResourceIdLectureRoute: typeof EspaceRessourcesResourceIdLectureRoute
 }
 
 const EspaceRessourcesRouteChildren: EspaceRessourcesRouteChildren = {
+  EspaceRessourcesIndexRoute: EspaceRessourcesIndexRoute,
   EspaceRessourcesResourceIdLectureRoute:
     EspaceRessourcesResourceIdLectureRoute,
 }
