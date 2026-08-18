@@ -18,6 +18,7 @@ import {
   ScopeNotice,
   StatCard,
 } from "@/features/professional/mock-ui";
+import { AiCreditsSection } from "@/features/administration/AiCreditsSection";
 import { personNameFor, useProgramAdmin } from "@/features/administration/useProgramAdmin";
 import { StageLogsReceived } from "@/features/stage/StageLogReviewSection";
 import { STAGE_LOG_STATUS_LABELS_FR } from "@/domain/stageLog";
@@ -151,6 +152,14 @@ export function AdminMonitoring() {
           </ul>
         </PanelCard>
       ) : null}
+
+      <SectionHeading
+        title="Comptabilité des crédits IA"
+        level={2}
+        action={<MockBadge />}
+        description="Consommation imputée à cet enseignement : enveloppe, paliers de modèle, promotions et historique."
+      />
+      <AiCreditsSection />
 
       <StageLogsReceived />
     </div>
