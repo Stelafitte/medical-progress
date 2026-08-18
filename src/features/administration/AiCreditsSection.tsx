@@ -18,7 +18,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { EmptyState, MockBadge, PanelCard, ScopeNotice, StatCard } from "@/features/professional/mock-ui";
+import {
+  EmptyState,
+  MockBadge,
+  PanelCard,
+  ScopeNotice,
+  StatCard,
+} from "@/features/professional/mock-ui";
 import { useDataAccess, useSession } from "@/application/session";
 import {
   AI_CREDITS_GOVERNANCE_NOTICE_FR,
@@ -52,7 +58,10 @@ function BreakdownList({
                   {row.credits} cr. · {Math.round(row.share * 100)} %
                 </span>
               </div>
-              <Progress value={row.share * 100} aria-label={`${row.label} : ${row.credits} crédits`} />
+              <Progress
+                value={row.share * 100}
+                aria-label={`${row.label} : ${row.credits} crédits`}
+              />
             </li>
           ))}
         </ul>
@@ -118,9 +127,7 @@ export function AiCreditsSection() {
         <div className="space-y-3">
           <Progress value={percent} aria-label="Consommation des crédits IA" />
           <div className="flex flex-wrap items-center gap-2 text-sm">
-            <Badge variant={stateVariant}>
-              {AI_CREDIT_BUDGET_STATE_LABELS_FR[account.state]}
-            </Badge>
+            <Badge variant={stateVariant}>{AI_CREDIT_BUDGET_STATE_LABELS_FR[account.state]}</Badge>
             <span className="text-muted-foreground">{percent} % de l'enveloppe</span>
             {budget ? (
               <>
@@ -137,8 +144,7 @@ export function AiCreditsSection() {
             ) : null}
           </div>
           <p className="text-xs text-muted-foreground">
-            Projection annuelle linéaire : {projection} crédits (indicative).{" "}
-            {budget?.note ?? ""}
+            Projection annuelle linéaire : {projection} crédits (indicative). {budget?.note ?? ""}
           </p>
           <p className="flex items-start gap-2 text-xs text-muted-foreground">
             <Coins className="mt-0.5 size-3.5 shrink-0" aria-hidden />

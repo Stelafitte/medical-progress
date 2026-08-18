@@ -177,7 +177,12 @@ export function buildAiCreditAccount(
     consumedRatio: ratio(totalCredits, budget?.allocatedCredits ?? 0),
     remainingCredits: Math.max(0, (budget?.allocatedCredits ?? 0) - totalCredits),
     state: budgetStateFor(budget, totalCredits),
-    byTier: group(scoped, (e) => e.tier, (k) => AI_TIER_LABELS_FR[k], totalCredits),
+    byTier: group(
+      scoped,
+      (e) => e.tier,
+      (k) => AI_TIER_LABELS_FR[k],
+      totalCredits,
+    ),
     byMode: group(scoped, (e) => e.mode, labels.mode, totalCredits),
     byCohort: group(scoped, (e) => e.cohortId, labels.cohort, totalCredits),
     byActorRole: group(
@@ -186,7 +191,12 @@ export function buildAiCreditAccount(
       (k) => AI_CREDIT_ACTOR_LABELS_FR[k],
       totalCredits,
     ),
-    byMonth: group(scoped, (e) => e.occurredAt.slice(0, 7), (k) => k, totalCredits),
+    byMonth: group(
+      scoped,
+      (e) => e.occurredAt.slice(0, 7),
+      (k) => k,
+      totalCredits,
+    ),
     meteringActivated: false,
   };
 }

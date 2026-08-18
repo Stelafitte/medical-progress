@@ -44,7 +44,17 @@ const diu = (
   month: string,
   units: number,
   mediaId?: string,
-) => entry("prog-diu-echo", "cv-diu-2026", "coh-diu-2026", mode, actor, `${month}-12T09:00:00Z`, units, mediaId);
+) =>
+  entry(
+    "prog-diu-echo",
+    "cv-diu-2026",
+    "coh-diu-2026",
+    mode,
+    actor,
+    `${month}-12T09:00:00Z`,
+    units,
+    mediaId,
+  );
 
 const dfasm = (
   mode: ContentAiMode,

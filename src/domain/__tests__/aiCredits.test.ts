@@ -50,8 +50,7 @@ describe("crédits IA — comptabilité par enseignement", () => {
 
   it("le total est la somme des répartitions", () => {
     const account = accountFor("prog-diu-echo");
-    const sum = (rows: readonly { credits: number }[]) =>
-      rows.reduce((t, r) => t + r.credits, 0);
+    const sum = (rows: readonly { credits: number }[]) => rows.reduce((t, r) => t + r.credits, 0);
     expect(sum(account.byTier)).toBe(account.totalCredits);
     expect(sum(account.byMode)).toBe(account.totalCredits);
     expect(sum(account.byActorRole)).toBe(account.totalCredits);
