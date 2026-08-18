@@ -38,8 +38,15 @@ const DEMO_PROFILE_HINTS: Record<string, string> = {
 };
 
 export function AppShell() {
-  const { person, people, setActivePersonId, roles, rolesInActiveProgram, activeProgram, isSimulated } =
-    useSession();
+  const {
+    person,
+    people,
+    setActivePersonId,
+    roles,
+    rolesInActiveProgram,
+    activeProgram,
+    isSimulated,
+  } = useSession();
 
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -192,7 +199,6 @@ export function AppShell() {
                     </DropdownMenuRadioGroup>
                   </>
                 ) : null}
-
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
