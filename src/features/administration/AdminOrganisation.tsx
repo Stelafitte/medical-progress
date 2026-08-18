@@ -11,6 +11,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { EmptyState, MockBadge, PanelCard, ScopeNotice } from "@/features/professional/mock-ui";
+import { CohortRosterSection } from "@/features/administration/CohortRosterSection";
 import { personNameFor, useProgramAdmin } from "@/features/administration/useProgramAdmin";
 import { ROLE_LABELS_FR } from "@/domain/roles";
 import { useSession } from "@/application/session";
@@ -135,6 +136,8 @@ export function AdminOrganisation() {
         </div>
         {scopedRoles.length === 0 ? <EmptyState>Aucun rôle dans ce programme.</EmptyState> : null}
       </PanelCard>
+
+      <CohortRosterSection data={data} />
 
       <PanelCard title="Terrains de stage, capacités et périodes">
         <ul className="space-y-2">
