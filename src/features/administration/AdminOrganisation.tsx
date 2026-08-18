@@ -137,6 +137,8 @@ export function AdminOrganisation() {
         {scopedRoles.length === 0 ? <EmptyState>Aucun rôle dans ce programme.</EmptyState> : null}
       </PanelCard>
 
+      <CohortRosterSection data={data} />
+
       <PanelCard title="Terrains de stage, capacités et périodes">
         <ul className="space-y-2">
           {data.placements.map((p) => (
