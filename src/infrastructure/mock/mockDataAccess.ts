@@ -6,6 +6,7 @@ import type { DataAccess } from "@/application/ports/repositories";
 import * as fx from "./fixtures";
 import * as pfx from "./professionalFixtures";
 import * as slfx from "./stageLogFixtures";
+import * as stfx from "./statisticsFixtures";
 
 const clone = <T>(value: T): T => value;
 const ok = <T>(value: T): Promise<T> => Promise.resolve(clone(value));
@@ -120,6 +121,10 @@ export const mockDataAccess: DataAccess = {
             l.programId === programId && (l.status === "validated" || l.status === "transmitted"),
         ),
       ),
+  },
+  statistics: {
+    listCohortStatistics: (programId) =>
+      ok(stfx.cohortStatistics.filter((s) => s.programId === programId)),
   },
   audit: {
     listRecentEvents: (limit = 20) => ok(fx.auditEvents.slice(0, limit)),
