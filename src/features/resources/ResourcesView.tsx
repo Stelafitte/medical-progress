@@ -1,10 +1,12 @@
-import { BookOpen } from "lucide-react";
+import { BookOpen, PlayCircle } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import { SectionHeading } from "@/components/section-heading";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { formatPlayerDuration } from "@/domain/mediaLibrary";
 import { useLearnerPassport } from "@/features/dashboard/useLearnerPassport";
-import { NarratedSlidesPlayer } from "@/features/resources/NarratedSlidesPlayer";
 
 const FORMAT_FR: Record<string, string> = {
   course: "Cours",
