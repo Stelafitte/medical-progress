@@ -11,16 +11,25 @@ export function useLearnerPassport() {
   return useQuery({
     queryKey: ["learner-passport", activeProgram.id, activeEnrollment.id],
     queryFn: async () => {
-      const [outcomes, evidence, placements, assignments, resources, relations, schedule] =
-        await Promise.all([
-          data.outcomes.listOutcomes(activeProgram.id),
-          data.evidence.listEvidenceForEnrollment(activeEnrollment.id),
-          data.placements.listPlacements(activeProgram.id),
-          data.placements.listAssignmentsForEnrollment(activeEnrollment.id),
-          data.resources.listResources(activeProgram.id),
-          data.outcomes.listOutcomeRelations(activeProgram.id),
-          data.plan.listPlanSchedule(activeProgram.id),
-        ]);
+      const [
+        outcomes,
+        evidence,
+        placements,
+        assignments,
+        resources,
+        relations,
+        schedule,
+        narratedDecks,
+      ] = await Promise.all([
+        data.outcomes.listOutcomes(activeProgram.id),
+        data.evidence.listEvidenceForEnrollment(activeEnrollment.id),
+        data.placements.listPlacements(activeProgram.id),
+        data.placements.listAssignmentsForEnrollment(activeEnrollment.id),
+        data.resources.listResources(activeProgram.id),
+        data.outcomes.listOutcomeRelations(activeProgram.id),
+        data.plan.listPlanSchedule(activeProgram.id),
+        data.media.listLearnerNarratedDecks(activeProgram.id),
+      ]);
 
       const progress = outcomes.map((outcome) => computeOutcomeProgress(outcome, evidence));
 
@@ -42,6 +51,7 @@ export function useLearnerPassport() {
         placements,
         assignments,
         resources,
+        narratedDecks,
         progress,
         summary: summarizeProgress(progress),
       };

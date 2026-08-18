@@ -3,7 +3,7 @@
  * Aucun fichier n'existe, aucune URL n'est appelée, aucun binaire n'est stocké.
  * Les exemples reflètent le corpus réel des deux programmes.
  */
-import type { MediaResource } from "@/domain/mediaLibrary";
+import type { MediaResource, NarratedSlide } from "@/domain/mediaLibrary";
 
 const native = { sourceSystem: "native" } as const;
 const legacy = (sourceId: string) =>
@@ -13,6 +13,103 @@ const legacy = (sourceId: string) =>
     importedAt: "2026-02-10T09:00:00Z",
     importNote: "Métadonnées ressaisies manuellement — aucun contenu copié automatiquement.",
   }) as const;
+
+/* --- PPTX sonorisés : artefacts web dérivés SIMULÉS (aucun binaire réel) --- */
+
+const slide = (
+  index: number,
+  title: string,
+  durationSeconds: number,
+  transcript?: string,
+): NarratedSlide => ({
+  index,
+  title,
+  durationSeconds,
+  hasNarration: transcript !== undefined,
+  ...(transcript ? { transcript } : {}),
+});
+
+const coupesSlides: readonly NarratedSlide[] = [
+  slide(
+    1,
+    "Objectifs du module",
+    95,
+    "Nous allons revoir les coupes de référence en échographie transthoracique.",
+  ),
+  slide(
+    2,
+    "Fenêtre parasternale grand axe",
+    180,
+    "La sonde est placée au troisième espace intercostal gauche, index vers l'épaule droite.",
+  ),
+  slide(
+    3,
+    "Parasternale petit axe",
+    165,
+    "En pivotant de quatre-vingt-dix degrés, on obtient une coupe circulaire du ventricule gauche.",
+  ),
+  slide(
+    4,
+    "Apicale quatre cavités",
+    210,
+    "Coupe de référence pour l'analyse des volumes et de la fonction longitudinale.",
+  ),
+  slide(
+    5,
+    "Apicale deux cavités",
+    150,
+    "Elle complète la précédente pour la mesure biplan de la fraction d'éjection.",
+  ),
+  slide(
+    6,
+    "Fenêtre sous-costale",
+    175,
+    "Utile chez le patient peu échogène et pour l'analyse de la veine cave inférieure.",
+  ),
+  slide(
+    7,
+    "Pièges de positionnement",
+    140,
+    "Une sonde trop haute raccourcit le ventricule et fausse toutes les mesures.",
+  ),
+  slide(
+    8,
+    "Synthèse et auto-évaluation",
+    120,
+    "Reprenez chaque fenêtre en nommant les structures visibles avant de passer au QCM.",
+  ),
+];
+
+const coupesChapters = [
+  { id: "ch-1", title: "Introduction", startSlide: 1 },
+  { id: "ch-2", title: "Fenêtres parasternales", startSlide: 2 },
+  { id: "ch-3", title: "Fenêtres apicales", startSlide: 4 },
+  { id: "ch-4", title: "Fenêtre sous-costale et pièges", startSlide: 6 },
+] as const;
+
+const dopplerSlides: readonly NarratedSlide[] = [
+  slide(1, "Principes du Doppler", 120, "Rappel de l'effet Doppler appliqué au flux sanguin."),
+  slide(
+    2,
+    "Doppler continu",
+    150,
+    "Il mesure les vitesses élevées sans ambiguïté de localisation.",
+  ),
+  slide(
+    3,
+    "Doppler pulsé",
+    145,
+    "Il localise le flux mais sature au-delà de la limite de Nyquist.",
+  ),
+  slide(4, "Réglages pratiques", 0),
+  slide(5, "Cas d'application", 0),
+  slide(
+    6,
+    "Synthèse",
+    110,
+    "Choisissez le mode selon la vitesse attendue et la précision de localisation requise.",
+  ),
+];
 
 export const mediaResources: readonly MediaResource[] = [
   /* ---------------------------- DIU Échocardiographie ---------------------- */
@@ -40,6 +137,62 @@ export const mediaResources: readonly MediaResource[] = [
       hasTranscript: true,
       storageActivated: false,
     },
+    narrated: {
+      conversionStatus: "ready",
+      target: "html5",
+      source: {
+        fileName: "diu-coupes-reference-v3-1.pptx",
+        sizeHint: "48 Mo",
+        uploadedAt: "2026-05-30T09:00:00Z",
+        restrictedToStaff: true,
+        storageActivated: false,
+      },
+      options: {
+        extractNotes: true,
+        generateTranscript: true,
+        autoChapters: true,
+        exposeTranscriptToLearners: true,
+      },
+      precheck: {
+        extensionOk: true,
+        audioDetected: true,
+        slideCount: 8,
+        estimatedDurationMinutes: 21,
+        slidesWithoutNarration: [],
+        alerts: ["font_not_embedded"],
+        canQueue: true,
+      },
+      alerts: ["font_not_embedded"],
+      steps: [
+        { step: "upload", state: "done", at: "2026-05-30T09:00:00Z" },
+        {
+          step: "precheck",
+          state: "done",
+          at: "2026-05-30T09:02:00Z",
+          note: "Audio détecté sur 8/8 diapositives.",
+        },
+        { step: "extract", state: "done", at: "2026-05-30T09:05:00Z" },
+        { step: "render_slides", state: "done", at: "2026-05-30T09:12:00Z" },
+        { step: "audio", state: "done", at: "2026-05-30T09:18:00Z" },
+        { step: "transcript", state: "done", at: "2026-05-30T09:26:00Z" },
+        { step: "assemble_html5", state: "done", at: "2026-05-30T09:31:00Z" },
+        {
+          step: "pedagogical_review",
+          state: "done",
+          at: "2026-06-02T10:20:00Z",
+          note: "Version web validée par l'enseignant.",
+        },
+        { step: "publication", state: "done", at: "2026-06-02T10:30:00Z" },
+      ],
+      artifact: {
+        state: "published",
+        slideCount: coupesSlides.length,
+        totalDurationSeconds: coupesSlides.reduce((sum, s) => sum + s.durationSeconds, 0),
+        hasTranscript: true,
+        chapters: coupesChapters,
+        slides: coupesSlides,
+      },
+    },
     versions: [
       {
         version: "v3.1",
@@ -54,6 +207,101 @@ export const mediaResources: readonly MediaResource[] = [
         authorPersonId: "per-teacher",
         summary: "Refonte du plan et ajout des coupes sous-costales.",
         status: "archived",
+      },
+    ],
+    provenance: native,
+  },
+  {
+    id: "med-diu-ppt-doppler",
+    programId: "prog-diu-echo",
+    title: "Doppler continu et pulsé — diaporama sonorisé",
+    kind: "slides_audio",
+    module: "Acquisition et mesures",
+    description:
+      "Cours sonorisé sur les modes Doppler. Conversion web en attente de contrôle pédagogique : deux diapositives n'ont pas de commentaire audio.",
+    outcomeIds: ["out-echo-fevg"],
+    version: "v1.0",
+    status: "draft",
+    visibility: "private",
+    authorPersonId: "per-teacher",
+    updatedAt: "2026-08-12T08:45:00Z",
+    needsReview: true,
+    asset: {
+      kind: "file",
+      label: "diu-doppler-v1.pptx",
+      sizeHint: "31 Mo",
+      durationMinutes: 9,
+      hasTranscript: true,
+      storageActivated: false,
+    },
+    narrated: {
+      conversionStatus: "review_required",
+      target: "html5_mp4",
+      source: {
+        fileName: "diu-doppler-v1.pptx",
+        sizeHint: "31 Mo",
+        uploadedAt: "2026-08-12T08:10:00Z",
+        restrictedToStaff: true,
+        storageActivated: false,
+      },
+      options: {
+        extractNotes: true,
+        generateTranscript: true,
+        autoChapters: true,
+        exposeTranscriptToLearners: false,
+      },
+      precheck: {
+        extensionOk: true,
+        audioDetected: true,
+        slideCount: 6,
+        estimatedDurationMinutes: 9,
+        slidesWithoutNarration: [4, 5],
+        alerts: ["slides_without_narration", "animation_not_convertible"],
+        canQueue: true,
+      },
+      alerts: ["slides_without_narration", "animation_not_convertible", "transcript_to_review"],
+      steps: [
+        { step: "upload", state: "done", at: "2026-08-12T08:10:00Z" },
+        {
+          step: "precheck",
+          state: "done",
+          at: "2026-08-12T08:12:00Z",
+          note: "Diapositives 4 et 5 sans commentaire audio.",
+        },
+        { step: "extract", state: "done", at: "2026-08-12T08:15:00Z" },
+        { step: "render_slides", state: "done", at: "2026-08-12T08:22:00Z" },
+        { step: "audio", state: "done", at: "2026-08-12T08:29:00Z" },
+        {
+          step: "transcript",
+          state: "done",
+          at: "2026-08-12T08:38:00Z",
+          note: "Transcription générée automatiquement, à relire.",
+        },
+        { step: "assemble_html5", state: "done", at: "2026-08-12T08:44:00Z" },
+        { step: "pedagogical_review", state: "running", at: "2026-08-12T08:45:00Z" },
+        { step: "publication", state: "pending" },
+      ],
+      artifact: {
+        state: "draft",
+        slideCount: dopplerSlides.length,
+        totalDurationSeconds: dopplerSlides.reduce((sum, s) => sum + s.durationSeconds, 0),
+        hasTranscript: true,
+        chapters: [
+          { id: "ch-1", title: "Principes", startSlide: 1 },
+          { id: "ch-2", title: "Modes Doppler", startSlide: 2 },
+          { id: "ch-3", title: "Pratique", startSlide: 4 },
+        ],
+        slides: dopplerSlides,
+        mp4Fallback: { label: "diu-doppler-v1-secours.mp4", sizeHint: "180 Mo" },
+      },
+    },
+    versions: [
+      {
+        version: "v1.0",
+        changedAt: "2026-08-12T08:45:00Z",
+        authorPersonId: "per-teacher",
+        summary: "Première conversion web, contrôle pédagogique en cours.",
+        status: "draft",
       },
     ],
     provenance: native,
