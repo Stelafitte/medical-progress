@@ -11,6 +11,7 @@ import {
   canAccessOwnProfile,
   canAccessPlatformAdministration,
   canAccessProgramAdministration,
+  canAccessStatistics,
   canAccessSupervision,
 } from "@/domain/access";
 import { rolesInContext } from "@/domain/roles";
@@ -42,6 +43,8 @@ export interface SessionValue {
   readonly canAccessPlatformAdministration: boolean;
   /** Espace responsable de stage, limité aux affectations de la personne. */
   readonly canAccessSupervision: boolean;
+  /** Outil statistique : encadrants, enseignants et administrateurs. */
+  readonly canAccessStatistics: boolean;
   readonly canAccessProfile: boolean;
   /** Vrai tant que la session est mockée ; faux dès l'authentification réelle. */
   readonly isSimulated: boolean;
@@ -56,6 +59,24 @@ const SessionContext = createContext<SessionValue | null>(null);
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [activeProgramId, setActiveProgramId] = useState<ProgramId>(fx.programs[0]!.id);
   const [activePersonId, setActivePersonId] = useState<PersonId>(fx.people[0]!.id);
+
+  /**
+   * Bascule d'identité simulée : on sélectionne aussi un programme dans lequel
+   * la personne possède réellement un rôle, sinon l'écran afficherait un
+   * programme sans aucun droit pour ce profil.
+   */
+  const selectPerson = (id: PersonId) => {
+    setActivePersonId(id);
+    const assignments = fx.roleAssignments.filter((r) => r.personId === id);
+    const hasRoleHere = assignments.some(
+      (r) =>
+        r.scope.kind === "platform" ||
+        ("programId" in r.scope && r.scope.programId === activeProgramId),
+    );
+    if (hasRoleHere) return;
+    const scoped = assignments.find((r) => "programId" in r.scope);
+    if (scoped && "programId" in scoped.scope) setActiveProgramId(scoped.scope.programId);
+  };
 
   const value = useMemo<SessionValue>(() => {
     const person = fx.people.find((p) => p.id === activePersonId) ?? fx.people[0]!;
@@ -80,10 +101,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       canAccessProgramAdministration: canAccessProgramAdministration(roles, activeProgram.id),
       canAccessPlatformAdministration: canAccessPlatformAdministration(roles),
       canAccessSupervision: canAccessSupervision(roles, activeProgram.id),
+      canAccessStatistics: canAccessStatistics(roles, activeProgram.id),
       canAccessProfile: canAccessOwnProfile(true),
       isSimulated: true,
       setActiveProgramId,
-      setActivePersonId,
+      setActivePersonId: selectPerson,
       hasRoleInProgram: (role, programId) =>
         roles.some(
           (r) =>
