@@ -320,6 +320,25 @@ describe("import groupé", () => {
     expect(selectProgramDirectory(next, "prog-diu").rows).toHaveLength(2);
   });
 
+  it("ignore un doublon d'e-mail présent deux fois dans les lignes transmises", () => {
+    const rows = [
+      { line: 2, firstName: "Nicolas", lastName: "Perrin", email: "nicolas@example.org" },
+      { line: 3, firstName: "Nicolas", lastName: "Perrin", email: "NICOLAS@example.org" },
+    ];
+    const { state: next, report } = applyRosterImport(makeState(), {
+      programId: "prog-diu",
+      cohortId: "coh-diu",
+      role: "learner",
+      rows,
+      existingEmailStrategy: "attach",
+      now: NOW,
+    });
+    expect(report.created).toBe(1);
+    expect(report.skipped).toBe(1);
+    expect(report.lines[1]!.result).toBe("skipped_duplicate");
+    expect(next.people).toHaveLength(2);
+  });
+
   it("ignore les e-mails connus quand la stratégie est « ignorer »", () => {
     const state = makeState();
     const { rows } = importableFrom(csv, state.accounts.map((a) => a.loginEmail));
