@@ -133,29 +133,52 @@ export function DpcProgramWizard() {
 
   /* ---------------- étape 3 : audits ---------------- */
 
-  const updateGrid = (gridId: string, patch: Partial<DpcGridConfig>) =>
+  const mapGrid = (gridId: string, fn: (grid: DpcGridConfig) => DpcGridConfig) =>
     setDraft({
       ...draft,
       audit: {
         ...draft.audit,
-        grids: draft.audit.grids.map((g) => (g.gridId === gridId ? { ...g, ...patch } : g)),
+        grids: draft.audit.grids.map((g) => (g.gridId === gridId ? fn(g) : g)),
       },
     });
 
-  const updateCompleteness = (gridId: string, patch: Partial<DpcCompletenessRule>) => {
-    const grid = draft.audit.grids.find((g) => g.gridId === gridId);
-    if (!grid) return;
-    updateGrid(gridId, { completenessRule: { ...grid.completenessRule, ...patch } });
-  };
+  const updateGrid = (gridId: string, patch: Partial<DpcGridConfig>) =>
+    mapGrid(gridId, (grid) => ({ ...grid, ...patch }));
+
+  const updateCompleteness = (gridId: string, patch: Partial<DpcCompletenessRule>) =>
+    mapGrid(gridId, (grid) => ({
+      ...grid,
+      completenessRule: { ...grid.completenessRule, ...patch },
+    }));
+
+  /** Règle de complétude : champ optionnel réellement retiré quand il est vidé. */
+  const updateCompletenessOptional = (
+    gridId: string,
+    key: "minimumCompleteRecords" | "minimumAnsweredPercentPerRecord",
+    value: number | undefined,
+  ) =>
+    mapGrid(gridId, (grid) => ({
+      ...grid,
+      completenessRule: setOptional(grid.completenessRule, key, value),
+    }));
+
+  const mapRound = (roundId: string, fn: (round: DpcRoundConfig) => DpcRoundConfig) =>
+    setDraft({
+      ...draft,
+      audit: {
+        ...draft.audit,
+        rounds: draft.audit.rounds.map((r) => (r.roundId === roundId ? fn(r) : r)),
+      },
+    });
 
   const updateRound = (roundId: string, patch: Partial<DpcRoundConfig>) =>
-    setDraft({
-      ...draft,
-      audit: {
-        ...draft.audit,
-        rounds: draft.audit.rounds.map((r) => (r.roundId === roundId ? { ...r, ...patch } : r)),
-      },
-    });
+    mapRound(roundId, (round) => ({ ...round, ...patch }));
+
+  const updateRoundOptional = <K extends "recordsPerRound" | "opensOn" | "closesOn">(
+    roundId: string,
+    key: K,
+    value: DpcRoundConfig[K] | undefined,
+  ) => mapRound(roundId, (round) => setOptional(round, key, value));
 
   const addGrid = () => {
     const index = draft.audit.grids.length + 1;
