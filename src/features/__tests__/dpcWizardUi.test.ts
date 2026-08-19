@@ -1,5 +1,5 @@
 /**
- * Contrats UI de l'assistant de création d'un programme DPC, vérifiés au
+ * Contrats UI de l'assistant d'implémentation d'un DPC, vérifiés au
  * niveau source : accès réservé, cinq étapes, marqueurs « simulé », séparation
  * audits / QCM, exigences mobiles et accessibilité de base.
  */

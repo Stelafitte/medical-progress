@@ -12,7 +12,7 @@ export const Route = createFileRoute("/espace/administration/assistant-dpc")({
       {
         name: "description",
         content:
-          "Assistant simulé de création d'un programme DPC : documents sources, extraction proposée, configuration des audits, séparation des évaluations et contrôle avant publication.",
+          "Assistant simulé d'implémentation d'un DPC : documents sources, extraction proposée, configuration des audits, séparation des évaluations, calendrier d'implémentation et contrôle avant publication.",
       },
       { property: "og:title", content: "Créer un programme DPC — Campus Santé Augmenté" },
       {
@@ -29,7 +29,7 @@ export const Route = createFileRoute("/espace/administration/assistant-dpc")({
 function Guarded() {
   const session = useSession();
   if (!session.canAccessProgramAdministration)
-    return <AccessRestricted area="L'assistant de création d'un programme DPC" />;
+    return <AccessRestricted area="L'assistant d'implémentation d'un DPC" />;
   return (
     <div className="space-y-6">
       <SectionHeading
