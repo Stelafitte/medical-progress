@@ -313,7 +313,9 @@ describe("import groupé", () => {
     });
     expect(report.created).toBe(1);
     expect(report.attached).toBe(1);
-    expect(report.skipped).toBeGreaterThanOrEqual(1);
+    // Le doublon interne et la ligne en erreur ont déjà été exclus à l'étape de contrôle.
+    expect(report.skipped).toBe(0);
+    expect(report.rejected).toBe(0);
     expect(next.people).toHaveLength(2);
     expect(selectProgramDirectory(next, "prog-diu").rows).toHaveLength(2);
   });
