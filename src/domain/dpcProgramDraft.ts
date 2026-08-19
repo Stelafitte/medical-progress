@@ -84,8 +84,15 @@ export const DPC_WIZARD_STEPS: readonly DpcWizardStep[] = [
       "Audits de pratiques sur dossiers et tests de connaissances par QCM présentés séparément.",
   },
   {
-    id: "publication_check",
+    id: "implementation_schedule",
     order: 5,
+    title: "Calendrier d'implémentation",
+    description:
+      "Composants réellement retenus (audit avant / après, tests amont / aval, formation en présentiel, en visioconférence ou en e-formation) et dates précises de chacun.",
+  },
+  {
+    id: "publication_check",
+    order: 6,
     title: "Contrôle avant publication",
     description: "Checklist de contrôle ; la publication reste simulée et désactivée si incomplète.",
   },
