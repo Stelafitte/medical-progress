@@ -560,6 +560,15 @@ export function DpcProgramWizard() {
                 les valeurs proposées proviennent du modèle générique du démonstrateur.
               </span>
             </p>
+
+            <section className="space-y-1 rounded-md border border-border p-3">
+              <h3 className="text-sm font-medium">Traçabilité de la version</h3>
+              <p className="text-muted-foreground text-xs">
+                Données structurées issues du programme importé : version {draft.version} · empreinte{" "}
+                {draft.checksum ?? "non calculée"}. Section technique secondaire : aucune action de
+                publication n'est demandée au coordinateur.
+              </p>
+            </section>
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1">
                 <Label htmlFor="dpc-title">Titre du programme</Label>
