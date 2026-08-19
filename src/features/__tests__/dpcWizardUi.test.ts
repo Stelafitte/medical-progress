@@ -20,8 +20,8 @@ describe("accès", () => {
     expect(wizardRoute).toContain('{ name: "robots", content: "noindex" }');
   });
 
-  it("expose une action visible « Créer un programme DPC » sans perturber la consultation", () => {
-    expect(dpcRoute).toContain("Créer un programme DPC");
+  it("expose une action visible « Implémenter un DPC » sans perturber la consultation", () => {
+    expect(dpcRoute).toContain("Implémenter un DPC");
     expect(dpcRoute).toContain('to="/espace/administration/assistant-dpc"');
     expect(dpcRoute).toContain("<DpcProgrammeSection />");
   });
