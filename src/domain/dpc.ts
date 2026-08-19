@@ -255,7 +255,8 @@ export function dpcCriterionCount(grid: DpcAuditGrid): number {
   return dpcCriteria(grid).length;
 }
 
-export interface DpcConformity {
+/** Résultat CHIFFRÉ de conformité (compteurs et pourcentage). */
+export interface DpcConformityTally {
   /** Items applicables (Oui ou Non) : les N/A sont exclus. */
   readonly applicable: number;
   readonly conform: number;
@@ -266,7 +267,7 @@ export interface DpcConformity {
   readonly complete: boolean;
 }
 
-const emptyConformity = (expected: number): DpcConformity => ({
+const emptyConformity = (expected: number): DpcConformityTally => ({
   applicable: 0,
   conform: 0,
   notApplicable: 0,
@@ -280,7 +281,7 @@ function tally(
   criteria: readonly DpcCriterion[],
   records: readonly DpcAuditRecord[],
   expectedRecords: number,
-): DpcConformity {
+): DpcConformityTally {
   let conform = 0;
   let applicable = 0;
   let notApplicable = 0;
@@ -311,19 +312,19 @@ function tally(
 }
 
 /** Conformité d'un dossier audité. */
-export function recordConformity(grid: DpcAuditGrid, record: DpcAuditRecord): DpcConformity {
+export function recordConformity(grid: DpcAuditGrid, record: DpcAuditRecord): DpcConformityTally {
   return tally(dpcCriteria(grid), [record], 1);
 }
 
 /** Conformité d'un tour d'audit pour un participant. */
-export function entryConformity(grid: DpcAuditGrid, entry: DpcAuditEntry | undefined): DpcConformity {
+export function entryConformity(grid: DpcAuditGrid, entry: DpcAuditEntry | undefined): DpcConformityTally {
   if (!entry) return emptyConformity(dpcCriterionCount(grid) * grid.recordsPerRound);
   return tally(dpcCriteria(grid), entry.records, grid.recordsPerRound);
 }
 
 export interface DpcSectionConformity {
   readonly section: DpcAuditSection;
-  readonly conformity: DpcConformity;
+  readonly conformity: DpcConformityTally;
 }
 
 /** Conformité par partie de la grille : cible le message pédagogique. */
