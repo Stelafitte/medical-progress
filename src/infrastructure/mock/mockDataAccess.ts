@@ -14,6 +14,7 @@ import * as cafx from "./contentAiFixtures";
 import * as aicfx from "./aiCreditsFixtures";
 import * as efx from "./ecosFixtures";
 import * as dpc from "./dpcFixtures";
+import * as hvg from "./dpcHvgFixtures";
 
 const clone = <T>(value: T): T => value;
 const ok = <T>(value: T): Promise<T> => Promise.resolve(clone(value));
@@ -193,6 +194,38 @@ export const mockDataAccess: DataAccess = {
       return ok(dpc.prePostTestResults.filter((r) => testIds.has(r.testId)));
     },
     listSessions: (programId) => ok(dpc.teachingSessions.filter((s) => s.programId === programId)),
+  },
+  dpc: {
+    listGrids: (programId) => ok(hvg.dpcHvgGrids.filter((g) => g.programId === programId)),
+    getSetup: (programId) =>
+      ok(hvg.dpcHvgSetup.programId === programId ? hvg.dpcHvgSetup : undefined),
+    listRounds: (programId) => ok(hvg.dpcHvgRounds.filter((r) => r.programId === programId)),
+    listEntries: (programId) => {
+      const roundIds = new Set(
+        hvg.dpcHvgRounds.filter((r) => r.programId === programId).map((r) => r.id),
+      );
+      return ok(hvg.dpcHvgEntries.filter((e) => roundIds.has(e.roundId)));
+    },
+    listEntriesForEnrollment: (enrollmentId) =>
+      ok(hvg.dpcHvgEntries.filter((e) => e.enrollmentId === enrollmentId)),
+    listSequences: (programId) =>
+      ok(programId === hvg.DPC_HVG_PROGRAM_ID ? hvg.dpcHvgSequences : []),
+    listQuestions: (programId) =>
+      ok(programId === hvg.DPC_HVG_PROGRAM_ID ? hvg.dpcHvgQuestions : []),
+    listTests: (programId) => ok(hvg.dpcHvgTests.filter((t) => t.programId === programId)),
+    listTestAttempts: (programId) => {
+      const testIds = new Set(
+        hvg.dpcHvgTests.filter((t) => t.programId === programId).map((t) => t.id),
+      );
+      return ok(hvg.dpcHvgTestAttempts.filter((a) => testIds.has(a.testId)));
+    },
+    listAttendance: (programId) => {
+      const sessionIds = new Set(
+        hvg.dpcHvgSessions.filter((s) => s.programId === programId).map((s) => s.id),
+      );
+      return ok(hvg.dpcHvgAttendance.filter((a) => sessionIds.has(a.sessionId)));
+    },
+    listSessions: (programId) => ok(hvg.dpcHvgSessions.filter((s) => s.programId === programId)),
   },
   audit: {
     listRecentEvents: (limit = 20) => ok(fx.auditEvents.slice(0, limit)),

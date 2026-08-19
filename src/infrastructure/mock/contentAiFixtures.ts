@@ -287,6 +287,13 @@ export const programAiPolicies: readonly ProgramAiPolicy[] = [
     note: "DFASM Cardiologie : interaction vocale activée et mise en avant (préparation ECOS).",
   },
   {
+    programId: "prog-dpc-hvg",
+    allowedModes: ["ask", "be_questioned", "generate_quiz", "adaptive_review"],
+    voiceEnabled: false,
+    voicePromoted: false,
+    note: "DPC HVG–Amylose : révision et interrogation écrites sur le corpus validé, vocal non activé pour ce programme.",
+  },
+  {
     programId: "prog-diu-echo",
     allowedModes: [
       "ask",

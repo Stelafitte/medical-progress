@@ -54,7 +54,7 @@ describe("progression dérivée des preuves (données mock)", () => {
     const roles = await mockDataAccess.people.listRoleAssignments("per-learner");
     const programIds = roles.map((r) => ("programId" in r.scope ? r.scope.programId : "platform"));
     expect(new Set(programIds)).toEqual(
-      new Set(["prog-diu-echo", "prog-dfasm-cardio", "prog-dpc-fa"]),
+      new Set(["prog-diu-echo", "prog-dfasm-cardio", "prog-dpc-fa", "prog-dpc-hvg"]),
     );
   });
 });
