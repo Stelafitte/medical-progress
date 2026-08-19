@@ -34,8 +34,11 @@ describe("terminologie", () => {
 
   it("conserve le nom global de la plateforme dans le shell et les métadonnées", () => {
     expect(shell).toContain("Campus Santé Augmenté");
-    expect(rootRoute).toContain('{ title: "Campus Santé Augmenté" }');
-    expect(rootRoute).toContain('{ property: "og:title", content: "Campus Santé Augmenté" }');
+    expect(rootRoute).toContain(
+      '{ title: "Campus Santé Augmenté — Formation, compétences et développement professionnel" }',
+    );
+    expect(rootRoute).toContain("Formation, compétences et développement professionnel");
+    expect(shell).toContain("Formation, compétences et développement professionnel");
   });
 });
 
