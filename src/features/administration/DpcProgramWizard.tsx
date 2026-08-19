@@ -1,5 +1,8 @@
 /**
- * Assistant d'IMPLÉMENTATION d'un DPC générique.
+ * Assistant d'IMPLÉMENTATION d'un programme DPC de référence.
+ * Le coordinateur ne crée pas le contenu : il importe, configure et implémente
+ * un programme de référence déjà conçu et validé, pour une cohorte, un
+ * calendrier et des modalités donnés.
  *
  * On n'y « crée » pas un programme abstrait : on implémente un DPC en
  * choisissant les composants réellement retenus (audit avant / après, tests

@@ -3,6 +3,7 @@ import { useSession } from "@/application/session";
 import { AccessRestricted } from "@/components/access-restricted";
 import { Button } from "@/components/ui/button";
 import { SectionHeading } from "@/components/section-heading";
+import { DpcImplementationsSection } from "@/features/administration/DpcImplementationsSection";
 import { DpcProgrammeSection } from "@/features/administration/DpcProgrammeSection";
 
 export const Route = createFileRoute("/espace/administration/dpc")({
@@ -32,12 +33,13 @@ function Guarded() {
   return (
     <div className="space-y-6">
       <SectionHeading
-        title="Programme DPC"
+        title="Programme DPC de référence et implémentations"
         description="Module optionnel activable par programme : audits avant/après, formation, tests et attestation."
       />
       <Button asChild className="min-h-11 w-full sm:w-auto">
-        <Link to="/espace/administration/assistant-dpc">Implémenter un DPC</Link>
+        <Link to="/espace/administration/assistant-dpc">Implémenter un programme DPC</Link>
       </Button>
+      <DpcImplementationsSection />
       <DpcProgrammeSection />
     </div>
   );
