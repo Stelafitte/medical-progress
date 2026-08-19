@@ -1,6 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSession } from "@/application/session";
 import { AccessRestricted } from "@/components/access-restricted";
+import { Button } from "@/components/ui/button";
 import { SectionHeading } from "@/components/section-heading";
 import { DpcProgrammeSection } from "@/features/administration/DpcProgrammeSection";
 
@@ -34,6 +35,9 @@ function Guarded() {
         title="Programme DPC"
         description="Module optionnel activable par programme : audits avant/après, formation, tests et attestation."
       />
+      <Button asChild className="min-h-11 w-full sm:w-auto">
+        <Link to="/espace/administration/assistant-dpc">Créer un programme DPC</Link>
+      </Button>
       <DpcProgrammeSection />
     </div>
   );

@@ -24,6 +24,7 @@ import { Route as EspaceRessourcesRouteImport } from './routes/espace.ressources
 import { Route as EspaceStageRouteImport } from './routes/espace.stage'
 import { Route as EspaceStatistiquesRouteImport } from './routes/espace.statistiques'
 import { Route as EspaceAdministrationIndexRouteImport } from './routes/espace.administration.index'
+import { Route as EspaceAdministrationAssistantDpcRouteImport } from './routes/espace.administration.assistant-dpc'
 import { Route as EspaceAdministrationCommunicationsRouteImport } from './routes/espace.administration.communications'
 import { Route as EspaceAdministrationDocumentsRouteImport } from './routes/espace.administration.documents'
 import { Route as EspaceAdministrationDpcRouteImport } from './routes/espace.administration.dpc'
@@ -117,6 +118,12 @@ const EspaceAdministrationIndexRoute =
   EspaceAdministrationIndexRouteImport.update({
     id: '/',
     path: '/',
+    getParentRoute: () => EspaceAdministrationRoute,
+  } as any)
+const EspaceAdministrationAssistantDpcRoute =
+  EspaceAdministrationAssistantDpcRouteImport.update({
+    id: '/assistant-dpc',
+    path: '/assistant-dpc',
     getParentRoute: () => EspaceAdministrationRoute,
   } as any)
 const EspaceAdministrationCommunicationsRoute =
@@ -237,6 +244,7 @@ export interface FileRoutesByFullPath {
   '/espace/stage': typeof EspaceStageRoute
   '/espace/statistiques': typeof EspaceStatistiquesRoute
   '/espace/': typeof EspaceIndexRoute
+  '/espace/administration/assistant-dpc': typeof EspaceAdministrationAssistantDpcRoute
   '/espace/administration/communications': typeof EspaceAdministrationCommunicationsRoute
   '/espace/administration/documents': typeof EspaceAdministrationDocumentsRoute
   '/espace/administration/dpc': typeof EspaceAdministrationDpcRoute
@@ -268,6 +276,7 @@ export interface FileRoutesByTo {
   '/espace/stage': typeof EspaceStageRoute
   '/espace/statistiques': typeof EspaceStatistiquesRoute
   '/espace': typeof EspaceIndexRoute
+  '/espace/administration/assistant-dpc': typeof EspaceAdministrationAssistantDpcRoute
   '/espace/administration/communications': typeof EspaceAdministrationCommunicationsRoute
   '/espace/administration/documents': typeof EspaceAdministrationDocumentsRoute
   '/espace/administration/dpc': typeof EspaceAdministrationDpcRoute
@@ -304,6 +313,7 @@ export interface FileRoutesById {
   '/espace/stage': typeof EspaceStageRoute
   '/espace/statistiques': typeof EspaceStatistiquesRoute
   '/espace/': typeof EspaceIndexRoute
+  '/espace/administration/assistant-dpc': typeof EspaceAdministrationAssistantDpcRoute
   '/espace/administration/communications': typeof EspaceAdministrationCommunicationsRoute
   '/espace/administration/documents': typeof EspaceAdministrationDocumentsRoute
   '/espace/administration/dpc': typeof EspaceAdministrationDpcRoute
@@ -341,6 +351,7 @@ export interface FileRouteTypes {
     | '/espace/stage'
     | '/espace/statistiques'
     | '/espace/'
+    | '/espace/administration/assistant-dpc'
     | '/espace/administration/communications'
     | '/espace/administration/documents'
     | '/espace/administration/dpc'
@@ -372,6 +383,7 @@ export interface FileRouteTypes {
     | '/espace/stage'
     | '/espace/statistiques'
     | '/espace'
+    | '/espace/administration/assistant-dpc'
     | '/espace/administration/communications'
     | '/espace/administration/documents'
     | '/espace/administration/dpc'
@@ -407,6 +419,7 @@ export interface FileRouteTypes {
     | '/espace/stage'
     | '/espace/statistiques'
     | '/espace/'
+    | '/espace/administration/assistant-dpc'
     | '/espace/administration/communications'
     | '/espace/administration/documents'
     | '/espace/administration/dpc'
@@ -540,6 +553,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EspaceAdministrationIndexRouteImport
       parentRoute: typeof EspaceAdministrationRoute
     }
+    '/espace/administration/assistant-dpc': {
+      id: '/espace/administration/assistant-dpc'
+      path: '/assistant-dpc'
+      fullPath: '/espace/administration/assistant-dpc'
+      preLoaderRoute: typeof EspaceAdministrationAssistantDpcRouteImport
+      parentRoute: typeof EspaceAdministrationRoute
+    }
     '/espace/administration/communications': {
       id: '/espace/administration/communications'
       path: '/communications'
@@ -670,6 +690,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface EspaceAdministrationRouteChildren {
+  EspaceAdministrationAssistantDpcRoute: typeof EspaceAdministrationAssistantDpcRoute
   EspaceAdministrationCommunicationsRoute: typeof EspaceAdministrationCommunicationsRoute
   EspaceAdministrationDocumentsRoute: typeof EspaceAdministrationDocumentsRoute
   EspaceAdministrationDpcRoute: typeof EspaceAdministrationDpcRoute
@@ -681,6 +702,7 @@ interface EspaceAdministrationRouteChildren {
 }
 
 const EspaceAdministrationRouteChildren: EspaceAdministrationRouteChildren = {
+  EspaceAdministrationAssistantDpcRoute: EspaceAdministrationAssistantDpcRoute,
   EspaceAdministrationCommunicationsRoute:
     EspaceAdministrationCommunicationsRoute,
   EspaceAdministrationDocumentsRoute: EspaceAdministrationDocumentsRoute,
