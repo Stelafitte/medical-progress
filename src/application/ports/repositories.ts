@@ -27,6 +27,14 @@ import type {
 } from "@/domain/supervision";
 import type { StageLog, StageLogTemplate } from "@/domain/stageLog";
 import type { CohortStatisticsSnapshot } from "@/domain/statistics";
+import type {
+  ClinicalAuditCampaign,
+  ClinicalAuditSubmission,
+  ClinicalAuditTemplate,
+  PrePostTest,
+  PrePostTestResult,
+  TeachingSession,
+} from "@/domain/clinicalAudit";
 
 import type {
   AuditEvent,
@@ -178,6 +186,24 @@ export interface StatisticsRepository {
   listCohortStatistics(programId: ProgramId): Promise<readonly CohortStatisticsSnapshot[]>;
 }
 
+/**
+ * Module OPTIONNEL (audits de pratique, pré/post-tests, séances).
+ * Un programme sans `config.auditsEnabled` ne consomme jamais ce dépôt.
+ */
+export interface ClinicalAuditRepository {
+  listTemplates(programId: ProgramId): Promise<readonly ClinicalAuditTemplate[]>;
+  listCampaigns(programId: ProgramId): Promise<readonly ClinicalAuditCampaign[]>;
+  /** Toutes les soumissions d'un programme (administration / enseignant). */
+  listSubmissions(programId: ProgramId): Promise<readonly ClinicalAuditSubmission[]>;
+  /** Soumissions d'une inscription : périmètre strict de l'apprenant. */
+  listSubmissionsForEnrollment(
+    enrollmentId: EnrollmentId,
+  ): Promise<readonly ClinicalAuditSubmission[]>;
+  listTests(programId: ProgramId): Promise<readonly PrePostTest[]>;
+  listTestResults(programId: ProgramId): Promise<readonly PrePostTestResult[]>;
+  listSessions(programId: ProgramId): Promise<readonly TeachingSession[]>;
+}
+
 export interface AuditRepository {
   listRecentEvents(limit?: number): Promise<readonly AuditEvent[]>;
 }
@@ -199,6 +225,7 @@ export interface DataAccess {
   readonly supervision: SupervisionRepository;
   readonly administration: AdministrationRepository;
   readonly statistics: StatisticsRepository;
+  readonly clinicalAudits: ClinicalAuditRepository;
   readonly audit: AuditRepository;
   /** Marque explicitement une implémentation non persistante. */
   readonly isMock: boolean;

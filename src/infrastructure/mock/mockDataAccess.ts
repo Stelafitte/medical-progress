@@ -13,6 +13,7 @@ import * as mfx from "./mediaFixtures";
 import * as cafx from "./contentAiFixtures";
 import * as aicfx from "./aiCreditsFixtures";
 import * as efx from "./ecosFixtures";
+import * as dpc from "./dpcFixtures";
 
 const clone = <T>(value: T): T => value;
 const ok = <T>(value: T): Promise<T> => Promise.resolve(clone(value));
@@ -172,6 +173,29 @@ export const mockDataAccess: DataAccess = {
   statistics: {
     listCohortStatistics: (programId) =>
       ok(stfx.cohortStatistics.filter((s) => s.programId === programId)),
+  },
+  clinicalAudits: {
+    listTemplates: (programId) =>
+      ok(dpc.auditTemplates.filter((t) => t.programId === programId)),
+    listCampaigns: (programId) =>
+      ok(dpc.auditCampaigns.filter((c) => c.programId === programId)),
+    listSubmissions: (programId) => {
+      const campaignIds = new Set(
+        dpc.auditCampaigns.filter((c) => c.programId === programId).map((c) => c.id),
+      );
+      return ok(dpc.auditSubmissions.filter((s) => campaignIds.has(s.campaignId)));
+    },
+    listSubmissionsForEnrollment: (enrollmentId) =>
+      ok(dpc.auditSubmissions.filter((s) => s.enrollmentId === enrollmentId)),
+    listTests: (programId) => ok(dpc.prePostTests.filter((t) => t.programId === programId)),
+    listTestResults: (programId) => {
+      const testIds = new Set(
+        dpc.prePostTests.filter((t) => t.programId === programId).map((t) => t.id),
+      );
+      return ok(dpc.prePostTestResults.filter((r) => testIds.has(r.testId)));
+    },
+    listSessions: (programId) =>
+      ok(dpc.teachingSessions.filter((s) => s.programId === programId)),
   },
   audit: {
     listRecentEvents: (limit = 20) => ok(fx.auditEvents.slice(0, limit)),
