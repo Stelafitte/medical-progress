@@ -27,6 +27,13 @@ import type {
   DpcScheduleEntry,
   DpcTeachingModality,
 } from "./dpcProgram";
+import type { DpcImplementationPlan } from "./dpcImplementation";
+import {
+  blockingIssues,
+  emptyImplementationPlan,
+  implementationSummary,
+  isImplementationSchedulable,
+} from "./dpcImplementation";
 import {
   isAuditGridArtifact,
   isKnowledgeQuizArtifact,
@@ -206,6 +213,11 @@ export interface DpcProgramDraft {
   readonly documents: readonly DpcDraftDocument[];
   readonly extraction: DpcExtractionDraft;
   readonly audit: DpcAuditModuleConfig;
+  /**
+   * Calendrier d'implémentation : composants retenus et dates précises.
+   * Tous les composants sont optionnels ; le plan peut être vide.
+   */
+  readonly implementation: DpcImplementationPlan;
   /** Nombre de QCM déclarés, configurable et jamais imposé. */
   readonly quizCount: number;
   /** Paramétrage médical des critères validé par un humain identifié. */
@@ -226,6 +238,7 @@ export function draftFromDefinition(
     readonly humanValidation?: DpcHumanValidation;
     readonly checksum?: string;
     readonly documents?: readonly DpcDraftDocument[];
+    readonly implementation?: DpcImplementationPlan;
   },
 ): DpcProgramDraft {
   const detectedModules = Object.entries(definition.modules)
@@ -262,6 +275,9 @@ export function draftFromDefinition(
       bibliography: definition.bibliography,
     },
     audit: definition.audit,
+    implementation:
+      options.implementation ??
+      emptyImplementationPlan(`${options.id}-implementation`, "Calendrier d'implémentation"),
     quizCount: options.quizCount,
     medicalParametersValidated: options.medicalParametersValidated ?? false,
     ...(options.humanValidation ? { humanValidation: options.humanValidation } : {}),
@@ -318,6 +334,7 @@ export type DpcChecklistItemId =
   | "completeness_rules_defined"
   | "schedule_defined"
   | "no_patient_data"
+  | "implementation_planned"
   | "quiz_separated_from_audits"
   | "version_and_checksum"
   | "human_validation_recorded";
@@ -360,6 +377,10 @@ export function publicationChecklist(draft: DpcProgramDraft): readonly DpcCheckl
   });
 
   const datedRounds = rounds.filter((round) => round.opensOn && round.closesOn);
+  const implementation = implementationSummary(draft.implementation);
+  const implementationPlanned = draft.implementation.slots.length > 0;
+  const implementationSchedulable = isImplementationSchedulable(draft.implementation);
+  const implementationBlocking = blockingIssues(draft.implementation);
   const patientMarkers = detectPatientDataMarkers(draftTexts(draft));
 
   const items: DpcChecklistItem[] = [
@@ -434,6 +455,21 @@ export function publicationChecklist(draft: DpcProgramDraft): readonly DpcCheckl
           : rounds.length > 0 && datedRounds.length < rounds.length
             ? `${datedRounds.length}/${rounds.length} tour(s) avec dates d'ouverture et de fermeture.`
             : "Calendrier du programme et fenêtres des tours renseignés.",
+    },
+    {
+      id: "implementation_planned",
+      label: "Calendrier d'implémentation exploitable",
+      required: true,
+      satisfied: implementationPlanned && implementationSchedulable,
+      detail: !implementationPlanned
+        ? "Aucun composant programmé : sélectionnez les composants retenus (audit, tests, formation) et datez-les."
+        : implementationSchedulable
+          ? `${implementation.scheduledSlots}/${implementation.totalSlots} composant(s) programmés : ${implementation.components
+              .map((kind) => DPC_COMPONENT_KIND_LABELS_FR[kind])
+              .join(", ")}.`
+          : `${implementationBlocking.length} point(s) bloquant(s) dans le calendrier : ${implementationBlocking
+              .map((issue) => issue.message)
+              .join(" ")}`,
     },
     {
       id: "no_patient_data",
