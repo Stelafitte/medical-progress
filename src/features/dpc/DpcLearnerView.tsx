@@ -292,37 +292,71 @@ export function DpcLearnerView() {
           {scope.questions.length === 0 ? (
             <EmptyState>Aucun test configuré.</EmptyState>
           ) : (
-            scope.questions.map((question) => {
-              const preAnswer = scope.attempts.find(
-                (a) => a.enrollmentId === enrollmentId && a.phase === "pre",
-              )?.answers[question.id];
-              const postAnswer = scope.attempts.find(
-                (a) => a.enrollmentId === enrollmentId && a.phase === "post",
-              )?.answers[question.id];
+            (["pre", "post"] as const).map((phase) => {
+              const view = quizPhaseView(scope.questions, scope.attempts, enrollmentId, phase);
               return (
                 <PanelCard
-                  key={question.id}
-                  title={`QCM ${question.number} — ${question.theme}`}
-                  description={question.prompt}
+                  key={phase}
+                  title={DPC_TEST_PHASE_LABELS_FR[phase]}
+                  description={
+                    view.submitted
+                      ? "Tentative validée : correction et explications sont désormais accessibles."
+                      : "Tentative non validée : la bonne réponse et l'explication ne sont pas transmises à l'interface."
+                  }
+                  action={
+                    <Badge variant={view.submitted ? "default" : "outline"}>
+                      {view.submitted ? "Validé" : "À valider"}
+                    </Badge>
+                  }
                 >
-                  <ul className="space-y-1">
-                    {question.options.map((option) => (
-                      <li
-                        key={option.key}
-                        className={
-                          option.key === question.correctKey ? "font-medium" : "text-muted-foreground"
-                        }
-                      >
-                        {option.key}. {option.label}
-                        {option.key === question.correctKey ? " — bonne réponse" : ""}
+                  {view.submitted ? (
+                    <p className="text-xs">
+                      Score : <strong>{view.scorePercent} %</strong>
+                    </p>
+                  ) : (
+                    <p className="text-muted-foreground text-xs">
+                      Répondez aux {view.questions.length} questions puis validez la tentative. Une
+                      tentative validée ne peut pas être repassée dans cette maquette.
+                    </p>
+                  )}
+                  <ul className="space-y-4">
+                    {view.questions.map((question) => (
+                      <li key={question.id} className="space-y-1">
+                        <p className="font-medium">
+                          QCM {question.number} — {question.theme}
+                        </p>
+                        <p className="text-muted-foreground text-sm">{question.prompt}</p>
+                        <ul className="space-y-1 text-sm">
+                          {question.options.map((option) => {
+                            const isAnswer = question.revealed && option.key === question.correctKey;
+                            return (
+                              <li
+                                key={option.key}
+                                className={isAnswer ? "font-medium" : "text-muted-foreground"}
+                              >
+                                {option.key}. {option.label}
+                                {isAnswer ? " — bonne réponse" : ""}
+                              </li>
+                            );
+                          })}
+                        </ul>
+                        <p className="text-xs">
+                          Ma réponse : <strong>{question.givenKey ?? "—"}</strong>
+                          {question.revealed
+                            ? question.isCorrect
+                              ? " · réponse exacte"
+                              : " · réponse inexacte"
+                            : ""}
+                        </p>
+                        {question.revealed && question.explanation ? (
+                          <p className="text-muted-foreground text-sm">{question.explanation}</p>
+                        ) : null}
                       </li>
                     ))}
                   </ul>
-                  <p className="text-muted-foreground">{question.explanation}</p>
-                  <p className="text-xs">
-                    Ma réponse au pré-test : <strong>{preAnswer ?? "—"}</strong> · au post-test :{" "}
-                    <strong>{postAnswer ?? "—"}</strong>
-                  </p>
+                  <Button variant="outline" size="sm" disabled={!view.canSubmit}>
+                    {view.canSubmit ? "Valider ma tentative (simulé)" : "Tentative déjà validée"}
+                  </Button>
                 </PanelCard>
               );
             })
@@ -333,16 +367,12 @@ export function DpcLearnerView() {
               {tests.deltaPoints !== null ? ` (${tests.deltaPoints > 0 ? "+" : ""}${tests.deltaPoints} points)` : ""}
             </p>
             <p className="text-muted-foreground text-xs">
-              {scope.questions.length} questions ·{" "}
-              {scoreQuiz(
-                scope.questions,
-                scope.attempts.find((a) => a.enrollmentId === enrollmentId && a.phase === "post")
-                  ?.answers ?? {},
-              ).correct}{" "}
-              bonnes réponses au post-test
+              {scope.questions.length} questions. Produit réel : l'expurgation de la correction devra
+              être appliquée côté serveur, pas seulement dans React.
             </p>
           </PanelCard>
         </TabsContent>
+
 
         <TabsContent value="progression" className="space-y-4">
           <PanelCard title="Conclusion individuelle" description="Calcul déterministe, sans IA.">
