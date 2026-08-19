@@ -1,5 +1,10 @@
 /**
- * Assistant de création et de configuration d'un programme DPC générique.
+ * Assistant d'IMPLÉMENTATION d'un DPC générique.
+ *
+ * On n'y « crée » pas un programme abstrait : on implémente un DPC en
+ * choisissant les composants réellement retenus (audit avant / après, tests
+ * amont / aval, formation en présentiel, en visioconférence ou en e-formation),
+ * puis en les datant précisément. Tous ces composants sont OPTIONNELS.
  *
  * MAQUETTE FONCTIONNELLE LOCALE :
  *  - aucun fichier n'est envoyé à un serveur (les fichiers sélectionnés ne sont
@@ -14,6 +19,7 @@
  */
 import { useMemo, useState } from "react";
 import {
+  CalendarClock,
   ClipboardList,
   FileCheck2,
   FileText,
@@ -34,6 +40,13 @@ import {
 } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
@@ -62,6 +75,19 @@ import {
   publicationReadiness,
   toggleDocumentKind,
 } from "@/domain/dpcProgramDraft";
+import {
+  DPC_COMPONENT_KIND_LABELS_FR,
+  DPC_SLOT_TIMING_LABELS_FR,
+  DPC_TRAINING_DELIVERY_LABELS_FR,
+  type DpcComponentKind,
+  type DpcScheduledSlot,
+  type DpcTrainingDelivery,
+  expectedTiming,
+  implementationSummary,
+  implementationTimeline,
+  isSlotScheduled,
+  validateImplementationPlan,
+} from "@/domain/dpcImplementation";
 import { dpcDraftDemoStates } from "@/infrastructure/mock/dpcDraftFixtures";
 import { dpcHvgGrid } from "@/infrastructure/mock/dpcHvgFixtures";
 
@@ -84,6 +110,37 @@ function isoToDateInput(value?: string): string {
 function dateInputToIso(value: string): string | undefined {
   return value ? `${value}T08:00:00.000Z` : undefined;
 }
+
+/** Champ « datetime-local » ↔ ISO, sans réécriture de fuseau (maquette). */
+function isoToDateTimeInput(value?: string): string {
+  return value ? value.slice(0, 16) : "";
+}
+
+function dateTimeInputToIso(value: string): string | undefined {
+  return value ? `${value}:00.000Z` : undefined;
+}
+
+function slotStartOf(slot: DpcScheduledSlot): string | undefined {
+  return slot.startsAt ?? slot.opensOn;
+}
+
+function slotEndOf(slot: DpcScheduledSlot): string | undefined {
+  return slot.endsAt ?? slot.closesOn;
+}
+
+const COMPONENT_ORDER: readonly DpcComponentKind[] = [
+  "audit_round",
+  "pre_test",
+  "training_session",
+  "post_test",
+  "other_activity",
+];
+
+const DELIVERY_ORDER: readonly DpcTrainingDelivery[] = [
+  "in_person",
+  "virtual_classroom",
+  "e_learning",
+];
 
 /** Affecte un champ optionnel, ou le retire réellement quand la valeur est vide. */
 function setOptional<T extends object, K extends keyof T>(
@@ -249,6 +306,75 @@ export function DpcProgramWizard() {
       audit: { ...draft.audit, rounds: draft.audit.rounds.filter((r) => r.roundId !== roundId) },
     });
 
+  /* ---------------- étape 5 : calendrier d'implémentation ---------------- */
+
+  const plan = draft.implementation;
+  const planIssues = useMemo(() => validateImplementationPlan(plan), [plan]);
+  const planSummary = useMemo(() => implementationSummary(plan), [plan]);
+  const timeline = useMemo(() => implementationTimeline(plan), [plan]);
+
+  const setPlanSlots = (slots: readonly DpcScheduledSlot[]) =>
+    setDraft({ ...draft, implementation: { ...plan, slots } });
+
+  const mapSlot = (slotId: string, fn: (slot: DpcScheduledSlot) => DpcScheduledSlot) =>
+    setPlanSlots(plan.slots.map((slot) => (slot.id === slotId ? fn(slot) : slot)));
+
+  const updateSlotOptional = <K extends keyof DpcScheduledSlot>(
+    slotId: string,
+    key: K,
+    value: DpcScheduledSlot[K] | undefined,
+  ) => mapSlot(slotId, (slot) => setOptional(slot, key, value));
+
+  /** Changer la nature d'un composant retire les champs devenus hors sujet. */
+  const changeSlotKind = (slotId: string, kind: DpcComponentKind) =>
+    mapSlot(slotId, (slot) => {
+      const next: DpcScheduledSlot = { ...slot, kind };
+      if (kind !== "training_session") {
+        const cleaned = { ...next };
+        delete (cleaned as { delivery?: DpcTrainingDelivery }).delivery;
+        delete (cleaned as { location?: string }).location;
+        delete (cleaned as { joinInstructions?: string }).joinInstructions;
+        delete (cleaned as { resourceIds?: readonly string[] }).resourceIds;
+        return cleaned;
+      }
+      return next;
+    });
+
+  /** Changer la modalité change le mode de datation : les dates inadaptées sont retirées. */
+  const changeSlotDelivery = (slotId: string, delivery: DpcTrainingDelivery) =>
+    mapSlot(slotId, (slot) => {
+      const next = { ...slot, delivery } as DpcScheduledSlot;
+      const cleaned = { ...next };
+      if (expectedTiming("training_session", delivery) === "fixed_datetime") {
+        delete (cleaned as { opensOn?: string }).opensOn;
+        delete (cleaned as { closesOn?: string }).closesOn;
+        delete (cleaned as { resourceIds?: readonly string[] }).resourceIds;
+      } else {
+        delete (cleaned as { startsAt?: string }).startsAt;
+        delete (cleaned as { endsAt?: string }).endsAt;
+        delete (cleaned as { location?: string }).location;
+        delete (cleaned as { joinInstructions?: string }).joinInstructions;
+      }
+      return cleaned;
+    });
+
+  const addSlot = (kind: DpcComponentKind) => {
+    const sameKind = plan.slots.filter((slot) => slot.kind === kind).length;
+    const slot: DpcScheduledSlot = {
+      id: `slot-${Date.now()}`,
+      label: `${DPC_COMPONENT_KIND_LABELS_FR[kind]} ${sameKind + 1}`,
+      kind,
+      attendanceRequired: false,
+      ...(kind === "audit_round"
+        ? { order: plan.slots.reduce((max, s) => Math.max(max, s.order ?? 0), 0) + 1 }
+        : {}),
+    };
+    setPlanSlots([...plan.slots, slot]);
+  };
+
+  const removeSlot = (slotId: string) =>
+    setPlanSlots(plan.slots.filter((slot) => slot.id !== slotId));
+
   return (
     <div className="space-y-6">
       <ScopeNotice>
@@ -289,7 +415,7 @@ export function DpcProgramWizard() {
 
       {/* Navigation des étapes : liste ordonnée, utilisable au clavier */}
       <nav aria-label="Étapes de l'assistant">
-        <ol className="grid gap-2 sm:grid-cols-5">
+        <ol className="grid gap-2 sm:grid-cols-3 lg:grid-cols-6">
           {DPC_WIZARD_STEPS.map((item) => {
             const current = item.id === stepId;
             return (
@@ -892,6 +1018,385 @@ export function DpcProgramWizard() {
               Un même document ne peut jamais être classé à la fois grille d'audit et QCM : les deux
               natures d'évaluation restent distinctes dans tout le programme.
             </p>
+          </div>
+        ) : null}
+
+        {stepId === "implementation_schedule" ? (
+          <div className="space-y-4">
+            <p className="flex items-start gap-2 rounded-md border border-border p-3 text-sm">
+              <CalendarClock className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+              <span>
+                <strong>Tous les composants sont optionnels.</strong> Un DPC peut comporter ou non un
+                audit de pratiques avant / après, des tests de connaissances amont / aval et une
+                formation en présentiel, en visioconférence ou en e-formation. Le coordinateur
+                sélectionne les composants retenus, puis fixe le calendrier précis de chacun.
+              </span>
+            </p>
+
+            <div className="flex flex-wrap items-center gap-2 text-sm">
+              <Badge variant="outline">{planSummary.totalSlots} composant(s)</Badge>
+              <Badge variant="outline">{planSummary.scheduledSlots} programmé(s)</Badge>
+              <Badge variant="outline">
+                Audit avant / après : {planSummary.hasBeforeAfterAudit ? "oui" : "non"}
+              </Badge>
+              <Badge variant="outline">
+                Tests amont / aval : {planSummary.hasPrePostTests ? "oui" : "non"}
+              </Badge>
+              <Badge variant="outline">Fuseau {plan.timeZone}</Badge>
+            </div>
+
+            <fieldset className="space-y-2 rounded-md border border-border p-3">
+              <legend className="text-sm font-medium">Ajouter un composant</legend>
+              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                {COMPONENT_ORDER.map((kind) => (
+                  <Button
+                    key={kind}
+                    type="button"
+                    variant="outline"
+                    className={`${touch} w-full sm:w-auto`}
+                    onClick={() => addSlot(kind)}
+                  >
+                    {DPC_COMPONENT_KIND_LABELS_FR[kind]}
+                  </Button>
+                ))}
+              </div>
+            </fieldset>
+
+            {plan.slots.length === 0 ? (
+              <p className="text-sm">
+                Aucun composant programmé : ajoutez seulement ceux dont ce DPC a besoin.
+              </p>
+            ) : null}
+
+            <ul className="space-y-3">
+              {plan.slots.map((slot) => {
+                const timing = expectedTiming(slot.kind, slot.delivery);
+                const slotProblems = planIssues.filter((issue) => issue.slotId === slot.id);
+                return (
+                  <li key={slot.id} className="space-y-3 rounded-md border border-border p-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-medium">
+                        {DPC_COMPONENT_KIND_LABELS_FR[slot.kind]}
+                      </span>
+                      <Badge variant={isSlotScheduled(slot) ? "outline" : "secondary"}>
+                        {isSlotScheduled(slot) ? "Programmé" : "À programmer"}
+                      </Badge>
+                      <Badge variant="outline">{DPC_SLOT_TIMING_LABELS_FR[timing]}</Badge>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className={`${touch} ml-auto gap-2`}
+                        onClick={() => removeSlot(slot.id)}
+                      >
+                        <Trash2 className="size-4" aria-hidden="true" />
+                        Retirer ce composant
+                      </Button>
+                    </div>
+
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="space-y-1">
+                        <Label htmlFor={`${slot.id}-label`}>Libellé du composant</Label>
+                        <Input
+                          id={`${slot.id}-label`}
+                          className={touch}
+                          value={slot.label}
+                          onChange={(event) =>
+                            mapSlot(slot.id, (current) => ({
+                              ...current,
+                              label: event.target.value,
+                            }))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor={`${slot.id}-kind`}>Nature du composant</Label>
+                        <Select
+                          value={slot.kind}
+                          onValueChange={(value) =>
+                            changeSlotKind(slot.id, value as DpcComponentKind)
+                          }
+                        >
+                          <SelectTrigger id={`${slot.id}-kind`} className={touch}>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {COMPONENT_ORDER.map((kind) => (
+                              <SelectItem key={kind} value={kind}>
+                                {DPC_COMPONENT_KIND_LABELS_FR[kind]}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {slot.kind === "training_session" ? (
+                        <div className="space-y-1 sm:col-span-2">
+                          <Label htmlFor={`${slot.id}-delivery`}>Modalité de formation</Label>
+                          <Select
+                            value={slot.delivery ?? ""}
+                            onValueChange={(value) =>
+                              changeSlotDelivery(slot.id, value as DpcTrainingDelivery)
+                            }
+                          >
+                            <SelectTrigger id={`${slot.id}-delivery`} className={touch}>
+                              <SelectValue placeholder="Choisir une modalité" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {DELIVERY_ORDER.map((delivery) => (
+                                <SelectItem key={delivery} value={delivery}>
+                                  {DPC_TRAINING_DELIVERY_LABELS_FR[delivery]}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      ) : null}
+
+                      {timing === "fixed_datetime" ? (
+                        <>
+                          <div className="space-y-1">
+                            <Label htmlFor={`${slot.id}-starts`}>Début (date et heure)</Label>
+                            <Input
+                              id={`${slot.id}-starts`}
+                              type="datetime-local"
+                              className={touch}
+                              value={isoToDateTimeInput(slot.startsAt)}
+                              onChange={(event) =>
+                                updateSlotOptional(
+                                  slot.id,
+                                  "startsAt",
+                                  dateTimeInputToIso(event.target.value),
+                                )
+                              }
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label htmlFor={`${slot.id}-ends`}>Fin (date et heure)</Label>
+                            <Input
+                              id={`${slot.id}-ends`}
+                              type="datetime-local"
+                              className={touch}
+                              value={isoToDateTimeInput(slot.endsAt)}
+                              onChange={(event) =>
+                                updateSlotOptional(
+                                  slot.id,
+                                  "endsAt",
+                                  dateTimeInputToIso(event.target.value),
+                                )
+                              }
+                            />
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="space-y-1">
+                            <Label htmlFor={`${slot.id}-opens`}>Ouverture</Label>
+                            <Input
+                              id={`${slot.id}-opens`}
+                              type="date"
+                              className={touch}
+                              value={isoToDateInput(slot.opensOn)}
+                              onChange={(event) =>
+                                updateSlotOptional(
+                                  slot.id,
+                                  "opensOn",
+                                  dateInputToIso(event.target.value),
+                                )
+                              }
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label htmlFor={`${slot.id}-closes`}>Fermeture</Label>
+                            <Input
+                              id={`${slot.id}-closes`}
+                              type="date"
+                              className={touch}
+                              value={isoToDateInput(slot.closesOn)}
+                              onChange={(event) =>
+                                updateSlotOptional(
+                                  slot.id,
+                                  "closesOn",
+                                  dateInputToIso(event.target.value),
+                                )
+                              }
+                            />
+                          </div>
+                        </>
+                      )}
+
+                      {slot.delivery === "in_person" ? (
+                        <div className="space-y-1 sm:col-span-2">
+                          <Label htmlFor={`${slot.id}-location`}>Lieu de la séance</Label>
+                          <Input
+                            id={`${slot.id}-location`}
+                            className={touch}
+                            value={slot.location ?? ""}
+                            onChange={(event) =>
+                              updateSlotOptional(
+                                slot.id,
+                                "location",
+                                event.target.value || undefined,
+                              )
+                            }
+                          />
+                        </div>
+                      ) : null}
+
+                      {slot.delivery === "virtual_classroom" ? (
+                        <div className="space-y-1 sm:col-span-2">
+                          <Label htmlFor={`${slot.id}-join`}>
+                            Modalités de connexion (aucun lien réel dans la maquette)
+                          </Label>
+                          <Input
+                            id={`${slot.id}-join`}
+                            className={touch}
+                            value={slot.joinInstructions ?? ""}
+                            onChange={(event) =>
+                              updateSlotOptional(
+                                slot.id,
+                                "joinInstructions",
+                                event.target.value || undefined,
+                              )
+                            }
+                          />
+                        </div>
+                      ) : null}
+
+                      {slot.delivery === "e_learning" ? (
+                        <div className="space-y-1 sm:col-span-2">
+                          <Label htmlFor={`${slot.id}-resources`}>
+                            Documents à consulter en ligne (un identifiant par ligne)
+                          </Label>
+                          <Textarea
+                            id={`${slot.id}-resources`}
+                            value={(slot.resourceIds ?? []).join("\n")}
+                            onChange={(event) => {
+                              const ids = event.target.value
+                                .split("\n")
+                                .map((line) => line.trim())
+                                .filter((line) => line !== "");
+                              updateSlotOptional(
+                                slot.id,
+                                "resourceIds",
+                                ids.length > 0 ? ids : undefined,
+                              );
+                            }}
+                          />
+                        </div>
+                      ) : null}
+
+                      {slot.kind === "audit_round" ? (
+                        <>
+                          <div className="space-y-1">
+                            <Label htmlFor={`${slot.id}-order`}>Ordre du tour</Label>
+                            <Input
+                              id={`${slot.id}-order`}
+                              type="number"
+                              min={1}
+                              className={touch}
+                              value={slot.order ?? ""}
+                              onChange={(event) =>
+                                updateSlotOptional(
+                                  slot.id,
+                                  "order",
+                                  event.target.value ? Number(event.target.value) : undefined,
+                                )
+                              }
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label htmlFor={`${slot.id}-round`}>
+                              Tour d'audit rattaché (facultatif)
+                            </Label>
+                            <Select
+                              value={slot.roundId ?? "none"}
+                              onValueChange={(value) =>
+                                updateSlotOptional(
+                                  slot.id,
+                                  "roundId",
+                                  value === "none" ? undefined : value,
+                                )
+                              }
+                            >
+                              <SelectTrigger id={`${slot.id}-round`} className={touch}>
+                                <SelectValue placeholder="Aucun" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="none">Aucun rattachement</SelectItem>
+                                {orderedRounds(draft.audit).map((round) => (
+                                  <SelectItem key={round.roundId} value={round.roundId}>
+                                    {round.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </>
+                      ) : null}
+
+                      <div className={`${touch} flex items-center gap-3 sm:col-span-2`}>
+                        <Switch
+                          id={`${slot.id}-attendance`}
+                          checked={slot.attendanceRequired}
+                          onCheckedChange={(checked) =>
+                            mapSlot(slot.id, (current) => ({
+                              ...current,
+                              attendanceRequired: checked,
+                            }))
+                          }
+                        />
+                        <Label htmlFor={`${slot.id}-attendance`} className="font-normal">
+                          Preuve de participation attendue (émargement)
+                        </Label>
+                      </div>
+                    </div>
+
+                    {slotProblems.length > 0 ? (
+                      <ul role="alert" className="rounded-md border border-destructive p-3 text-sm">
+                        {slotProblems.map((issue) => (
+                          <li key={`${slot.id}-${issue.code}`}>À corriger : {issue.message}</li>
+                        ))}
+                      </ul>
+                    ) : null}
+
+                    {slot.note ? (
+                      <p className="text-muted-foreground text-xs">{slot.note}</p>
+                    ) : null}
+                  </li>
+                );
+              })}
+            </ul>
+
+            <section className="space-y-2 rounded-md border border-border p-3">
+              <h3 className="text-sm font-medium">Calendrier ordonné</h3>
+              <ol className="space-y-1">
+                {timeline.map((slot) => (
+                  <li key={`tl-${slot.id}`} className="text-muted-foreground text-sm">
+                    {DPC_COMPONENT_KIND_LABELS_FR[slot.kind]} — {slot.label} ·{" "}
+                    {isSlotScheduled(slot)
+                      ? `${isoToDateInput(slotStartOf(slot))} → ${isoToDateInput(slotEndOf(slot))}`
+                      : "non programmé"}
+                  </li>
+                ))}
+                {timeline.length === 0 ? (
+                  <li className="text-muted-foreground text-sm">Calendrier vide.</li>
+                ) : null}
+              </ol>
+            </section>
+
+            {planIssues.filter((issue) => issue.slotId === undefined).length > 0 ? (
+              <ul role="alert" className="rounded-md border border-border p-3 text-sm">
+                {planIssues
+                  .filter((issue) => issue.slotId === undefined)
+                  .map((issue) => (
+                    <li key={issue.code}>
+                      {issue.severity === "blocking" ? "Bloquant : " : "Avertissement : "}
+                      {issue.message}
+                    </li>
+                  ))}
+              </ul>
+            ) : null}
           </div>
         ) : null}
 

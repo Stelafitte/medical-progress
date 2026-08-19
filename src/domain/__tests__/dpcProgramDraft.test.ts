@@ -34,14 +34,15 @@ const doc = (kinds: DpcDraftDocument["kinds"]): DpcDraftDocument => ({
 });
 
 describe("étapes de l'assistant", () => {
-  it("expose cinq étapes ordonnées", () => {
-    expect(DPC_WIZARD_STEPS).toHaveLength(5);
-    expect(DPC_WIZARD_STEPS.map((s) => s.order)).toEqual([1, 2, 3, 4, 5]);
+  it("expose six étapes ordonnées, calendrier d'implémentation inclus", () => {
+    expect(DPC_WIZARD_STEPS).toHaveLength(6);
+    expect(DPC_WIZARD_STEPS.map((s) => s.order)).toEqual([1, 2, 3, 4, 5, 6]);
     expect(DPC_WIZARD_STEPS.map((s) => s.id)).toEqual([
       "source_documents",
       "proposed_extraction",
       "audit_configuration",
       "assessment_separation",
+      "implementation_schedule",
       "publication_check",
     ]);
   });
@@ -123,7 +124,7 @@ describe("absence de valeurs génériques codées en dur", () => {
 });
 
 describe("checklist de contrôle avant publication", () => {
-  it("couvre les dix points attendus", () => {
+  it("couvre les onze points attendus", () => {
     expect(publicationChecklist(dpcHvgDraft).map((i) => i.id)).toEqual([
       "program_complete",
       "documents_classified",
@@ -131,6 +132,7 @@ describe("checklist de contrôle avant publication", () => {
       "medical_parameters_validated",
       "completeness_rules_defined",
       "schedule_defined",
+      "implementation_planned",
       "no_patient_data",
       "quiz_separated_from_audits",
       "version_and_checksum",

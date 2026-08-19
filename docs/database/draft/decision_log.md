@@ -191,3 +191,31 @@ Transition : la couche annuaire cohabite avec les fixtures existantes
 n'est effectuée. Le filtrage de périmètre est fait côté client dans la maquette et
 DEVRA être imposé côté serveur (requêtes filtrées + RLS) dans le produit réel :
 `listPeople()` et `listAllRoleAssignments()` ne sont pas utilisés par le nouvel écran.
+
+## D82 — Un DPC est IMPLÉMENTÉ, pas simplement « créé »
+
+Le vocabulaire « création d'un programme DPC » est remplacé par
+« implémentation d'un DPC » : l'acte du coordinateur n'est pas de définir un
+concept abstrait, mais de retenir des composants et de les DATER précisément.
+
+Règles retenues (`src/domain/dpcImplementation.ts`, maquette) :
+- **aucun composant n'est obligatoire** : un DPC peut comporter, ou non, un
+  audit de pratiques avant et/ou après, un pré-test, un post-test, une ou
+  plusieurs séquences de formation, ou d'autres activités ;
+- la formation existe en trois modalités : **présentiel** (lieu, date et heure
+  précises), **visioconférence** (date et heure précises, modalités de
+  connexion) et **e-formation** (fenêtre d'ouverture / fermeture et documents à
+  consulter en ligne) ;
+- deux modes de datation : **séance synchrone** (début / fin horodatés) ou
+  **fenêtre asynchrone** (ouverture / fermeture) ; le mode attendu est déduit de
+  la nature du composant et de la modalité, pas choisi librement ;
+- la chronologie est validée de façon **déterministe** (pré-test avant la
+  formation, post-test après, tours d'audit ordonnés) : aucune IA, aucune
+  inférence ;
+- l'assistant compte désormais **six étapes** et la checklist de publication un
+  onzième point bloquant, « Calendrier d'implémentation exploitable » : au moins
+  un composant programmé et aucune erreur chronologique.
+
+Portée : maquette locale uniquement. Les créneaux ne déclenchent aucun envoi,
+aucune invitation, aucune visioconférence réelle ; leur persistance SQL
+(tables de composants et de créneaux, RLS par programme) reste à concevoir.

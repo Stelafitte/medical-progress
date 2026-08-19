@@ -1,6 +1,6 @@
 /**
- * Contrats UI de l'assistant de création d'un programme DPC, vérifiés au
- * niveau source : accès réservé, cinq étapes, marqueurs « simulé », séparation
+ * Contrats UI de l'assistant d'implémentation d'un DPC, vérifiés au
+ * niveau source : accès réservé, six étapes, marqueurs « simulé », séparation
  * audits / QCM, exigences mobiles et accessibilité de base.
  */
 import { readFileSync } from "node:fs";
@@ -123,5 +123,19 @@ describe("portabilité et accessibilité", () => {
   it("replie les listes longues de critères", () => {
     expect(wizard).toContain("Collapsible");
     expect(wizard).toContain("Voir les parties et critères");
+  });
+
+  it("programme un calendrier d'implémentation aux composants optionnels", () => {
+    expect(wizard).toContain("Tous les composants sont optionnels.");
+    expect(wizard).toContain("Ajouter un composant");
+    expect(wizard).toContain("Modalité de formation");
+    expect(wizard).toContain("Lieu de la séance");
+    expect(wizard).toContain("Documents à consulter en ligne");
+    expect(wizard).toContain('type="datetime-local"');
+    expect(wizard).toContain("Calendrier ordonné");
+  });
+
+  it("n'annonce jamais d'envoi réel pour la visioconférence", () => {
+    expect(wizard).toContain("aucun lien réel dans la maquette");
   });
 });
