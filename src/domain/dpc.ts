@@ -573,6 +573,115 @@ export function compareTests(
 }
 
 /* ------------------------------------------------------------------ */
+/* Logique pure — modèle de vue expurgé des tests                     */
+/*                                                                    */
+/* Avant validation d'une tentative, la vue transmise à l'interface ne */
+/* contient NI `correctKey` NI `explanation` : la correction n'est pas */
+/* seulement masquée en CSS, elle est absente de la donnée.           */
+/*                                                                    */
+/* Produit réel : cette expurgation devra être faite côté serveur     */
+/* (server function + RLS), la version React n'étant qu'un garde-fou  */
+/* d'affichage. Un client ne doit jamais recevoir la correction d'un  */
+/* test qu'il n'a pas encore validé, ni celle d'un autre participant. */
+/* ------------------------------------------------------------------ */
+
+export interface DpcQuizQuestionView {
+  readonly id: string;
+  readonly number: number;
+  readonly theme: string;
+  readonly prompt: string;
+  /** Toujours visibles : le participant doit pouvoir répondre. */
+  readonly options: readonly DpcQuizOption[];
+  /** Réponse du participant pour cette phase, si déjà saisie. */
+  readonly givenKey?: string;
+  /** `true` seulement si la tentative de CETTE phase est validée. */
+  readonly revealed: boolean;
+  /** Présent uniquement si `revealed`. */
+  readonly correctKey?: string;
+  /** Présent uniquement si `revealed`. */
+  readonly explanation?: string;
+  /** Présent uniquement si `revealed`. */
+  readonly isCorrect?: boolean;
+}
+
+export interface DpcQuizPhaseView {
+  readonly phase: DpcTestPhase;
+  /** Tentative validée (terminée) pour ce participant et cette phase. */
+  readonly submitted: boolean;
+  /** Une nouvelle validation est-elle encore possible dans la maquette ? */
+  readonly canSubmit: boolean;
+  readonly scorePercent: number | null;
+  readonly questions: readonly DpcQuizQuestionView[];
+}
+
+/** Tentative du participant pour une phase donnée, jamais celle d'un autre. */
+export function quizAttemptOf(
+  attempts: readonly DpcTestAttempt[],
+  enrollmentId: EnrollmentId,
+  phase: DpcTestPhase,
+): DpcTestAttempt | undefined {
+  return attempts.find((a) => a.enrollmentId === enrollmentId && a.phase === phase);
+}
+
+/**
+ * Une tentative est considérée comme terminée dans la maquette lorsqu'elle
+ * existe pour ce participant, cette phase, et que toutes les questions de la
+ * série ont reçu une réponse. Tant qu'elle ne l'est pas, aucune correction.
+ */
+export function isQuizAttemptFinalised(
+  questions: readonly DpcQuizQuestion[],
+  attempts: readonly DpcTestAttempt[],
+  enrollmentId: EnrollmentId,
+  phase: DpcTestPhase,
+): boolean {
+  const attempt = quizAttemptOf(attempts, enrollmentId, phase);
+  if (!attempt) return false;
+  return scoreQuiz(questions, attempt.answers).complete;
+}
+
+/**
+ * Construit la vue d'une phase de test. Le pré-test et le post-test sont
+ * traités séparément : valider le pré-test ne révèle jamais le post-test.
+ */
+export function quizPhaseView(
+  questions: readonly DpcQuizQuestion[],
+  attempts: readonly DpcTestAttempt[],
+  enrollmentId: EnrollmentId,
+  phase: DpcTestPhase,
+): DpcQuizPhaseView {
+  const attempt = quizAttemptOf(attempts, enrollmentId, phase);
+  const submitted = isQuizAttemptFinalised(questions, attempts, enrollmentId, phase);
+  const score = attempt ? scoreQuiz(questions, attempt.answers) : null;
+  const views = questions.map<DpcQuizQuestionView>((question) => {
+    const givenKey = attempt?.answers[question.id];
+    const base: DpcQuizQuestionView = {
+      id: question.id,
+      number: question.number,
+      theme: question.theme,
+      prompt: question.prompt,
+      options: question.options.map((option) => ({ key: option.key, label: option.label })),
+      revealed: submitted,
+      ...(givenKey !== undefined ? { givenKey } : {}),
+    };
+    if (!submitted) return base;
+    return {
+      ...base,
+      correctKey: question.correctKey,
+      explanation: question.explanation,
+      isCorrect: givenKey === question.correctKey,
+    };
+  });
+  return {
+    phase,
+    submitted,
+    canSubmit: !submitted,
+    scorePercent: submitted && score ? score.scorePercent : null,
+    questions: views,
+  };
+}
+
+/* ------------------------------------------------------------------ */
+
 /* Logique pure — parcours et attestation                             */
 /* ------------------------------------------------------------------ */
 
