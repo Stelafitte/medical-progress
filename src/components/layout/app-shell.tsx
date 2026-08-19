@@ -144,12 +144,12 @@ export function AppShell() {
             </SheetContent>
           </Sheet>
 
-          <Link to="/" className="flex min-w-0 items-center gap-2 text-foreground">
+          <Link to="/" className="flex min-w-0 flex-1 items-center gap-2 text-foreground">
             <span className="grid size-9 shrink-0 place-items-center rounded-lg hero-gradient text-primary-foreground">
               <HeartPulse className="size-5" aria-hidden />
             </span>
-            <span className="min-w-0">
-              <span className="block truncate text-sm font-semibold leading-tight sm:text-base">
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-[0.9rem] font-semibold leading-tight sm:text-base">
                 Campus Santé Augmenté
               </span>
               <span className="hidden truncate text-xs text-muted-foreground sm:block">
@@ -159,7 +159,10 @@ export function AppShell() {
           </Link>
 
           <div className="ms-auto flex min-w-0 shrink-0 items-center gap-2 sm:gap-3">
-            <ProgramSwitcher />
+            {/* Sur smartphone, le programme actif se choisit dans le menu latéral. */}
+            <div className="hidden sm:block">
+              <ProgramSwitcher />
+            </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
