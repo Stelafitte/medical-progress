@@ -41,6 +41,8 @@ import {
   StatCard,
 } from "@/features/professional/mock-ui";
 import { AddMediaDialog } from "@/features/administration/AddMediaDialog";
+import { PptxConverterDialog } from "@/features/administration/PptxConverterDialog";
+
 import { MediaDetailDialog } from "@/features/administration/MediaDetailDialog";
 import {
   CONVERSION_STATUS_LABELS_FR,
