@@ -160,3 +160,11 @@ pour cette itération.
 Le score de conformité (avant / après) est une preuve de pratique. La validation
 humaine par un tiers reste obligatoire pour toute compétence en situation réelle,
 y compris en DPC (`auditRequiresHumanValidation()`).
+
+## D80 (2026-08-19) — Nom global et sous-titre officiels de la plateforme
+Le **nom global** de la plateforme devient exactement **« Campus Santé Augmenté »**
+avec le **sous-titre** **« Formation, compétences et développement professionnel »**.
+La fonctionnalité longitudinale conserve son nom **« Mon passeport de compétences »**.
+Les anciens noms (« Mon Passeport Éducatif », « Passeport Éducatif Médical »,
+« EduPassport Core ») deviennent historiques. Aucun identifiant technique
+(table, type, colonne, fonction, policy, route, slug) n'est renommé.

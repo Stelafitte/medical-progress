@@ -10,6 +10,7 @@ const read = (path: string) => readFileSync(new URL(`../../../${path}`, import.m
 
 const passportView = read("src/features/passport/PassportView.tsx");
 const passportRoute = read("src/routes/espace.passeport.tsx");
+const resourcesRoute = read("src/routes/espace.ressources.tsx");
 const profileView = read("src/features/profile/ProfileView.tsx");
 const security = read("src/features/profile/AccountSecuritySection.tsx");
 const visibility = read("src/features/profile/PassportVisibilitySection.tsx");

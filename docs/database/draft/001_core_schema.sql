@@ -1,6 +1,6 @@
 -- =====================================================================
 -- DRAFT — DO NOT EXECUTE
--- Mon Passeport Éducatif — Lot 1 — schéma cœur (conception)
+-- Campus Santé Augmenté — Lot 1 — schéma cœur (conception)
 -- Aucune base n'est activée, ce fichier n'est PAS une migration.
 -- Il ne doit jamais être copié tel quel dans supabase/migrations/.
 -- Cible : PostgreSQL 15+ / Supabase (schéma public, auth.users existant).
