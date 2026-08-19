@@ -4,6 +4,7 @@
  */
 import type { PlanScheduleEntry } from "@/domain/acquisitionPlan";
 import * as dpc from "./dpcFixtures";
+import * as hvg from "./dpcHvgFixtures";
 import type {
   AuditEvent,
   Cohort,
@@ -60,6 +61,7 @@ export const programs: readonly Program[] = [
     },
   },
   dpc.dpcProgram,
+  hvg.dpcHvgProgram,
 ];
 
 export const curriculumVersions: readonly CurriculumVersion[] = [
@@ -80,6 +82,7 @@ export const curriculumVersions: readonly CurriculumVersion[] = [
     status: "active",
   },
   dpc.dpcCurriculumVersion,
+  hvg.dpcHvgCurriculumVersion,
 ];
 
 export const cohorts: readonly Cohort[] = [
@@ -106,6 +109,7 @@ export const cohorts: readonly Cohort[] = [
     learnerCount: 98,
   },
   dpc.dpcCohort,
+  hvg.dpcHvgCohort,
 ];
 
 export const people: readonly Person[] = [
@@ -132,6 +136,7 @@ export const people: readonly Person[] = [
     email: "plateforme.demo@example.org",
   },
   ...dpc.dpcPeople,
+  ...hvg.dpcHvgPeople,
 ];
 
 export const enrollments: readonly Enrollment[] = [
@@ -160,6 +165,7 @@ export const enrollments: readonly Enrollment[] = [
     status: "active",
   },
   ...dpc.dpcEnrollments,
+  ...hvg.dpcHvgEnrollments,
 ];
 
 export const roleAssignments: readonly RoleAssignment[] = [
@@ -220,6 +226,7 @@ export const roleAssignments: readonly RoleAssignment[] = [
     provenance: native,
   },
   ...dpc.dpcRoleAssignments,
+  ...hvg.dpcHvgRoleAssignments,
 ];
 
 export const outcomes: readonly Outcome[] = [
@@ -309,6 +316,7 @@ export const outcomes: readonly Outcome[] = [
     targetMastery: "intermediate",
   },
   ...dpc.dpcOutcomes,
+  ...hvg.dpcHvgOutcomes,
 ];
 
 export const outcomeRelations: readonly OutcomeRelation[] = [

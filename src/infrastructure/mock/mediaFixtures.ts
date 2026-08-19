@@ -5,6 +5,7 @@
  */
 import type { MediaResource, NarratedSlide } from "@/domain/mediaLibrary";
 import { checkWebPageUrl } from "@/domain/webPage";
+import { dpcHvgMediaResources } from "./dpcHvgMedia";
 
 const native = { sourceSystem: "native" } as const;
 const legacy = (sourceId: string) =>
@@ -801,4 +802,5 @@ export const mediaResources: readonly MediaResource[] = [
     ],
     provenance: native,
   },
+  ...dpcHvgMediaResources,
 ];
