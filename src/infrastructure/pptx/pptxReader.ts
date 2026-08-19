@@ -247,6 +247,6 @@ export function readPptxPackage(fileName: string, data: Uint8Array): PptxInvento
     slides,
     fontsEmbedded,
     audioFiles,
-    title: title ? unescapeXml(title) : undefined,
+    ...(title ? { title: unescapeXml(title) } : {}),
   };
 }
