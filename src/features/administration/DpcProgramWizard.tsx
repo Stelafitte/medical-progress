@@ -1,5 +1,10 @@
 /**
- * Assistant de création et de configuration d'un programme DPC générique.
+ * Assistant d'IMPLÉMENTATION d'un DPC générique.
+ *
+ * On n'y « crée » pas un programme abstrait : on implémente un DPC en
+ * choisissant les composants réellement retenus (audit avant / après, tests
+ * amont / aval, formation en présentiel, en visioconférence ou en e-formation),
+ * puis en les datant précisément. Tous ces composants sont OPTIONNELS.
  *
  * MAQUETTE FONCTIONNELLE LOCALE :
  *  - aucun fichier n'est envoyé à un serveur (les fichiers sélectionnés ne sont
@@ -14,6 +19,7 @@
  */
 import { useMemo, useState } from "react";
 import {
+  CalendarClock,
   ClipboardList,
   FileCheck2,
   FileText,
@@ -34,6 +40,13 @@ import {
 } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
@@ -62,6 +75,19 @@ import {
   publicationReadiness,
   toggleDocumentKind,
 } from "@/domain/dpcProgramDraft";
+import {
+  DPC_COMPONENT_KIND_LABELS_FR,
+  DPC_SLOT_TIMING_LABELS_FR,
+  DPC_TRAINING_DELIVERY_LABELS_FR,
+  type DpcComponentKind,
+  type DpcScheduledSlot,
+  type DpcTrainingDelivery,
+  expectedTiming,
+  implementationSummary,
+  implementationTimeline,
+  isSlotScheduled,
+  validateImplementationPlan,
+} from "@/domain/dpcImplementation";
 import { dpcDraftDemoStates } from "@/infrastructure/mock/dpcDraftFixtures";
 import { dpcHvgGrid } from "@/infrastructure/mock/dpcHvgFixtures";
 
@@ -84,6 +110,29 @@ function isoToDateInput(value?: string): string {
 function dateInputToIso(value: string): string | undefined {
   return value ? `${value}T08:00:00.000Z` : undefined;
 }
+
+/** Champ « datetime-local » ↔ ISO, sans réécriture de fuseau (maquette). */
+function isoToDateTimeInput(value?: string): string {
+  return value ? value.slice(0, 16) : "";
+}
+
+function dateTimeInputToIso(value: string): string | undefined {
+  return value ? `${value}:00.000Z` : undefined;
+}
+
+const COMPONENT_ORDER: readonly DpcComponentKind[] = [
+  "audit_round",
+  "pre_test",
+  "training_session",
+  "post_test",
+  "other_activity",
+];
+
+const DELIVERY_ORDER: readonly DpcTrainingDelivery[] = [
+  "in_person",
+  "virtual_classroom",
+  "e_learning",
+];
 
 /** Affecte un champ optionnel, ou le retire réellement quand la valeur est vide. */
 function setOptional<T extends object, K extends keyof T>(
@@ -249,6 +298,75 @@ export function DpcProgramWizard() {
       audit: { ...draft.audit, rounds: draft.audit.rounds.filter((r) => r.roundId !== roundId) },
     });
 
+  /* ---------------- étape 5 : calendrier d'implémentation ---------------- */
+
+  const plan = draft.implementation;
+  const planIssues = useMemo(() => validateImplementationPlan(plan), [plan]);
+  const planSummary = useMemo(() => implementationSummary(plan), [plan]);
+  const timeline = useMemo(() => implementationTimeline(plan), [plan]);
+
+  const setPlanSlots = (slots: readonly DpcScheduledSlot[]) =>
+    setDraft({ ...draft, implementation: { ...plan, slots } });
+
+  const mapSlot = (slotId: string, fn: (slot: DpcScheduledSlot) => DpcScheduledSlot) =>
+    setPlanSlots(plan.slots.map((slot) => (slot.id === slotId ? fn(slot) : slot)));
+
+  const updateSlotOptional = <K extends keyof DpcScheduledSlot>(
+    slotId: string,
+    key: K,
+    value: DpcScheduledSlot[K] | undefined,
+  ) => mapSlot(slotId, (slot) => setOptional(slot, key, value));
+
+  /** Changer la nature d'un composant retire les champs devenus hors sujet. */
+  const changeSlotKind = (slotId: string, kind: DpcComponentKind) =>
+    mapSlot(slotId, (slot) => {
+      const next: DpcScheduledSlot = { ...slot, kind };
+      if (kind !== "training_session") {
+        const cleaned = { ...next };
+        delete (cleaned as { delivery?: DpcTrainingDelivery }).delivery;
+        delete (cleaned as { location?: string }).location;
+        delete (cleaned as { joinInstructions?: string }).joinInstructions;
+        delete (cleaned as { resourceIds?: readonly string[] }).resourceIds;
+        return cleaned;
+      }
+      return next;
+    });
+
+  /** Changer la modalité change le mode de datation : les dates inadaptées sont retirées. */
+  const changeSlotDelivery = (slotId: string, delivery: DpcTrainingDelivery) =>
+    mapSlot(slotId, (slot) => {
+      const next = { ...slot, delivery } as DpcScheduledSlot;
+      const cleaned = { ...next };
+      if (expectedTiming("training_session", delivery) === "fixed_datetime") {
+        delete (cleaned as { opensOn?: string }).opensOn;
+        delete (cleaned as { closesOn?: string }).closesOn;
+        delete (cleaned as { resourceIds?: readonly string[] }).resourceIds;
+      } else {
+        delete (cleaned as { startsAt?: string }).startsAt;
+        delete (cleaned as { endsAt?: string }).endsAt;
+        delete (cleaned as { location?: string }).location;
+        delete (cleaned as { joinInstructions?: string }).joinInstructions;
+      }
+      return cleaned;
+    });
+
+  const addSlot = (kind: DpcComponentKind) => {
+    const sameKind = plan.slots.filter((slot) => slot.kind === kind).length;
+    const slot: DpcScheduledSlot = {
+      id: `slot-${Date.now()}`,
+      label: `${DPC_COMPONENT_KIND_LABELS_FR[kind]} ${sameKind + 1}`,
+      kind,
+      attendanceRequired: false,
+      ...(kind === "audit_round"
+        ? { order: plan.slots.reduce((max, s) => Math.max(max, s.order ?? 0), 0) + 1 }
+        : {}),
+    };
+    setPlanSlots([...plan.slots, slot]);
+  };
+
+  const removeSlot = (slotId: string) =>
+    setPlanSlots(plan.slots.filter((slot) => slot.id !== slotId));
+
   return (
     <div className="space-y-6">
       <ScopeNotice>
@@ -289,7 +407,7 @@ export function DpcProgramWizard() {
 
       {/* Navigation des étapes : liste ordonnée, utilisable au clavier */}
       <nav aria-label="Étapes de l'assistant">
-        <ol className="grid gap-2 sm:grid-cols-5">
+        <ol className="grid gap-2 sm:grid-cols-3 lg:grid-cols-6">
           {DPC_WIZARD_STEPS.map((item) => {
             const current = item.id === stepId;
             return (
