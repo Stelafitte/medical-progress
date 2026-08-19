@@ -21,6 +21,7 @@ import {
   MessagesSquare,
   Notebook,
   BarChart3,
+  Route,
   ScrollText,
   ShieldCheck,
   Stethoscope,
