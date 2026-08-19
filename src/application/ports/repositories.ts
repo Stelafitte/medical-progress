@@ -35,6 +35,17 @@ import type {
   PrePostTestResult,
   TeachingSession,
 } from "@/domain/clinicalAudit";
+import type {
+  DpcAttendance,
+  DpcAuditEntry,
+  DpcAuditGrid,
+  DpcProgrammeSetup,
+  DpcQuizQuestion,
+  DpcRound,
+  DpcSequence,
+  DpcTest,
+  DpcTestAttempt,
+} from "@/domain/dpc";
 
 import type {
   AuditEvent,
@@ -204,6 +215,26 @@ export interface ClinicalAuditRepository {
   listSessions(programId: ProgramId): Promise<readonly TeachingSession[]>;
 }
 
+/**
+ * Module DPC générique (programme intégré : audit 1 → formation → audit 2).
+ * Un programme sans `config.dpcEnabled` ne consomme jamais ce dépôt.
+ */
+export interface DpcRepository {
+  listGrids(programId: ProgramId): Promise<readonly DpcAuditGrid[]>;
+  getSetup(programId: ProgramId): Promise<DpcProgrammeSetup | undefined>;
+  listRounds(programId: ProgramId): Promise<readonly DpcRound[]>;
+  /** Toutes les saisies du programme (administration / enseignant). */
+  listEntries(programId: ProgramId): Promise<readonly DpcAuditEntry[]>;
+  /** Saisies d'une inscription : périmètre strict du participant. */
+  listEntriesForEnrollment(enrollmentId: EnrollmentId): Promise<readonly DpcAuditEntry[]>;
+  listSequences(programId: ProgramId): Promise<readonly DpcSequence[]>;
+  listQuestions(programId: ProgramId): Promise<readonly DpcQuizQuestion[]>;
+  listTests(programId: ProgramId): Promise<readonly DpcTest[]>;
+  listTestAttempts(programId: ProgramId): Promise<readonly DpcTestAttempt[]>;
+  listAttendance(programId: ProgramId): Promise<readonly DpcAttendance[]>;
+  listSessions(programId: ProgramId): Promise<readonly TeachingSession[]>;
+}
+
 export interface AuditRepository {
   listRecentEvents(limit?: number): Promise<readonly AuditEvent[]>;
 }
@@ -226,6 +257,7 @@ export interface DataAccess {
   readonly administration: AdministrationRepository;
   readonly statistics: StatisticsRepository;
   readonly clinicalAudits: ClinicalAuditRepository;
+  readonly dpc: DpcRepository;
   readonly audit: AuditRepository;
   /** Marque explicitement une implémentation non persistante. */
   readonly isMock: boolean;
