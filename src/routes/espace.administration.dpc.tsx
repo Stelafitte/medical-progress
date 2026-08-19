@@ -33,12 +33,26 @@ function Guarded() {
   return (
     <div className="space-y-6">
       <SectionHeading
-        title="Programme DPC de référence et implémentations"
+        title="Programmes DPC importés et implémentations"
         description="Module optionnel activable par programme : audits avant/après, formation, tests et attestation."
       />
-      <Button asChild className="min-h-11 w-full sm:w-auto">
-        <Link to="/espace/administration/assistant-dpc">Implémenter un programme DPC</Link>
-      </Button>
+      <div className="space-y-2">
+        <Button asChild className="min-h-11 w-full sm:w-auto">
+          <Link to="/espace/administration/assistant-dpc">
+            Importer et implémenter un programme DPC
+          </Link>
+        </Button>
+        <p className="text-muted-foreground max-w-2xl text-sm">
+          Importez le programme DPC et ses documents associés. Campus Santé Augmenté prépare une
+          implémentation structurée que vous pourrez vérifier, planifier et ouvrir pour une
+          cohorte.
+        </p>
+        <Button asChild variant="ghost" className="min-h-11 w-full sm:w-auto">
+          <Link to="/espace/administration/assistant-dpc">
+            Réutiliser un programme déjà importé (option secondaire)
+          </Link>
+        </Button>
+      </div>
       <DpcImplementationsSection />
       <DpcProgrammeSection />
     </div>

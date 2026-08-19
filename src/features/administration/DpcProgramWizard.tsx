@@ -381,14 +381,15 @@ export function DpcProgramWizard() {
   return (
     <div className="space-y-6">
       <ScopeNotice>
-        <strong>Assistant simulé</strong> : {DPC_SIMULATED_UPLOAD_NOTICE_FR} Aucune extraction
-        documentaire réelle, aucune IA, aucune publication réelle. Le modèle utilisé est le modèle
-        générique de programme DPC ; « DPC HVG–Amylose » n'est qu'un démonstrateur prérempli.
+        <strong>Assistant simulé</strong> : vous importez le programme DPC et ses documents
+        associés, puis vous vérifiez l'implémentation structurée proposée avant de l'ouvrir pour une
+        cohorte. {DPC_SIMULATED_UPLOAD_NOTICE_FR} Aucune analyse documentaire réelle, aucune IA,
+        aucune ouverture réelle. « DPC HVG–Amylose » n'est qu'un démonstrateur prérempli.
       </ScopeNotice>
 
       <PanelCard
-        title="État de démonstration"
-        description="Trois configurations pour éprouver l'assistant."
+        title="Programme importé (démonstration)"
+        description="Réutiliser un programme déjà importé : trois jeux de données structurées pour éprouver l'assistant."
         action={<MockBadge label="Simulé" />}
       >
         <div className="grid gap-3 sm:grid-cols-3">
@@ -559,6 +560,15 @@ export function DpcProgramWizard() {
                 les valeurs proposées proviennent du modèle générique du démonstrateur.
               </span>
             </p>
+
+            <section className="space-y-1 rounded-md border border-border p-3">
+              <h3 className="text-sm font-medium">Traçabilité de la version</h3>
+              <p className="text-muted-foreground text-xs">
+                Données structurées issues du programme importé : version {draft.version} · empreinte{" "}
+                {draft.checksum ?? "non calculée"}. Section technique secondaire : aucune action de
+                publication n'est demandée au coordinateur.
+              </p>
+            </section>
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1">
                 <Label htmlFor="dpc-title">Titre du programme</Label>
@@ -1460,13 +1470,13 @@ export function DpcProgramWizard() {
                 disabled={!readiness.canPublish}
                 onClick={() =>
                   setPublishNotice(
-                    "Publication simulée : aucune écriture, aucun envoi, aucun programme réellement publié.",
+                    "Ouverture simulée : aucune écriture, aucun envoi, aucune implémentation réellement ouverte.",
                   )
                 }
               >
-                Publier (simulé)
+                Ouvrir cette implémentation (simulé)
               </Button>
-              <MockBadge label="Publication simulée" />
+              <MockBadge label="Ouverture simulée" />
             </div>
             {publishNotice ? (
               <p role="status" className="rounded-md border border-border p-3 text-sm">

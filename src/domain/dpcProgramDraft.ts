@@ -68,48 +68,49 @@ export const DPC_WIZARD_STEPS: readonly DpcWizardStep[] = [
   {
     id: "source_documents",
     order: 1,
-    title: "Programme de référence",
+    title: "Importer les documents",
     description:
-      "Sélection ou import simulé du programme de référence : documents sources classés explicitement.",
+      "Programme principal Word ou PDF, grille(s) d'audit éventuelle(s), QCM éventuels, supports, bibliographie et autres documents associés. Dépôt simulé, classement explicite.",
   },
   {
     id: "proposed_extraction",
     order: 2,
-    title: "Vérification des éléments pédagogiques",
+    title: "Vérifier l'analyse proposée",
     description:
-      "Brouillon structuré proposé pour relecture : extraction simulée, validation du coordinateur requise.",
+      "Analyse documentaire simulée : identité du programme, objectifs, public, intervenants, modules détectés, audits, QCM, modalités, ressources et bibliographie à contrôler.",
   },
   {
     id: "audit_configuration",
     order: 3,
-    title: "Modules activés et audits",
+    title: "Vérifier les modules et les règles",
     description:
-      "Grilles, parties, critères, critères d'inclusion, nombre de dossiers, tours, dates et règle de complétude.",
+      "Audit présent ou absent, nombre de grilles, nombre de dossiers, nombre et ordre des tours, règles d'achèvement et attestation.",
   },
   {
     id: "assessment_separation",
     order: 4,
-    title: "Évaluations activées",
+    title: "Audits et QCM détectés",
     description:
-      "Audits de pratiques sur dossiers et tests de connaissances par QCM présentés séparément.",
+      "Audits de pratiques sur dossiers et tests de connaissances par QCM présentés séparément, avec analyse personnalisée.",
   },
   {
     id: "implementation_schedule",
     order: 5,
-    title: "Cohorte, modalités et calendrier",
+    title: "Programmer l'implémentation",
     description:
-      "Composants réellement retenus (audit avant / après, tests amont / aval, formation en présentiel, en visioconférence ou en e-formation) et dates précises de chacun.",
+      "Nom ou édition, cohorte, participants, coordinateur, intervenants, présentiel, visioconférence, e-formation ou hybride, calendrier précis et dates d'ouverture, de fermeture et de relance.",
   },
   {
     id: "publication_check",
     order: 6,
-    title: "Contrôle avant ouverture",
-    description: "Checklist de contrôle ; la publication reste simulée et désactivée si incomplète.",
+    title: "Contrôle final",
+    description:
+      "Documents classés, données extraites vérifiées, grille médicalement validée, calendrier cohérent, cohorte sélectionnée, absence de données patients et règles d'achèvement définies.",
   },
 ];
 
 export const DPC_SIMULATED_EXTRACTION_NOTICE_FR =
-  "Extraction simulée — validation du coordinateur requise";
+  "Analyse documentaire simulée — validation du coordinateur requise";
 
 export const DPC_SIMULATED_UPLOAD_NOTICE_FR =
   "Dépôt simulé : aucun fichier n'est transmis à un serveur, aucune lecture réelle du contenu.";
