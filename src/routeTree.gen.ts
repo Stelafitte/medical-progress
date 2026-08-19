@@ -15,6 +15,7 @@ import { Route as EspaceIndexRouteImport } from './routes/espace.index'
 import { Route as EspaceAdministrationRouteImport } from './routes/espace.administration'
 import { Route as EspaceArchitectureRouteImport } from './routes/espace.architecture'
 import { Route as EspaceAuditsRouteImport } from './routes/espace.audits'
+import { Route as EspaceDpcRouteImport } from './routes/espace.dpc'
 import { Route as EspaceEncadrementRouteImport } from './routes/espace.encadrement'
 import { Route as EspacePasseportRouteImport } from './routes/espace.passeport'
 import { Route as EspacePlateformeRouteImport } from './routes/espace.plateforme'
@@ -69,6 +70,11 @@ const EspaceArchitectureRoute = EspaceArchitectureRouteImport.update({
 const EspaceAuditsRoute = EspaceAuditsRouteImport.update({
   id: '/audits',
   path: '/audits',
+  getParentRoute: () => EspaceRoute,
+} as any)
+const EspaceDpcRoute = EspaceDpcRouteImport.update({
+  id: '/dpc',
+  path: '/dpc',
   getParentRoute: () => EspaceRoute,
 } as any)
 const EspaceEncadrementRoute = EspaceEncadrementRouteImport.update({
@@ -216,6 +222,7 @@ export interface FileRoutesByFullPath {
   '/espace/administration': typeof EspaceAdministrationRouteWithChildren
   '/espace/architecture': typeof EspaceArchitectureRoute
   '/espace/audits': typeof EspaceAuditsRoute
+  '/espace/dpc': typeof EspaceDpcRoute
   '/espace/encadrement': typeof EspaceEncadrementRouteWithChildren
   '/espace/passeport': typeof EspacePasseportRoute
   '/espace/plateforme': typeof EspacePlateformeRoute
@@ -247,6 +254,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/espace/architecture': typeof EspaceArchitectureRoute
   '/espace/audits': typeof EspaceAuditsRoute
+  '/espace/dpc': typeof EspaceDpcRoute
   '/espace/passeport': typeof EspacePasseportRoute
   '/espace/plateforme': typeof EspacePlateformeRoute
   '/espace/profil': typeof EspaceProfilRoute
@@ -279,6 +287,7 @@ export interface FileRoutesById {
   '/espace/administration': typeof EspaceAdministrationRouteWithChildren
   '/espace/architecture': typeof EspaceArchitectureRoute
   '/espace/audits': typeof EspaceAuditsRoute
+  '/espace/dpc': typeof EspaceDpcRoute
   '/espace/encadrement': typeof EspaceEncadrementRouteWithChildren
   '/espace/passeport': typeof EspacePasseportRoute
   '/espace/plateforme': typeof EspacePlateformeRoute
@@ -314,6 +323,7 @@ export interface FileRouteTypes {
     | '/espace/administration'
     | '/espace/architecture'
     | '/espace/audits'
+    | '/espace/dpc'
     | '/espace/encadrement'
     | '/espace/passeport'
     | '/espace/plateforme'
@@ -345,6 +355,7 @@ export interface FileRouteTypes {
     | '/'
     | '/espace/architecture'
     | '/espace/audits'
+    | '/espace/dpc'
     | '/espace/passeport'
     | '/espace/plateforme'
     | '/espace/profil'
@@ -376,6 +387,7 @@ export interface FileRouteTypes {
     | '/espace/administration'
     | '/espace/architecture'
     | '/espace/audits'
+    | '/espace/dpc'
     | '/espace/encadrement'
     | '/espace/passeport'
     | '/espace/plateforme'
@@ -451,6 +463,13 @@ declare module '@tanstack/react-router' {
       path: '/audits'
       fullPath: '/espace/audits'
       preLoaderRoute: typeof EspaceAuditsRouteImport
+      parentRoute: typeof EspaceRoute
+    }
+    '/espace/dpc': {
+      id: '/espace/dpc'
+      path: '/dpc'
+      fullPath: '/espace/dpc'
+      preLoaderRoute: typeof EspaceDpcRouteImport
       parentRoute: typeof EspaceRoute
     }
     '/espace/encadrement': {
@@ -700,6 +719,7 @@ interface EspaceRouteChildren {
   EspaceAdministrationRoute: typeof EspaceAdministrationRouteWithChildren
   EspaceArchitectureRoute: typeof EspaceArchitectureRoute
   EspaceAuditsRoute: typeof EspaceAuditsRoute
+  EspaceDpcRoute: typeof EspaceDpcRoute
   EspaceEncadrementRoute: typeof EspaceEncadrementRouteWithChildren
   EspacePasseportRoute: typeof EspacePasseportRoute
   EspacePlateformeRoute: typeof EspacePlateformeRoute
@@ -714,6 +734,7 @@ const EspaceRouteChildren: EspaceRouteChildren = {
   EspaceAdministrationRoute: EspaceAdministrationRouteWithChildren,
   EspaceArchitectureRoute: EspaceArchitectureRoute,
   EspaceAuditsRoute: EspaceAuditsRoute,
+  EspaceDpcRoute: EspaceDpcRoute,
   EspaceEncadrementRoute: EspaceEncadrementRouteWithChildren,
   EspacePasseportRoute: EspacePasseportRoute,
   EspacePlateformeRoute: EspacePlateformeRoute,
