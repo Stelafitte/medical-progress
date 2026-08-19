@@ -124,4 +124,18 @@ describe("portabilité et accessibilité", () => {
     expect(wizard).toContain("Collapsible");
     expect(wizard).toContain("Voir les parties et critères");
   });
+
+  it("programme un calendrier d'implémentation aux composants optionnels", () => {
+    expect(wizard).toContain("Tous les composants sont optionnels.");
+    expect(wizard).toContain("Ajouter un composant");
+    expect(wizard).toContain("Modalité de formation");
+    expect(wizard).toContain("Lieu de la séance");
+    expect(wizard).toContain("Documents à consulter en ligne");
+    expect(wizard).toContain('type="datetime-local"');
+    expect(wizard).toContain("Calendrier ordonné");
+  });
+
+  it("n'annonce jamais d'envoi réel pour la visioconférence", () => {
+    expect(wizard).toContain("aucun lien réel dans la maquette");
+  });
 });
