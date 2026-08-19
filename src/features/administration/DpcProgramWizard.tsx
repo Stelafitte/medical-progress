@@ -85,6 +85,18 @@ function dateInputToIso(value: string): string | undefined {
   return value ? `${value}T08:00:00.000Z` : undefined;
 }
 
+/** Affecte un champ optionnel, ou le retire réellement quand la valeur est vide. */
+function setOptional<T extends object, K extends keyof T>(
+  source: T,
+  key: K,
+  value: T[K] | undefined,
+): T {
+  const next = { ...source };
+  if (value === undefined) delete next[key];
+  else next[key] = value;
+  return next;
+}
+
 export function DpcProgramWizard() {
   const [demoKey, setDemoKey] = useState(dpcDraftDemoStates[0]!.key);
   const [drafts, setDrafts] = useState<Record<string, DpcProgramDraft>>(() =>
@@ -630,11 +642,11 @@ export function DpcProgramWizard() {
                           className={touch}
                           value={grid.completenessRule.minimumCompleteRecords ?? ""}
                           onChange={(event) =>
-                            updateCompleteness(grid.gridId, {
-                              minimumCompleteRecords: event.target.value
-                                ? Number(event.target.value)
-                                : undefined,
-                            })
+                            updateCompletenessOptional(
+                              grid.gridId,
+                              "minimumCompleteRecords",
+                              event.target.value ? Number(event.target.value) : undefined,
+                            )
                           }
                         />
                       </div>
@@ -650,11 +662,11 @@ export function DpcProgramWizard() {
                           className={touch}
                           value={grid.completenessRule.minimumAnsweredPercentPerRecord ?? ""}
                           onChange={(event) =>
-                            updateCompleteness(grid.gridId, {
-                              minimumAnsweredPercentPerRecord: event.target.value
-                                ? Number(event.target.value)
-                                : undefined,
-                            })
+                            updateCompletenessOptional(
+                              grid.gridId,
+                              "minimumAnsweredPercentPerRecord",
+                              event.target.value ? Number(event.target.value) : undefined,
+                            )
                           }
                         />
                       </div>
@@ -756,11 +768,11 @@ export function DpcProgramWizard() {
                             value={round.recordsPerRound ?? ""}
                             placeholder={String(grid.defaultRecordsPerRound)}
                             onChange={(event) =>
-                              updateRound(round.roundId, {
-                                recordsPerRound: event.target.value
-                                  ? Number(event.target.value)
-                                  : undefined,
-                              })
+                              updateRoundOptional(
+                                round.roundId,
+                                "recordsPerRound",
+                                event.target.value ? Number(event.target.value) : undefined,
+                              )
                             }
                           />
                         </div>
@@ -772,9 +784,11 @@ export function DpcProgramWizard() {
                             className={touch}
                             value={isoToDateInput(round.opensOn)}
                             onChange={(event) =>
-                              updateRound(round.roundId, {
-                                opensOn: dateInputToIso(event.target.value),
-                              })
+                              updateRoundOptional(
+                                round.roundId,
+                                "opensOn",
+                                dateInputToIso(event.target.value),
+                              )
                             }
                           />
                         </div>
@@ -786,9 +800,11 @@ export function DpcProgramWizard() {
                             className={touch}
                             value={isoToDateInput(round.closesOn)}
                             onChange={(event) =>
-                              updateRound(round.roundId, {
-                                closesOn: dateInputToIso(event.target.value),
-                              })
+                              updateRoundOptional(
+                                round.roundId,
+                                "closesOn",
+                                dateInputToIso(event.target.value),
+                              )
                             }
                           />
                         </div>
