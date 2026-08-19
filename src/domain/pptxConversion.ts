@@ -238,7 +238,7 @@ export function convertPptx(
     precheck,
     alerts,
     steps: buildStepLog(input, artifact, at),
-  } satisfies NarratedDeck as NarratedDeck & { readonly artifact?: NarratedWebArtifact } extends never
-    ? never
-    : { ...NarratedDeck };
+    artifact,
+  };
 }
+
