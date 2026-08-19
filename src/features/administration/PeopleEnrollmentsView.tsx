@@ -365,12 +365,6 @@ function BulkImportPanel({ programCohortId }: { programCohortId: string }) {
   /** Détection GLOBALE : tout e-mail déjà connu de la plateforme est signalé. */
   const knownEmails = useMemo(() => state.accounts.map((a) => a.loginEmail), [state.accounts]);
 
-  const headers = useMemo(
-    () => (rawText.trim() ? buildRosterPreview({ text: rawText }).mapping : {}),
-    [rawText],
-  );
-  void headers;
-
   const parsedHeaders = useMemo(() => {
     if (!rawText.trim()) return [] as readonly string[];
     const firstLine = rawText.split(/\r\n|\r|\n/)[0] ?? "";
