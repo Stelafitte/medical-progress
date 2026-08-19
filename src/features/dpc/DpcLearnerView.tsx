@@ -120,7 +120,7 @@ export function DpcLearnerView() {
         />
         <StatCard
           label="Conformité audit 1 → audit 2"
-          value={`${comparison.t0Percent ?? "—"} % → ${comparison.t1Percent ?? "en cours"}`}
+          value={`${comparison.t0Percent ?? "—"} % → ${comparison.t1Percent !== null ? `${comparison.t1Percent} %` : "en cours"}`}
           hint={DPC_VERDICT_LABELS_FR[comparison.verdict]}
         />
         <StatCard
