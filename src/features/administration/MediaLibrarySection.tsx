@@ -129,6 +129,7 @@ export function MediaLibrarySection({
         action={
           <div className="flex flex-wrap items-center gap-2">
             <MockBadge />
+            <PptxConverterDialog onConverted={setLastAction} />
             <AddMediaDialog
               programName={programName}
               modules={modules}
@@ -140,6 +141,7 @@ export function MediaLibrarySection({
               }
             />
           </div>
+
         }
       >
         <div className="space-y-3">
