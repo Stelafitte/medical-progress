@@ -27,13 +27,15 @@ import type {
   DpcScheduleEntry,
   DpcTeachingModality,
 } from "./dpcProgram";
-import type { DpcImplementationPlan } from "./dpcImplementation";
+import type { DpcComponentKind, DpcImplementationPlan } from "./dpcImplementation";
 import {
   DPC_COMPONENT_KIND_LABELS_FR,
+  activeComponentKinds,
   blockingIssues,
   emptyImplementationPlan,
   implementationSummary,
   isImplementationSchedulable,
+  isSlotScheduled,
 } from "./dpcImplementation";
 import {
   isAuditGridArtifact,
@@ -320,6 +322,11 @@ function draftTexts(draft: DpcProgramDraft): readonly string[] {
     ...draft.extraction.objectives,
     ...draft.audit.grids.flatMap((grid) => [grid.title, ...grid.inclusionCriteria]),
     ...draft.audit.rounds.map((round) => round.label),
+    ...draft.implementation.slots.flatMap((slot) => [
+      slot.label,
+      slot.location ?? "",
+      slot.note ?? "",
+    ]),
   ];
 }
 
@@ -544,6 +551,9 @@ export interface DpcDraftShape {
   readonly rounds: number;
   readonly quizzes: number;
   readonly documents: number;
+  /** Composants réellement programmés (aucun n'est obligatoire). */
+  readonly components: readonly DpcComponentKind[];
+  readonly scheduledSlots: number;
   readonly recordsPerRound: readonly { readonly roundId: string; readonly records?: number }[];
 }
 
@@ -553,6 +563,8 @@ export function draftShape(draft: DpcProgramDraft): DpcDraftShape {
     rounds: draft.audit.rounds.length,
     quizzes: draft.quizCount,
     documents: draft.documents.length,
+    components: activeComponentKinds(draft.implementation),
+    scheduledSlots: draft.implementation.slots.filter(isSlotScheduled).length,
     recordsPerRound: orderedRounds(draft.audit).map((round) => {
       const records = recordsExpectedForRound(draft.audit, round.roundId);
       return records === undefined ? { roundId: round.roundId } : { roundId: round.roundId, records };
