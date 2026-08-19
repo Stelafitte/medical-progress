@@ -4,13 +4,13 @@ import { PassportView } from "@/features/passport/PassportView";
 export const Route = createFileRoute("/espace/passeport")({
   head: () => ({
     meta: [
-      { title: "Mon Passeport Éducatif" },
+      { title: "Campus Santé Augmenté" },
       {
         name: "description",
         content:
           "Connaissances, compétences simulées et compétences en situation réelle : preuves d'acquisition et niveaux de maîtrise.",
       },
-      { property: "og:title", content: "Mon Passeport Éducatif" },
+      { property: "og:title", content: "Campus Santé Augmenté" },
       {
         property: "og:description",
         content:

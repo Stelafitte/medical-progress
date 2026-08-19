@@ -141,7 +141,7 @@ export function AppShell() {
               <HeartPulse className="size-5" aria-hidden />
             </span>
             <span className="truncate text-sm font-semibold leading-tight sm:text-base">
-              Mon Passeport Éducatif
+              Campus Santé Augmenté
             </span>
           </Link>
 

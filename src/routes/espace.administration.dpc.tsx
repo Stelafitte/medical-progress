@@ -7,13 +7,13 @@ import { DpcProgrammeSection } from "@/features/administration/DpcProgrammeSecti
 export const Route = createFileRoute("/espace/administration/dpc")({
   head: () => ({
     meta: [
-      { title: "Programme DPC — Mon Passeport Éducatif" },
+      { title: "Programme DPC — Campus Santé Augmenté" },
       {
         name: "description",
         content:
           "Configuration du programme DPC : grille d'audit versionnée, calendrier relatif, participation, conformité et relances.",
       },
-      { property: "og:title", content: "Programme DPC — Mon Passeport Éducatif" },
+      { property: "og:title", content: "Programme DPC — Campus Santé Augmenté" },
       {
         property: "og:description",
         content: "Pilotage du programme intégré : deux tours d'audit, formation et tests.",

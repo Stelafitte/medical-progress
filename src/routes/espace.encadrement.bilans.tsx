@@ -6,12 +6,12 @@ import { SupervisionReports } from "@/features/supervision/SupervisionReports";
 export const Route = createFileRoute("/espace/encadrement/bilans")({
   head: () => ({
     meta: [
-      { title: "Bilans de fin de stage — Mon Passeport Éducatif" },
+      { title: "Bilans de fin de stage — Campus Santé Augmenté" },
       {
         name: "description",
         content: "Synthèse de stage, appréciation, signature simulée et transmission interne.",
       },
-      { property: "og:title", content: "Bilans de fin de stage — Mon Passeport Éducatif" },
+      { property: "og:title", content: "Bilans de fin de stage — Campus Santé Augmenté" },
       {
         property: "og:description",
         content: "Synthèse de stage, appréciation, signature simulée et transmission interne.",

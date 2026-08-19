@@ -6,12 +6,12 @@ import { SupervisionDashboard } from "@/features/supervision/SupervisionDashboar
 export const Route = createFileRoute("/espace/encadrement/")({
   head: () => ({
     meta: [
-      { title: "Espace responsable de stage — Mon Passeport Éducatif" },
+      { title: "Espace responsable de stage — Campus Santé Augmenté" },
       {
         name: "description",
         content: "Tableau de bord d'encadrement : étudiants encadrés, stages, tâches et alertes.",
       },
-      { property: "og:title", content: "Espace responsable de stage — Mon Passeport Éducatif" },
+      { property: "og:title", content: "Espace responsable de stage — Campus Santé Augmenté" },
       {
         property: "og:description",
         content: "Tableau de bord d'encadrement : étudiants encadrés, stages, tâches et alertes.",

@@ -6,12 +6,12 @@ import { SupervisionStudents } from "@/features/supervision/SupervisionStudents"
 export const Route = createFileRoute("/espace/encadrement/etudiants")({
   head: () => ({
     meta: [
-      { title: "Mes étudiants — Mon Passeport Éducatif" },
+      { title: "Mes étudiants — Campus Santé Augmenté" },
       {
         name: "description",
         content: "Liste filtrable des étudiants encadrés et fiche synthétique de progression.",
       },
-      { property: "og:title", content: "Mes étudiants — Mon Passeport Éducatif" },
+      { property: "og:title", content: "Mes étudiants — Campus Santé Augmenté" },
       {
         property: "og:description",
         content: "Liste filtrable des étudiants encadrés et fiche synthétique de progression.",

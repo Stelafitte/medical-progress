@@ -6,13 +6,13 @@ import { StatisticsView } from "@/features/statistics/StatisticsView";
 export const Route = createFileRoute("/espace/statistiques")({
   head: () => ({
     meta: [
-      { title: "Statistiques pluriannuelles — Mon Passeport Éducatif" },
+      { title: "Statistiques pluriannuelles — Campus Santé Augmenté" },
       {
         name: "description",
         content:
           "Comparaison des promotions et des années universitaires : réussite, compétences réelles, stages.",
       },
-      { property: "og:title", content: "Statistiques pluriannuelles — Mon Passeport Éducatif" },
+      { property: "og:title", content: "Statistiques pluriannuelles — Campus Santé Augmenté" },
       {
         property: "og:description",
         content:

@@ -6,12 +6,12 @@ import { AdminOrganisation } from "@/features/administration/AdminOrganisation";
 export const Route = createFileRoute("/espace/administration/organisation")({
   head: () => ({
     meta: [
-      { title: "Organisation du programme — Mon Passeport Éducatif" },
+      { title: "Organisation du programme — Campus Santé Augmenté" },
       {
         name: "description",
         content: "Cursus, promotions, utilisateurs, rôles, terrains de stage et affectations.",
       },
-      { property: "og:title", content: "Organisation du programme — Mon Passeport Éducatif" },
+      { property: "og:title", content: "Organisation du programme — Campus Santé Augmenté" },
       {
         property: "og:description",
         content: "Cursus, promotions, utilisateurs, rôles, terrains de stage et affectations.",

@@ -4,7 +4,7 @@ import { ArchitectureView } from "@/features/architecture/ArchitectureView";
 export const Route = createFileRoute("/espace/architecture")({
   head: () => ({
     meta: [
-      { title: "Architecture du socle — Mon Passeport Éducatif" },
+      { title: "Architecture du socle — Campus Santé Augmenté" },
       { name: "description", content: "État du socle technique, visible en développement." },
       { name: "robots", content: "noindex" },
     ],

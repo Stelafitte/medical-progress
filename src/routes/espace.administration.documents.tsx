@@ -6,12 +6,12 @@ import { AdminDocuments } from "@/features/administration/AdminDocuments";
 export const Route = createFileRoute("/espace/administration/documents")({
   head: () => ({
     meta: [
-      { title: "Documents et certificats — Mon Passeport Éducatif" },
+      { title: "Documents et certificats — Campus Santé Augmenté" },
       {
         name: "description",
         content: "Pièces administratives et workflow du certificat de complétude.",
       },
-      { property: "og:title", content: "Documents et certificats — Mon Passeport Éducatif" },
+      { property: "og:title", content: "Documents et certificats — Campus Santé Augmenté" },
       {
         property: "og:description",
         content: "Pièces administratives et workflow du certificat de complétude.",

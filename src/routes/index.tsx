@@ -6,13 +6,13 @@ import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/ca
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Mon Passeport Éducatif — socle universitaire multi-programmes" },
+      { title: "Campus Santé Augmenté — socle universitaire multi-programmes" },
       {
         name: "description",
         content:
           "Un socle commun et configurable pour suivre connaissances, compétences simulées et compétences réelles validées en formation médicale universitaire.",
       },
-      { property: "og:title", content: "Mon Passeport Éducatif" },
+      { property: "og:title", content: "Campus Santé Augmenté" },
       {
         property: "og:description",
         content:
@@ -51,7 +51,7 @@ function HomePage() {
             Socle universitaire — itération 1
           </span>
           <h1 className="mt-6 text-4xl font-semibold leading-tight sm:text-5xl">
-            Mon Passeport Éducatif
+            Campus Santé Augmenté
           </h1>
           <p className="mt-4 max-w-2xl text-base text-primary-foreground/85 sm:text-lg">
             Le parcours de formation, ses preuves et ses validations, réunis dans un socle sobre,
@@ -97,7 +97,7 @@ function HomePage() {
 
       <footer className="border-t border-border">
         <div className="mx-auto max-w-5xl px-6 py-8 text-xs text-muted-foreground">
-          Mon Passeport Éducatif — socle multi-programmes.
+          Campus Santé Augmenté — socle multi-programmes.
         </div>
       </footer>
     </div>

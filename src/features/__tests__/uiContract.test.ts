@@ -25,15 +25,15 @@ describe("terminologie", () => {
     }
   });
 
-  it("utilise « Mon Passeport Éducatif » dans la page et ses métadonnées", () => {
-    expect(passportView).toContain('title="Mon Passeport Éducatif"');
-    expect(passportRoute).toContain('{ title: "Mon Passeport Éducatif" }');
+  it("utilise « Campus Santé Augmenté » dans la page et ses métadonnées", () => {
+    expect(passportView).toContain('title="Campus Santé Augmenté"');
+    expect(passportRoute).toContain('{ title: "Campus Santé Augmenté" }');
   });
 
   it("conserve le nom global de la plateforme dans le shell et les métadonnées", () => {
-    expect(shell).toContain("Mon Passeport Éducatif");
-    expect(rootRoute).toContain('{ title: "Mon Passeport Éducatif" }');
-    expect(rootRoute).toContain('{ property: "og:title", content: "Mon Passeport Éducatif" }');
+    expect(shell).toContain("Campus Santé Augmenté");
+    expect(rootRoute).toContain('{ title: "Campus Santé Augmenté" }');
+    expect(rootRoute).toContain('{ property: "og:title", content: "Campus Santé Augmenté" }');
   });
 });
 

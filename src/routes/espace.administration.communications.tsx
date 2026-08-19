@@ -6,12 +6,12 @@ import { AdminCommunications } from "@/features/administration/AdminCommunicatio
 export const Route = createFileRoute("/espace/administration/communications")({
   head: () => ({
     meta: [
-      { title: "Communications du programme — Mon Passeport Éducatif" },
+      { title: "Communications du programme — Campus Santé Augmenté" },
       {
         name: "description",
         content: "Modèles de messages, relances préparées et historique simulé.",
       },
-      { property: "og:title", content: "Communications du programme — Mon Passeport Éducatif" },
+      { property: "og:title", content: "Communications du programme — Campus Santé Augmenté" },
       {
         property: "og:description",
         content: "Modèles de messages, relances préparées et historique simulé.",

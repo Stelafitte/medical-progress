@@ -6,12 +6,12 @@ import { SupervisionMessages } from "@/features/supervision/SupervisionMessages"
 export const Route = createFileRoute("/espace/encadrement/messages")({
   head: () => ({
     meta: [
-      { title: "Messagerie d'encadrement — Mon Passeport Éducatif" },
+      { title: "Messagerie d'encadrement — Campus Santé Augmenté" },
       {
         name: "description",
         content: "Échanges simulés avec les étudiants encadrés et l'administration du programme.",
       },
-      { property: "og:title", content: "Messagerie d'encadrement — Mon Passeport Éducatif" },
+      { property: "og:title", content: "Messagerie d'encadrement — Campus Santé Augmenté" },
       {
         property: "og:description",
         content: "Échanges simulés avec les étudiants encadrés et l'administration du programme.",

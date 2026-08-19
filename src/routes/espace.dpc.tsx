@@ -16,13 +16,13 @@ function DpcRoute() {
 export const Route = createFileRoute("/espace/dpc")({
   head: () => ({
     meta: [
-      { title: "Mon parcours DPC — Mon Passeport Éducatif" },
+      { title: "Mon parcours DPC — Campus Santé Augmenté" },
       {
         name: "description",
         content:
           "Parcours DPC intégré : audit clinique avant formation, formation, pré/post-test, audit après formation et attestation.",
       },
-      { property: "og:title", content: "Mon parcours DPC — Mon Passeport Éducatif" },
+      { property: "og:title", content: "Mon parcours DPC — Campus Santé Augmenté" },
       {
         property: "og:description",
         content: "Audit 1, formation, audit 2 : progression mesurée sur dossiers anonymes.",
