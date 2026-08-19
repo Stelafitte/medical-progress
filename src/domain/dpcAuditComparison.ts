@@ -96,12 +96,13 @@ export function criterionModality(
 /* 2. Conformité (dépend de expectedAnswer, jamais « oui = conforme ») */
 /* ------------------------------------------------------------------ */
 
-export type DpcConformity = "conform" | "non_conform" | "missing" | "indeterminate";
+/** Statut COMPARATIF de conformité d'un critère (qualitatif). */
+export type DpcCriterionConformityStatus = "conform" | "non_conform" | "missing" | "indeterminate";
 
 export function conformityOf(
   modality: DpcModality,
   expectedAnswer: DpcCriterionParams["expectedAnswer"],
-): DpcConformity {
+): DpcCriterionConformityStatus {
   if (modality === "missing") return "missing";
   if (modality === "indeterminate") return "indeterminate";
   // Paramétrage médical non validé : on ne conclut pas.
@@ -136,8 +137,8 @@ export interface DpcCriterionComparison {
   readonly criterionId: string;
   readonly a1: DpcCriterionModality;
   readonly a2: DpcCriterionModality;
-  readonly a1Conformity: DpcConformity;
-  readonly a2Conformity: DpcConformity;
+  readonly a1Conformity: DpcCriterionConformityStatus;
+  readonly a2Conformity: DpcCriterionConformityStatus;
   readonly status: DpcComparisonStatus;
   readonly fundamental: boolean;
   readonly priorityRank: 1 | 2 | 3 | 4 | undefined;
@@ -146,7 +147,7 @@ export interface DpcCriterionComparison {
   readonly parametersPending: boolean;
 }
 
-function classify(a1: DpcConformity, a2: DpcConformity): DpcComparisonStatus {
+function classify(a1: DpcCriterionConformityStatus, a2: DpcCriterionConformityStatus): DpcComparisonStatus {
   if (a1 === "missing") return "missing_a1";
   if (a2 === "missing") return "missing_a2";
   if (a1 === "indeterminate" || a2 === "indeterminate") return "indeterminate";
@@ -185,7 +186,7 @@ export function compareCriterion(
 
 export interface DpcFundamentalStatus {
   readonly criterionId: string;
-  readonly a2Conformity: DpcConformity;
+  readonly a2Conformity: DpcCriterionConformityStatus;
 }
 
 export interface DpcAuditComparisonSummary {
