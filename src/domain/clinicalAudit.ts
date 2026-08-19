@@ -1,4 +1,13 @@
 /**
+ * MODULE LEGACY — à adapter puis retirer.
+ *
+ * Le domaine DPC canonique est désormais `src/domain/dpc.ts`, dont la
+ * configuration générique de programme est décrite dans
+ * `src/domain/dpcProgram.ts`. Ce module reste en place le temps de la
+ * migration : ne pas l'étendre, ne pas y ajouter de nouvelle règle métier.
+ * Il sera remplacé par un adapter vers le domaine DPC (aucune fusion brutale),
+ * afin d'éviter deux modèles concurrents d'audit de pratiques.
+ *
  * Module OPTIONNEL et ADMINISTRABLE : audits de pratique, pré/post-tests et
  * séances (en ligne, visio, présentiel). Conçu pour les programmes de type DPC
  * sans créer d'architecture séparée : c'est une configuration de programme.
