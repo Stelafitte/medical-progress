@@ -21,7 +21,7 @@ describe("accès", () => {
   });
 
   it("expose une action visible « Implémenter un programme DPC » sans perturber la consultation", () => {
-    expect(dpcRoute).toContain("Implémenter un programme DPC");
+    expect(dpcRoute).toContain("Importer et implémenter un programme DPC");
     expect(dpcRoute).toContain('to="/espace/administration/assistant-dpc"');
     expect(dpcRoute).toContain("<DpcProgrammeSection />");
   });
@@ -52,12 +52,13 @@ describe("étapes", () => {
 describe("marqueurs simulés", () => {
   it("annonce l'extraction simulée et la publication simulée", () => {
     expect(draftModel).toContain(
-      '"Extraction simulée — validation du coordinateur requise"',
+      '"Analyse documentaire simulée — validation du coordinateur requise"',
     );
     expect(wizard).toContain("DPC_SIMULATED_EXTRACTION_NOTICE_FR");
     expect(wizard).toContain("DPC_SIMULATED_UPLOAD_NOTICE_FR");
-    expect(wizard).toContain("Publier (simulé)");
-    expect(wizard).toContain('label="Publication simulée"');
+    expect(wizard).toContain("Ouvrir cette implémentation (simulé)");
+    expect(wizard).toContain('label="Ouverture simulée"');
+    expect(wizard).not.toContain("Publier (simulé)");
   });
 
   it("n'effectue aucun envoi réseau", () => {
