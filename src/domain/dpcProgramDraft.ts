@@ -109,7 +109,8 @@ export const DPC_WIZARD_STEPS: readonly DpcWizardStep[] = [
   },
 ];
 
-export const DPC_SIMULATED_EXTRACTION_NOTICE_FR = "Analyse documentaire simulée";
+export const DPC_SIMULATED_EXTRACTION_NOTICE_FR =
+  "Analyse documentaire simulée — validation du coordinateur requise";
 
 export const DPC_SIMULATED_UPLOAD_NOTICE_FR =
   "Dépôt simulé : aucun fichier n'est transmis à un serveur, aucune lecture réelle du contenu.";
