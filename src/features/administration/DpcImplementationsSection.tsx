@@ -137,27 +137,31 @@ export function DpcImplementationsSection() {
   return (
     <section className="space-y-4">
       <ScopeNotice>
-        Deux objets distincts : le <strong>programme de référence</strong> porte les objectifs,
-        la méthode, les grilles, les QCM et la bibliographie ; chaque{" "}
-        <strong>implémentation</strong> porte la cohorte, le calendrier, les modalités et les
-        intervenants. Publier le programme de référence et ouvrir une implémentation sont deux
-        actions distinctes. Aucune ouverture, aucune visioconférence et aucune notification ne
-        sont réelles ici.
+        Le coordinateur <strong>importe un programme DPC</strong> (Word ou PDF) avec ses grilles
+        d'audit et ses documents associés ; Campus Santé Augmenté en tire des{" "}
+        <strong>données structurées</strong> puis prépare une <strong>implémentation</strong> —
+        cohorte, calendrier, modalités et intervenants — à vérifier avant ouverture. Aucune
+        ouverture, aucune visioconférence et aucune notification ne sont réelles ici.
       </ScopeNotice>
 
       <PanelCard
-        title={`Programme de référence — ${dpcHvgProgramDefinition.title}`}
-        description={`Version ${dpcHvgProgramDefinition.version.version} — contenu scientifique sans date d'exploitation`}
-        action={<MockBadge label="Référence simulée" />}
+        title={`Programme importé — ${dpcHvgProgramDefinition.title}`}
+        description="Données structurées issues du programme : objectifs, méthode, grilles, QCM et bibliographie, sans date d'exploitation."
+        action={<MockBadge label="Import simulé" />}
       >
         <p className="text-sm text-muted-foreground">
           Public visé : {dpcHvgProgramDefinition.targetAudience}
         </p>
-        <p className="text-sm text-muted-foreground">
-          Versions actuellement implémentées : {versions.join(", ")}
-        </p>
-        <Button type="button" variant="outline" className={`${touch} w-full sm:w-auto`} disabled>
-          Publier le programme de référence (simulé)
+        <section className="space-y-1 rounded-md border border-border p-3">
+          <h4 className="text-sm font-medium">Traçabilité de la version</h4>
+          <p className="text-muted-foreground text-xs">
+            Version des données structurées : {dpcHvgProgramDefinition.version.version} · versions
+            actuellement implémentées : {versions.join(", ")}. Section technique secondaire : aucune
+            publication distincte n'est demandée au coordinateur.
+          </p>
+        </section>
+        <Button type="button" variant="ghost" className={`${touch} w-full sm:w-auto`} disabled>
+          Réutiliser ce programme déjà importé (simulé)
         </Button>
       </PanelCard>
 
