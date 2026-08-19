@@ -175,10 +175,8 @@ export const mockDataAccess: DataAccess = {
       ok(stfx.cohortStatistics.filter((s) => s.programId === programId)),
   },
   clinicalAudits: {
-    listTemplates: (programId) =>
-      ok(dpc.auditTemplates.filter((t) => t.programId === programId)),
-    listCampaigns: (programId) =>
-      ok(dpc.auditCampaigns.filter((c) => c.programId === programId)),
+    listTemplates: (programId) => ok(dpc.auditTemplates.filter((t) => t.programId === programId)),
+    listCampaigns: (programId) => ok(dpc.auditCampaigns.filter((c) => c.programId === programId)),
     listSubmissions: (programId) => {
       const campaignIds = new Set(
         dpc.auditCampaigns.filter((c) => c.programId === programId).map((c) => c.id),
@@ -194,8 +192,7 @@ export const mockDataAccess: DataAccess = {
       );
       return ok(dpc.prePostTestResults.filter((r) => testIds.has(r.testId)));
     },
-    listSessions: (programId) =>
-      ok(dpc.teachingSessions.filter((s) => s.programId === programId)),
+    listSessions: (programId) => ok(dpc.teachingSessions.filter((s) => s.programId === programId)),
   },
   audit: {
     listRecentEvents: (limit = 20) => ok(fx.auditEvents.slice(0, limit)),

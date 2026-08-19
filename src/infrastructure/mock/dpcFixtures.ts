@@ -72,8 +72,18 @@ export const dpcCohort: Cohort = {
 };
 
 export const dpcPeople: readonly Person[] = [
-  { ...base, id: "per-dpc-learner", fullName: "Dr Sophie Marchand", email: "sophie.demo@example.org" },
-  { ...base, id: "per-dpc-learner-2", fullName: "Dr Julien Attia", email: "julien.demo@example.org" },
+  {
+    ...base,
+    id: "per-dpc-learner",
+    fullName: "Dr Sophie Marchand",
+    email: "sophie.demo@example.org",
+  },
+  {
+    ...base,
+    id: "per-dpc-learner-2",
+    fullName: "Dr Julien Attia",
+    email: "julien.demo@example.org",
+  },
 ];
 
 export const dpcOutcomes: readonly Outcome[] = [

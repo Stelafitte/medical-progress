@@ -9,7 +9,14 @@
  *  - la conformité est calculée de façon déterministe, sans IA ;
  *  - un audit ne déclare jamais seul une compétence réelle acquise.
  */
-import type { CohortId, EnrollmentId, IsoDateTime, OutcomeId, ProgramId, Provenance } from "./types";
+import type {
+  CohortId,
+  EnrollmentId,
+  IsoDateTime,
+  OutcomeId,
+  ProgramId,
+  Provenance,
+} from "./types";
 
 /* ------------------------------------------------------------------ */
 /* Modèles                                                            */
@@ -121,7 +128,10 @@ export interface TeachingSession {
   readonly startsAt: IsoDateTime;
   readonly durationMinutes: number;
   readonly attendanceRequired: boolean;
-  readonly attendance: readonly { readonly enrollmentId: EnrollmentId; readonly present: boolean }[];
+  readonly attendance: readonly {
+    readonly enrollmentId: EnrollmentId;
+    readonly present: boolean;
+  }[];
 }
 
 /* ------------------------------------------------------------------ */
@@ -147,7 +157,8 @@ export interface AuditScore {
   readonly complete: boolean;
 }
 
-const percent = (part: number, whole: number) => (whole === 0 ? 0 : Math.round((part / whole) * 100));
+const percent = (part: number, whole: number) =>
+  whole === 0 ? 0 : Math.round((part / whole) * 100);
 
 /** Score d'un dossier audité. */
 export function scoreRecord(template: ClinicalAuditTemplate, record: AuditRecordEntry): AuditScore {
@@ -184,7 +195,8 @@ export function scoreSubmission(
     totalWeight,
     conformityPercent: percent(conformWeight, totalWeight),
     complete:
-      submission.records.length >= template.recordsPerParticipant && scores.every((s) => s.complete),
+      submission.records.length >= template.recordsPerParticipant &&
+      scores.every((s) => s.complete),
   };
 }
 
@@ -204,7 +216,8 @@ export function comparePrePost(
   post: ClinicalAuditSubmission | undefined,
 ): PrePostComparison {
   const preScore = pre && pre.status === "submitted" ? scoreSubmission(template, pre) : undefined;
-  const postScore = post && post.status === "submitted" ? scoreSubmission(template, post) : undefined;
+  const postScore =
+    post && post.status === "submitted" ? scoreSubmission(template, post) : undefined;
   const prePercent = preScore?.conformityPercent ?? null;
   const postPercent = postScore?.conformityPercent ?? null;
   return {

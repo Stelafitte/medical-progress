@@ -22,9 +22,7 @@ export const PEDAGOGY_TABS = [
 ] as const;
 
 /** Sous-section OPTIONNELLE, visible seulement si le module est activé. */
-export const PEDAGOGY_OPTIONAL_TABS = [
-  { value: "audits", label: "Audits de pratique" },
-] as const;
+export const PEDAGOGY_OPTIONAL_TABS = [{ value: "audits", label: "Audits de pratique" }] as const;
 
 export function AdminPedagogy() {
   const { data, isPending } = useProgramAdmin();

@@ -7,7 +7,13 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDataAccess, useSession } from "@/application/session";
-import { EmptyState, MockBadge, PanelCard, ScopeNotice, StatCard } from "@/features/professional/mock-ui";
+import {
+  EmptyState,
+  MockBadge,
+  PanelCard,
+  ScopeNotice,
+  StatCard,
+} from "@/features/professional/mock-ui";
 import {
   AUDIT_PHASE_LABELS_FR,
   SESSION_MODALITY_LABELS_FR,
@@ -33,7 +39,15 @@ export function ClinicalAuditSection() {
           data.clinicalAudits.listSessions(activeProgram.id),
           data.administration.listAllEnrollments(activeProgram.id),
         ]);
-      return { templates, campaigns, submissions, tests, results, sessions, participants: cohorts.length };
+      return {
+        templates,
+        campaigns,
+        submissions,
+        tests,
+        results,
+        sessions,
+        participants: cohorts.length,
+      };
     },
   });
 

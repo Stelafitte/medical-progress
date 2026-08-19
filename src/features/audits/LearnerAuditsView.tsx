@@ -52,7 +52,13 @@ export function LearnerAuditsView() {
     </header>
   );
 
-  if (isPending || !scope) return <div className="space-y-4">{header}<Skeleton className="h-64 w-full" /></div>;
+  if (isPending || !scope)
+    return (
+      <div className="space-y-4">
+        {header}
+        <Skeleton className="h-64 w-full" />
+      </div>
+    );
 
   const template = scope.templates.find((t) => t.status === "published");
   const campaignFor = (phase: "pre" | "post") => scope.campaigns.find((c) => c.phase === phase);
@@ -122,7 +128,9 @@ export function LearnerAuditsView() {
                       disabled={campaign?.status !== "open"}
                     >
                       <ClipboardCheck className="mr-2 size-4" />
-                      {campaign?.status === "open" ? "Remplir un dossier (simulé)" : "Campagne close"}
+                      {campaign?.status === "open"
+                        ? "Remplir un dossier (simulé)"
+                        : "Campagne close"}
                     </Button>
                   </CardContent>
                 </Card>
