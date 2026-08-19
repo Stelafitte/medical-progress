@@ -52,10 +52,16 @@ export interface NavSpace {
 /** Espace apprenant — ordre gelé : Tableau de bord, Passeport, Ressources, Stage. */
 export const LEARNER_NAV: readonly NavEntry[] = [
   { to: "/espace", label: "Tableau de bord", icon: LayoutDashboard, exact: true },
-  { to: "/espace/passeport", label: "Passeport", icon: IdCard, exact: false },
+  {
+    to: "/espace/passeport",
+    label: "Mon passeport de compétences",
+    icon: IdCard,
+    exact: false,
+  },
   { to: "/espace/ressources", label: "Ressources", icon: BookOpen, exact: false },
   { to: "/espace/stage", label: "Stage", icon: Stethoscope, exact: false },
 ];
+
 
 export const SUPERVISION_NAV: readonly NavEntry[] = [
   { to: "/espace/encadrement", label: "Vue d'ensemble", icon: Gauge, exact: true },
