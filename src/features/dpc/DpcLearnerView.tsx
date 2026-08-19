@@ -18,6 +18,7 @@ import {
   DPC_NO_PATIENT_DATA_NOTICE_FR,
   DPC_PAPER_FALLBACK_NOTICE_FR,
   DPC_ROUND_LABELS_FR,
+  DPC_TEST_PHASE_LABELS_FR,
   DPC_VERDICT_LABELS_FR,
   compareRounds,
   compareTests,
@@ -25,9 +26,10 @@ import {
   entryConformity,
   entryProgress,
   persistentGaps,
-  scoreQuiz,
+  quizPhaseView,
   sectionConformity,
 } from "@/domain/dpc";
+
 
 export function DpcLearnerView() {
   const data = useDataAccess();
