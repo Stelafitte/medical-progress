@@ -1470,13 +1470,13 @@ export function DpcProgramWizard() {
                 disabled={!readiness.canPublish}
                 onClick={() =>
                   setPublishNotice(
-                    "Publication simulée : aucune écriture, aucun envoi, aucun programme réellement publié.",
+                    "Ouverture simulée : aucune écriture, aucun envoi, aucune implémentation réellement ouverte.",
                   )
                 }
               >
-                Publier (simulé)
+                Ouvrir cette implémentation (simulé)
               </Button>
-              <MockBadge label="Publication simulée" />
+              <MockBadge label="Ouverture simulée" />
             </div>
             {publishNotice ? (
               <p role="status" className="rounded-md border border-border p-3 text-sm">
