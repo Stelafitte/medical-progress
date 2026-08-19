@@ -50,9 +50,11 @@ describe("progression dérivée des preuves (données mock)", () => {
     }
   });
 
-  it("les rôles contextualisés du mock couvrent les deux programmes", async () => {
+  it("les rôles contextualisés du mock couvrent chaque programme de démonstration", async () => {
     const roles = await mockDataAccess.people.listRoleAssignments("per-learner");
     const programIds = roles.map((r) => ("programId" in r.scope ? r.scope.programId : "platform"));
-    expect(new Set(programIds)).toEqual(new Set(["prog-diu-echo", "prog-dfasm-cardio"]));
+    expect(new Set(programIds)).toEqual(
+      new Set(["prog-diu-echo", "prog-dfasm-cardio", "prog-dpc-fa"]),
+    );
   });
 });
