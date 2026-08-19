@@ -6,13 +6,16 @@ import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/ca
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Campus Santé Augmenté — socle universitaire multi-programmes" },
+      { title: "Campus Santé Augmenté — Formation, compétences et développement professionnel" },
       {
         name: "description",
         content:
           "Un socle commun et configurable pour suivre connaissances, compétences simulées et compétences réelles validées en formation médicale universitaire.",
       },
-      { property: "og:title", content: "Campus Santé Augmenté" },
+      {
+        property: "og:title",
+        content: "Campus Santé Augmenté — Formation, compétences et développement professionnel",
+      },
       {
         property: "og:description",
         content:
@@ -53,6 +56,9 @@ function HomePage() {
           <h1 className="mt-6 text-4xl font-semibold leading-tight sm:text-5xl">
             Campus Santé Augmenté
           </h1>
+          <p className="mt-3 text-base text-primary-foreground/90 sm:text-lg">
+            Formation, compétences et développement professionnel
+          </p>
           <p className="mt-4 max-w-2xl text-base text-primary-foreground/85 sm:text-lg">
             Le parcours de formation, ses preuves et ses validations, réunis dans un socle sobre,
             lisible et commun à tous les programmes de la faculté.
