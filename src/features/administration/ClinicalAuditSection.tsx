@@ -84,12 +84,12 @@ export function ClinicalAuditSection() {
         <StatCard
           label="Conformité — audit initial"
           value={pre ? `${pre.meanConformityPercent} %` : "—"}
-          hint={pre ? `${pre.submitted}/${pre.expectedParticipants} participants` : undefined}
+          hint={pre ? `${pre.submitted}/${pre.expectedParticipants} participants` : "en attente"}
         />
         <StatCard
           label="Conformité — audit de suivi"
           value={post ? `${post.meanConformityPercent} %` : "—"}
-          hint={post ? `${post.submitted}/${post.expectedParticipants} participants` : undefined}
+          hint={post ? `${post.submitted}/${post.expectedParticipants} participants` : "en attente"}
         />
         <StatCard
           label="Progression moyenne"
