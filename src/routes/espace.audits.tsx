@@ -1,21 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { AccessRestricted } from "@/components/layout/access-restricted";
+import { AccessRestricted } from "@/components/access-restricted";
 import { useSession } from "@/application/session";
 import { canAccessLearnerSpace } from "@/domain/access";
 import { LearnerAuditsView } from "@/features/audits/LearnerAuditsView";
 
 function AuditsRoute() {
-  const { roleAssignments, activeProgram } = useSession();
-  if (!canAccessLearnerSpace(roleAssignments, activeProgram.id)) {
-    return <AccessRestricted space="learner" />;
+  const { roles, activeProgram } = useSession();
+  if (!canAccessLearnerSpace(roles, activeProgram.id)) {
+    return <AccessRestricted area="L'espace apprenant" />;
   }
   if (!activeProgram.config.auditsEnabled) {
-    return (
-      <AccessRestricted
-        space="learner"
-        message="Le module d'audits de pratique n'est pas activé pour ce programme."
-      />
-    );
+    return <AccessRestricted area="Le module d'audits de pratique" />;
   }
   return <LearnerAuditsView />;
 }
