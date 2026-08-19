@@ -412,12 +412,13 @@ export const dpcHvgGrid: DpcAuditGrid = {
 };
 
 /** Version 2027 en préparation : jamais ouverte tant qu'une campagne utilise v1.0. */
+const { publishedAt: _publishedV1, ...gridWithoutPublication } = dpcHvgGrid;
+
 export const dpcHvgGridDraft: DpcAuditGrid = {
-  ...dpcHvgGrid,
+  ...gridWithoutPublication,
   id: "dpc-hvg-grid-v2",
   version: "v2.0 (brouillon)",
   status: "draft",
-  publishedAt: undefined,
   description:
     "Révision en cours : reformulation des critères 22 à 27 après retour des experts. Non ouverte aux participants.",
 };
