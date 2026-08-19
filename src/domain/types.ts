@@ -67,6 +67,12 @@ export interface ProgramConfig {
   readonly auditsEnabled?: boolean;
   readonly prePostTestsEnabled?: boolean;
   readonly sessionsEnabled?: boolean;
+  /**
+   * Programme intégré de DPC (audit 1 → formation → audit 2, tests, attestation).
+   * Activable pour n'importe quel programme : c'est une configuration, pas une
+   * application séparée.
+   */
+  readonly dpcEnabled?: boolean;
   readonly locale: "fr-FR";
 }
 
