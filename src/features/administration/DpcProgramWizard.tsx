@@ -381,14 +381,15 @@ export function DpcProgramWizard() {
   return (
     <div className="space-y-6">
       <ScopeNotice>
-        <strong>Assistant simulé</strong> : {DPC_SIMULATED_UPLOAD_NOTICE_FR} Aucune extraction
-        documentaire réelle, aucune IA, aucune publication réelle. Le modèle utilisé est le modèle
-        générique de programme DPC ; « DPC HVG–Amylose » n'est qu'un démonstrateur prérempli.
+        <strong>Assistant simulé</strong> : vous importez le programme DPC et ses documents
+        associés, puis vous vérifiez l'implémentation structurée proposée avant de l'ouvrir pour une
+        cohorte. {DPC_SIMULATED_UPLOAD_NOTICE_FR} Aucune analyse documentaire réelle, aucune IA,
+        aucune ouverture réelle. « DPC HVG–Amylose » n'est qu'un démonstrateur prérempli.
       </ScopeNotice>
 
       <PanelCard
-        title="État de démonstration"
-        description="Trois configurations pour éprouver l'assistant."
+        title="Programme importé (démonstration)"
+        description="Réutiliser un programme déjà importé : trois jeux de données structurées pour éprouver l'assistant."
         action={<MockBadge label="Simulé" />}
       >
         <div className="grid gap-3 sm:grid-cols-3">
