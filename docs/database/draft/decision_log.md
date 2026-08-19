@@ -168,3 +168,26 @@ La fonctionnalité longitudinale conserve son nom **« Mon passeport de compéte
 Les anciens noms (« Mon Passeport Éducatif », « Passeport Éducatif Médical »,
 « EduPassport Core ») deviennent historiques. Aucun identifiant technique
 (table, type, colonne, fonction, policy, route, slug) n'est renommé.
+
+## D81 (2026-08-19) — Person, UserAccount, Cohort et Enrollment sont quatre objets distincts
+L'annuaire (`src/domain/directory.ts`) sépare définitivement l'identité pédagogique
+(`Person`), le compte de connexion (`UserAccount` : e-mail normalisé + statut
+`invited` / `active` / `suspended`), la promotion (`Cohort` avec cycle de vie
+`active` / `archived`) et l'inscription (`Enrollment` : une personne, un programme,
+une cohorte, un statut). Les rôles restent contextualisés (`RoleAssignment`), sans
+duplication de modèle.
+
+Règles retenues :
+- l'e-mail normalisé est la clé d'unicité de la plateforme ; une personne connue est
+  RATTACHÉE, jamais dupliquée ;
+- une même personne peut être inscrite dans plusieurs programmes ;
+- une seconde inscription ACTIVE dans le même programme et la même cohorte est refusée ;
+- un retrait passe l'inscription à `withdrawn` sans jamais supprimer la personne,
+  son compte, ses rôles ni son historique ;
+- une cohorte archivée reste consultable et n'accepte plus d'inscription.
+
+Transition : la couche annuaire cohabite avec les fixtures existantes
+(`directoryFixtures.ts` en dérive prénom/nom et comptes) ; aucune migration brutale
+n'est effectuée. Le filtrage de périmètre est fait côté client dans la maquette et
+DEVRA être imposé côté serveur (requêtes filtrées + RLS) dans le produit réel :
+`listPeople()` et `listAllRoleAssignments()` ne sont pas utilisés par le nouvel écran.

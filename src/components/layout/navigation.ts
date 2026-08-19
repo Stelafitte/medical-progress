@@ -100,6 +100,12 @@ export const PROGRAM_ADMIN_NAV: readonly NavEntry[] = [
     exact: false,
   },
   {
+    to: "/espace/administration/personnes",
+    label: "Personnes et inscriptions",
+    icon: Users,
+    exact: false,
+  },
+  {
     to: "/espace/administration/pedagogie",
     label: "Configuration pédagogique",
     icon: GraduationCap,

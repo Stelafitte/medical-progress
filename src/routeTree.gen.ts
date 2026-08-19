@@ -31,6 +31,7 @@ import { Route as EspaceAdministrationDpcRouteImport } from './routes/espace.adm
 import { Route as EspaceAdministrationGouvernanceRouteImport } from './routes/espace.administration.gouvernance'
 import { Route as EspaceAdministrationOrganisationRouteImport } from './routes/espace.administration.organisation'
 import { Route as EspaceAdministrationPedagogieRouteImport } from './routes/espace.administration.pedagogie'
+import { Route as EspaceAdministrationPersonnesRouteImport } from './routes/espace.administration.personnes'
 import { Route as EspaceAdministrationSuiviRouteImport } from './routes/espace.administration.suivi'
 import { Route as EspaceEncadrementIndexRouteImport } from './routes/espace.encadrement.index'
 import { Route as EspaceEncadrementAlertesRouteImport } from './routes/espace.encadrement.alertes'
@@ -161,6 +162,12 @@ const EspaceAdministrationPedagogieRoute =
     path: '/pedagogie',
     getParentRoute: () => EspaceAdministrationRoute,
   } as any)
+const EspaceAdministrationPersonnesRoute =
+  EspaceAdministrationPersonnesRouteImport.update({
+    id: '/personnes',
+    path: '/personnes',
+    getParentRoute: () => EspaceAdministrationRoute,
+  } as any)
 const EspaceAdministrationSuiviRoute =
   EspaceAdministrationSuiviRouteImport.update({
     id: '/suivi',
@@ -251,6 +258,7 @@ export interface FileRoutesByFullPath {
   '/espace/administration/gouvernance': typeof EspaceAdministrationGouvernanceRoute
   '/espace/administration/organisation': typeof EspaceAdministrationOrganisationRoute
   '/espace/administration/pedagogie': typeof EspaceAdministrationPedagogieRoute
+  '/espace/administration/personnes': typeof EspaceAdministrationPersonnesRoute
   '/espace/administration/suivi': typeof EspaceAdministrationSuiviRoute
   '/espace/encadrement/alertes': typeof EspaceEncadrementAlertesRoute
   '/espace/encadrement/bilans': typeof EspaceEncadrementBilansRoute
@@ -283,6 +291,7 @@ export interface FileRoutesByTo {
   '/espace/administration/gouvernance': typeof EspaceAdministrationGouvernanceRoute
   '/espace/administration/organisation': typeof EspaceAdministrationOrganisationRoute
   '/espace/administration/pedagogie': typeof EspaceAdministrationPedagogieRoute
+  '/espace/administration/personnes': typeof EspaceAdministrationPersonnesRoute
   '/espace/administration/suivi': typeof EspaceAdministrationSuiviRoute
   '/espace/encadrement/alertes': typeof EspaceEncadrementAlertesRoute
   '/espace/encadrement/bilans': typeof EspaceEncadrementBilansRoute
@@ -320,6 +329,7 @@ export interface FileRoutesById {
   '/espace/administration/gouvernance': typeof EspaceAdministrationGouvernanceRoute
   '/espace/administration/organisation': typeof EspaceAdministrationOrganisationRoute
   '/espace/administration/pedagogie': typeof EspaceAdministrationPedagogieRoute
+  '/espace/administration/personnes': typeof EspaceAdministrationPersonnesRoute
   '/espace/administration/suivi': typeof EspaceAdministrationSuiviRoute
   '/espace/encadrement/alertes': typeof EspaceEncadrementAlertesRoute
   '/espace/encadrement/bilans': typeof EspaceEncadrementBilansRoute
@@ -358,6 +368,7 @@ export interface FileRouteTypes {
     | '/espace/administration/gouvernance'
     | '/espace/administration/organisation'
     | '/espace/administration/pedagogie'
+    | '/espace/administration/personnes'
     | '/espace/administration/suivi'
     | '/espace/encadrement/alertes'
     | '/espace/encadrement/bilans'
@@ -390,6 +401,7 @@ export interface FileRouteTypes {
     | '/espace/administration/gouvernance'
     | '/espace/administration/organisation'
     | '/espace/administration/pedagogie'
+    | '/espace/administration/personnes'
     | '/espace/administration/suivi'
     | '/espace/encadrement/alertes'
     | '/espace/encadrement/bilans'
@@ -426,6 +438,7 @@ export interface FileRouteTypes {
     | '/espace/administration/gouvernance'
     | '/espace/administration/organisation'
     | '/espace/administration/pedagogie'
+    | '/espace/administration/personnes'
     | '/espace/administration/suivi'
     | '/espace/encadrement/alertes'
     | '/espace/encadrement/bilans'
@@ -602,6 +615,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EspaceAdministrationPedagogieRouteImport
       parentRoute: typeof EspaceAdministrationRoute
     }
+    '/espace/administration/personnes': {
+      id: '/espace/administration/personnes'
+      path: '/personnes'
+      fullPath: '/espace/administration/personnes'
+      preLoaderRoute: typeof EspaceAdministrationPersonnesRouteImport
+      parentRoute: typeof EspaceAdministrationRoute
+    }
     '/espace/administration/suivi': {
       id: '/espace/administration/suivi'
       path: '/suivi'
@@ -697,6 +717,7 @@ interface EspaceAdministrationRouteChildren {
   EspaceAdministrationGouvernanceRoute: typeof EspaceAdministrationGouvernanceRoute
   EspaceAdministrationOrganisationRoute: typeof EspaceAdministrationOrganisationRoute
   EspaceAdministrationPedagogieRoute: typeof EspaceAdministrationPedagogieRoute
+  EspaceAdministrationPersonnesRoute: typeof EspaceAdministrationPersonnesRoute
   EspaceAdministrationSuiviRoute: typeof EspaceAdministrationSuiviRoute
   EspaceAdministrationIndexRoute: typeof EspaceAdministrationIndexRoute
 }
@@ -710,6 +731,7 @@ const EspaceAdministrationRouteChildren: EspaceAdministrationRouteChildren = {
   EspaceAdministrationGouvernanceRoute: EspaceAdministrationGouvernanceRoute,
   EspaceAdministrationOrganisationRoute: EspaceAdministrationOrganisationRoute,
   EspaceAdministrationPedagogieRoute: EspaceAdministrationPedagogieRoute,
+  EspaceAdministrationPersonnesRoute: EspaceAdministrationPersonnesRoute,
   EspaceAdministrationSuiviRoute: EspaceAdministrationSuiviRoute,
   EspaceAdministrationIndexRoute: EspaceAdministrationIndexRoute,
 }
