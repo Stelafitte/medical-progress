@@ -14,6 +14,7 @@ import { Route as EspaceRouteImport } from './routes/espace'
 import { Route as EspaceIndexRouteImport } from './routes/espace.index'
 import { Route as EspaceAdministrationRouteImport } from './routes/espace.administration'
 import { Route as EspaceArchitectureRouteImport } from './routes/espace.architecture'
+import { Route as EspaceAuditsRouteImport } from './routes/espace.audits'
 import { Route as EspaceEncadrementRouteImport } from './routes/espace.encadrement'
 import { Route as EspacePasseportRouteImport } from './routes/espace.passeport'
 import { Route as EspacePlateformeRouteImport } from './routes/espace.plateforme'
@@ -63,6 +64,11 @@ const EspaceAdministrationRoute = EspaceAdministrationRouteImport.update({
 const EspaceArchitectureRoute = EspaceArchitectureRouteImport.update({
   id: '/architecture',
   path: '/architecture',
+  getParentRoute: () => EspaceRoute,
+} as any)
+const EspaceAuditsRoute = EspaceAuditsRouteImport.update({
+  id: '/audits',
+  path: '/audits',
   getParentRoute: () => EspaceRoute,
 } as any)
 const EspaceEncadrementRoute = EspaceEncadrementRouteImport.update({
@@ -209,6 +215,7 @@ export interface FileRoutesByFullPath {
   '/espace': typeof EspaceRouteWithChildren
   '/espace/administration': typeof EspaceAdministrationRouteWithChildren
   '/espace/architecture': typeof EspaceArchitectureRoute
+  '/espace/audits': typeof EspaceAuditsRoute
   '/espace/encadrement': typeof EspaceEncadrementRouteWithChildren
   '/espace/passeport': typeof EspacePasseportRoute
   '/espace/plateforme': typeof EspacePlateformeRoute
@@ -239,6 +246,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/espace/architecture': typeof EspaceArchitectureRoute
+  '/espace/audits': typeof EspaceAuditsRoute
   '/espace/passeport': typeof EspacePasseportRoute
   '/espace/plateforme': typeof EspacePlateformeRoute
   '/espace/profil': typeof EspaceProfilRoute
@@ -270,6 +278,7 @@ export interface FileRoutesById {
   '/espace': typeof EspaceRouteWithChildren
   '/espace/administration': typeof EspaceAdministrationRouteWithChildren
   '/espace/architecture': typeof EspaceArchitectureRoute
+  '/espace/audits': typeof EspaceAuditsRoute
   '/espace/encadrement': typeof EspaceEncadrementRouteWithChildren
   '/espace/passeport': typeof EspacePasseportRoute
   '/espace/plateforme': typeof EspacePlateformeRoute
@@ -304,6 +313,7 @@ export interface FileRouteTypes {
     | '/espace'
     | '/espace/administration'
     | '/espace/architecture'
+    | '/espace/audits'
     | '/espace/encadrement'
     | '/espace/passeport'
     | '/espace/plateforme'
@@ -334,6 +344,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/espace/architecture'
+    | '/espace/audits'
     | '/espace/passeport'
     | '/espace/plateforme'
     | '/espace/profil'
@@ -364,6 +375,7 @@ export interface FileRouteTypes {
     | '/espace'
     | '/espace/administration'
     | '/espace/architecture'
+    | '/espace/audits'
     | '/espace/encadrement'
     | '/espace/passeport'
     | '/espace/plateforme'
@@ -432,6 +444,13 @@ declare module '@tanstack/react-router' {
       path: '/architecture'
       fullPath: '/espace/architecture'
       preLoaderRoute: typeof EspaceArchitectureRouteImport
+      parentRoute: typeof EspaceRoute
+    }
+    '/espace/audits': {
+      id: '/espace/audits'
+      path: '/audits'
+      fullPath: '/espace/audits'
+      preLoaderRoute: typeof EspaceAuditsRouteImport
       parentRoute: typeof EspaceRoute
     }
     '/espace/encadrement': {
@@ -680,6 +699,7 @@ const EspaceRessourcesRouteWithChildren =
 interface EspaceRouteChildren {
   EspaceAdministrationRoute: typeof EspaceAdministrationRouteWithChildren
   EspaceArchitectureRoute: typeof EspaceArchitectureRoute
+  EspaceAuditsRoute: typeof EspaceAuditsRoute
   EspaceEncadrementRoute: typeof EspaceEncadrementRouteWithChildren
   EspacePasseportRoute: typeof EspacePasseportRoute
   EspacePlateformeRoute: typeof EspacePlateformeRoute
@@ -693,6 +713,7 @@ interface EspaceRouteChildren {
 const EspaceRouteChildren: EspaceRouteChildren = {
   EspaceAdministrationRoute: EspaceAdministrationRouteWithChildren,
   EspaceArchitectureRoute: EspaceArchitectureRoute,
+  EspaceAuditsRoute: EspaceAuditsRoute,
   EspaceEncadrementRoute: EspaceEncadrementRouteWithChildren,
   EspacePasseportRoute: EspacePasseportRoute,
   EspacePlateformeRoute: EspacePlateformeRoute,
