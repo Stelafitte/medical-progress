@@ -23,8 +23,8 @@ describe("navigation par rôle", () => {
   });
 
   it("nomme explicitement les deux espaces professionnels", () => {
-    expect(navigation).toContain("Espace responsable de stage");
-    expect(navigation).toContain("Administration du programme");
+    expect(navigation).toContain("Supervision des stages");
+    expect(navigation).toContain("Administration des programmes");
     expect(navigation).toContain("Administration plateforme");
   });
 });

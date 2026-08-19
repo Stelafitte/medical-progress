@@ -6,12 +6,12 @@ import { SupervisionLogs } from "@/features/supervision/SupervisionLogs";
 export const Route = createFileRoute("/espace/encadrement/carnets")({
   head: () => ({
     meta: [
-      { title: "Carnets à valider — Mon Passeport Éducatif" },
+      { title: "Carnets à valider — Campus Santé Augmenté" },
       {
         name: "description",
         content: "Validation unitaire, groupée ou finale des carnets de stage soumis.",
       },
-      { property: "og:title", content: "Carnets à valider — Mon Passeport Éducatif" },
+      { property: "og:title", content: "Carnets à valider — Campus Santé Augmenté" },
       {
         property: "og:description",
         content: "Validation unitaire, groupée ou finale des carnets de stage soumis.",

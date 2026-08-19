@@ -6,12 +6,12 @@ import { PlatformAdminView } from "@/features/administration/PlatformAdminView";
 export const Route = createFileRoute("/espace/plateforme")({
   head: () => ({
     meta: [
-      { title: "Administration plateforme — Mon Passeport Éducatif" },
+      { title: "Administration plateforme — Campus Santé Augmenté" },
       {
         name: "description",
         content: "Supervision des programmes, administrateurs autorisés et paramètres communs.",
       },
-      { property: "og:title", content: "Administration plateforme — Mon Passeport Éducatif" },
+      { property: "og:title", content: "Administration plateforme — Campus Santé Augmenté" },
       {
         property: "og:description",
         content: "Supervision des programmes, administrateurs autorisés et paramètres communs.",

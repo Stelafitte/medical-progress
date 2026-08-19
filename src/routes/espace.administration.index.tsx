@@ -6,12 +6,12 @@ import { AdminDashboard } from "@/features/administration/AdminDashboard";
 export const Route = createFileRoute("/espace/administration/")({
   head: () => ({
     meta: [
-      { title: "Pilotage du programme — Mon Passeport Éducatif" },
+      { title: "Pilotage du programme — Campus Santé Augmenté" },
       {
         name: "description",
         content: "Indicateurs de promotion, tâches prioritaires, alertes et validations.",
       },
-      { property: "og:title", content: "Pilotage du programme — Mon Passeport Éducatif" },
+      { property: "og:title", content: "Pilotage du programme — Campus Santé Augmenté" },
       {
         property: "og:description",
         content: "Indicateurs de promotion, tâches prioritaires, alertes et validations.",

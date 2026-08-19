@@ -25,15 +25,20 @@ describe("terminologie", () => {
     }
   });
 
-  it("utilise « Mon Passeport Éducatif » dans la page et ses métadonnées", () => {
-    expect(passportView).toContain('title="Mon Passeport Éducatif"');
-    expect(passportRoute).toContain('{ title: "Mon Passeport Éducatif" }');
+  it("nomme la fonctionnalité « Mon passeport de compétences »", () => {
+    expect(passportView).toContain('title="Mon passeport de compétences"');
+    expect(passportRoute).toContain(
+      '{ title: "Mon passeport de compétences — Campus Santé Augmenté" }',
+    );
   });
 
   it("conserve le nom global de la plateforme dans le shell et les métadonnées", () => {
-    expect(shell).toContain("Mon Passeport Éducatif");
-    expect(rootRoute).toContain('{ title: "Mon Passeport Éducatif" }');
-    expect(rootRoute).toContain('{ property: "og:title", content: "Mon Passeport Éducatif" }');
+    expect(shell).toContain("Campus Santé Augmenté");
+    expect(rootRoute).toContain(
+      '{ title: "Campus Santé Augmenté — Formation, compétences et développement professionnel" }',
+    );
+    expect(rootRoute).toContain("Formation, compétences et développement professionnel");
+    expect(shell).toContain("Formation, compétences et développement professionnel");
   });
 });
 
@@ -42,9 +47,16 @@ describe("navigation", () => {
 
   it("place Ressources immédiatement avant Stage dans l'espace apprenant", () => {
     const order = [
-      ...navigation.matchAll(/label: "(Tableau de bord|Passeport|Ressources|Stage)"/g),
+      ...navigation.matchAll(
+        /label: "(Tableau de bord|Mon passeport de compétences|Ressources|Stage)"/g,
+      ),
     ].map((m) => m[1]);
-    expect(order).toEqual(["Tableau de bord", "Passeport", "Ressources", "Stage"]);
+    expect(order).toEqual([
+      "Tableau de bord",
+      "Mon passeport de compétences",
+      "Ressources",
+      "Stage",
+    ]);
   });
 
   it("dérive les espaces visibles des rôles contextualisés", () => {

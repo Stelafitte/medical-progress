@@ -18,13 +18,13 @@ function AuditsRoute() {
 export const Route = createFileRoute("/espace/audits")({
   head: () => ({
     meta: [
-      { title: "Audits de pratique — Mon Passeport Éducatif" },
+      { title: "Audits de pratique — Campus Santé Augmenté" },
       {
         name: "description",
         content:
           "Audits de pratique avant et après formation, pré/post-tests et séances du programme de DPC.",
       },
-      { property: "og:title", content: "Audits de pratique — Mon Passeport Éducatif" },
+      { property: "og:title", content: "Audits de pratique — Campus Santé Augmenté" },
       {
         property: "og:description",
         content: "Mesure de la pratique avant et après formation, sur dossiers anonymes.",

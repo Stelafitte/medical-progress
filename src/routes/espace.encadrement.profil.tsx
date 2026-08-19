@@ -6,12 +6,12 @@ import { SupervisorProfile } from "@/features/supervision/SupervisorProfile";
 export const Route = createFileRoute("/espace/encadrement/profil")({
   head: () => ({
     meta: [
-      { title: "Mon profil d'encadrant — Mon Passeport Éducatif" },
+      { title: "Mon profil d'encadrant — Campus Santé Augmenté" },
       {
         name: "description",
         content: "Fonction, terrains, périodes d'encadrement et préférences de notification.",
       },
-      { property: "og:title", content: "Mon profil d'encadrant — Mon Passeport Éducatif" },
+      { property: "og:title", content: "Mon profil d'encadrant — Campus Santé Augmenté" },
       {
         property: "og:description",
         content: "Fonction, terrains, périodes d'encadrement et préférences de notification.",

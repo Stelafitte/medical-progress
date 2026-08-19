@@ -6,12 +6,12 @@ import { SupervisionCases } from "@/features/supervision/SupervisionCases";
 export const Route = createFileRoute("/espace/encadrement/cas")({
   head: () => ({
     meta: [
-      { title: "Cas et questions — Mon Passeport Éducatif" },
+      { title: "Cas et questions — Campus Santé Augmenté" },
       {
         name: "description",
         content: "Cas à discuter et questions des apprenants encadrés, avec suivi du traitement.",
       },
-      { property: "og:title", content: "Cas et questions — Mon Passeport Éducatif" },
+      { property: "og:title", content: "Cas et questions — Campus Santé Augmenté" },
       {
         property: "og:description",
         content: "Cas à discuter et questions des apprenants encadrés, avec suivi du traitement.",

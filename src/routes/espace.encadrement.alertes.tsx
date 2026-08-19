@@ -6,12 +6,12 @@ import { SupervisionAlerts } from "@/features/supervision/SupervisionAlerts";
 export const Route = createFileRoute("/espace/encadrement/alertes")({
   head: () => ({
     meta: [
-      { title: "Alertes d'encadrement — Mon Passeport Éducatif" },
+      { title: "Alertes d'encadrement — Campus Santé Augmenté" },
       {
         name: "description",
         content: "Faible activité, quotas manquants, absence de saisie et validations en retard.",
       },
-      { property: "og:title", content: "Alertes d'encadrement — Mon Passeport Éducatif" },
+      { property: "og:title", content: "Alertes d'encadrement — Campus Santé Augmenté" },
       {
         property: "og:description",
         content: "Faible activité, quotas manquants, absence de saisie et validations en retard.",

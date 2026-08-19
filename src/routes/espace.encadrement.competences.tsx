@@ -6,12 +6,12 @@ import { SupervisionCompetences } from "@/features/supervision/SupervisionCompet
 export const Route = createFileRoute("/espace/encadrement/competences")({
   head: () => ({
     meta: [
-      { title: "Compétences à confirmer — Mon Passeport Éducatif" },
+      { title: "Compétences à confirmer — Campus Santé Augmenté" },
       {
         name: "description",
         content: "Confirmation humaine des compétences réelles et du niveau d'autonomie.",
       },
-      { property: "og:title", content: "Compétences à confirmer — Mon Passeport Éducatif" },
+      { property: "og:title", content: "Compétences à confirmer — Campus Santé Augmenté" },
       {
         property: "og:description",
         content: "Confirmation humaine des compétences réelles et du niveau d'autonomie.",

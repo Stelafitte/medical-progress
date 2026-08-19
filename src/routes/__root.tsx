@@ -77,17 +77,19 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Mon Passeport Éducatif" },
+      { title: "Campus Santé Augmenté — Formation, compétences et développement professionnel" },
       {
         name: "description",
         content:
-          "Socle universitaire multi-programmes de suivi des connaissances et compétences médicales.",
+          "Campus Santé Augmenté : formation, compétences et développement professionnel pour les programmes universitaires et le DPC.",
       },
-      { property: "og:title", content: "Mon Passeport Éducatif" },
+      {
+        property: "og:title",
+        content: "Campus Santé Augmenté — Formation, compétences et développement professionnel",
+      },
       {
         property: "og:description",
-        content:
-          "Socle universitaire multi-programmes de suivi des connaissances et compétences médicales.",
+        content: "Formation, compétences et développement professionnel.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

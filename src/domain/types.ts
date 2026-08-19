@@ -1,5 +1,5 @@
 /**
- * Modèle métier universel de Mon Passeport Éducatif.
+ * Modèle métier universel de Campus Santé Augmenté.
  *
  * Ce module ne contient AUCUNE dépendance framework ni accès données :
  * uniquement des types et invariants de domaine, partageables entre

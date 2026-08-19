@@ -131,7 +131,7 @@ export function ProfileView() {
       <p className="text-sm text-muted-foreground">
         Pour votre progression dans le programme sélectionné, ouvrez{" "}
         <Link to="/espace/passeport" className="underline">
-          Mon Passeport Éducatif
+          Campus Santé Augmenté
         </Link>
         .
       </p>

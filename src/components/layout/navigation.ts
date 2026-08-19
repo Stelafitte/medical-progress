@@ -52,10 +52,16 @@ export interface NavSpace {
 /** Espace apprenant — ordre gelé : Tableau de bord, Passeport, Ressources, Stage. */
 export const LEARNER_NAV: readonly NavEntry[] = [
   { to: "/espace", label: "Tableau de bord", icon: LayoutDashboard, exact: true },
-  { to: "/espace/passeport", label: "Passeport", icon: IdCard, exact: false },
+  {
+    to: "/espace/passeport",
+    label: "Mon passeport de compétences",
+    icon: IdCard,
+    exact: false,
+  },
   { to: "/espace/ressources", label: "Ressources", icon: BookOpen, exact: false },
   { to: "/espace/stage", label: "Stage", icon: Stethoscope, exact: false },
 ];
+
 
 export const SUPERVISION_NAV: readonly NavEntry[] = [
   { to: "/espace/encadrement", label: "Vue d'ensemble", icon: Gauge, exact: true },
@@ -187,27 +193,46 @@ export function programAdminNavFor(config?: NavProgramConfig): readonly NavEntry
   return entries;
 }
 
+/**
+ * Intitulé de l'espace apprenant adapté au programme sélectionné
+ * (« Mon parcours DFASM », « Mon parcours DIU », « Mon programme DPC »).
+ */
+export function learnerSpaceLabel(programCode?: string, config?: NavProgramConfig): string {
+  if (config?.dpcEnabled) return "Mon programme DPC";
+  const code = (programCode ?? "").toUpperCase();
+  if (code.startsWith("DFASM")) return "Mon parcours DFASM";
+  if (code.startsWith("DIU")) return "Mon parcours DIU";
+  if (code.startsWith("DPC")) return "Mon programme DPC";
+  return "Mon parcours de formation";
+}
+
 /** Espaces visibles pour une personne dans le programme sélectionné. */
 export function navSpacesFor(
   assignments: readonly RoleAssignment[],
   programId: ProgramId,
   config?: NavProgramConfig,
+  programCode?: string,
 ): readonly NavSpace[] {
   const spaces: NavSpace[] = [];
   if (canAccessLearnerSpace(assignments, programId))
-    spaces.push({ key: "learner", label: "Espace apprenant", entries: learnerNavFor(config) });
+    spaces.push({
+      key: "learner",
+      label: learnerSpaceLabel(programCode, config),
+      entries: learnerNavFor(config),
+    });
   if (canAccessSupervision(assignments, programId))
     spaces.push({
       key: "supervision",
-      label: "Espace responsable de stage",
+      label: "Supervision des stages",
       entries: SUPERVISION_NAV,
     });
   if (canAccessProgramAdministration(assignments, programId))
     spaces.push({
       key: "program_admin",
-      label: "Administration du programme",
+      label: "Administration des programmes",
       entries: programAdminNavFor(config),
     });
+
   if (canAccessPlatformAdministration(assignments))
     spaces.push({
       key: "platform_admin",

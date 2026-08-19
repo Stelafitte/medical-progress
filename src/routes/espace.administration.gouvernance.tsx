@@ -6,12 +6,12 @@ import { AdminGovernance } from "@/features/administration/AdminGovernance";
 export const Route = createFileRoute("/espace/administration/gouvernance")({
   head: () => ({
     meta: [
-      { title: "Gouvernance du programme — Mon Passeport Éducatif" },
+      { title: "Gouvernance du programme — Campus Santé Augmenté" },
       {
         name: "description",
         content: "Droits contextualisés, partage, conservation, audit et sécurité.",
       },
-      { property: "og:title", content: "Gouvernance du programme — Mon Passeport Éducatif" },
+      { property: "og:title", content: "Gouvernance du programme — Campus Santé Augmenté" },
       {
         property: "og:description",
         content: "Droits contextualisés, partage, conservation, audit et sécurité.",
