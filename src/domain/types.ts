@@ -59,6 +59,14 @@ export interface ProgramConfig {
   readonly realCompetenceRequiresValidator: true;
   /** Niveau de maîtrise cible attendu en fin de cursus. */
   readonly targetMastery: MasteryLevel;
+  /**
+   * Modules OPTIONNELS activables par programme (absent = désactivé).
+   * Ils n'introduisent aucune architecture parallèle : même socle, autre
+   * configuration (typiquement un programme de DPC).
+   */
+  readonly auditsEnabled?: boolean;
+  readonly prePostTestsEnabled?: boolean;
+  readonly sessionsEnabled?: boolean;
   readonly locale: "fr-FR";
 }
 
