@@ -142,3 +142,21 @@ Statut : **conception non exécutée**. Aucune base activée, aucune migration c
     opt-in ou obligatoire ?
 16. **Export personnel** : format et rétention des exports générés depuis les préférences
     de partage (aucun mécanisme d'export n'est conçu dans ce lot).
+
+## D77 — Un programme de DPC est une CONFIGURATION, pas une application séparée
+Le programme d'exemple `DPC-FA` réutilise Program / CurriculumVersion / Cohort /
+Enrollment / RoleAssignment / Outcome sans branche fonctionnelle dédiée. Les
+modules `auditsEnabled`, `prePostTestsEnabled` et `sessionsEnabled` sont des
+drapeaux optionnels de `ProgramConfig` ; désactivés, ils n'affichent rien et ne
+chargent aucun dépôt.
+
+## D78 — Audit de pratique : dossiers anonymes, aucune donnée patient
+Une soumission d'audit ne porte qu'une `recordRef` (référence interne du
+praticien) et des réponses codées à la grille. Aucun identifiant, aucune donnée
+clinique nominative n'est saisie ni stockée. Hypothèse fonctionnelle retenue
+pour cette itération.
+
+## D79 — Un audit ne vaut jamais acquisition d'une compétence réelle
+Le score de conformité (avant / après) est une preuve de pratique. La validation
+humaine par un tiers reste obligatoire pour toute compétence en situation réelle,
+y compris en DPC (`auditRequiresHumanValidation()`).
