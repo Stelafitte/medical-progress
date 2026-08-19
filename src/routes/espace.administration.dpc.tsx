@@ -36,7 +36,7 @@ function Guarded() {
         description="Module optionnel activable par programme : audits avant/après, formation, tests et attestation."
       />
       <Button asChild className="min-h-11 w-full sm:w-auto">
-        <Link to="/espace/administration/assistant-dpc">Créer un programme DPC</Link>
+        <Link to="/espace/administration/assistant-dpc">Implémenter un DPC</Link>
       </Button>
       <DpcProgrammeSection />
     </div>
