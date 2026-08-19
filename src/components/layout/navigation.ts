@@ -137,6 +137,7 @@ export const PLATFORM_ADMIN_NAV: readonly NavEntry[] = [
 export interface NavProgramConfig {
   readonly placementsEnabled: boolean;
   readonly auditsEnabled?: boolean;
+  readonly dpcEnabled?: boolean;
 }
 
 /** Entrée du module optionnel d'audits de pratique (DPC). */
@@ -147,13 +148,42 @@ export const LEARNER_AUDITS_ENTRY: NavEntry = {
   exact: false,
 };
 
+/** Entrée du parcours DPC intégré (audit 1 → formation → audit 2). */
+export const LEARNER_DPC_ENTRY: NavEntry = {
+  to: "/espace/dpc",
+  label: "Mon parcours DPC",
+  icon: Route,
+  exact: false,
+};
+
+/** Entrée d'administration du programme DPC. */
+export const ADMIN_DPC_ENTRY: NavEntry = {
+  to: "/espace/administration/dpc",
+  label: "Programme DPC",
+  icon: Route,
+  exact: false,
+};
+
 /** Navigation apprenant ajustée aux modules activés pour le programme. */
 export function learnerNavFor(config?: NavProgramConfig): readonly NavEntry[] {
   if (!config) return LEARNER_NAV;
   const entries = LEARNER_NAV.filter(
     (entry) => entry.to !== "/espace/stage" || config.placementsEnabled,
   );
+  // Le parcours DPC intègre déjà ses deux tours d'audit : pas de doublon.
+  if (config.dpcEnabled) return [...entries, LEARNER_DPC_ENTRY];
   return config.auditsEnabled ? [...entries, LEARNER_AUDITS_ENTRY] : entries;
+}
+
+/** Navigation d'administration ajustée aux modules activés pour le programme. */
+export function programAdminNavFor(config?: NavProgramConfig): readonly NavEntry[] {
+  if (!config?.dpcEnabled) return PROGRAM_ADMIN_NAV;
+  const index = PROGRAM_ADMIN_NAV.findIndex(
+    (entry) => entry.to === "/espace/administration/pedagogie",
+  );
+  const entries = [...PROGRAM_ADMIN_NAV];
+  entries.splice(index + 1, 0, ADMIN_DPC_ENTRY);
+  return entries;
 }
 
 /** Espaces visibles pour une personne dans le programme sélectionné. */
@@ -175,7 +205,7 @@ export function navSpacesFor(
     spaces.push({
       key: "program_admin",
       label: "Administration du programme",
-      entries: PROGRAM_ADMIN_NAV,
+      entries: programAdminNavFor(config),
     });
   if (canAccessPlatformAdministration(assignments))
     spaces.push({
