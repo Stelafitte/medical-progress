@@ -10,6 +10,7 @@
  *    explicitement non validé.
  */
 import type { DpcAuditModuleConfig, DpcCompletenessRule } from "@/domain/dpcProgram";
+import type { DpcImplementationPlan } from "@/domain/dpcImplementation";
 import type { DpcProgramDraft } from "@/domain/dpcProgramDraft";
 import { draftFromDefinition } from "@/domain/dpcProgramDraft";
 import { dpcHvgQuestions } from "./dpcHvgFixtures";
@@ -18,6 +19,25 @@ import { dpcHvgProgramDefinition } from "./dpcHvgProgramDefinition";
 /* ------------------------------------------------------------------ */
 /* État 1 — brouillon incomplet                                        */
 /* ------------------------------------------------------------------ */
+
+/**
+ * Plan d'implémentation incomplet : un composant existe, il n'est pas daté.
+ * Sert à montrer le blocage du calendrier, jamais un état publiable.
+ */
+const incompleteImplementation: DpcImplementationPlan = {
+  id: "impl-incomplete",
+  label: "Calendrier d'implémentation (à programmer)",
+  timeZone: "Europe/Paris",
+  slots: [
+    {
+      id: "slot-incomplete-1",
+      label: "Séquence de formation à programmer",
+      kind: "training_session",
+      attendanceRequired: false,
+      note: "Modalité et dates non renseignées : le calendrier reste bloquant.",
+    },
+  ],
+};
 
 export const dpcIncompleteDraft: DpcProgramDraft = {
   id: "dpc-draft-incomplete",
@@ -46,6 +66,7 @@ export const dpcIncompleteDraft: DpcProgramDraft = {
     bibliography: [],
   },
   audit: { grids: [], rounds: [] },
+  implementation: incompleteImplementation,
   quizCount: 0,
   medicalParametersValidated: false,
   publicationSimulated: true,
@@ -55,12 +76,82 @@ export const dpcIncompleteDraft: DpcProgramDraft = {
 /* État 2 — démonstrateur HVG complet mais non validé                  */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Démonstrateur HVG : audit avant / après, tests amont et aval, formation en
+ * visioconférence puis e-formation. Les composants sont ceux du démonstrateur,
+ * pas un modèle imposé.
+ */
+const hvgImplementation: DpcImplementationPlan = {
+  id: "impl-hvg",
+  label: "Calendrier d'implémentation HVG–Amylose (simulé)",
+  timeZone: "Europe/Paris",
+  slots: [
+    {
+      id: "slot-hvg-audit-1",
+      label: "Audit de pratiques initial",
+      kind: "audit_round",
+      order: 1,
+      roundId: "dpc-hvg-round-a1",
+      opensOn: "2026-03-02T07:00:00.000Z",
+      closesOn: "2026-03-31T20:00:00.000Z",
+      attendanceRequired: false,
+    },
+    {
+      id: "slot-hvg-pretest",
+      label: "Test de connaissances amont",
+      kind: "pre_test",
+      opensOn: "2026-04-01T07:00:00.000Z",
+      closesOn: "2026-04-06T20:00:00.000Z",
+      attendanceRequired: false,
+    },
+    {
+      id: "slot-hvg-visio",
+      label: "Classe virtuelle — hypertrophie ventriculaire gauche et amylose",
+      kind: "training_session",
+      delivery: "virtual_classroom",
+      startsAt: "2026-04-07T17:00:00.000Z",
+      endsAt: "2026-04-07T19:00:00.000Z",
+      joinInstructions: "Lien de connexion transmis aux inscrits (simulé, aucun envoi réel).",
+      attendanceRequired: true,
+    },
+    {
+      id: "slot-hvg-elearning",
+      label: "E-formation — documents à consulter en ligne",
+      kind: "training_session",
+      delivery: "e_learning",
+      opensOn: "2026-04-08T07:00:00.000Z",
+      closesOn: "2026-05-08T20:00:00.000Z",
+      resourceIds: ["dpc-hvg-support-1"],
+      attendanceRequired: false,
+    },
+    {
+      id: "slot-hvg-posttest",
+      label: "Test de connaissances aval",
+      kind: "post_test",
+      opensOn: "2026-05-09T07:00:00.000Z",
+      closesOn: "2026-05-16T20:00:00.000Z",
+      attendanceRequired: false,
+    },
+    {
+      id: "slot-hvg-audit-2",
+      label: "Audit de pratiques de suivi",
+      kind: "audit_round",
+      order: 2,
+      roundId: "dpc-hvg-round-a2",
+      opensOn: "2026-07-06T07:00:00.000Z",
+      closesOn: "2026-07-31T20:00:00.000Z",
+      attendanceRequired: false,
+    },
+  ],
+};
+
 export const dpcHvgDraft: DpcProgramDraft = draftFromDefinition(dpcHvgProgramDefinition, {
   id: "dpc-draft-hvg",
   label: "DPC HVG–Amylose (démonstrateur préremplie, non validé)",
   quizCount: dpcHvgQuestions.length,
   medicalParametersValidated: false,
   checksum: "sim-hvg-checksum",
+  implementation: hvgImplementation,
 });
 
 /* ------------------------------------------------------------------ */
@@ -125,6 +216,48 @@ const genericAudit: DpcAuditModuleConfig = {
       gridVersion: "v0.9",
       opensOn: "2026-06-01T08:00:00.000Z",
       closesOn: "2026-06-15T20:00:00.000Z",
+    },
+  ],
+};
+
+/**
+ * Aperçu publiable (fictif) : seuls un présentiel et deux tours d'audit, sans
+ * aucun test de connaissances — un DPC peut n'en avoir aucun.
+ */
+const readyImplementation: DpcImplementationPlan = {
+  id: "impl-ready",
+  label: "Calendrier d'implémentation de démonstration",
+  timeZone: "Europe/Paris",
+  slots: [
+    {
+      id: "slot-ready-audit-1",
+      label: "Tour initial",
+      kind: "audit_round",
+      order: 1,
+      roundId: "round-demo-1",
+      opensOn: "2026-02-01T08:00:00.000Z",
+      closesOn: "2026-02-28T20:00:00.000Z",
+      attendanceRequired: false,
+    },
+    {
+      id: "slot-ready-presentiel",
+      label: "Journée en présentiel",
+      kind: "training_session",
+      delivery: "in_person",
+      startsAt: "2026-03-10T08:00:00.000Z",
+      endsAt: "2026-03-10T16:00:00.000Z",
+      location: "Salle de démonstration (adresse fictive)",
+      attendanceRequired: true,
+    },
+    {
+      id: "slot-ready-audit-2",
+      label: "Tour de suivi",
+      kind: "audit_round",
+      order: 2,
+      roundId: "round-demo-2",
+      opensOn: "2026-05-01T08:00:00.000Z",
+      closesOn: "2026-05-31T20:00:00.000Z",
+      attendanceRequired: false,
     },
   ],
 };
@@ -195,6 +328,7 @@ export const dpcReadyToPublishDraft: DpcProgramDraft = {
     bibliography: [{ order: 1, citation: "Référence de démonstration (fictive)." }],
   },
   audit: genericAudit,
+  implementation: readyImplementation,
   quizCount: 2,
   medicalParametersValidated: true,
   humanValidation: {
