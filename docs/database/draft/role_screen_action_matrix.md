@@ -1,7 +1,7 @@
 # Cartographie fonctionnelle et matrice rôle → écran → action
 
 **Statut : maquette mock. Aucune base activée, aucune migration exécutée, aucun stockage, aucun appel IA, aucun envoi de message.**
-Ce document décrit les écrans livrés dans la maquette privée « Mon Passeport Éducatif » et les
+Ce document décrit les écrans livrés dans la maquette privée « Campus Santé Augmenté » et les
 règles d'accès qu'ils supposent. Il complète — sans les modifier — les invariants RLS déjà décrits
 dans `002_rls_policies.sql`, `003_server_invariants.sql`, `rls_matrix.md` et
 `stage_logbook_architecture.md`.

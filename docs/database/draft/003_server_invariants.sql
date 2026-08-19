@@ -1,6 +1,6 @@
 -- =====================================================================
 -- DRAFT — DO NOT EXECUTE
--- Mon Passeport Éducatif — Lot 1 — invariants serveur (conception)
+-- Campus Santé Augmenté — Lot 1 — invariants serveur (conception)
 -- Ce fichier n'est pas une migration et n'a jamais été exécuté.
 --
 -- Objet : le SEUL mécanisme mutant privilégié de la base.

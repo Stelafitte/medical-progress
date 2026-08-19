@@ -10,6 +10,7 @@ const read = (path: string) => readFileSync(new URL(`../../../${path}`, import.m
 
 const passportView = read("src/features/passport/PassportView.tsx");
 const passportRoute = read("src/routes/espace.passeport.tsx");
+const resourcesRoute = read("src/routes/espace.ressources.tsx");
 const profileView = read("src/features/profile/ProfileView.tsx");
 const security = read("src/features/profile/AccountSecuritySection.tsx");
 const visibility = read("src/features/profile/PassportVisibilitySection.tsx");
@@ -22,6 +23,12 @@ describe("terminologie", () => {
   it("n'utilise plus l'ancien nom « Passeport Éducatif Médical »", () => {
     for (const file of [passportView, passportRoute, profileView, shell, rootRoute, homeRoute]) {
       expect(file).not.toContain("Passeport Éducatif Médical");
+    }
+  });
+
+  it("n'utilise plus l'ancien nom global « Mon Passeport Éducatif » dans les principaux fichiers d'interface", () => {
+    for (const file of [passportView, passportRoute, profileView, shell, rootRoute, homeRoute]) {
+      expect(file).not.toContain("Mon Passeport Éducatif");
     }
   });
 
@@ -39,6 +46,11 @@ describe("terminologie", () => {
     );
     expect(rootRoute).toContain("Formation, compétences et développement professionnel");
     expect(shell).toContain("Formation, compétences et développement professionnel");
+  });
+
+  it("définit les métadonnées de la route Ressources", () => {
+    expect(resourcesRoute).toContain('{ title: "Ressources — Campus Santé Augmenté" }');
+    expect(resourcesRoute).toContain('{ name: "robots", content: "noindex" }');
   });
 });
 
