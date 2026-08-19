@@ -130,14 +130,41 @@ export const PLATFORM_ADMIN_NAV: readonly NavEntry[] = [
   { to: "/espace/statistiques", label: "Statistiques", icon: BarChart3, exact: false },
 ];
 
+/**
+ * Modules optionnels du programme sélectionné. Ils n'ajoutent aucune
+ * architecture parallèle : ils masquent ou révèlent des entrées de navigation.
+ */
+export interface NavProgramConfig {
+  readonly placementsEnabled: boolean;
+  readonly auditsEnabled?: boolean;
+}
+
+/** Entrée du module optionnel d'audits de pratique (DPC). */
+export const LEARNER_AUDITS_ENTRY: NavEntry = {
+  to: "/espace/audits",
+  label: "Audits de pratique",
+  icon: ClipboardCheck,
+  exact: false,
+};
+
+/** Navigation apprenant ajustée aux modules activés pour le programme. */
+export function learnerNavFor(config?: NavProgramConfig): readonly NavEntry[] {
+  if (!config) return LEARNER_NAV;
+  const entries = LEARNER_NAV.filter(
+    (entry) => entry.to !== "/espace/stage" || config.placementsEnabled,
+  );
+  return config.auditsEnabled ? [...entries, LEARNER_AUDITS_ENTRY] : entries;
+}
+
 /** Espaces visibles pour une personne dans le programme sélectionné. */
 export function navSpacesFor(
   assignments: readonly RoleAssignment[],
   programId: ProgramId,
+  config?: NavProgramConfig,
 ): readonly NavSpace[] {
   const spaces: NavSpace[] = [];
   if (canAccessLearnerSpace(assignments, programId))
-    spaces.push({ key: "learner", label: "Espace apprenant", entries: LEARNER_NAV });
+    spaces.push({ key: "learner", label: "Espace apprenant", entries: learnerNavFor(config) });
   if (canAccessSupervision(assignments, programId))
     spaces.push({
       key: "supervision",

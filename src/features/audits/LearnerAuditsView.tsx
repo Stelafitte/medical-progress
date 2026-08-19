@@ -22,7 +22,7 @@ import {
 export function LearnerAuditsView() {
   const data = useDataAccess();
   const { activeProgram, activeEnrollment } = useSession();
-  const enrollmentId = activeEnrollment?.id;
+  const enrollmentId = activeEnrollment.id;
 
   const { data: scope, isPending } = useQuery({
     queryKey: ["clinical-audits-learner", activeProgram.id, enrollmentId ?? "none"],
@@ -30,9 +30,7 @@ export function LearnerAuditsView() {
       const [templates, campaigns, submissions, tests, results, sessions] = await Promise.all([
         data.clinicalAudits.listTemplates(activeProgram.id),
         data.clinicalAudits.listCampaigns(activeProgram.id),
-        enrollmentId
-          ? data.clinicalAudits.listSubmissionsForEnrollment(enrollmentId)
-          : Promise.resolve([]),
+        data.clinicalAudits.listSubmissionsForEnrollment(enrollmentId),
         data.clinicalAudits.listTests(activeProgram.id),
         data.clinicalAudits.listTestResults(activeProgram.id),
         data.clinicalAudits.listSessions(activeProgram.id),
@@ -66,7 +64,7 @@ export function LearnerAuditsView() {
   const comparison = template
     ? comparePrePost(template, submissionFor("pre"), submissionFor("post"))
     : null;
-  const knowledge = enrollmentId ? testProgress(scope.results, enrollmentId) : null;
+  const knowledge = testProgress(scope.results, enrollmentId);
 
   return (
     <div className="space-y-6">
