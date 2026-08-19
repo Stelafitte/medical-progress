@@ -68,42 +68,42 @@ export const DPC_WIZARD_STEPS: readonly DpcWizardStep[] = [
   {
     id: "source_documents",
     order: 1,
-    title: "Documents sources",
+    title: "Programme de référence",
     description:
-      "Sélection locale ou dépôt simulé des documents, avec classement explicite de chaque fichier.",
+      "Sélection ou import simulé du programme de référence : documents sources classés explicitement.",
   },
   {
     id: "proposed_extraction",
     order: 2,
-    title: "Extraction proposée",
+    title: "Vérification des éléments pédagogiques",
     description:
       "Brouillon structuré proposé pour relecture : extraction simulée, validation du coordinateur requise.",
   },
   {
     id: "audit_configuration",
     order: 3,
-    title: "Configuration des audits",
+    title: "Modules activés et audits",
     description:
       "Grilles, parties, critères, critères d'inclusion, nombre de dossiers, tours, dates et règle de complétude.",
   },
   {
     id: "assessment_separation",
     order: 4,
-    title: "Séparation des évaluations",
+    title: "Évaluations activées",
     description:
       "Audits de pratiques sur dossiers et tests de connaissances par QCM présentés séparément.",
   },
   {
     id: "implementation_schedule",
     order: 5,
-    title: "Calendrier d'implémentation",
+    title: "Cohorte, modalités et calendrier",
     description:
       "Composants réellement retenus (audit avant / après, tests amont / aval, formation en présentiel, en visioconférence ou en e-formation) et dates précises de chacun.",
   },
   {
     id: "publication_check",
     order: 6,
-    title: "Contrôle avant publication",
+    title: "Contrôle avant ouverture",
     description: "Checklist de contrôle ; la publication reste simulée et désactivée si incomplète.",
   },
 ];
