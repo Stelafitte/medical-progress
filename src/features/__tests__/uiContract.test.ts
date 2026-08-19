@@ -25,9 +25,11 @@ describe("terminologie", () => {
     }
   });
 
-  it("utilise « Campus Santé Augmenté » dans la page et ses métadonnées", () => {
-    expect(passportView).toContain('title="Campus Santé Augmenté"');
-    expect(passportRoute).toContain('{ title: "Campus Santé Augmenté" }');
+  it("nomme la fonctionnalité « Mon passeport de compétences »", () => {
+    expect(passportView).toContain('title="Mon passeport de compétences"');
+    expect(passportRoute).toContain(
+      '{ title: "Mon passeport de compétences — Campus Santé Augmenté" }',
+    );
   });
 
   it("conserve le nom global de la plateforme dans le shell et les métadonnées", () => {
@@ -42,9 +44,16 @@ describe("navigation", () => {
 
   it("place Ressources immédiatement avant Stage dans l'espace apprenant", () => {
     const order = [
-      ...navigation.matchAll(/label: "(Tableau de bord|Passeport|Ressources|Stage)"/g),
+      ...navigation.matchAll(
+        /label: "(Tableau de bord|Mon passeport de compétences|Ressources|Stage)"/g,
+      ),
     ].map((m) => m[1]);
-    expect(order).toEqual(["Tableau de bord", "Passeport", "Ressources", "Stage"]);
+    expect(order).toEqual([
+      "Tableau de bord",
+      "Mon passeport de compétences",
+      "Ressources",
+      "Stage",
+    ]);
   });
 
   it("dérive les espaces visibles des rôles contextualisés", () => {

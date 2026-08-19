@@ -82,7 +82,7 @@ export function PassportView() {
   return (
     <div className="space-y-10">
       <SectionHeading
-        title="Campus Santé Augmenté"
+        title="Mon passeport de compétences"
         level={1}
         description="Connaissances, compétences simulées et compétences en situation réelle"
       />
