@@ -182,7 +182,7 @@ export function adaptLegacyMessageTemplate(
   options: { readonly programId: ProgramId | null; readonly provenance: Provenance },
 ): CommMessageTemplate {
   return {
-    id: legacy.id as CommTemplateId,
+    id: legacy.id as unknown as CommTemplateId,
     programId: options.programId,
     category: "free",
     allowedChannels: ["email"],
@@ -198,7 +198,7 @@ export function adaptLegacyMessageTemplate(
 /** @deprecated Adapte un historique « préparé, non envoyé » en tentative annulée. */
 export function adaptLegacySendHistoryItem(legacy: LegacySendHistoryItem): DeliveryAttempt {
   return {
-    campaignId: legacy.id as CommCampaignId,
+    campaignId: legacy.id as unknown as CommCampaignId,
     personId: "" as PersonId,
     channel: "email",
     status: "cancelled",
