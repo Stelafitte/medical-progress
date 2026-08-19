@@ -26,6 +26,12 @@ describe("terminologie", () => {
     }
   });
 
+  it("n'utilise plus l'ancien nom global « Mon Passeport Éducatif » dans les principaux fichiers d'interface", () => {
+    for (const file of [passportView, passportRoute, profileView, shell, rootRoute, homeRoute]) {
+      expect(file).not.toContain("Mon Passeport Éducatif");
+    }
+  });
+
   it("nomme la fonctionnalité « Mon passeport de compétences »", () => {
     expect(passportView).toContain('title="Mon passeport de compétences"');
     expect(passportRoute).toContain(
@@ -40,6 +46,11 @@ describe("terminologie", () => {
     );
     expect(rootRoute).toContain("Formation, compétences et développement professionnel");
     expect(shell).toContain("Formation, compétences et développement professionnel");
+  });
+
+  it("définit les métadonnées de la route Ressources", () => {
+    expect(resourcesRoute).toContain('{ title: "Ressources — Campus Santé Augmenté" }');
+    expect(resourcesRoute).toContain('{ name: "robots", content: "noindex" }');
   });
 });
 
