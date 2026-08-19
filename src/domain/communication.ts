@@ -7,7 +7,7 @@
  *
  * GARANTIES STRUCTURELLES (vérifiées par les tests) :
  * - AUCUN envoi réel : ce module ne contient aucun client e-mail / SMS / push ;
- * - AUCUN appel réseau : pas de `fetch`, `XMLHttpRequest`, `WebSocket`, `import()` ;
+ * - AUCUN appel réseau : aucun client HTTP, aucune socket, aucun import dynamique ;
  * - AUCUNE persistance : pas de stockage, pas de mutation globale, pas d'horloge
  *   implicite (toute date « maintenant » est passée en paramètre) ;
  * - AUCUN secret, AUCUNE tâche planifiée : `ScheduledMessage` décrit une
