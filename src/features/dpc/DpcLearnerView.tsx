@@ -135,13 +135,15 @@ export function DpcLearnerView() {
 
       <Tabs defaultValue="parcours" className="space-y-4">
         <TabsList className="flex w-full flex-wrap justify-start gap-1">
-          {[
-            ["parcours", "Parcours"],
-            ["audits", "Mes audits"],
-            ["formation", "Formation"],
-            ["tests", "Pré/post-test"],
-            ["progression", "Ma progression"],
-          ].map(([value, label]) => (
+          {(
+            [
+              ["parcours", "Parcours"],
+              ["audits", "Mes audits"],
+              ["formation", "Formation"],
+              ["tests", "Pré/post-test"],
+              ["progression", "Ma progression"],
+            ] as const
+          ).map(([value, label]) => (
             <TabsTrigger key={value} value={value} className="min-h-11 flex-none text-xs sm:text-sm">
               {label}
             </TabsTrigger>
