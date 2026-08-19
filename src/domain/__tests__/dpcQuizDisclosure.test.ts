@@ -123,10 +123,14 @@ describe("interface participant", () => {
   const source = readFileSync("src/features/dpc/DpcLearnerView.tsx", "utf8");
 
   it("ne lit jamais la correction directement sur la question source", () => {
-    expect(source).not.toContain("question.explanation");
+    // Aucune itération sur les questions brutes (porteuses de correctKey) :
+    // l'affichage passe exclusivement par le modèle de vue expurgé.
+    expect(source).not.toMatch(/scope\.questions\.map/);
     expect(source).toContain("quizPhaseView");
     expect(source).toMatch(/question\.revealed/);
+    expect(source).toMatch(/question\.revealed && question\.explanation/);
   });
+
 
   it("documente que l'expurgation devra être serveur dans le produit réel", () => {
     expect(source).toContain("côté serveur");
