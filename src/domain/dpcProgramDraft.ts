@@ -29,6 +29,7 @@ import type {
 } from "./dpcProgram";
 import type { DpcImplementationPlan } from "./dpcImplementation";
 import {
+  DPC_COMPONENT_KIND_LABELS_FR,
   blockingIssues,
   emptyImplementationPlan,
   implementationSummary,
