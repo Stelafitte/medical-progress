@@ -48,6 +48,7 @@ import {
   ALLOWED_VARIABLES,
   MESSAGE_CATEGORY_LABELS_FR,
   PATIENT_SCAN_DISCLAIMER_FR,
+  COMMUNICATION_NO_REAL_SEND_FR,
   canApproveCampaign,
   previewCampaign,
   renderForRecipient,
@@ -353,7 +354,9 @@ export function AdminCommunications() {
         description="Assistant transversal : DIU, DFASM, DPC ou tout autre programme configuré."
       />
 
-      <ScopeNotice>{LIMITS_FR}</ScopeNotice>
+      <ScopeNotice>
+        {COMMUNICATION_NO_REAL_SEND_FR} {LIMITS_FR}
+      </ScopeNotice>
 
       {/* Fil des étapes */}
       <ol className="flex flex-wrap gap-2" aria-label="Étapes de l'assistant">
