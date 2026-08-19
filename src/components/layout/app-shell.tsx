@@ -51,7 +51,7 @@ export function AppShell() {
 
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const spaces = navSpacesFor(roles, activeProgram.id);
+  const spaces = navSpacesFor(roles, activeProgram.id, activeProgram.config);
   const defaultPersonName = people[0]?.fullName ?? "profil par défaut";
 
   return (

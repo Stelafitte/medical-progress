@@ -3,6 +3,7 @@
  * Aucune donnée réelle, aucun secret, aucune provenance externe.
  */
 import type { PlanScheduleEntry } from "@/domain/acquisitionPlan";
+import * as dpc from "./dpcFixtures";
 import type {
   AuditEvent,
   Cohort,
@@ -58,6 +59,7 @@ export const programs: readonly Program[] = [
       locale: "fr-FR",
     },
   },
+  dpc.dpcProgram,
 ];
 
 export const curriculumVersions: readonly CurriculumVersion[] = [
@@ -77,6 +79,7 @@ export const curriculumVersions: readonly CurriculumVersion[] = [
     effectiveFrom: ts("2026-09-01T00:00:00Z"),
     status: "active",
   },
+  dpc.dpcCurriculumVersion,
 ];
 
 export const cohorts: readonly Cohort[] = [
@@ -102,6 +105,7 @@ export const cohorts: readonly Cohort[] = [
     endsOn: ts("2027-07-15T00:00:00Z"),
     learnerCount: 98,
   },
+  dpc.dpcCohort,
 ];
 
 export const people: readonly Person[] = [
@@ -127,6 +131,7 @@ export const people: readonly Person[] = [
     fullName: "Direction de la plateforme",
     email: "plateforme.demo@example.org",
   },
+  ...dpc.dpcPeople,
 ];
 
 export const enrollments: readonly Enrollment[] = [
@@ -154,6 +159,7 @@ export const enrollments: readonly Enrollment[] = [
     cohortId: "coh-diu-2026",
     status: "active",
   },
+  ...dpc.dpcEnrollments,
 ];
 
 export const roleAssignments: readonly RoleAssignment[] = [
@@ -213,6 +219,7 @@ export const roleAssignments: readonly RoleAssignment[] = [
     grantedAt: ts("2026-01-05T00:00:00Z"),
     provenance: native,
   },
+  ...dpc.dpcRoleAssignments,
 ];
 
 export const outcomes: readonly Outcome[] = [
@@ -301,6 +308,7 @@ export const outcomes: readonly Outcome[] = [
     domain: "Pratique clinique",
     targetMastery: "intermediate",
   },
+  ...dpc.dpcOutcomes,
 ];
 
 export const outcomeRelations: readonly OutcomeRelation[] = [

@@ -8,6 +8,7 @@ import { StageLogTemplatesSection } from "@/features/administration/StageLogTemp
 import { MediaLibrarySection } from "@/features/administration/MediaLibrarySection";
 import { EcosMigrationSection } from "@/features/administration/EcosMigrationSection";
 import { ContentAiSection } from "@/features/administration/ContentAiSection";
+import { ClinicalAuditSection } from "@/features/administration/ClinicalAuditSection";
 import { NATURE_LABELS_FR } from "@/domain/mastery";
 
 /** Sous-sections de la configuration pédagogique (ordre gelé). */
@@ -20,10 +21,16 @@ export const PEDAGOGY_TABS = [
   { value: "ecos", label: "Évaluations et ECOS" },
 ] as const;
 
+/** Sous-section OPTIONNELLE, visible seulement si le module est activé. */
+export const PEDAGOGY_OPTIONAL_TABS = [{ value: "audits", label: "Audits de pratique" }] as const;
+
 export function AdminPedagogy() {
   const { data, isPending } = useProgramAdmin();
 
   if (isPending || !data) return <Skeleton className="h-80 w-full" />;
+
+  const auditsEnabled = data.program?.config.auditsEnabled === true;
+  const tabs = auditsEnabled ? [...PEDAGOGY_TABS, ...PEDAGOGY_OPTIONAL_TABS] : PEDAGOGY_TABS;
 
   const byNature = (nature: string) => data.outcomes.filter((o) => o.nature === nature);
 
@@ -43,7 +50,7 @@ export function AdminPedagogy() {
 
       <Tabs defaultValue="referentiels" className="space-y-6">
         <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1">
-          {PEDAGOGY_TABS.map((tab) => (
+          {tabs.map((tab) => (
             <TabsTrigger
               key={tab.value}
               value={tab.value}
@@ -53,6 +60,12 @@ export function AdminPedagogy() {
             </TabsTrigger>
           ))}
         </TabsList>
+
+        {auditsEnabled ? (
+          <TabsContent value="audits" className="space-y-6">
+            <ClinicalAuditSection />
+          </TabsContent>
+        ) : null}
 
         <TabsContent value="referentiels" className="space-y-6">
           <PanelCard
