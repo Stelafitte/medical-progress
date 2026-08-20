@@ -107,11 +107,31 @@ export function NarratedSlidesPlayer({
 
   if (deck.webPlayerUrl) {
     return (
-      <article className="space-y-3 rounded-lg border border-border bg-card p-3 sm:p-4">
+      <article
+        ref={container}
+        className="space-y-3 overflow-auto rounded-lg border border-border bg-card p-3 sm:p-4"
+      >
         <header className="space-y-2">
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="secondary" className="font-normal">{NARRATED_ONLINE_ONLY_FR}</Badge>
             <Badge variant="outline" className="font-normal">Lecteur web HTML5 réel</Badge>
+            {focused ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="ml-auto min-h-11 gap-2"
+                aria-pressed={fullscreen}
+                onClick={toggleFullscreen}
+              >
+                {fullscreen ? (
+                  <Minimize className="size-4" aria-hidden />
+                ) : (
+                  <Maximize className="size-4" aria-hidden />
+                )}
+                {fullscreen ? "Quitter le plein écran" : "Plein écran"}
+              </Button>
+            ) : null}
           </div>
           <h3 className="break-words text-base font-semibold">{deck.title}</h3>
           <p className="text-sm text-muted-foreground">
