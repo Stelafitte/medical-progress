@@ -1,5 +1,5 @@
 /**
- * Médiathèque pédagogique (MAQUETTE).
+ * Ressources théoriques (MAQUETTE).
  * Uniquement des métadonnées : aucun fichier n'est lu, transmis ni stocké.
  * Toutes les actions sont simulées et journalisées à l'écran.
  */
@@ -109,8 +109,8 @@ export function MediaLibrarySection({
   return (
     <div className="space-y-6">
       <ScopeNotice>
-        Médiathèque de <strong>{programName}</strong> uniquement : aucun support d'un autre
-        programme n'est chargé. Les métadonnées sont distinctes du futur fichier binaire —{" "}
+        Ressources théoriques de <strong>{programName}</strong> uniquement : aucun support d'un
+        autre programme n'est chargé. Les métadonnées sont distinctes du futur fichier binaire —{" "}
         {MEDIA_STORAGE_NOTICE_FR}.
       </ScopeNotice>
 
@@ -143,7 +143,6 @@ export function MediaLibrarySection({
               }
             />
           </div>
-
         }
       >
         <div className="space-y-3">

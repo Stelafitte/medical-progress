@@ -14,7 +14,7 @@ export const legacyEcosInventory: readonly LegacyModuleInventoryItem[] = [
     category: "screen",
     sourceModule: "EcosAdminList",
     decision: "adapt",
-    destination: "Administration du programme › Évaluations et ECOS › liste des scénarios",
+    destination: "Administration du programme › Compétences › entraînement ECOS",
     status: "mapped",
     note: "Doit être cloisonné par programme et par rôle contextualisé.",
   },

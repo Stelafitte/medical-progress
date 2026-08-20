@@ -1,5 +1,6 @@
 /**
- * Évaluations et ECOS — préparation de l'intégration sélective du moteur
+ * Compétences — entraînement ECOS réservé au DFASM et préparation de
+ * l'intégration sélective du moteur
  * historique. Aucun couplage runtime, aucun import réel, aucun appel IA.
  */
 import { useState } from "react";
