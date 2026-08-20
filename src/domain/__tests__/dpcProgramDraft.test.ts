@@ -34,15 +34,16 @@ const doc = (kinds: DpcDraftDocument["kinds"]): DpcDraftDocument => ({
 });
 
 describe("étapes de l'assistant", () => {
-  it("expose six étapes ordonnées, calendrier d'implémentation inclus", () => {
-    expect(DPC_WIZARD_STEPS).toHaveLength(6);
-    expect(DPC_WIZARD_STEPS.map((s) => s.order)).toEqual([1, 2, 3, 4, 5, 6]);
+  it("expose sept étapes ordonnées, calendrier et plan de communication inclus", () => {
+    expect(DPC_WIZARD_STEPS).toHaveLength(7);
+    expect(DPC_WIZARD_STEPS.map((s) => s.order)).toEqual([1, 2, 3, 4, 5, 6, 7]);
     expect(DPC_WIZARD_STEPS.map((s) => s.id)).toEqual([
       "source_documents",
       "proposed_extraction",
       "audit_configuration",
       "assessment_separation",
       "implementation_schedule",
+      "communication_plan",
       "publication_check",
     ]);
   });
