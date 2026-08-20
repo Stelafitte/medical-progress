@@ -54,6 +54,9 @@ import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { MockBadge, PanelCard, ScopeNotice } from "@/features/professional/mock-ui";
+import { CommunicationPlanSection } from "@/features/administration/CommunicationPlanSection";
+import { calendarFromScheduledSlots } from "@/application/communicationPlanSource";
+import type { PersonId } from "@/domain/types";
 import {
   DPC_IMPORTABLE_KIND_LABELS_FR,
   DPC_VERSION_STATUS_LABELS_FR,
