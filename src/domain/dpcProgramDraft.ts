@@ -102,8 +102,15 @@ export const DPC_WIZARD_STEPS: readonly DpcWizardStep[] = [
       "Nom ou édition, cohorte, participants, coordinateur, intervenants, présentiel, visioconférence, e-formation ou hybride, calendrier précis et dates d'ouverture, de fermeture et de relance.",
   },
   {
-    id: "publication_check",
+    id: "communication_plan",
     order: 6,
+    title: "Plan de communication proposé",
+    description:
+      "Propositions de messages générées automatiquement depuis le calendrier : dates relatives aux étapes activées, destinataires, contenu et activation. Tout est modifiable et soumis à validation humaine ; aucun envoi n'est réalisé.",
+  },
+  {
+    id: "publication_check",
+    order: 7,
     title: "Contrôle final",
     description:
       "Documents classés, données extraites vérifiées, grille médicalement validée, calendrier cohérent, cohorte sélectionnée, absence de données patients et règles d'achèvement définies.",
