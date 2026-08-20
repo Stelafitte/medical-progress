@@ -56,6 +56,9 @@ describe("lecteur de diaporama commenté", () => {
     expect(player).toContain("<iframe");
     expect(player).toContain('sandbox="allow-scripts allow-same-origin"');
     expect(player).toContain("Lecteur web HTML5 réel");
+    expect(player.indexOf("if (deck.webPlayerUrl)")).toBeLessThan(
+      player.lastIndexOf("onClick={toggleFullscreen}"),
+    );
   });
 });
 
