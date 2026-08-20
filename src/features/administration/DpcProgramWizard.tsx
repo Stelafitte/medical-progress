@@ -1413,6 +1413,21 @@ export function DpcProgramWizard() {
           </div>
         ) : null}
 
+        {stepId === "communication_plan" ? (
+          <CommunicationPlanSection
+            calendar={calendarFromScheduledSlots({
+              implementationId: plan.id,
+              programId: draft.id,
+              programKind: "dpc",
+              programTitle: draft.label,
+              calendarVersion: `${draft.version}-cal`,
+              timeZone: plan.timeZone,
+              slots: plan.slots,
+            })}
+            actorPersonId={"per-coordinateur-simule" as PersonId}
+          />
+        ) : null}
+
         {stepId === "publication_check" ? (
           <div className="space-y-4">
             <div className={`${touch} flex flex-wrap items-center gap-3 rounded-md border border-border p-3`}>
