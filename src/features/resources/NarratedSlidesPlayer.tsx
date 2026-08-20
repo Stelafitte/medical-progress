@@ -105,6 +105,33 @@ export function NarratedSlidesPlayer({
     setElapsed(0);
   };
 
+  if (deck.webPlayerUrl) {
+    return (
+      <article className="space-y-3 rounded-lg border border-border bg-card p-3 sm:p-4">
+        <header className="space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="secondary" className="font-normal">{NARRATED_ONLINE_ONLY_FR}</Badge>
+            <Badge variant="outline" className="font-normal">Lecteur web HTML5 réel</Badge>
+          </div>
+          <h3 className="break-words text-base font-semibold">{deck.title}</h3>
+          <p className="text-sm text-muted-foreground">
+            {deck.slideCount} diapositives · audio réel extrait du support
+          </p>
+        </header>
+        <iframe
+          title={`Lecteur du cours ${deck.title}`}
+          src={deck.webPlayerUrl}
+          className={focused ? "h-[72vh] min-h-[34rem] w-full rounded-md border" : "h-[36rem] w-full rounded-md border"}
+          allow="autoplay; fullscreen"
+          sandbox="allow-scripts allow-same-origin"
+        />
+        <p className="text-xs text-muted-foreground">
+          Le lecteur reçoit uniquement les images, les pistes audio et le manifeste dérivés.
+        </p>
+      </article>
+    );
+  }
+
   return (
     <article
       ref={container}

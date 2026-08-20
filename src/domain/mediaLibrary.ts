@@ -349,6 +349,8 @@ export interface NarratedWebArtifact {
   readonly hasTranscript: boolean;
   readonly chapters: readonly NarratedChapter[];
   readonly slides: readonly NarratedSlide[];
+  /** URL du lecteur dérivé publié, jamais du paquet source. */
+  readonly webPlayerUrl?: string;
   /** Sortie de secours facultative, jamais recommandée par défaut. */
   readonly mp4Fallback?: { readonly label: string; readonly sizeHint?: string };
 }
@@ -467,6 +469,7 @@ export interface LearnerNarratedDeck {
   readonly slides: readonly NarratedSlide[];
   readonly transcriptAvailable: boolean;
   readonly availability: "online_only";
+  readonly webPlayerUrl?: string;
 }
 
 export function toLearnerNarratedDeck(resource: MediaResource): LearnerNarratedDeck | undefined {
@@ -491,6 +494,7 @@ export function toLearnerNarratedDeck(resource: MediaResource): LearnerNarratedD
     })),
     transcriptAvailable: exposeTranscript,
     availability: "online_only",
+    ...(deck.artifact.webPlayerUrl ? { webPlayerUrl: deck.artifact.webPlayerUrl } : {}),
   };
 }
 

@@ -1,0 +1,296 @@
+{
+  "schemaVersion": "1.0",
+  "course": {
+    "id": "narrated-deck-e79838ebc627",
+    "version": "e79838ebc627",
+    "title": "DU D'ÉCHOCARDIOGRAPHIE · MODULE 1",
+    "slideCount": 31,
+    "totalDurationMs": 908993
+  },
+  "slides": [
+    {
+      "id": "slide-001",
+      "index": 1,
+      "title": "DU D'ÉCHOCARDIOGRAPHIE · MODULE 1",
+      "imageUrl": "slides/slide-001.png",
+      "audioUrl": "audio/slide-001.mp3",
+      "durationMs": 26488,
+      "transcriptUrl": null
+    },
+    {
+      "id": "slide-002",
+      "index": 2,
+      "title": "VUE D'ENSEMBLE",
+      "imageUrl": "slides/slide-002.png",
+      "audioUrl": "audio/slide-002.mp3",
+      "durationMs": 21786,
+      "transcriptUrl": null
+    },
+    {
+      "id": "slide-003",
+      "index": 3,
+      "title": "1 · Historique",
+      "imageUrl": "slides/slide-003.png",
+      "audioUrl": "audio/slide-003.mp3",
+      "durationMs": 2533,
+      "transcriptUrl": null
+    },
+    {
+      "id": "slide-004",
+      "index": 4,
+      "title": "REPÈRES",
+      "imageUrl": "slides/slide-004.png",
+      "audioUrl": "audio/slide-004.mp3",
+      "durationMs": 51226,
+      "transcriptUrl": null
+    },
+    {
+      "id": "slide-005",
+      "index": 5,
+      "title": "2 · Bases physiques",
+      "imageUrl": "slides/slide-005.png",
+      "audioUrl": "audio/slide-005.mp3",
+      "durationMs": 3970,
+      "transcriptUrl": null
+    },
+    {
+      "id": "slide-006",
+      "index": 6,
+      "title": "BASES PHYSIQUES",
+      "imageUrl": "slides/slide-006.png",
+      "audioUrl": "audio/slide-006.mp3",
+      "durationMs": 39314,
+      "transcriptUrl": null
+    },
+    {
+      "id": "slide-007",
+      "index": 7,
+      "title": "BASES PHYSIQUES",
+      "imageUrl": "slides/slide-007.png",
+      "audioUrl": "audio/slide-007.mp3",
+      "durationMs": 37407,
+      "transcriptUrl": null
+    },
+    {
+      "id": "slide-008",
+      "index": 8,
+      "title": "BASES PHYSIQUES",
+      "imageUrl": "slides/slide-008.png",
+      "audioUrl": "audio/slide-008.mp3",
+      "durationMs": 46262,
+      "transcriptUrl": null
+    },
+    {
+      "id": "slide-009",
+      "index": 9,
+      "title": "BASES PHYSIQUES",
+      "imageUrl": "slides/slide-009.png",
+      "audioUrl": "audio/slide-009.mp3",
+      "durationMs": 24293,
+      "transcriptUrl": null
+    },
+    {
+      "id": "slide-010",
+      "index": 10,
+      "title": "BASES PHYSIQUES",
+      "imageUrl": "slides/slide-010.png",
+      "audioUrl": "audio/slide-010.mp3",
+      "durationMs": 46733,
+      "transcriptUrl": null
+    },
+    {
+      "id": "slide-011",
+      "index": 11,
+      "title": "BASES PHYSIQUES",
+      "imageUrl": "slides/slide-011.png",
+      "audioUrl": "audio/slide-011.mp3",
+      "durationMs": 40881,
+      "transcriptUrl": null
+    },
+    {
+      "id": "slide-012",
+      "index": 12,
+      "title": "BASES PHYSIQUES",
+      "imageUrl": "slides/slide-012.png",
+      "audioUrl": "audio/slide-012.mp3",
+      "durationMs": 29962,
+      "transcriptUrl": null
+    },
+    {
+      "id": "slide-013",
+      "index": 13,
+      "title": "3 · Le Doppler continu",
+      "imageUrl": "slides/slide-013.png",
+      "audioUrl": "audio/slide-013.mp3",
+      "durationMs": 2429,
+      "transcriptUrl": null
+    },
+    {
+      "id": "slide-014",
+      "index": 14,
+      "title": "DOPPLER CONTINU",
+      "imageUrl": "slides/slide-014.png",
+      "audioUrl": "audio/slide-014.mp3",
+      "durationMs": 31268,
+      "transcriptUrl": null
+    },
+    {
+      "id": "slide-015",
+      "index": 15,
+      "title": "DOPPLER CONTINU",
+      "imageUrl": "slides/slide-015.png",
+      "audioUrl": "audio/slide-015.mp3",
+      "durationMs": 35683,
+      "transcriptUrl": null
+    },
+    {
+      "id": "slide-016",
+      "index": 16,
+      "title": "4 · Le Doppler pulsé",
+      "imageUrl": "slides/slide-016.png",
+      "audioUrl": "audio/slide-016.mp3",
+      "durationMs": 6713,
+      "transcriptUrl": null
+    },
+    {
+      "id": "slide-017",
+      "index": 17,
+      "title": "DOPPLER PULSÉ",
+      "imageUrl": "slides/slide-017.png",
+      "audioUrl": "audio/slide-017.mp3",
+      "durationMs": 27872,
+      "transcriptUrl": null
+    },
+    {
+      "id": "slide-018",
+      "index": 18,
+      "title": "DOPPLER PULSÉ",
+      "imageUrl": "slides/slide-018.png",
+      "audioUrl": "audio/slide-018.mp3",
+      "durationMs": 27977,
+      "transcriptUrl": null
+    },
+    {
+      "id": "slide-019",
+      "index": 19,
+      "title": "DOPPLER PULSÉ",
+      "imageUrl": "slides/slide-019.png",
+      "audioUrl": "audio/slide-019.mp3",
+      "durationMs": 39157,
+      "transcriptUrl": null
+    },
+    {
+      "id": "slide-020",
+      "index": 20,
+      "title": "DOPPLER PULSÉ",
+      "imageUrl": "slides/slide-020.png",
+      "audioUrl": "audio/slide-020.mp3",
+      "durationMs": 26853,
+      "transcriptUrl": null
+    },
+    {
+      "id": "slide-021",
+      "index": 21,
+      "title": "DOPPLER PULSÉ",
+      "imageUrl": "slides/slide-021.png",
+      "audioUrl": "audio/slide-021.mp3",
+      "durationMs": 34664,
+      "transcriptUrl": null
+    },
+    {
+      "id": "slide-022",
+      "index": 22,
+      "title": "DOPPLER PULSÉ",
+      "imageUrl": "slides/slide-022.png",
+      "audioUrl": "audio/slide-022.mp3",
+      "durationMs": 34011,
+      "transcriptUrl": null
+    },
+    {
+      "id": "slide-023",
+      "index": 23,
+      "title": "5 · Le Doppler couleur",
+      "imageUrl": "slides/slide-023.png",
+      "audioUrl": "audio/slide-023.mp3",
+      "durationMs": 2141,
+      "transcriptUrl": null
+    },
+    {
+      "id": "slide-024",
+      "index": 24,
+      "title": "DOPPLER COULEUR",
+      "imageUrl": "slides/slide-024.png",
+      "audioUrl": "audio/slide-024.mp3",
+      "durationMs": 36127,
+      "transcriptUrl": null
+    },
+    {
+      "id": "slide-025",
+      "index": 25,
+      "title": "DOPPLER COULEUR",
+      "imageUrl": "slides/slide-025.png",
+      "audioUrl": "audio/slide-025.mp3",
+      "durationMs": 31738,
+      "transcriptUrl": null
+    },
+    {
+      "id": "slide-026",
+      "index": 26,
+      "title": "DOPPLER COULEUR",
+      "imageUrl": "slides/slide-026.png",
+      "audioUrl": "audio/slide-026.mp3",
+      "durationMs": 40829,
+      "transcriptUrl": null
+    },
+    {
+      "id": "slide-027",
+      "index": 27,
+      "title": "6 · Réglages & synthèse",
+      "imageUrl": "slides/slide-027.png",
+      "audioUrl": "audio/slide-027.mp3",
+      "durationMs": 3369,
+      "transcriptUrl": null
+    },
+    {
+      "id": "slide-028",
+      "index": 28,
+      "title": "RÉGLAGES",
+      "imageUrl": "slides/slide-028.png",
+      "audioUrl": "audio/slide-028.mp3",
+      "durationMs": 25887,
+      "transcriptUrl": null
+    },
+    {
+      "id": "slide-029",
+      "index": 29,
+      "title": "RÉGLAGES",
+      "imageUrl": "slides/slide-029.png",
+      "audioUrl": "audio/slide-029.mp3",
+      "durationMs": 39758,
+      "transcriptUrl": null
+    },
+    {
+      "id": "slide-030",
+      "index": 30,
+      "title": "SYNTHÈSE",
+      "imageUrl": "slides/slide-030.png",
+      "audioUrl": "audio/slide-030.mp3",
+      "durationMs": 40515,
+      "transcriptUrl": null
+    },
+    {
+      "id": "slide-031",
+      "index": 31,
+      "title": "CONCLUSION",
+      "imageUrl": "slides/slide-031.png",
+      "audioUrl": "audio/slide-031.mp3",
+      "durationMs": 51147,
+      "transcriptUrl": null
+    }
+  ],
+  "capabilities": {
+    "audio": true,
+    "transcript": false,
+    "resume": true
+  }
+}
