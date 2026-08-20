@@ -9,16 +9,19 @@ import { MediaLibrarySection } from "@/features/administration/MediaLibrarySecti
 import { EcosMigrationSection } from "@/features/administration/EcosMigrationSection";
 import { ContentAiSection } from "@/features/administration/ContentAiSection";
 import { ClinicalAuditSection } from "@/features/administration/ClinicalAuditSection";
+import { AssessmentConfigurationSection } from "@/features/administration/AssessmentConfigurationSection";
 import { NATURE_LABELS_FR } from "@/domain/mastery";
+import { assessmentFixturesFor } from "@/infrastructure/mock/assessmentFixtures";
 
 /** Sous-sections de la configuration pédagogique (ordre gelé). */
 export const PEDAGOGY_TABS = [
   { value: "referentiels", label: "Référentiels" },
-  { value: "objectifs", label: "Objectifs et compétences" },
+  { value: "objectifs", label: "Objectifs pédagogiques" },
   { value: "plans", label: "Plans et jalons" },
   { value: "carnets", label: "Carnets" },
-  { value: "mediatheque", label: "Médiathèque" },
-  { value: "ecos", label: "Évaluations et ECOS" },
+  { value: "mediatheque", label: "Ressources théoriques" },
+  { value: "competences", label: "Compétences" },
+  { value: "evaluations", label: "Évaluations" },
 ] as const;
 
 /** Sous-section OPTIONNELLE, visible seulement si le module est activé. */
@@ -30,7 +33,9 @@ export function AdminPedagogy() {
   if (isPending || !data) return <Skeleton className="h-80 w-full" />;
 
   const auditsEnabled = data.program?.config.auditsEnabled === true;
+  const isDfasm = data.program?.code.toUpperCase().startsWith("DFASM") === true;
   const tabs = auditsEnabled ? [...PEDAGOGY_TABS, ...PEDAGOGY_OPTIONAL_TABS] : PEDAGOGY_TABS;
+  const assessments = data.program ? assessmentFixturesFor(data.program.id, isDfasm) : [];
 
   const byNature = (nature: string) => data.outcomes.filter((o) => o.nature === nature);
 
@@ -40,12 +45,13 @@ export function AdminPedagogy() {
         title="Configuration pédagogique"
         level={1}
         action={<MockBadge />}
-        description="Référentiels, compétences simulées et réelles, plans d'acquisition, carnets, médiathèque et évaluations."
+        description="Référentiels, objectifs, compétences, plans, ressources théoriques et évaluations du programme."
       />
 
       <ScopeNotice>
         Écran de configuration cloisonné sur <strong>{data.program?.name}</strong>. Le futur éditeur
-        de contenus complet n'est pas reconstruit : la médiathèque et les ECOS sont des maquettes.
+        de contenus complet n'est pas reconstruit : les ressources, compétences et évaluations sont
+        des maquettes.
       </ScopeNotice>
 
       <Tabs defaultValue="referentiels" className="space-y-6">
@@ -116,8 +122,8 @@ export function AdminPedagogy() {
         </TabsContent>
 
         <TabsContent value="objectifs" className="space-y-6">
-          <div className="grid gap-4 md:grid-cols-3">
-            {(["knowledge", "simulated_competence", "real_competence"] as const).map((nature) => (
+          <div className="grid gap-4">
+            {(["knowledge"] as const).map((nature) => (
               <PanelCard
                 key={nature}
                 title={NATURE_LABELS_FR[nature]}
@@ -205,12 +211,47 @@ export function AdminPedagogy() {
           </Tabs>
         </TabsContent>
 
-        <TabsContent value="ecos" className="space-y-6">
-          <EcosMigrationSection
-            inventory={data.ecosInventory}
-            scenarios={data.ecosScenarios}
-            outcomes={data.outcomes}
-          />
+        <TabsContent value="competences" className="space-y-6">
+          <div className="grid gap-4 md:grid-cols-2">
+            {(["simulated_competence", "real_competence"] as const).map((nature) => (
+              <PanelCard
+                key={nature}
+                title={NATURE_LABELS_FR[nature]}
+                description={`${byNature(nature).length} compétence(s) configurée(s)`}
+              >
+                <ul className="space-y-1 text-sm">
+                  {byNature(nature).map((outcome) => (
+                    <li key={outcome.id} className="flex flex-wrap items-center gap-2">
+                      <Badge variant="secondary" className="font-mono text-[10px]">
+                        {outcome.code}
+                      </Badge>
+                      <span>{outcome.label}</span>
+                    </li>
+                  ))}
+                  {byNature(nature).length === 0 ? (
+                    <li className="text-muted-foreground">Aucune compétence.</li>
+                  ) : null}
+                </ul>
+              </PanelCard>
+            ))}
+          </div>
+
+          {isDfasm ? (
+            <EcosMigrationSection
+              inventory={data.ecosInventory}
+              scenarios={data.ecosScenarios}
+              outcomes={data.outcomes}
+            />
+          ) : (
+            <ScopeNotice>
+              L'entraînement ECOS est un module réservé aux programmes DFASM. Il n'est pas activé
+              pour <strong>{data.program?.name}</strong>.
+            </ScopeNotice>
+          )}
+        </TabsContent>
+
+        <TabsContent value="evaluations" className="space-y-6">
+          <AssessmentConfigurationSection assessments={assessments} />
         </TabsContent>
       </Tabs>
     </div>
