@@ -313,7 +313,9 @@ describe("recalcul après modification du calendrier", () => {
     const undated = calendar({
       calendarVersion: "v5",
       steps: calendar().steps.map((s) =>
-        s.id === "s-form" ? ({ ...s, startsAt: "invalide", endsAt: undefined } as PlanCalendarStep) : s,
+        s.id === "s-form"
+          ? ({ id: s.id, kind: s.kind, label: s.label, startsAt: "invalide" } as PlanCalendarStep)
+          : s,
       ),
     });
     const result = reconcileCommunicationPlan(base, undated, { generatedAt: GEN });
