@@ -54,6 +54,9 @@ import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { MockBadge, PanelCard, ScopeNotice } from "@/features/professional/mock-ui";
+import { CommunicationPlanSection } from "@/features/administration/CommunicationPlanSection";
+import { calendarFromScheduledSlots } from "@/application/communicationPlanSource";
+import type { PersonId } from "@/domain/types";
 import {
   DPC_IMPORTABLE_KIND_LABELS_FR,
   DPC_VERSION_STATUS_LABELS_FR,
@@ -1411,6 +1414,21 @@ export function DpcProgramWizard() {
               </ul>
             ) : null}
           </div>
+        ) : null}
+
+        {stepId === "communication_plan" ? (
+          <CommunicationPlanSection
+            calendar={calendarFromScheduledSlots({
+              implementationId: plan.id,
+              programId: draft.id,
+              programKind: "dpc",
+              programTitle: draft.label,
+              calendarVersion: `${draft.version}-cal`,
+              timeZone: plan.timeZone,
+              slots: plan.slots,
+            })}
+            actorPersonId={"per-coordinateur-simule" as PersonId}
+          />
         ) : null}
 
         {stepId === "publication_check" ? (
