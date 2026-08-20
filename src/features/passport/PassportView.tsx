@@ -17,7 +17,6 @@ import {
   APPROVAL_RULE_LABELS_FR,
   IMPACT_LABELS_FR,
   PLAN_CHANGE_STATUS_LABELS_FR,
-  TRACK_LABELS_FR,
   approvalRuleForImpact,
   type AcquisitionPlanItem,
   type PlanChangeImpact,
@@ -39,13 +38,12 @@ const VIEW_TABS: ReadonlyArray<{ value: PassportViewMode; label: string }> = [
   { value: "calendar", label: "Calendrier" },
 ];
 
-type PlanFilter = "all" | "knowledge" | "simulated_competence" | "real_competence";
+type PlanFilter = "all" | "knowledge" | "competence";
 
 const FILTERS: ReadonlyArray<{ value: PlanFilter; label: string }> = [
-  { value: "all", label: "Tout le plan d'acquisition" },
-  { value: "knowledge", label: "Connaissances" },
-  { value: "simulated_competence", label: "Compétences — simulées" },
-  { value: "real_competence", label: "Compétences — réelles" },
+  { value: "all", label: "Tout mon parcours" },
+  { value: "knowledge", label: "Connaissances théoriques" },
+  { value: "competence", label: "Compétences" },
 ];
 
 const IMPACTS: readonly PlanChangeImpact[] = [
@@ -64,12 +62,22 @@ export function PassportView() {
   const plan = data?.plan;
 
   const filteredItems = useMemo(
-    () => (plan?.items ?? []).filter((item) => filter === "all" || item.nature === filter),
+    () =>
+      (plan?.items ?? []).filter(
+        (item) =>
+          filter === "all" ||
+          (filter === "knowledge" ? item.nature === "knowledge" : item.nature !== "knowledge"),
+      ),
     [plan, filter],
   );
 
   const filteredEvents = useMemo(
-    () => (plan?.events ?? []).filter((event) => filter === "all" || event.nature === filter),
+    () =>
+      (plan?.events ?? []).filter(
+        (event) =>
+          filter === "all" ||
+          (filter === "knowledge" ? event.nature === "knowledge" : event.nature !== "knowledge"),
+      ),
     [plan, filter],
   );
 
@@ -82,9 +90,9 @@ export function PassportView() {
   return (
     <div className="space-y-10">
       <SectionHeading
-        title="Mon passeport de compétences"
+        title="Mon passeport"
         level={1}
-        description="Connaissances, compétences simulées et compétences en situation réelle"
+        description="Ma progression dans le temps : connaissances théoriques et compétences"
       />
 
       <section aria-labelledby="titre-deux-questions" className="space-y-4">
@@ -131,8 +139,8 @@ export function PassportView() {
       <section aria-labelledby="titre-plan" className="space-y-4">
         <SectionHeading
           id="titre-plan"
-          title="Plan d'acquisition"
-          description="Une seule source de données, quatre représentations. Les plans connaissances et compétences sont distingués par filtre."
+          title="Mon parcours dans le temps"
+          description="Mes objectifs et mes échéances, des prochaines actions jusqu'aux jalons du semestre."
           action={<Badge variant="outline">Prototype — non enregistré</Badge>}
         />
 
@@ -154,10 +162,10 @@ export function PassportView() {
           </div>
           <p className="text-sm text-muted-foreground">
             {filter === "knowledge"
-              ? TRACK_LABELS_FR.knowledge
+              ? "Connaissances théoriques"
               : filter === "all"
-                ? `${TRACK_LABELS_FR.knowledge} et ${TRACK_LABELS_FR.competence.toLowerCase()}`
-                : TRACK_LABELS_FR.competence}{" "}
+                ? "Connaissances théoriques et compétences"
+                : "Compétences"}{" "}
             · {filteredItems.length} élément(s)
           </p>
         </div>

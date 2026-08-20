@@ -24,7 +24,6 @@ import {
   Route,
   ScrollText,
   ShieldCheck,
-  Stethoscope,
   Users,
   UserRound,
 } from "lucide-react";
@@ -49,19 +48,26 @@ export interface NavSpace {
   readonly entries: readonly NavEntry[];
 }
 
-/** Espace apprenant — ordre gelé : Tableau de bord, Passeport, Ressources, Stage. */
+/**
+ * Espace apprenant — quatre repères stables : pilotage immédiat, plan
+ * longitudinal, apprentissages théoriques et acquisition des compétences.
+ */
 export const LEARNER_NAV: readonly NavEntry[] = [
   { to: "/espace", label: "Tableau de bord", icon: LayoutDashboard, exact: true },
   {
     to: "/espace/passeport",
-    label: "Mon passeport de compétences",
+    label: "Mon passeport",
     icon: IdCard,
     exact: false,
   },
-  { to: "/espace/ressources", label: "Ressources", icon: BookOpen, exact: false },
-  { to: "/espace/stage", label: "Stage", icon: Stethoscope, exact: false },
+  {
+    to: "/espace/ressources",
+    label: "Mes ressources théoriques",
+    icon: BookOpen,
+    exact: false,
+  },
+  { to: "/espace/stage", label: "Mes compétences", icon: BadgeCheck, exact: false },
 ];
-
 
 export const SUPERVISION_NAV: readonly NavEntry[] = [
   { to: "/espace/encadrement", label: "Vue d'ensemble", icon: Gauge, exact: true },

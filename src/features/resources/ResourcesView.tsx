@@ -34,14 +34,14 @@ export function ResourcesView() {
   return (
     <div className="space-y-8">
       <SectionHeading
-        title="Ressources"
+        title="Mes ressources théoriques"
         level={1}
         action={
           <Badge variant="outline" className="font-normal">
             Simulé
           </Badge>
         }
-        description="Contenus rattachés aux acquis du référentiel du programme actif."
+        description="Cours et supports pour acquérir et consolider mes connaissances théoriques."
       />
 
       <p className="rounded-md border border-border bg-secondary/40 px-4 py-3 text-sm text-muted-foreground">
