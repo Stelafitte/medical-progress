@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Lecteur de cours sonorisé</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="player" aria-labelledby="course-title">
+      <header>
+        <p class="eyebrow">Campus Santé Augmenté · Lecteur expérimental</p>
+        <h1 id="course-title">Chargement du cours…</h1>
+        <p id="position" aria-live="polite"></p>
+      </header>
+
+      <section class="stage" aria-label="Diapositive du cours">
+        <img id="slide-image" alt="" />
+      </section>
+
+      <audio id="audio" preload="metadata"></audio>
+
+      <div class="timeline">
+        <label for="seek">Position dans la piste audio</label>
+        <input id="seek" type="range" min="0" max="1000" value="0" />
+        <output id="time">0:00 / 0:00</output>
+      </div>
+
+      <nav class="controls" aria-label="Commandes de lecture">
+        <button id="previous" type="button">← Précédente</button>
+        <button id="play" type="button">Lecture</button>
+        <button id="next" type="button">Suivante →</button>
+        <label for="speed">Vitesse</label>
+        <select id="speed">
+          <option value="0.75">0,75×</option>
+          <option value="1" selected>1×</option>
+          <option value="1.25">1,25×</option>
+          <option value="1.5">1,5×</option>
+          <option value="2">2×</option>
+        </select>
+      </nav>
+
+      <details>
+        <summary>Transcription</summary>
+        <p id="transcript">Transcription non encore disponible pour ce prototype.</p>
+      </details>
+
+      <p class="notice">
+        Le PowerPoint source n’est jamais chargé par ce lecteur. Seuls les
+        artefacts publiés sont utilisés.
+      </p>
+    </main>
+    <script type="module" src="app.js"></script>
+  </body>
+</html>
+

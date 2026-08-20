@@ -62,7 +62,7 @@ export function NarratedReaderView({ resourceId }: { resourceId: string }) {
           <BookOpen className="size-4 text-primary" aria-hidden />
           <h1 className="break-words text-lg font-semibold sm:text-xl">{deck.title}</h1>
           <Badge variant="outline" className="font-normal">
-            Simulé
+            {deck.webPlayerUrl ? "Prototype réel" : "Simulé"}
           </Badge>
         </div>
         <p className="text-sm text-muted-foreground">
@@ -98,7 +98,7 @@ export function NarratedReaderView({ resourceId }: { resourceId: string }) {
         <p className="text-sm text-muted-foreground">{deck.description}</p>
         <p className="text-xs text-muted-foreground">
           Consultation en ligne uniquement : la version web dérivée est la seule diffusée aux
-          apprenants. La complétion affichée est simulée et n'est pas enregistrée.
+          apprenants. La progression reste locale tant que le backend n'est pas raccordé.
         </p>
       </section>
     </div>

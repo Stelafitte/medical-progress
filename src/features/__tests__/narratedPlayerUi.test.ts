@@ -50,6 +50,13 @@ describe("lecteur de diaporama commenté", () => {
     expect(player).toContain("Cours parcouru");
     expect(player).toContain("diapositives vues");
   });
+
+  it("peut embarquer un lecteur d'artefacts réels sans exposer la source", () => {
+    expect(player).toContain("deck.webPlayerUrl");
+    expect(player).toContain("<iframe");
+    expect(player).toContain('sandbox="allow-scripts allow-same-origin"');
+    expect(player).toContain("Lecteur web HTML5 réel");
+  });
 });
 
 describe("écran de lecture dédié", () => {

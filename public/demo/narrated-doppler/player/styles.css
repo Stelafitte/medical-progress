@@ -1,0 +1,53 @@
+:root {
+  color-scheme: light;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  color: #123047;
+  background: #eef4f6;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; }
+
+.player {
+  width: min(1120px, 100%);
+  margin: 0 auto;
+  padding: 24px;
+}
+
+header { margin-bottom: 16px; }
+.eyebrow { margin: 0 0 6px; color: #167a87; font-weight: 700; }
+h1 { margin: 0; font-size: clamp(1.35rem, 3vw, 2rem); }
+#position { margin: 6px 0 0; color: #526a78; }
+
+.stage {
+  overflow: hidden;
+  border: 1px solid #c9d8df;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 12px 30px rgb(24 63 80 / 10%);
+}
+
+.stage img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: contain; }
+
+.timeline { display: grid; grid-template-columns: 1fr auto; gap: 8px 16px; margin-top: 18px; }
+.timeline label { grid-column: 1 / -1; font-weight: 650; }
+.timeline input { width: 100%; min-height: 44px; }
+
+.controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 14px; }
+button, select { min-height: 44px; border-radius: 8px; border: 1px solid #a9bec8; background: #fff; padding: 0 16px; font: inherit; }
+button:hover:not(:disabled) { background: #e5f2f4; }
+button:focus-visible, select:focus-visible, input:focus-visible { outline: 3px solid #ffbf47; outline-offset: 2px; }
+button:disabled { opacity: 0.5; }
+#play { color: #fff; background: #0e5770; border-color: #0e5770; }
+
+details { margin-top: 18px; padding: 14px; border: 1px solid #c9d8df; border-radius: 8px; background: #fff; }
+summary { cursor: pointer; font-weight: 700; }
+.notice { color: #526a78; font-size: 0.9rem; }
+
+@media (max-width: 600px) {
+  .player { padding: 12px; }
+  .timeline { grid-template-columns: 1fr; }
+  .timeline output { justify-self: end; }
+  .controls button { flex: 1 1 42%; }
+}
+
