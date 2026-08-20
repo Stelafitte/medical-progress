@@ -9,12 +9,13 @@ export const Route = createFileRoute("/espace")({
       {
         name: "description",
         content:
-          "Espace authentifié simulé de Campus Santé Augmenté : tableau de bord, passeport de compétences et administration.",
+          "Espace authentifié simulé de Campus Santé Augmenté : tableau de bord, passeport, ressources théoriques, compétences et administration.",
       },
       { property: "og:title", content: "Espace apprenant — Campus Santé Augmenté" },
       {
         property: "og:description",
-        content: "Tableau de bord, passeport de compétences et administration multi-programmes.",
+        content:
+          "Tableau de bord, passeport, ressources théoriques, compétences et administration multi-programmes.",
       },
       { name: "robots", content: "noindex" },
     ],

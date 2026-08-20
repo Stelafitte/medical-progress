@@ -28,9 +28,9 @@ export function StageView() {
     return (
       <div className="space-y-4">
         <SectionHeading
-          title="Stage"
+          title="Mes compétences"
           level={1}
-          description="Ce programme ne comporte pas de terrain clinique configuré."
+          description="Ce programme ne comporte pas de compétence en situation clinique configurée."
         />
         <Card>
           <CardHeader>
@@ -50,14 +50,14 @@ export function StageView() {
   return (
     <div className="space-y-8">
       <SectionHeading
-        title="Stage"
+        title="Mes compétences"
         level={1}
         action={
           <Badge variant="outline" className="font-normal">
             Simulé
           </Badge>
         }
-        description="Affectations, encadrants et preuves rattachées au terrain clinique."
+        description="Compétences travaillées en simulation ou en stage, preuves et validations."
       />
 
       <ul className="grid gap-4">

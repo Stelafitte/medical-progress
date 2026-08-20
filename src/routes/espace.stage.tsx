@@ -4,16 +4,15 @@ import { StageView } from "@/features/stage/StageView";
 export const Route = createFileRoute("/espace/stage")({
   head: () => ({
     meta: [
-      { title: "Stage — Campus Santé Augmenté" },
+      { title: "Mes compétences — Campus Santé Augmenté" },
       {
         name: "description",
-        content:
-          "Affectations de stage, encadrants responsables et preuves de terrain de l'apprenant.",
+        content: "Compétences travaillées en simulation ou en stage, preuves et validations.",
       },
-      { property: "og:title", content: "Stage — Campus Santé Augmenté" },
+      { property: "og:title", content: "Mes compétences — Campus Santé Augmenté" },
       {
         property: "og:description",
-        content: "Affectations de stage, encadrants et preuves de terrain.",
+        content: "Compétences travaillées, preuves et validations.",
       },
       { name: "robots", content: "noindex" },
     ],

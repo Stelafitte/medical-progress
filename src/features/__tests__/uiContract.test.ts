@@ -32,11 +32,9 @@ describe("terminologie", () => {
     }
   });
 
-  it("nomme la fonctionnalité « Mon passeport de compétences »", () => {
-    expect(passportView).toContain('title="Mon passeport de compétences"');
-    expect(passportRoute).toContain(
-      '{ title: "Mon passeport de compétences — Campus Santé Augmenté" }',
-    );
+  it("nomme la fonctionnalité « Mon passeport »", () => {
+    expect(passportView).toContain('title="Mon passeport"');
+    expect(passportRoute).toContain('{ title: "Mon passeport — Campus Santé Augmenté" }');
   });
 
   it("conserve le nom global de la plateforme dans le shell et les métadonnées", () => {
@@ -48,8 +46,10 @@ describe("terminologie", () => {
     expect(shell).toContain("Formation, compétences et développement professionnel");
   });
 
-  it("définit les métadonnées de la route Ressources", () => {
-    expect(resourcesRoute).toContain('{ title: "Ressources — Campus Santé Augmenté" }');
+  it("définit les métadonnées de la route Mes ressources théoriques", () => {
+    expect(resourcesRoute).toContain(
+      '{ title: "Mes ressources théoriques — Campus Santé Augmenté" }',
+    );
     expect(resourcesRoute).toContain('{ name: "robots", content: "noindex" }');
   });
 });
@@ -57,18 +57,25 @@ describe("terminologie", () => {
 describe("navigation", () => {
   const navigation = read("src/components/layout/navigation.ts");
 
-  it("place Ressources immédiatement avant Stage dans l'espace apprenant", () => {
+  it("expose les quatre repères apprenant dans l'ordre validé", () => {
     const order = [
       ...navigation.matchAll(
-        /label: "(Tableau de bord|Mon passeport de compétences|Ressources|Stage)"/g,
+        /label: "(Tableau de bord|Mon passeport|Mes ressources théoriques|Mes compétences)"/g,
       ),
     ].map((m) => m[1]);
     expect(order).toEqual([
       "Tableau de bord",
-      "Mon passeport de compétences",
-      "Ressources",
-      "Stage",
+      "Mon passeport",
+      "Mes ressources théoriques",
+      "Mes compétences",
     ]);
+  });
+
+  it("regroupe le passeport en connaissances théoriques et compétences", () => {
+    expect(passportView).toContain('{ value: "knowledge", label: "Connaissances théoriques" }');
+    expect(passportView).toContain('{ value: "competence", label: "Compétences" }');
+    expect(passportView).not.toContain('label: "Compétences — simulées"');
+    expect(passportView).not.toContain('label: "Compétences — réelles"');
   });
 
   it("dérive les espaces visibles des rôles contextualisés", () => {

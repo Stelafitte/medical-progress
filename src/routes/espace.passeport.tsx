@@ -4,17 +4,16 @@ import { PassportView } from "@/features/passport/PassportView";
 export const Route = createFileRoute("/espace/passeport")({
   head: () => ({
     meta: [
-      { title: "Mon passeport de compétences — Campus Santé Augmenté" },
+      { title: "Mon passeport — Campus Santé Augmenté" },
       {
         name: "description",
         content:
-          "Connaissances, compétences simulées et compétences en situation réelle : preuves d'acquisition et niveaux de maîtrise.",
+          "Progression et objectifs dans le temps pour les connaissances théoriques et les compétences.",
       },
-      { property: "og:title", content: "Mon passeport de compétences — Campus Santé Augmenté" },
+      { property: "og:title", content: "Mon passeport — Campus Santé Augmenté" },
       {
         property: "og:description",
-        content:
-          "Connaissances, compétences simulées et compétences en situation réelle, avec leurs preuves.",
+        content: "Progression et objectifs pour les connaissances théoriques et les compétences.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
