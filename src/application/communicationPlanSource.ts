@@ -224,3 +224,67 @@ export function toScheduleTrigger(
 }
 
 export const PLAN_DEFAULT_CHANNEL: MessageChannel = "email";
+
+/* ------------------------------------------------------------------ */
+/* Adaptateur des créneaux de l'assistant d'implémentation             */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Projection des créneaux `DpcScheduledSlot` de l'assistant vers le calendrier
+ * générique. Le premier tour d'audit alimente A1, les suivants A2.
+ */
+export function calendarFromScheduledSlots(input: {
+  readonly implementationId: string;
+  readonly programId: string;
+  readonly programKind: PlanProgramKind;
+  readonly programTitle: string;
+  readonly calendarVersion: string;
+  readonly timeZone: string;
+  readonly slots: readonly SlotLike[];
+}): PlanCalendar {
+  const auditRounds = input.slots
+    .filter((slot) => slot.kind === "audit_round")
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  const steps: PlanCalendarStep[] = [];
+
+  for (const slot of input.slots) {
+    const startsAt = slot.startsAt ?? slot.opensOn;
+    if (!startsAt) continue;
+    const endsAt = slot.endsAt ?? slot.closesOn;
+    const kind: PlanStepKind | undefined =
+      slot.kind === "audit_round"
+        ? auditRounds.indexOf(slot) === 0
+          ? "audit_a1"
+          : "audit_a2"
+        : slot.kind === "pre_test"
+          ? "pre_test"
+          : slot.kind === "post_test"
+            ? "post_test"
+            : slot.kind === "training_session"
+              ? MODALITY_TO_STEP[slot.delivery ?? "e_learning"]
+              : "completion";
+    steps.push({
+      id: slot.id,
+      kind,
+      label: slot.label,
+      startsAt,
+      ...optional(endsAt ? { endsAt } : {}),
+      ...optional(slot.location ? { location: slot.location } : {}),
+    });
+  }
+
+  return calendarFromGenericSteps({ ...input, steps });
+}
+
+export interface SlotLike {
+  readonly id: string;
+  readonly label: string;
+  readonly kind: string;
+  readonly delivery?: DpcSequenceModality;
+  readonly startsAt?: IsoDateTime;
+  readonly endsAt?: IsoDateTime;
+  readonly opensOn?: IsoDateTime;
+  readonly closesOn?: IsoDateTime;
+  readonly location?: string;
+  readonly order?: number;
+}
