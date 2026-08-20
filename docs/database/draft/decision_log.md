@@ -219,3 +219,33 @@ Règles retenues (`src/domain/dpcImplementation.ts`, maquette) :
 Portée : maquette locale uniquement. Les créneaux ne déclenchent aucun envoi,
 aucune invitation, aucune visioconférence réelle ; leur persistance SQL
 (tables de composants et de créneaux, RLS par programme) reste à concevoir.
+
+## D83 (2026-08-20) — Un noyau transversal, livré par tranches verticales
+
+Le DIU, le DFASM, le DPC et les futurs cursus partagent les domaines identité,
+autorisation, programme versionné, implémentation, cohorte, inscription, contenu,
+activité, preuve, progression, communication et gouvernance. Une particularité
+de cursus est un module configuré ; elle ne crée ni application ni base séparée.
+
+La transformation de la maquette s'effectue par tranches verticales réelles,
+jamais par bascule globale des fixtures. La première tranche est le parcours DIU
+du dépôt d'un PPTX sonorisé jusqu'à sa lecture sécurisée et sa preuve de
+consultation. Voir `docs/architecture/product_target.md`.
+
+## D84 (2026-08-20) — Supabase indépendant de Lovable
+
+Le projet Supabase est créé et détenu par l'organisation porteuse du produit,
+indépendamment de Lovable. GitHub est la source de vérité du code et des
+migrations. Lovable est un frontend remplaçable et ne détient ni secret serveur
+ni donnée privilégiée. Les traitements longs de conversion, transcription et IA
+sont exécutés par des workers indépendants derrière des contrats applicatifs.
+
+## D85 (2026-08-20) — Le PPTX source est temporaire par défaut
+
+Pour le pilote (fichiers usuels de 50 à 100 Mo), Supabase Storage privé est
+retenu. Le source et les dérivés utilisent des buckets distincts. Après contrôle
+humain du dérivé et expiration du délai de sécurité, le PPTX peut être supprimé
+sans dépublier la version web. La proposition initiale est une purge à 30 jours,
+sauf choix explicite « conserver la source ». Toute purge est idempotente et
+journalisée ; une reconversion après purge exige un nouveau dépôt et crée une
+nouvelle version. La durée définitive reste à valider avant activation.

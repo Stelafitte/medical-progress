@@ -21,14 +21,20 @@ Supabase Storage, **buckets privés**, **région UE**. Aucun bucket public.
 
 | Bucket      | Contenu                                              | Écrivains         |
 | ----------- | ---------------------------------------------------- | ----------------- |
-| `originals` | fichiers déposés tels quels (vidéo, PDF, DICOM export) | enseignant, admin |
-| `derived`   | dérivés techniques (transcodage, vignettes, extraits) | service backend   |
+| `pptx-sources` | PPTX sonorisés temporaires ou conservés sur décision | coordinateur autorisé via URL signée, worker |
+| `originals` | autres fichiers déposés tels quels (vidéo, PDF) | enseignant, admin |
+| `course-artifacts` | diapositives, audios, manifestes et sous-titres publiables | service backend |
+| `derived`   | autres dérivés techniques (transcodage, vignettes, extraits) | service backend   |
 | `evidence`  | pièces jointes de preuves d'apprenants               | apprenant, staff  |
 | `documents` | documents administratifs de programme                | admin             |
 
 Séparation par bucket **et** par préfixe : `{program_id}/{resource_id}/{asset_id}`.
 Le `program_id` du chemin est redondant avec la FK composite
 `lra_resource_same_program` : une fuite inter-programme exigerait de casser les deux.
+
+Le cycle particulier des PPTX est défini dans
+`docs/architecture/pptx_retention_policy.md`. Leur source peut être purgée après
+validation du dérivé sans supprimer les assets publiés.
 
 ## 3. Chemin d'accès
 
