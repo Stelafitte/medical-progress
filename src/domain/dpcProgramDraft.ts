@@ -55,6 +55,7 @@ export type DpcWizardStepId =
   | "audit_configuration"
   | "assessment_separation"
   | "implementation_schedule"
+  | "communication_plan"
   | "publication_check";
 
 export interface DpcWizardStep {
