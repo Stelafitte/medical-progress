@@ -10,9 +10,10 @@ porte ni les secrets, ni les fichiers sources, ni la conversion PPTX.
 - migrations du noyau identité/programmes/promotions/inscriptions/rôles ;
 - ressources pédagogiques, métadonnées d'objets et pipeline PPTX ;
 - RLS fermée par défaut et buckets privés déclarés par migration ;
-- aucun projet distant créé, aucune migration distante appliquée ;
+- projet de développement `campus-sante-augmente-dev` provisionné en Europe de l'Ouest ;
+- trois migrations appliquées et contrôlées par `supabase db lint --linked` ;
 - aucun secret réel commité ;
-- aucun worker de conversion déployé.
+- aucun environnement staging/production et aucun worker de conversion déployé.
 
 ## Environnements
 

@@ -27,8 +27,8 @@ const MODULES: readonly ModuleRow[] = [
   },
   {
     name: "Persistance (base de données)",
-    state: "prevu",
-    note: "Migrations Supabase versionnées dans supabase/migrations ; aucun projet distant provisionné.",
+    state: "en_place",
+    note: "Socle provisionné sur Supabase développement ; l'interface utilise encore les repositories mock.",
   },
   {
     name: "Schéma PostgreSQL & matrice RLS",
@@ -37,8 +37,8 @@ const MODULES: readonly ModuleRow[] = [
   },
   {
     name: "Hébergement des contenus (stockage objet)",
-    state: "prevu",
-    note: "Buckets privés et politiques déclarés par migration ; aucun stockage distant provisionné.",
+    state: "en_place",
+    note: "Buckets privés et politiques RLS provisionnés en développement ; aucun upload UI raccordé.",
   },
   { name: "Repositories mock en mémoire", state: "simule", note: "src/infrastructure/mock/*" },
   {
@@ -53,8 +53,8 @@ const MODULES: readonly ModuleRow[] = [
   },
   {
     name: "RLS, quotas, audit des endpoints",
-    state: "prevu",
-    note: "RLS du socle versionnée ; quotas et endpoints restent à raccorder après provisioning.",
+    state: "en_place",
+    note: "RLS et audit du socle actifs en développement ; quotas et endpoints restent à raccorder.",
   },
   {
     name: "Assistance IA",

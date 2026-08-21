@@ -70,8 +70,9 @@ bun run lint       # eslint + prettier
 
 ## Limites explicites de cette itération
 
-- **Aucune base de données activée, aucune migration créée.** Le schéma sera validé
-  séparément avant provisioning.
+- Un projet Supabase de développement indépendant est provisionné et les migrations du
+  socle sont appliquées. L'application React reste toutefois branchée sur les repositories
+  mock : aucune donnée de l'interface n'est encore persistée dans Supabase.
 - Aucune authentification réelle : la session est simulée en mémoire. Seuls le profil de
   démonstration et le programme sélectionné sont conservés dans `sessionStorage`
   (`src/application/sessionPersistence.ts`), avec une action explicite de retour au profil
@@ -80,9 +81,9 @@ bun run lint       # eslint + prettier
 - Aucune écriture : les repositories mock sont en lecture seule, rien n'est persisté.
 - Aucun secret côté frontend, aucun appel réseau sortant.
 - Aucun compte étudiant payant, aucun déploiement, aucune publication.
-- **Médiathèque pédagogique = maquette** : métadonnées seules, aucun fichier transmis,
-  « Stockage non activé dans cette maquette ». Ajout, versionnage, publication et
-  archivage sont simulés localement.
+- **Médiathèque pédagogique = interface encore simulée** : les tables, buckets privés et
+  RLS du socle existent en développement, mais aucun dépôt de fichier de l'interface n'est
+  encore raccordé. Ajout, versionnage, publication et archivage restent simulés localement.
 - **PowerPoint sonorisés = maquette de conversion** : le dépôt d'un PPTX, le pré-contrôle,
   la file de conversion, le journal des étapes et la validation pédagogique sont simulés.
   Aucun fichier n'est ouvert, converti, stocké ni transmis. Le format cible distribué aux
