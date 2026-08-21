@@ -15,6 +15,7 @@ import { CohortRosterSection } from "@/features/administration/CohortRosterSecti
 import { personNameFor, useProgramAdmin } from "@/features/administration/useProgramAdmin";
 import { ROLE_LABELS_FR } from "@/domain/roles";
 import { useSession } from "@/application/session";
+import { AdminWorkLevelBanner } from "@/features/administration/AdminWorkLevel";
 
 const STATUS_FR: Record<string, string> = {
   planned: "à venir",
@@ -39,15 +40,22 @@ export function AdminOrganisation() {
   return (
     <div className="space-y-8">
       <SectionHeading
-        title="Organisation"
+        title="Préparer la promotion"
         level={1}
         action={<MockBadge />}
-        description="Cursus, promotions, utilisateurs, rôles contextualisés, terrains et affectations."
+        description="Choisissez une promotion et programmez ses inscriptions, son calendrier, ses intervenants et ses affectations."
+      />
+
+      <AdminWorkLevelBanner
+        level="promotion"
+        programName={activeProgram.name}
+        cohortCount={data.cohorts.length}
       />
 
       <ScopeNotice>
-        Toutes les listes ci-dessous sont filtrées sur {activeProgram.name}. Les invitations et
-        modifications sont des démonstrations : rien n'est enregistré.
+        Toutes les listes ci-dessous sont filtrées sur {activeProgram.name}. En l'absence de
+        sélecteur de promotion raccordé, les cohortes sont encore présentées ensemble. Les
+        invitations et modifications sont des démonstrations : rien n'est enregistré.
       </ScopeNotice>
 
       <PanelCard

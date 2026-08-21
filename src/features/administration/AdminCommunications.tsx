@@ -29,6 +29,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { EmptyState, MockBadge, PanelCard, ScopeNotice } from "@/features/professional/mock-ui";
 import { useProgramAdmin } from "@/features/administration/useProgramAdmin";
 import { useSession } from "@/application/session";
+import { AdminWorkLevelBanner } from "@/features/administration/AdminWorkLevel";
 import { useDirectoryState } from "@/application/directoryStore";
 import {
   addPreparedCampaign,
@@ -348,11 +349,35 @@ export function AdminCommunications() {
   return (
     <div className="space-y-8">
       <SectionHeading
-        title="Communications"
+        title="Communications de la promotion"
         level={1}
         action={<MockBadge label="Simulé — aucun envoi" />}
-        description="Assistant transversal : DIU, DFASM, DPC ou tout autre programme configuré."
+        description="Préparez les informations, sollicitations et relances destinées à une promotion ou à certains de ses membres."
       />
+
+      <AdminWorkLevelBanner
+        level="operations"
+        programName={session.activeProgram.name}
+        cohortCount={data.cohorts.length}
+      />
+
+      <div className="grid gap-3 md:grid-cols-3">
+        <PanelCard title="Modèles" description="Conception du programme">
+          <p className="text-sm text-muted-foreground">
+            Les textes réutilisables sont définis au niveau du programme.
+          </p>
+        </PanelCard>
+        <PanelCard title="Programmation" description="Préparation de la promotion">
+          <p className="text-sm text-muted-foreground">
+            Audience, dates et déclencheurs sont rattachés à la promotion concernée.
+          </p>
+        </PanelCard>
+        <PanelCard title="Campagnes et historique" description="Pilotage de la promotion">
+          <p className="text-sm text-muted-foreground">
+            Les campagnes préparées, leurs contrôles et leur historique sont suivis ici.
+          </p>
+        </PanelCard>
+      </div>
 
       <ScopeNotice>
         {COMMUNICATION_NO_REAL_SEND_FR} {LIMITS_FR}
