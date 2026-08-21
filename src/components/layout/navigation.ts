@@ -98,10 +98,10 @@ export const SUPERVISION_NAV: readonly NavEntry[] = [
 ];
 
 export const PROGRAM_ADMIN_NAV: readonly NavEntry[] = [
-  { to: "/espace/administration", label: "Pilotage", icon: Gauge, exact: true },
+  { to: "/espace/administration", label: "Vue d’ensemble", icon: Gauge, exact: true },
   {
     to: "/espace/administration/organisation",
-    label: "Organisation",
+    label: "Préparer la promotion",
     icon: Building2,
     exact: false,
   },
@@ -113,19 +113,19 @@ export const PROGRAM_ADMIN_NAV: readonly NavEntry[] = [
   },
   {
     to: "/espace/administration/pedagogie",
-    label: "Configuration pédagogique",
+    label: "Concevoir le programme",
     icon: GraduationCap,
     exact: false,
   },
   {
     to: "/espace/administration/suivi",
-    label: "Suivi pédagogique",
+    label: "Piloter la promotion",
     icon: ClipboardCheck,
     exact: false,
   },
   {
     to: "/espace/administration/communications",
-    label: "Communications",
+    label: "Communications de la promotion",
     icon: Mail,
     exact: false,
   },

@@ -6,12 +6,12 @@ import { AdminPedagogy } from "@/features/administration/AdminPedagogy";
 export const Route = createFileRoute("/espace/administration/pedagogie")({
   head: () => ({
     meta: [
-      { title: "Configuration pédagogique — Campus Santé Augmenté" },
+      { title: "Conception du programme — Campus Santé Augmenté" },
       {
         name: "description",
         content: "Référentiels, compétences, plans d'acquisition, carnets et ressources.",
       },
-      { property: "og:title", content: "Configuration pédagogique — Campus Santé Augmenté" },
+      { property: "og:title", content: "Conception du programme — Campus Santé Augmenté" },
       {
         property: "og:description",
         content: "Référentiels, compétences, plans d'acquisition, carnets et ressources.",

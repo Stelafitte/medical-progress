@@ -6,12 +6,12 @@ import { AdminMonitoring } from "@/features/administration/AdminMonitoring";
 export const Route = createFileRoute("/espace/administration/suivi")({
   head: () => ({
     meta: [
-      { title: "Suivi pédagogique — Campus Santé Augmenté" },
+      { title: "Pilotage de la promotion — Campus Santé Augmenté" },
       {
         name: "description",
         content: "Cockpit de promotion, états des carnets et dossiers institutionnels.",
       },
-      { property: "og:title", content: "Suivi pédagogique — Campus Santé Augmenté" },
+      { property: "og:title", content: "Pilotage de la promotion — Campus Santé Augmenté" },
       {
         property: "og:description",
         content: "Cockpit de promotion, états des carnets et dossiers institutionnels.",

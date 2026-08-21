@@ -12,12 +12,13 @@ import { ClinicalAuditSection } from "@/features/administration/ClinicalAuditSec
 import { AssessmentConfigurationSection } from "@/features/administration/AssessmentConfigurationSection";
 import { NATURE_LABELS_FR } from "@/domain/mastery";
 import { assessmentFixturesFor } from "@/infrastructure/mock/assessmentFixtures";
+import { AdminWorkLevelBanner } from "@/features/administration/AdminWorkLevel";
 
 /** Sous-sections de la configuration pédagogique (ordre gelé). */
 export const PEDAGOGY_TABS = [
   { value: "referentiels", label: "Référentiels" },
   { value: "objectifs", label: "Objectifs pédagogiques" },
-  { value: "plans", label: "Plans et jalons" },
+  { value: "plans", label: "Modèles de parcours" },
   { value: "carnets", label: "Carnets" },
   { value: "mediatheque", label: "Ressources théoriques" },
   { value: "competences", label: "Compétences" },
@@ -42,16 +43,22 @@ export function AdminPedagogy() {
   return (
     <div className="space-y-6">
       <SectionHeading
-        title="Configuration pédagogique"
+        title="Conception du programme"
         level={1}
         action={<MockBadge />}
-        description="Référentiels, objectifs, compétences, plans, ressources théoriques et évaluations du programme."
+        description="Définissez les modèles, contenus et règles pédagogiques réutilisables avant de les programmer pour une promotion."
+      />
+
+      <AdminWorkLevelBanner
+        level="program"
+        programName={data.program?.name ?? "Programme sélectionné"}
+        cohortCount={data.cohorts.length}
       />
 
       <ScopeNotice>
-        Écran de configuration cloisonné sur <strong>{data.program?.name}</strong>. Le futur éditeur
-        de contenus complet n'est pas reconstruit : les ressources, compétences et évaluations sont
-        des maquettes.
+        Vous modifiez ici le cadre pédagogique de <strong>{data.program?.name}</strong>, pas le
+        déroulement d'une promotion donnée. Les dates, inscriptions, affectations et envois se
+        règlent ensuite dans « Préparer la promotion ».
       </ScopeNotice>
 
       <Tabs defaultValue="referentiels" className="space-y-6">
