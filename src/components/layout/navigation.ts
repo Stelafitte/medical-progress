@@ -12,7 +12,6 @@ import {
   BookOpen,
   Building2,
   ClipboardCheck,
-  FileText,
   Gauge,
   GraduationCap,
   IdCard,
@@ -100,21 +99,15 @@ export const SUPERVISION_NAV: readonly NavEntry[] = [
 export const PROGRAM_ADMIN_NAV: readonly NavEntry[] = [
   { to: "/espace/administration", label: "Vue d’ensemble", icon: Gauge, exact: true },
   {
-    to: "/espace/administration/organisation",
-    label: "Préparer la promotion",
-    icon: Building2,
-    exact: false,
-  },
-  {
-    to: "/espace/administration/personnes",
-    label: "Personnes et inscriptions",
-    icon: Users,
-    exact: false,
-  },
-  {
     to: "/espace/administration/pedagogie",
     label: "Concevoir le programme",
     icon: GraduationCap,
+    exact: false,
+  },
+  {
+    to: "/espace/administration/organisation",
+    label: "Préparer la promotion",
+    icon: Building2,
     exact: false,
   },
   {
@@ -123,19 +116,6 @@ export const PROGRAM_ADMIN_NAV: readonly NavEntry[] = [
     icon: ClipboardCheck,
     exact: false,
   },
-  {
-    to: "/espace/administration/communications",
-    label: "Communications de la promotion",
-    icon: Mail,
-    exact: false,
-  },
-  {
-    to: "/espace/administration/documents",
-    label: "Documents et certificats",
-    icon: FileText,
-    exact: false,
-  },
-  { to: "/espace/statistiques", label: "Statistiques", icon: BarChart3, exact: false },
   {
     to: "/espace/administration/gouvernance",
     label: "Gouvernance",

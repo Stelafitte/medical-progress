@@ -23,6 +23,8 @@ import { personNameFor, useProgramAdmin } from "@/features/administration/usePro
 import { StageLogsReceived } from "@/features/stage/StageLogReviewSection";
 import { STAGE_LOG_STATUS_LABELS_FR } from "@/domain/stageLog";
 import { SUPERVISION_ALERT_LABELS_FR } from "@/domain/supervision";
+import { Link } from "@tanstack/react-router";
+import { AdminWorkLevelBanner } from "@/features/administration/AdminWorkLevel";
 
 export function AdminMonitoring() {
   const { data, isPending } = useProgramAdmin();
@@ -39,16 +41,39 @@ export function AdminMonitoring() {
   return (
     <div className="space-y-8">
       <SectionHeading
-        title="Suivi pédagogique"
+        title="Piloter la promotion"
         level={1}
         action={<MockBadge />}
-        description="Cockpit individuel, promotion, groupe, terrain et période."
+        description="Suivi, validations, communications, statistiques et documents d'une promotion en cours."
+      />
+
+      <AdminWorkLevelBanner
+        level="operations"
+        programName={data.program?.name ?? "Programme sélectionné"}
+        cohortCount={data.cohorts.length}
       />
 
       <ScopeNotice>
         La fiche apprenant administrative ouvre le dossier institutionnel complet, indépendamment
         des préférences de partage personnelles de l'apprenant.
       </ScopeNotice>
+
+      <PanelCard
+        title="Outils de pilotage de la promotion"
+        description="Ces fonctions restent séparées pour travailler confortablement, mais appartiennent toutes au pilotage."
+      >
+        <div className="flex flex-wrap gap-2">
+          <Button asChild variant="outline" className="min-h-11">
+            <Link to="/espace/administration/communications">Communications</Link>
+          </Button>
+          <Button asChild variant="outline" className="min-h-11">
+            <Link to="/espace/statistiques">Statistiques</Link>
+          </Button>
+          <Button asChild variant="outline" className="min-h-11">
+            <Link to="/espace/administration/documents">Documents et certificats</Link>
+          </Button>
+        </div>
+      </PanelCard>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Inscriptions actives" value={data.enrollments.length} />
