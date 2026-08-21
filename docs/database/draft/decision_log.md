@@ -262,3 +262,16 @@ un dry-run. L'historique local/distant est aligné et `supabase db lint --linked
 Le déploiement automatique GitHub vers la base principale reste désactivé. Le
 frontend utilise encore les repositories mock ; aucun upload, worker, secret
 client ou donnée métier réelle n'est raccordé à ce stade.
+
+## D87 (2026-08-21) — Client Supabase installé, bascule explicite uniquement
+
+Le client officiel `@supabase/supabase-js` est installé et sa configuration
+publique est isolée dans `src/infrastructure/supabase/`. Le backend de données
+reste `mock` par défaut ; le choix `supabase` exige explicitement
+`VITE_DATA_BACKEND=supabase` ainsi qu'une URL et une clé publique valides.
+Aucune clé `service_role` n'est référencée par le code navigateur.
+
+Une quatrième migration additive aligne `programs` sur le contrat TypeScript
+(effectif estimé, simulation, pré/post-tests, séances et niveau cible). Elle a
+été appliquée sur l'environnement de développement, puis contrôlée par le lint
+PostgreSQL sans erreur. Aucun écran n'est encore basculé vers les données réelles.

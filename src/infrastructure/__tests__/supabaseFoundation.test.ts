@@ -13,6 +13,7 @@ describe("socle Supabase versionné", () => {
       "20260821090000_core_identity_programs.sql",
       "20260821091000_learning_resources_and_pptx.sql",
       "20260821092000_rls_and_private_storage.sql",
+      "20260821140000_program_domain_alignment.sql",
     ]);
     expect(migrations.toLowerCase()).not.toContain("drop table");
     expect(migrations.toLowerCase()).not.toContain("drop type");
