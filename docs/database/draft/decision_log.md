@@ -249,3 +249,16 @@ sans dépublier la version web. La proposition initiale est une purge à 30 jour
 sauf choix explicite « conserver la source ». Toute purge est idempotente et
 journalisée ; une reconversion après purge exige un nouveau dépôt et crée une
 nouvelle version. La durée définitive reste à valider avant activation.
+
+## D86 (2026-08-21) — Premier environnement Supabase de développement provisionné
+
+Le projet indépendant `campus-sante-augmente-dev` (référence
+`wbmkazfideylaixjkzyn`, région West EU/Ireland) est lié au dépôt GitHub
+`Stelafitte/medical-progress`. Les trois migrations initiales du noyau global,
+des ressources/PPTX et de la RLS/Storage ont été appliquées manuellement après
+un dry-run. L'historique local/distant est aligné et `supabase db lint --linked
+--level warning` ne signale aucune erreur de schéma.
+
+Le déploiement automatique GitHub vers la base principale reste désactivé. Le
+frontend utilise encore les repositories mock ; aucun upload, worker, secret
+client ou donnée métier réelle n'est raccordé à ce stade.
