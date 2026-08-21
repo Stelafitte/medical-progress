@@ -16,6 +16,7 @@ import { personNameFor, useProgramAdmin } from "@/features/administration/usePro
 import { ROLE_LABELS_FR } from "@/domain/roles";
 import { useSession } from "@/application/session";
 import { AdminWorkLevelBanner } from "@/features/administration/AdminWorkLevel";
+import { Link } from "@tanstack/react-router";
 
 const STATUS_FR: Record<string, string> = {
   planned: "à venir",
@@ -57,6 +58,17 @@ export function AdminOrganisation() {
         sélecteur de promotion raccordé, les cohortes sont encore présentées ensemble. Les
         invitations et modifications sont des démonstrations : rien n'est enregistré.
       </ScopeNotice>
+
+      <PanelCard
+        title="Outils de préparation de la promotion"
+        description="Les personnes et inscriptions appartiennent à la préparation de la promotion, et non à la navigation principale."
+      >
+        <div className="flex flex-wrap gap-2">
+          <Button asChild variant="outline" className="min-h-11">
+            <Link to="/espace/administration/personnes">Personnes et inscriptions</Link>
+          </Button>
+        </div>
+      </PanelCard>
 
       <PanelCard
         title="Programme, modules et versions de cursus"
