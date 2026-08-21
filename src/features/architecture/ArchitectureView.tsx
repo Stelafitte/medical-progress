@@ -28,17 +28,17 @@ const MODULES: readonly ModuleRow[] = [
   {
     name: "Persistance (base de données)",
     state: "prevu",
-    note: "Aucune base activée, aucune migration. Schéma à valider avant provisioning.",
+    note: "Migrations Supabase versionnées dans supabase/migrations ; aucun projet distant provisionné.",
   },
   {
     name: "Schéma PostgreSQL & matrice RLS",
     state: "prevu",
-    note: "docs/database/draft/ — conception non exécutée (schéma, policies à portées exactes, invariants serveur, matrice, checklist GRANT/POLICY, tests, décisions)",
+    note: "Socle exécutable dans supabase/migrations ; modèles métier étendus encore documentés dans docs/database/draft/.",
   },
   {
     name: "Hébergement des contenus (stockage objet)",
     state: "prevu",
-    note: "docs/database/draft/storage_architecture.md — buckets privés UE, URL signées ; aucun bucket créé",
+    note: "Buckets privés et politiques déclarés par migration ; aucun stockage distant provisionné.",
   },
   { name: "Repositories mock en mémoire", state: "simule", note: "src/infrastructure/mock/*" },
   {
@@ -51,7 +51,11 @@ const MODULES: readonly ModuleRow[] = [
     state: "en_place",
     note: "RoleAssignment.scope",
   },
-  { name: "RLS, quotas, audit des endpoints", state: "prevu", note: "Après provisioning" },
+  {
+    name: "RLS, quotas, audit des endpoints",
+    state: "prevu",
+    note: "RLS du socle versionnée ; quotas et endpoints restent à raccorder après provisioning.",
+  },
   {
     name: "Assistance IA",
     state: "prevu",
