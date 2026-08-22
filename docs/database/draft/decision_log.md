@@ -290,3 +290,38 @@ Les repositories non encore migrés sont temporairement délégués au mock et n
 doivent pas être présentés comme persistants. Le mapping des portées de rôles
 est strict : une valeur inconnue ou une forme incohérente provoque un échec de
 chargement plutôt qu'un élargissement implicite des droits.
+
+## D89 (2026-08-22) — Personne sans compte : espace de pré-inscription, pas de refonte de l'identité
+
+Question ouverte du `backend_gap_analysis.md` : une personne peut-elle exister
+sans compte de connexion ? Réponse retenue : **oui**, via une table `people`
+strictement limitée aux personnes pas encore activées (intervenant externe,
+apprenant importé avant sa première connexion). Elle ne remplace ni ne modifie
+`profiles`, `enrollments`, `role_assignments` ou `audit_events`.
+
+Constat qui a orienté la conception : `is_platform_admin()`,
+`can_administer_program()`, `is_program_staff()`, `is_enrolled_in_program()` et
+`can_read_profile()`, ainsi que TOUTES les policies RLS déjà appliquées,
+supposent `person_id = auth.uid()`. Découpler entièrement l'identité de
+l'authentification (un `people.id` distinct de `auth.uid()` partout) obligerait
+à réécrire ces cinq fonctions et l'ensemble des policies existantes — un
+changement bien plus large que la question posée, et exactement le genre de
+modification structurelle de l'authentification qui ne doit pas être fait sans
+validation explicite.
+
+Option retenue pour l'instant (la plus étroite qui répond à la question) :
+`people` est un sas de pré-inscription, pas une nouvelle source de vérité pour
+l'identité active. Une personne y existe le temps d'être invitée ; dès qu'elle
+se connecte réellement via Supabase Auth, le déclencheur `handle_new_auth_user`
+existant crée sa ligne `profiles` comme aujourd'hui, sans aucun changement de
+RLS. Le rattachement `people` → `profiles` (`activated_profile_id`) sert
+uniquement à la continuité administrative (historique, traçabilité de
+l'invitation), jamais de base à une décision d'accès.
+
+Brouillon SQL correspondant : `docs/database/draft/004_people_pre_account.sql`.
+Non appliqué. Reste à concevoir avant toute application : le mécanisme de
+rattachement automatique `people` → `profiles` lors de la première connexion
+réelle (déclencheur ou tâche serveur), et la décision de repointer plus tard
+`enrollments`/`role_assignments` vers une identité pleinement découplée de
+`auth.uid()` (option plus large, délibérément écartée ici) si le produit en a
+un jour vraiment besoin.
