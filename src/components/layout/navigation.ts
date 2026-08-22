@@ -10,7 +10,6 @@ import {
   AlertTriangle,
   BadgeCheck,
   BookOpen,
-  Building2,
   ClipboardCheck,
   Gauge,
   GraduationCap,
