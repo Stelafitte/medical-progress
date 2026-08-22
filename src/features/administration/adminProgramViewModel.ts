@@ -175,10 +175,10 @@ export function nextMilestone(
 export interface AdministeredProgramCard {
   readonly program: Program;
   readonly cohortCount: number;
-  readonly activeCohort?: Cohort;
-  readonly phase?: CohortPhase;
+  readonly activeCohort: Cohort | undefined;
+  readonly phase: CohortPhase | undefined;
   readonly progressPercent: number;
-  readonly nextDeadline?: { readonly label: string; readonly date: string };
+  readonly nextDeadline: { readonly label: string; readonly date: string } | undefined;
   readonly learnerCount: number;
 }
 
