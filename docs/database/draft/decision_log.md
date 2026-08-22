@@ -404,3 +404,62 @@ Non appliqué. Reste à trancher avant application : la question, notée dans
 005, de savoir si une contrainte unique doit être ajoutée sur
 `enrollments`/`role_assignments` pour rendre `on conflict do nothing`
 réellement protecteur contre un double déclenchement.
+
+## D95 (2026-08-22) — Un expéditeur SMTP dédié par programme, sur les domaines OVH institutionnels
+
+Contexte validé par Stef : les trois programmes envisagés dans un premier
+temps (DFASM Cardiologie, DIU d'Échocardiographie, DPC) ne sont pas portés
+par la même entité — DFASM et DIU écho par Stef au sein de l'UMCV/Université
+de Bordeaux, DPC par Stef pour son service ET par l'ODP2C selon
+l'implémentation. Stef dispose de noms de domaine OVH distincts et actifs
+pour chacun (`dfasm-connect.fr`, `echocardio-chubx.fr`, `odp2c.org`, plus
+`myhub-pro.fr` et `valve.academy` à statut encore à préciser), avec un
+hébergement mail OVH permettant de créer des boîtes dédiées.
+
+Décision validée par Stef : chaque programme envoie ses invitations depuis
+une boîte dédiée sur son propre domaine (`invitations@dfasm-connect.fr`,
+`invitations@echocardio-chubx.fr`, `invitations@odp2c.org`), plutôt qu'un
+expéditeur unique pour toute la plateforme. Recommandation retenue sur le
+nom de boîte : `invitations@` plutôt que `sollicitation@` (plus clair pour
+le destinataire, n'a pas la connotation démarchage) ou `no-reply@`
+(décourage à tort une réponse légitime).
+
+Limites SMTP OVH vérifiées (docs.ovhcloud.com) : `smtp.mail.ovh.net`, port
+465 (SSL/TLS) ou 587 (STARTTLS), ~200 e-mails/heure par boîte — largement
+suffisant pour des vagues d'invitation ponctuelles (jusqu'à quelques
+centaines d'apprenants), OVH déconseillant son usage seulement pour de
+l'envoi de masse continu (newsletters), ce qui n'est pas notre cas d'usage.
+
+Conception technique (additive, ne modifie aucune policy RLS ni fonction de
+sécurité existante) :
+
+- `docs/database/draft/006_program_email_senders.sql` (nouveau, non
+  appliqué) : table `program_email_senders` (program_id -> smtp_host,
+  smtp_port, smtp_user, smtp_password_secret, from_name). Le mot de passe
+  SMTP n'est JAMAIS stocké en base : seul le nom du secret Supabase Edge
+  Function qui le contient l'est. Lecture réservée à `is_platform_admin()`
+  côté RLS ; en pratique la fonction `invite-person` la lit via son client
+  service_role, jamais via le client scopé utilisateur.
+- `supabase/functions/invite-person/index.ts` (révisé) : pour un programme
+  SANS ligne dans `program_email_senders` (ex. le pilote "Campus Santé"
+  actuel), le chemin D94 continue de s'appliquer tel quel (Supabase envoie
+  lui-même l'e-mail, expéditeur générique) — rien ne casse pour le pilote.
+  Pour un programme AVEC une ligne, la fonction récupère seulement le lien
+  d'invitation via `generateLink` (Supabase n'envoie alors aucun e-mail) et
+  l'envoie elle-même via `nodemailer` sur le SMTP OVH du programme, avec le
+  nom de domaine institutionnel correspondant comme expéditeur réel.
+
+Explicitement laissé de côté, à faire par Stef lui-même, jamais par moi :
+la création des boîtes mail OVH et la définition de leurs mots de passe —
+entrer un mot de passe dans un formulaire, même pour créer un nouveau
+compte, reste une limite absolue. Une fois les boîtes créées, seules les
+adresses (non sensibles) seront communiquées ; les mots de passe seront
+saisis directement par Stef dans les secrets Edge Functions de Supabase.
+
+Non appliqué. Reste à trancher avant application : le statut exact de
+`myhub-pro.fr` et `valve.academy` (rattachés à quel programme, ou encore
+sans usage défini), et le fait que les programmes réels DFASM/DIU
+écho/DPC n'existent pas encore comme lignes distinctes dans la table
+`programs` (seul le programme pilote générique "Campus Santé" existe) —
+`program_email_senders` ne pourra être peuplée pour de vrai qu'une fois ces
+programmes créés.

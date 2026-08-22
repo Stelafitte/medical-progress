@@ -1,38 +1,41 @@
 // supabase/functions/invite-person/index.ts
 //
-// Invite un ou plusieurs `people` par e-mail via l'API admin Supabase Auth.
-// Voir docs/database/draft/decision_log.md, décision D94.
+// Invite un ou plusieurs `people` par e-mail. Voir décisions D94 (mécanisme
+// d'invitation) et D95 (expéditeur SMTP dédié par programme) dans
+// docs/database/draft/decision_log.md.
 //
 // MODÈLE DE SÉCURITÉ :
-// - Le JWT de l'appelant (transmis par le client) sert à construire un
-//   client Supabase "scopé utilisateur". Toute lecture/écriture sur
-//   `people` par ce client passe par les policies RLS existantes
-//   (people_select_staff / people_update_staff -> is_program_staff()).
-//   Cette fonction ne réimplémente AUCUNE logique d'autorisation : si la
-//   RLS laisse passer la lecture, l'appelant est légitimement personnel du
-//   programme concerné.
-// - Un second client, scopé service_role, sert UNIQUEMENT pour l'unique
-//   opération qui a réellement besoin d'un privilège élevé : la création
-//   du compte auth.users invité via admin.inviteUserByEmail. Il n'est
-//   utilisé nulle part ailleurs dans cette fonction.
+// - Le JWT de l'appelant sert à construire un client "scopé utilisateur" :
+//   toute lecture/écriture sur `people` passe par les policies RLS
+//   existantes (people_select_staff / people_update_staff ->
+//   is_program_staff()). Aucune logique d'autorisation réimplémentée.
+// - Un client service_role est utilisé pour : (a) l'appel admin qui crée
+//   le compte invité (inviteUserByEmail OU generateLink selon le
+//   programme), (b) la lecture de program_email_senders (config
+//   d'infrastructure, jamais exposée via RLS aux program staff).
+//
+// DEUX CHEMINS D'ENVOI, selon si le programme a un expéditeur dédié :
+// - Programme SANS ligne dans program_email_senders (ex. le pilote
+//   "Campus Santé" tant que non configuré) : chemin historique D94,
+//   Supabase envoie lui-même l'e-mail via inviteUserByEmail (expéditeur
+//   générique noreply@mail.app.supabase.io).
+// - Programme AVEC une ligne dans program_email_senders (ex. DFASM,
+//   DIU écho, DPC/ODP2C une fois configurés) : on récupère juste le lien
+//   d'invitation via generateLink (Supabase ne l'envoie PAS), et on
+//   envoie nous-mêmes l'e-mail via le SMTP OVH du programme concerné,
+//   avec son propre nom de domaine comme expéditeur.
 //
 // Entrée  : POST { personIds: string[] }  (max 100 par appel)
 // Sortie  : { results: Array<{ personId, ok, error? }> }
 
 import { createClient } from "npm:@supabase/supabase-js@2";
+import nodemailer from "npm:nodemailer@6";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-// Page où l'e-mail d'invitation renvoie une fois le mot de passe défini.
-// Facultatif : si absent, Supabase utilise l'URL de redirection par défaut
-// configurée dans le projet (Auth > URL Configuration).
 const INVITE_REDIRECT_URL = Deno.env.get("INVITE_REDIRECT_URL") ?? undefined;
 
-// CORS : indispensable pour que le frontend (navigateur) puisse appeler
-// cette fonction — sans ces en-têtes, le préflight OPTIONS du navigateur
-// échoue et AUCUN appel navigateur ne passe jamais, même avec un JWT valide.
-// Trouvé et corrigé lors du test de bout en bout du 22/08/2026 (D94).
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -43,7 +46,6 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: CORS_HEADERS });
   }
-
   if (req.method !== "POST") {
     return new Response("Method not allowed", { status: 405, headers: CORS_HEADERS });
   }
@@ -71,9 +73,6 @@ Deno.serve(async (req) => {
     return json({ error: "Maximum 100 invitations par appel." }, 400);
   }
 
-  // Client scopé sur l'utilisateur appelant : la RLS existante décide seule
-  // s'il a le droit de voir/modifier ces personnes. Aucune vérification de
-  // rôle réimplémentée ici.
   const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     global: { headers: { Authorization: authHeader } },
     auth: { persistSession: false },
@@ -97,7 +96,6 @@ Deno.serve(async (req) => {
     return json({ error: peopleError.message }, 500);
   }
 
-  // Client service_role : réservé au seul appel admin d'invitation.
   const adminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
     auth: { persistSession: false },
   });
@@ -105,10 +103,6 @@ Deno.serve(async (req) => {
   const foundIds = new Set((people ?? []).map((p) => p.id));
   const results: Array<{ personId: string; ok: boolean; error?: string }> = [];
 
-  // Ids demandés mais absents du résultat filtré par RLS : soit ils
-  // n'existent pas, soit l'appelant n'a pas le droit de les voir. Dans les
-  // deux cas, on ne fait rien et on le signale explicitement plutôt que de
-  // les ignorer silencieusement.
   for (const id of personIds) {
     if (!foundIds.has(id)) {
       results.push({ personId: id, ok: false, error: "introuvable ou hors périmètre" });
@@ -125,16 +119,24 @@ Deno.serve(async (req) => {
       continue;
     }
 
-    const { error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(
-      person.login_email,
-      {
-        data: { full_name: `${person.first_name} ${person.last_name}`.trim() },
-        redirectTo: INVITE_REDIRECT_URL,
-      },
-    );
+    // Le programme a-t-il un expéditeur SMTP dédié ?
+    const { data: sender, error: senderLookupError } = await adminClient
+      .from("program_email_senders")
+      .select("smtp_host, smtp_port, smtp_user, smtp_password_secret, from_name")
+      .eq("program_id", person.program_id)
+      .maybeSingle();
 
-    if (inviteError) {
-      results.push({ personId: person.id, ok: false, error: inviteError.message });
+    if (senderLookupError) {
+      results.push({ personId: person.id, ok: false, error: senderLookupError.message });
+      continue;
+    }
+
+    const inviteResult = sender
+      ? await sendWithDedicatedSender(adminClient, person, sender)
+      : await sendWithSupabaseDefault(adminClient, person);
+
+    if (!inviteResult.ok) {
+      results.push({ personId: person.id, ok: false, error: inviteResult.error });
       continue;
     }
 
@@ -163,6 +165,91 @@ Deno.serve(async (req) => {
 
   return json({ results }, 200);
 });
+
+// Chemin historique (D94) : Supabase crée le compte ET envoie lui-même
+// l'e-mail avec son expéditeur générique. Utilisé pour tout programme sans
+// ligne dans program_email_senders.
+async function sendWithSupabaseDefault(
+  adminClient: ReturnType<typeof createClient>,
+  person: { login_email: string; first_name: string; last_name: string },
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { error } = await adminClient.auth.admin.inviteUserByEmail(person.login_email, {
+    data: { full_name: `${person.first_name} ${person.last_name}`.trim() },
+    redirectTo: INVITE_REDIRECT_URL,
+  });
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
+// Chemin dédié (D95) : on récupère juste le lien via generateLink (Supabase
+// n'envoie PAS d'e-mail dans ce cas) et on l'envoie nous-mêmes via le SMTP
+// OVH propre au programme, avec son propre nom de domaine en expéditeur.
+async function sendWithDedicatedSender(
+  adminClient: ReturnType<typeof createClient>,
+  person: { id: string; login_email: string; first_name: string; last_name: string; program_id: string },
+  sender: { smtp_host: string; smtp_port: number; smtp_user: string; smtp_password_secret: string; from_name: string },
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const password = Deno.env.get(sender.smtp_password_secret);
+  if (!password) {
+    return {
+      ok: false,
+      error: `secret SMTP "${sender.smtp_password_secret}" absent — configurer ce secret dans Edge Functions > Secrets avant d'inviter ce programme`,
+    };
+  }
+
+  const { data: link, error: linkError } = await adminClient.auth.admin.generateLink({
+    type: "invite",
+    email: person.login_email,
+    options: {
+      data: { full_name: `${person.first_name} ${person.last_name}`.trim() },
+      redirectTo: INVITE_REDIRECT_URL,
+    },
+  });
+  if (linkError || !link?.properties?.action_link) {
+    return { ok: false, error: linkError?.message ?? "lien d'invitation non généré" };
+  }
+
+  const { data: program } = await adminClient
+    .from("programs")
+    .select("name")
+    .eq("id", person.program_id)
+    .maybeSingle();
+  const programName = program?.name ?? "Campus Santé Augmenté";
+
+  const transporter = nodemailer.createTransport({
+    host: sender.smtp_host,
+    port: sender.smtp_port,
+    secure: sender.smtp_port === 465,
+    auth: { user: sender.smtp_user, pass: password },
+  });
+
+  const subject = `Invitation — ${programName}`;
+  const text = [
+    `Bonjour ${person.first_name},`,
+    "",
+    `Vous avez été inscrit(e) au programme "${programName}" sur Campus Santé Augmenté.`,
+    "",
+    "Pour activer votre compte et définir votre mot de passe, cliquez sur le lien suivant :",
+    link.properties.action_link,
+    "",
+    "Ce lien est personnel, merci de ne pas le transférer.",
+    "",
+    `— ${sender.from_name}`,
+  ].join("\n");
+
+  try {
+    await transporter.sendMail({
+      from: `"${sender.from_name}" <${sender.smtp_user}>`,
+      to: person.login_email,
+      subject,
+      text,
+    });
+  } catch (e) {
+    return { ok: false, error: `envoi SMTP échoué : ${e instanceof Error ? e.message : String(e)}` };
+  }
+
+  return { ok: true };
+}
 
 function json(payload: unknown, status: number): Response {
   return new Response(JSON.stringify(payload), {
