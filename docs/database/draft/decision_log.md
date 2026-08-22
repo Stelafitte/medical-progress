@@ -506,3 +506,24 @@ singulier — voir correction ci-dessus) :
 Pas d'action supplémentaire de ma part tant que Stef n'a pas confirmé la
 création effective des 2 boîtes restantes (mots de passe saisis par lui
 uniquement, jamais par moi).
+
+### Mise à jour (2026-08-22) — programmes réels créés, table program_email_senders appliquée
+
+Stef a demandé d'avancer sur la suite pendant l'attente des boîtes OVH.
+Deux étapes ne dépendaient pas des boîtes mail et ont été appliquées pour
+de vrai sur Supabase dev, chacune avec dry-run (BEGIN...ROLLBACK) puis
+accord explicite avant COMMIT :
+
+1. **Les 3 programmes réels existent maintenant** dans `public.programs`
+   (`docs/database/draft/007_seed_real_programs.sql`) : `DFASM-CARDIO`,
+   `DIU-ECHO`, `DPC-ODP2C` (ids dans le fichier). Le pilote générique
+   "Campus Santé" reste inchangé en parallèle.
+2. **`program_email_senders` (006) est créée** — table vide, RLS activée,
+   réservée à `is_platform_admin()`. Aucune ligne tant que les boîtes OVH
+   ne sont pas prêtes ; aucun impact sur `invite-person` ni sur le pilote
+   tant qu'elle reste vide (chemin D94 historique inchangé).
+
+Reste bloquant, inchangé : attendre que Stef confirme la création
+effective de `invitation@dfasm-connect.fr` et `invitation@odp2c.org`
+avant de peupler `program_email_senders` et de redéployer `invite-person`
+en version D95.
