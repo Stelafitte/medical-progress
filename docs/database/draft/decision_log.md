@@ -483,3 +483,26 @@ Adresses confirmées à ce stade :
 mis à jour en conséquence. Aucun impact sur le schéma ou le code : la
 convention de nommage n'était qu'indicative, `smtp_user` sera de toute
 façon renseigné avec l'adresse réelle telle que créée, quelle qu'elle soit.
+
+### Mise à jour (2026-08-22) — offres MX commandées pour DFASM et DPC/ODP2C
+
+Stef a commandé l'offre MX payante (boîtes réelles, plus le plan "redirect"
+gratuit à 0 boîte) pour `dfasm-connect.fr` et `odp2c.org` — diagnostic
+préalable : ces deux domaines n'avaient qu'une offre "redirect" (0/0 boîte),
+contrairement à `echocardio-chubx.fr` qui a une offre "MXPLAN 1 hosting"
+(1/1, déjà utilisée par `invitation@echocardio-chubx.fr`). La propagation
+de la commande prend un peu de temps chez OVH avant que Stef puisse
+effectivement créer les comptes.
+
+Adresses actées pour les 3 programmes (toutes en convention `invitation@`,
+singulier — voir correction ci-dessus) :
+- DFASM Cardiologie : `invitation@dfasm-connect.fr` — actée, boîte pas
+  encore créée (en attente de la propagation de la commande MX).
+- DPC / ODP2C : `invitation@odp2c.org` — actée, boîte pas encore créée
+  (idem).
+- DIU d'Échocardiographie : `invitation@echocardio-chubx.fr` — créée et
+  confirmée.
+
+Pas d'action supplémentaire de ma part tant que Stef n'a pas confirmé la
+création effective des 2 boîtes restantes (mots de passe saisis par lui
+uniquement, jamais par moi).
