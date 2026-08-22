@@ -103,7 +103,7 @@ function nowIso(): string {
 }
 
 export function PeopleEnrollmentsView() {
-  const { activeProgram } = useSession();
+  const { activeProgram, isSimulated } = useSession();
   const state = useDirectoryState();
 
   const scope = useMemo(() => selectProgramDirectory(state, activeProgram.id), [state, activeProgram.id]);
@@ -120,7 +120,7 @@ export function PeopleEnrollmentsView() {
       <SectionHeading
         title="Personnes et inscriptions"
         level={1}
-        action={<MockBadge label="Données simulées" />}
+        action={<MockBadge label={isSimulated ? "Données simulées" : "Données réelles (Supabase)"} />}
         description="Ajout individuel, import groupé, inscriptions, retraits et archivage — pour tout type de programme."
       />
 
@@ -170,7 +170,7 @@ function IndividualForm({
   programCohortId: string;
   onCohortChange: (id: string) => void;
 }) {
-  const { activeProgram } = useSession();
+  const { activeProgram, isSimulated } = useSession();
   const state = useDirectoryState();
   const scope = selectProgramDirectory(state, activeProgram.id);
 
@@ -223,7 +223,7 @@ function IndividualForm({
     <PanelCard
       title="Ajouter une personne"
       description="Recherche globale par e-mail normalisé avant toute création : une personne connue est rattachée, jamais dupliquée."
-      action={<MockBadge label="Données simulées" />}
+      action={<MockBadge label={isSimulated ? "Données simulées" : "Données réelles (Supabase)"} />}
     >
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-2">
@@ -349,7 +349,7 @@ function IndividualForm({
 /* ------------------------------------------------------------------ */
 
 function BulkImportPanel({ programCohortId }: { programCohortId: string }) {
-  const { activeProgram } = useSession();
+  const { activeProgram, isSimulated } = useSession();
   const state = useDirectoryState();
   const fileInput = useRef<HTMLInputElement>(null);
 
@@ -436,7 +436,7 @@ function BulkImportPanel({ programCohortId }: { programCohortId: string }) {
     <PanelCard
       title="Import groupé (CSV, TSV)"
       description="Prévisualisation, détection automatique des colonnes, mapping manuel si nécessaire, erreurs ligne par ligne, puis confirmation avant création locale."
-      action={<MockBadge label="Données simulées" />}
+      action={<MockBadge label={isSimulated ? "Données simulées" : "Données réelles (Supabase)"} />}
     >
       <div className="flex flex-wrap items-center gap-2">
         <input
@@ -671,7 +671,7 @@ function BulkImportPanel({ programCohortId }: { programCohortId: string }) {
 /* ------------------------------------------------------------------ */
 
 function RosterListPanel() {
-  const { activeProgram } = useSession();
+  const { activeProgram, isSimulated } = useSession();
   const state = useDirectoryState();
   const scope = selectProgramDirectory(state, activeProgram.id);
 
@@ -723,7 +723,7 @@ function RosterListPanel() {
     <PanelCard
       title="Liste des inscrits"
       description="Recherche, filtres, export CSV. L'accès au détail de progression sera raccordé dans un lot ultérieur."
-      action={<MockBadge label="Données simulées" />}
+      action={<MockBadge label={isSimulated ? "Données simulées" : "Données réelles (Supabase)"} />}
     >
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <div className="space-y-2">
@@ -931,7 +931,7 @@ function WithdrawButton({ enrollmentId, name }: { enrollmentId: string; name: st
 }
 
 function LifecyclePanel() {
-  const { activeProgram } = useSession();
+  const { activeProgram, isSimulated } = useSession();
   const state = useDirectoryState();
   const scope = selectProgramDirectory(state, activeProgram.id);
 
@@ -939,7 +939,7 @@ function LifecyclePanel() {
     <PanelCard
       title="Cycle de vie des cohortes"
       description="Une cohorte archivée reste consultable et n'accepte plus de nouvelle inscription. Aucune suppression n'est possible."
-      action={<MockBadge label="Données simulées" />}
+      action={<MockBadge label={isSimulated ? "Données simulées" : "Données réelles (Supabase)"} />}
     >
       <ul className="space-y-3">
         {scope.cohorts.map((c) => (

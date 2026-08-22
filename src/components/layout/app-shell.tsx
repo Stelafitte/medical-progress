@@ -181,7 +181,9 @@ export function AppShell() {
                     <span className="block text-sm font-medium text-foreground">
                       {person.fullName}
                     </span>
-                    <span className="block text-xs text-muted-foreground">Session simulée</span>
+                    <span className="block text-xs text-muted-foreground">
+                      {isSimulated ? "Session simulée" : "Connecté (Supabase)"}
+                    </span>
                   </span>
                 </Button>
               </DropdownMenuTrigger>

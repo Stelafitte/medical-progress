@@ -13,7 +13,7 @@ import { AccountSecuritySection } from "./AccountSecuritySection";
 import { PassportVisibilitySection } from "./PassportVisibilitySection";
 
 export function ProfileView() {
-  const { person, programs, enrollments, roles } = useSession();
+  const { person, programs, enrollments, roles, isSimulated } = useSession();
 
   const memberships = programs
     .map((program) => {
@@ -47,10 +47,14 @@ export function ProfileView() {
             </span>
             <div>
               <CardTitle className="text-lg">{person.fullName}</CardTitle>
-              <CardDescription>Compte simulé — aucune donnée réelle</CardDescription>
+              <CardDescription>
+                {isSimulated
+                  ? "Compte simulé — aucune donnée réelle"
+                  : "Compte connecté — données Supabase"}
+              </CardDescription>
             </div>
             <Badge variant="outline" className="ms-auto">
-              Simulé
+              {isSimulated ? "Simulé" : "Connecté"}
             </Badge>
           </div>
         </CardHeader>
