@@ -1,5 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { AccessRestricted } from "@/components/access-restricted";
+import { useSession } from "@/application/session";
+import { canAccessLearnerSpace } from "@/domain/access";
 import { DashboardView } from "@/features/dashboard/DashboardView";
+
+function EspaceIndexRoute() {
+  const { roles, activeProgram } = useSession();
+  if (!canAccessLearnerSpace(roles, activeProgram.id)) {
+    return <AccessRestricted area="Le tableau de bord apprenant" />;
+  }
+  return <DashboardView />;
+}
 
 export const Route = createFileRoute("/espace/")({
   head: () => ({
@@ -18,5 +29,5 @@ export const Route = createFileRoute("/espace/")({
       { name: "robots", content: "noindex" },
     ],
   }),
-  component: DashboardView,
+  component: EspaceIndexRoute,
 });
