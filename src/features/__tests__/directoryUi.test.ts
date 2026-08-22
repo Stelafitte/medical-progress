@@ -47,9 +47,11 @@ describe("périmètre et permissions", () => {
     expect(route).toContain('{ name: "robots", content: "noindex" }');
   });
 
-  it("expose l'entrée de navigation dans l'espace d'administration du programme", () => {
-    expect(nav).toContain('to: "/espace/administration/personnes"');
-    expect(nav).toContain('label: "Personnes et inscriptions"');
+  it("reste accessible depuis les classes d'apprenants, sans entrée de menu dédiée", () => {
+    const classes = read("src/features/administration/AdminLearnerClasses.tsx");
+    expect(classes).toContain('to="/espace/administration/personnes"');
+    expect(nav).not.toContain('to: "/espace/administration/personnes"');
+    expect(nav).toContain('label: "Classes d\'apprenants"');
   });
 });
 
