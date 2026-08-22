@@ -463,3 +463,23 @@ sans usage défini), et le fait que les programmes réels DFASM/DIU
 `programs` (seul le programme pilote générique "Campus Santé" existe) —
 `program_email_senders` ne pourra être peuplée pour de vrai qu'une fois ces
 programmes créés.
+
+### Correction (2026-08-22) — convention réelle : `invitation@`, pas `invitations@`
+
+Stef a créé la première boîte réelle pour DIU écho : `invitation@echocardio-chubx.fr`
+(singulier). Ceci corrige la convention `invitations@` (pluriel) recommandée
+plus haut dans cette décision — l'adresse réellement créée fait foi. Les
+deux prochaines boîtes (DFASM, DPC) seront créées sur le même modèle
+singulier : `invitation@dfasm-connect.fr`, `invitation@odp2c.org` (à
+confirmer par Stef une fois créées, sans présumer qu'elles existent avant
+confirmation explicite).
+
+Adresses confirmées à ce stade :
+- DIU d'Échocardiographie : `invitation@echocardio-chubx.fr` — confirmé.
+- DFASM Cardiologie : en attente de création par Stef.
+- DPC / ODP2C : en attente de création par Stef.
+
+`docs/database/draft/006_program_email_senders.sql` (commentaire d'exemple)
+mis à jour en conséquence. Aucun impact sur le schéma ou le code : la
+convention de nommage n'était qu'indicative, `smtp_user` sera de toute
+façon renseigné avec l'adresse réelle telle que créée, quelle qu'elle soit.

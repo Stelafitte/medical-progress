@@ -24,7 +24,7 @@ create table public.program_email_senders (
   program_id uuid primary key references public.programs (id) on delete cascade,
   smtp_host text not null default 'smtp.mail.ovh.net',
   smtp_port integer not null default 465,
-  -- Adresse de la boîte (ex. invitations@dfasm-connect.fr) : pas sensible,
+  -- Adresse de la boîte (ex. invitation@dfasm-connect.fr) : pas sensible,
   -- sert aussi de valeur "From" et de nom d'utilisateur SMTP.
   smtp_user text not null check (smtp_user = lower(btrim(smtp_user))),
   -- Nom du secret Supabase Edge Function contenant le mot de passe de
