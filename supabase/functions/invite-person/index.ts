@@ -29,9 +29,23 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 // configurée dans le projet (Auth > URL Configuration).
 const INVITE_REDIRECT_URL = Deno.env.get("INVITE_REDIRECT_URL") ?? undefined;
 
+// CORS : indispensable pour que le frontend (navigateur) puisse appeler
+// cette fonction — sans ces en-têtes, le préflight OPTIONS du navigateur
+// échoue et AUCUN appel navigateur ne passe jamais, même avec un JWT valide.
+// Trouvé et corrigé lors du test de bout en bout du 22/08/2026 (D94).
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
 Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+
   if (req.method !== "POST") {
-    return new Response("Method not allowed", { status: 405 });
+    return new Response("Method not allowed", { status: 405, headers: CORS_HEADERS });
   }
 
   const authHeader = req.headers.get("Authorization");
@@ -153,6 +167,6 @@ Deno.serve(async (req) => {
 function json(payload: unknown, status: number): Response {
   return new Response(JSON.stringify(payload), {
     status,
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", ...CORS_HEADERS },
   });
 }
