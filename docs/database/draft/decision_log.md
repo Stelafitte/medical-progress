@@ -325,3 +325,37 @@ réelle (déclencheur ou tâche serveur), et la décision de repointer plus tard
 `enrollments`/`role_assignments` vers une identité pleinement découplée de
 `auth.uid()` (option plus large, délibérément écartée ici) si le produit en a
 un jour vraiment besoin.
+
+## D90 (2026-08-22) — Une cohorte appartient à une seule implémentation de programme
+
+Décision validée par Stef : pour le pilote, une cohorte (une promotion) est
+rattachée à une seule implémentation de programme. Des sous-groupes internes à
+une cohorte restent possibles plus tard si un besoin réel apparaît, sans
+remettre en cause ce principe. Referme le point ouvert correspondant de
+`docs/architecture/backend_gap_analysis.md`.
+
+## D91 (2026-08-22) — Rétention du PPTX source : 30 jours après validation
+
+Décision validée par Stef, conforme à la proposition initiale de D85 : le
+fichier PPTX original est purgé automatiquement 30 jours après validation
+humaine du dérivé sonorisé, sauf choix explicite de le conserver. Le PPTX
+source n'est jamais nécessaire à la lecture. Referme le point ouvert
+correspondant de D85 et de `backend_gap_analysis.md`.
+
+## D92 (2026-08-22) — Objectifs de sauvegarde Supabase : RPO 24h / RTO 24h, à réévaluer avant vrais apprenants
+
+Décision validée par Stef : objectif de continuité fixé à 24h de perte de
+données maximum tolérée (RPO) et 24h pour restaurer (RTO). Repère posé
+maintenant, en développement, sans activation réelle des procédures tant
+qu'aucun vrai apprenant n'est inscrit. À revoir explicitement avant l'ouverture
+de la plateforme à une première cohorte réelle (Phase 6, supervision et
+continuité, mais le repère est utile dès la conception de Phase 1).
+
+## D93 (2026-08-22) — Définition d'une « consultation achevée » du DIU : ≥90% des diapositives, dans l'ordre
+
+Décision validée par Stef : un module (diaporama sonorisé) est considéré
+comme achevé lorsque l'apprenant a vu au moins 90% des diapositives, dans
+l'ordre, avec une durée minimale plausible pour empêcher un simple défilement
+sans écoute. Cette règle reste à affiner avec l'équipe pédagogique avant son
+implémentation en Phase 2 (elle conditionnera plus tard les attestations).
+Referme le point ouvert correspondant de `backend_gap_analysis.md`.
