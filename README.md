@@ -71,12 +71,14 @@ bun run lint       # eslint + prettier
 ## Limites explicites de cette itération
 
 - Un projet Supabase de développement indépendant est provisionné et les migrations du
-  socle sont appliquées. L'application React reste toutefois branchée sur les repositories
-  mock : aucune donnée de l'interface n'est encore persistée dans Supabase.
-- Aucune authentification réelle : la session est simulée en mémoire. Seuls le profil de
-  démonstration et le programme sélectionné sont conservés dans `sessionStorage`
-  (`src/application/sessionPersistence.ts`), avec une action explicite de retour au profil
-  par défaut.
+  socle sont appliquées. Le backend reste `mock` par défaut. La bascule explicite
+  `VITE_DATA_BACKEND=supabase`, avec `VITE_SUPABASE_URL` et
+  `VITE_SUPABASE_PUBLISHABLE_KEY`, raccorde Supabase Auth ainsi que la lecture des programmes,
+  du profil courant, de ses inscriptions et de ses rôles ; les autres repositories restent
+  temporairement délégués au mock et aucune écriture métier n'est encore raccordée.
+- En mode mock, la session reste simulée en mémoire et le profil de démonstration ainsi que
+  le programme sélectionné sont conservés dans `sessionStorage`. En mode Supabase, une
+  session authentifiée réelle est requise et la déconnexion passe par Supabase Auth.
 - **Aucun appel IA réel.** Le calcul de progression est déterministe.
 - Aucune écriture : les repositories mock sont en lecture seule, rien n'est persisté.
 - Aucun secret côté frontend, aucun appel réseau sortant.

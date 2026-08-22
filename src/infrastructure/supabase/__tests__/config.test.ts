@@ -8,7 +8,8 @@ describe("configuration publique Supabase", () => {
     expect(resolveSupabasePublicConfig({})).toEqual({
       configured: false,
       backend: "mock",
-      reason: "VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY sont requises.",
+      reason:
+        "VITE_SUPABASE_URL et VITE_SUPABASE_PUBLISHABLE_KEY (ou l’ancienne VITE_SUPABASE_ANON_KEY) sont requises.",
     });
   });
 
@@ -16,7 +17,7 @@ describe("configuration publique Supabase", () => {
     const result = resolveSupabasePublicConfig({
       VITE_DATA_BACKEND: "supabase",
       VITE_SUPABASE_URL: "https://wbmkazfideylaixjkzyn.supabase.co",
-      VITE_SUPABASE_ANON_KEY: key,
+      VITE_SUPABASE_PUBLISHABLE_KEY: key,
     });
     expect(result).toEqual({
       configured: true,
@@ -26,6 +27,24 @@ describe("configuration publique Supabase", () => {
         publishableKey: key,
       },
     });
+  });
+
+  it("conserve la compatibilité avec l'ancien nom de clé anon", () => {
+    const result = resolveSupabasePublicConfig({
+      VITE_SUPABASE_URL: "https://wbmkazfideylaixjkzyn.supabase.co",
+      VITE_SUPABASE_ANON_KEY: key,
+    });
+    expect(result.configured && result.value.publishableKey).toBe(key);
+  });
+
+  it("préfère la clé publishable lorsque les deux noms sont présents", () => {
+    const currentKey = `${key}_current`;
+    const result = resolveSupabasePublicConfig({
+      VITE_SUPABASE_URL: "https://wbmkazfideylaixjkzyn.supabase.co",
+      VITE_SUPABASE_PUBLISHABLE_KEY: currentKey,
+      VITE_SUPABASE_ANON_KEY: `${key}_legacy`,
+    });
+    expect(result.configured && result.value.publishableKey).toBe(currentKey);
   });
 
   it("refuse une URL non HTTPS hors développement local", () => {

@@ -12,7 +12,13 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { mockDataAccess } from "@/infrastructure/mock/mockDataAccess";
+import { getSelectedDataAccess } from "@/application/dataAccess";
+import { getBrowserSupabaseClient } from "@/infrastructure/supabase/client";
+import { SupabaseLoginForm } from "@/components/supabase-login-form";
+import {
+  AuthenticationRequiredError,
+  loadAuthenticatedSupabaseSession,
+} from "@/application/supabaseSession";
 import * as fx from "@/infrastructure/mock/fixtures";
 import {
   clearDemoSession,
@@ -44,7 +50,7 @@ export interface SessionValue {
   readonly people: readonly Person[];
   readonly programs: readonly Program[];
   readonly activeProgram: Program;
-  readonly activeEnrollment: Enrollment;
+  readonly activeEnrollment?: Enrollment;
   readonly enrollments: readonly Enrollment[];
   readonly roles: readonly RoleAssignment[];
   /** Rôles effectifs dans le programme sélectionné. */
@@ -67,6 +73,7 @@ export interface SessionValue {
   setActivePersonId(id: PersonId): void;
   /** Revient au profil et au programme par défaut, et efface la persistance locale. */
   resetDemoSession(): void;
+  signOut(): Promise<void>;
   hasRoleInProgram(role: RoleName, programId: ProgramId): boolean;
 }
 
@@ -75,7 +82,7 @@ const SessionContext = createContext<SessionValue | null>(null);
 const DEFAULT_PROGRAM_ID = fx.programs[0]!.id;
 const DEFAULT_PERSON_ID = fx.people[0]!.id;
 
-export function SessionProvider({ children }: { children: ReactNode }) {
+function MockSessionProvider({ children }: { children: ReactNode }) {
   const [activeProgramId, setActiveProgramId] = useState<ProgramId>(DEFAULT_PROGRAM_ID);
   const [activePersonId, setActivePersonId] = useState<PersonId>(DEFAULT_PERSON_ID);
   const [hydrated, setHydrated] = useState(false);
@@ -157,6 +164,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       setActiveProgramId,
       setActivePersonId: selectPerson,
       resetDemoSession,
+      signOut: async () => undefined,
       hasRoleInProgram: (role, programId) =>
         roles.some(
           (r) =>
@@ -170,13 +178,142 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }
 
+type SupabaseSessionState = {
+  person: Person;
+  programs: readonly Program[];
+  enrollments: readonly Enrollment[];
+  roles: readonly RoleAssignment[];
+};
+
+function SupabaseSessionProvider({ children }: { children: ReactNode }) {
+  const dataAccess = getSelectedDataAccess();
+  const client = getBrowserSupabaseClient();
+  const [state, setState] = useState<SupabaseSessionState | null>(null);
+  const [activeProgramId, setActiveProgramId] = useState<ProgramId | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [authenticationRequired, setAuthenticationRequired] = useState(false);
+
+  const load = useCallback(async () => {
+    if (!client) throw new Error("Le client Supabase n’est pas configuré.");
+    const { person, programs, enrollments, roles } =
+      await loadAuthenticatedSupabaseSession(client, dataAccess);
+    setState({ person, programs, enrollments, roles });
+    setActiveProgramId((current) =>
+      current && programs.some((program) => program.id === current) ? current : programs[0]!.id,
+    );
+    setError(null);
+    setAuthenticationRequired(false);
+  }, [client, dataAccess]);
+
+  const handleLoadError = useCallback((reason: unknown) => {
+    setState(null);
+    setAuthenticationRequired(reason instanceof AuthenticationRequiredError);
+    setError(reason instanceof Error ? reason.message : "Chargement Supabase impossible.");
+  }, []);
+
+  useEffect(() => {
+    void load().catch(handleLoadError);
+    if (!client) return;
+    const { data } = client.auth.onAuthStateChange(() => {
+      window.setTimeout(() => void load().catch(handleLoadError), 0);
+    });
+    return () => data.subscription.unsubscribe();
+  }, [client, handleLoadError, load]);
+
+  const value = useMemo<SessionValue | null>(() => {
+    if (!state || !activeProgramId) return null;
+    const activeProgram =
+      state.programs.find((program) => program.id === activeProgramId) ?? state.programs[0];
+    if (!activeProgram) return null;
+    const activeEnrollment = state.enrollments.find(
+      (enrollment) => enrollment.programId === activeProgram.id,
+    );
+    const rolesInActiveProgram = rolesInContext(state.roles, { programId: activeProgram.id });
+    return {
+      person: state.person,
+      people: [state.person],
+      programs: state.programs,
+      activeProgram,
+      ...(activeEnrollment ? { activeEnrollment } : {}),
+      enrollments: state.enrollments,
+      roles: state.roles,
+      rolesInActiveProgram,
+      canAccessAdministration: canAccessAdministration(state.roles, activeProgram.id),
+      canAccessProgramAdministration: canAccessProgramAdministration(
+        state.roles,
+        activeProgram.id,
+      ),
+      canAccessPlatformAdministration: canAccessPlatformAdministration(state.roles),
+      canAccessSupervision: canAccessSupervision(state.roles, activeProgram.id),
+      canAccessStatistics: canAccessStatistics(state.roles, activeProgram.id),
+      canAccessProfile: canAccessOwnProfile(true),
+      isSimulated: false,
+      setActiveProgramId,
+      setActivePersonId: () => undefined,
+      resetDemoSession: () => undefined,
+      signOut: async () => {
+        if (!client) return;
+        const { error: signOutError } = await client.auth.signOut();
+        if (signOutError) throw new Error(signOutError.message);
+      },
+      hasRoleInProgram: (role, programId) =>
+        state.roles.some(
+          (assignment) =>
+            assignment.role === role &&
+            (assignment.scope.kind === "platform" ||
+              ("programId" in assignment.scope && assignment.scope.programId === programId)),
+        ),
+    };
+  }, [activeProgramId, client, state]);
+
+  if (error) {
+    return (
+      <main className="mx-auto flex min-h-screen max-w-xl items-center px-6">
+        <div className="space-y-2">
+          <h1 className="text-xl font-semibold">Connexion Supabase requise</h1>
+          <p className="text-sm text-muted-foreground">{error}</p>
+          {authenticationRequired && client ? <SupabaseLoginForm client={client} /> : null}
+          {!authenticationRequired && client ? (
+            <button
+              className="text-sm text-primary underline"
+              type="button"
+              onClick={() => void client.auth.signOut()}
+            >
+              Se déconnecter
+            </button>
+          ) : null}
+        </div>
+      </main>
+    );
+  }
+  if (!value) {
+    return <p className="p-6 text-sm text-muted-foreground">Chargement de la session…</p>;
+  }
+  return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
+}
+
+export function SessionProvider({ children }: { children: ReactNode }) {
+  let dataAccess;
+  try {
+    dataAccess = getSelectedDataAccess();
+  } catch (reason) {
+    const message = reason instanceof Error ? reason.message : "Configuration invalide.";
+    return <p className="p-6 text-sm text-destructive">{message}</p>;
+  }
+  return dataAccess.isMock ? (
+    <MockSessionProvider>{children}</MockSessionProvider>
+  ) : (
+    <SupabaseSessionProvider>{children}</SupabaseSessionProvider>
+  );
+}
+
 export function useSession(): SessionValue {
   const ctx = useContext(SessionContext);
   if (!ctx) throw new Error("useSession doit être utilisé dans <SessionProvider>.");
   return ctx;
 }
 
-/** Point d'accès unique à la couche données (mock pour l'instant). */
+/** Point d'accès unique à la couche données sélectionnée par l'environnement. */
 export function useDataAccess() {
-  return mockDataAccess;
+  return getSelectedDataAccess();
 }

@@ -316,7 +316,7 @@ export function AdminCommunications() {
           personId: session.person.id,
           fullName: session.person.fullName,
           email: session.person.email,
-          cohortId: session.activeEnrollment.cohortId,
+          cohortId: session.activeEnrollment?.cohortId ?? "",
           cohortLabel: "Aperçu auteur (simulé)",
         },
         snapshot,

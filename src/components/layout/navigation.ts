@@ -99,6 +99,12 @@ export const SUPERVISION_NAV: readonly NavEntry[] = [
 export const PROGRAM_ADMIN_NAV: readonly NavEntry[] = [
   { to: "/espace/administration", label: "Vue d’ensemble", icon: Gauge, exact: true },
   {
+    to: "/espace/administration/personnes",
+    label: "Personnes et inscriptions",
+    icon: Users,
+    exact: false,
+  },
+  {
     to: "/espace/administration/pedagogie",
     label: "Concevoir le programme",
     icon: GraduationCap,

@@ -43,6 +43,7 @@ export function AppShell() {
     people,
     setActivePersonId,
     resetDemoSession,
+    signOut,
     roles,
     rolesInActiveProgram,
     activeProgram,
@@ -238,7 +239,14 @@ export function AppShell() {
                       l'onglet (sessionStorage), jamais au-delà.
                     </p>
                   </>
-                ) : null}
+                ) : (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onSelect={() => void signOut()}>
+                      Se déconnecter
+                    </DropdownMenuItem>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>

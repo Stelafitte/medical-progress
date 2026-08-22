@@ -38,8 +38,10 @@ export function StageLogBook() {
   const { activeProgram, activeEnrollment, rolesInActiveProgram } = useSession();
 
   const { data, isPending } = useQuery({
-    queryKey: ["stage-log-book", activeProgram.id, activeEnrollment.id],
+    queryKey: ["stage-log-book", activeProgram.id, activeEnrollment?.id ?? "none"],
+    enabled: Boolean(activeEnrollment),
     queryFn: async () => {
+      if (!activeEnrollment) throw new Error("Aucune inscription active pour ce programme.");
       const [templates, logs] = await Promise.all([
         dataAccess.stageLogs.listTemplates(activeProgram.id),
         dataAccess.stageLogs.listLogsForEnrollment(activeEnrollment.id),
@@ -58,15 +60,16 @@ export function StageLogBook() {
     () =>
       templatesForContext(data?.templates ?? [], {
         programId: activeProgram.id,
-        cohortId: activeEnrollment.cohortId,
+        cohortId: activeEnrollment?.cohortId ?? "",
       }),
-    [data, activeProgram.id, activeEnrollment.cohortId],
+    [data, activeProgram.id, activeEnrollment?.cohortId],
   );
 
   const template: StageLogTemplate | undefined = templates[0];
   const log = data?.logs[0];
   const effectiveStatus = status ?? log?.status ?? "draft";
 
+  if (!activeEnrollment) return <p className="text-sm text-muted-foreground">Aucune inscription active.</p>;
   if (isPending || !data) return <Skeleton className="h-64 w-full" />;
 
   if (!template) {

@@ -28,7 +28,7 @@ const MODULES: readonly ModuleRow[] = [
   {
     name: "Persistance (base de données)",
     state: "en_place",
-    note: "Socle provisionné sur Supabase développement ; l'interface utilise encore les repositories mock.",
+    note: "Socle provisionné ; programmes, profil, inscriptions et rôles peuvent être lus depuis Supabase par bascule explicite.",
   },
   {
     name: "Schéma PostgreSQL & matrice RLS",
@@ -43,8 +43,8 @@ const MODULES: readonly ModuleRow[] = [
   { name: "Repositories mock en mémoire", state: "simule", note: "src/infrastructure/mock/*" },
   {
     name: "Authentification & session",
-    state: "simule",
-    note: "src/application/session.tsx — personne et rôles figés",
+    state: "en_place",
+    note: "Supabase Auth en mode Supabase ; session de démonstration conservée en mode mock.",
   },
   {
     name: "Rôles contextualisés (programme / cohorte / stage)",

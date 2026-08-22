@@ -34,11 +34,13 @@ import {
 export function DpcLearnerView() {
   const data = useDataAccess();
   const { activeProgram, activeEnrollment } = useSession();
-  const enrollmentId = activeEnrollment.id;
+  const enrollmentId = activeEnrollment?.id;
 
   const { data: scope, isPending } = useQuery({
     queryKey: ["dpc-learner", activeProgram.id, enrollmentId],
+    enabled: Boolean(enrollmentId),
     queryFn: async () => {
+      if (!enrollmentId) throw new Error("Aucune inscription active pour ce programme.");
       const [grids, setup, rounds, entries, sequences, questions, attempts, attendance] =
         await Promise.all([
           data.dpc.listGrids(activeProgram.id),
@@ -63,6 +65,8 @@ export function DpcLearnerView() {
       <p className="text-muted-foreground text-sm">{activeProgram.name}</p>
     </header>
   );
+
+  if (!enrollmentId) return <div className="space-y-4">{header}<p>Aucune inscription active.</p></div>;
 
   if (isPending || !scope)
     return (

@@ -20,6 +20,10 @@ export function StageView() {
   const { activeProgram, activeEnrollment, roles } = useSession();
   const { data, isPending } = useLearnerPassport();
 
+  if (!activeEnrollment) {
+    return <p className="text-sm text-muted-foreground">Aucune inscription active pour ce programme.</p>;
+  }
+
   if (isPending || !data) return <Skeleton className="h-64 w-full" />;
 
   const { placements, assignments, evidence } = data;

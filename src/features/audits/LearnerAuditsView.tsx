@@ -22,11 +22,13 @@ import {
 export function LearnerAuditsView() {
   const data = useDataAccess();
   const { activeProgram, activeEnrollment } = useSession();
-  const enrollmentId = activeEnrollment.id;
+  const enrollmentId = activeEnrollment?.id;
 
   const { data: scope, isPending } = useQuery({
     queryKey: ["clinical-audits-learner", activeProgram.id, enrollmentId ?? "none"],
+    enabled: Boolean(enrollmentId),
     queryFn: async () => {
+      if (!enrollmentId) throw new Error("Aucune inscription active pour ce programme.");
       const [templates, campaigns, submissions, tests, results, sessions] = await Promise.all([
         data.clinicalAudits.listTemplates(activeProgram.id),
         data.clinicalAudits.listCampaigns(activeProgram.id),
@@ -51,6 +53,8 @@ export function LearnerAuditsView() {
       </p>
     </header>
   );
+
+  if (!enrollmentId) return <div className="space-y-4">{header}<p>Aucune inscription active.</p></div>;
 
   if (isPending || !scope)
     return (

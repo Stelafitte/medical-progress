@@ -29,16 +29,17 @@ export function resolveSupabasePublicConfig(
     env["VITE_DATA_BACKEND"] === "supabase" ? "supabase" : "mock";
   const url =
     typeof env["VITE_SUPABASE_URL"] === "string" ? env["VITE_SUPABASE_URL"].trim() : "";
+  const publishableKeyValue =
+    env["VITE_SUPABASE_PUBLISHABLE_KEY"] ?? env["VITE_SUPABASE_ANON_KEY"];
   const publishableKey =
-    typeof env["VITE_SUPABASE_ANON_KEY"] === "string"
-      ? env["VITE_SUPABASE_ANON_KEY"].trim()
-      : "";
+    typeof publishableKeyValue === "string" ? publishableKeyValue.trim() : "";
 
   if (!url || !publishableKey) {
     return {
       configured: false,
       backend,
-      reason: "VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY sont requises.",
+      reason:
+        "VITE_SUPABASE_URL et VITE_SUPABASE_PUBLISHABLE_KEY (ou l’ancienne VITE_SUPABASE_ANON_KEY) sont requises.",
     };
   }
   if (!validSupabaseUrl(url)) {

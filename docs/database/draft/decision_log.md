@@ -271,7 +271,22 @@ reste `mock` par défaut ; le choix `supabase` exige explicitement
 `VITE_DATA_BACKEND=supabase` ainsi qu'une URL et une clé publique valides.
 Aucune clé `service_role` n'est référencée par le code navigateur.
 
+Le nom courant `VITE_SUPABASE_PUBLISHABLE_KEY` est préféré ; le nom historique
+`VITE_SUPABASE_ANON_KEY` reste accepté pour les environnements existants.
+
 Une quatrième migration additive aligne `programs` sur le contrat TypeScript
 (effectif estimé, simulation, pré/post-tests, séances et niveau cible). Elle a
 été appliquée sur l'environnement de développement, puis contrôlée par le lint
 PostgreSQL sans erreur. Aucun écran n'est encore basculé vers les données réelles.
+
+## D88 (2026-08-21) — Première tranche de lecture frontend Supabase
+
+La bascule explicite `VITE_DATA_BACKEND=supabase` active désormais Supabase Auth
+et les repositories de lecture du noyau d'identité : programmes accessibles,
+profil de l'utilisateur courant, inscriptions et rôles actifs. Le mode `mock`
+reste le défaut et conserve la session de démonstration.
+
+Les repositories non encore migrés sont temporairement délégués au mock et ne
+doivent pas être présentés comme persistants. Le mapping des portées de rôles
+est strict : une valeur inconnue ou une forme incohérente provoque un échec de
+chargement plutôt qu'un élargissement implicite des droits.

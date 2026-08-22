@@ -9,8 +9,10 @@ export function useLearnerPassport() {
   const { activeProgram, activeEnrollment } = useSession();
 
   return useQuery({
-    queryKey: ["learner-passport", activeProgram.id, activeEnrollment.id],
+    queryKey: ["learner-passport", activeProgram.id, activeEnrollment?.id ?? "none"],
+    enabled: Boolean(activeEnrollment),
     queryFn: async () => {
+      if (!activeEnrollment) throw new Error("Aucune inscription active pour ce programme.");
       const [
         outcomes,
         evidence,
