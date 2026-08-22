@@ -8,6 +8,13 @@ import type {
   RoleAssignment,
   RoleScope,
 } from "@/domain/types";
+import type {
+  CreatePendingPersonInput,
+  PendingPerson,
+  PendingPersonId,
+  PendingPersonStatus,
+  SendInvitationOutcome,
+} from "@/domain/peopleStaging";
 import { mockDataAccess } from "@/infrastructure/mock/mockDataAccess";
 
 const nativeProvenance = { sourceSystem: "native" as const };
@@ -149,6 +156,45 @@ export function mapRoleAssignment(row: RoleAssignmentRow): RoleAssignment {
   };
 }
 
+type PendingPersonRow = {
+  id: string;
+  program_id: string;
+  first_name: string;
+  last_name: string;
+  login_email: string;
+  institutional_id: string | null;
+  origin: "individual" | "import";
+  intended_cohort_id: string | null;
+  status: PendingPersonStatus;
+  invited_at: string | null;
+  cancelled_at: string | null;
+  activated_profile_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export function mapPendingPerson(row: PendingPersonRow): PendingPerson {
+  return {
+    id: row.id,
+    programId: row.program_id,
+    firstName: row.first_name,
+    lastName: row.last_name,
+    loginEmail: row.login_email,
+    origin: row.origin,
+    status: row.status,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    ...(row.institutional_id ? { institutionalId: row.institutional_id } : {}),
+    ...(row.intended_cohort_id ? { intendedCohortId: row.intended_cohort_id } : {}),
+    ...(row.invited_at ? { invitedAt: row.invited_at } : {}),
+    ...(row.cancelled_at ? { cancelledAt: row.cancelled_at } : {}),
+    ...(row.activated_profile_id ? { activatedProfileId: row.activated_profile_id } : {}),
+  };
+}
+
+const pendingPersonColumns =
+  "id,program_id,first_name,last_name,login_email,institutional_id,origin,intended_cohort_id,status,invited_at,cancelled_at,activated_profile_id,created_at,updated_at";
+
 const programColumns =
   "id,code,name,kind,institution,annual_learner_estimate,placements_enabled,simulation_enabled,audits_enabled,pre_post_tests_enabled,sessions_enabled,dpc_enabled,target_mastery,locale,created_at,updated_at";
 
@@ -207,6 +253,51 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
           .is("revoked_at", null);
         assertNoSupabaseError(error);
         return ((data ?? []) as RoleAssignmentRow[]).map(mapRoleAssignment);
+      },
+    },
+    peopleStaging: {
+      async listPendingPeople(programId: ProgramId) {
+        const { data, error } = await client
+          .from("people")
+          .select(pendingPersonColumns)
+          .eq("program_id", programId)
+          .order("created_at", { ascending: false });
+        assertNoSupabaseError(error);
+        return ((data ?? []) as PendingPersonRow[]).map(mapPendingPerson);
+      },
+      async createPendingPerson(input: CreatePendingPersonInput) {
+        const { data: userData, error: userError } = await client.auth.getUser();
+        assertNoSupabaseError(userError);
+        if (!userData.user) throw new Error("Authentification requise.");
+        const { data, error } = await client
+          .from("people")
+          .insert({
+            program_id: input.programId,
+            first_name: input.firstName,
+            last_name: input.lastName,
+            login_email: input.loginEmail.trim().toLowerCase(),
+            institutional_id: input.institutionalId ?? null,
+            intended_cohort_id: input.intendedCohortId ?? null,
+            origin: "individual",
+            created_by: userData.user.id,
+          })
+          .select(pendingPersonColumns)
+          .single();
+        assertNoSupabaseError(error);
+        return mapPendingPerson(data as PendingPersonRow);
+      },
+      async sendInvitations(personIds: readonly PendingPersonId[]) {
+        if (personIds.length === 0) return [];
+        const { data, error } = await client.functions.invoke("invite-person", {
+          body: { personIds },
+        });
+        if (error) {
+          const message =
+            error instanceof Error ? error.message : "Envoi de l’invitation impossible.";
+          return personIds.map((personId) => ({ personId, ok: false, error: message }));
+        }
+        const payload = data as { results?: SendInvitationOutcome[] } | null;
+        return payload?.results ?? personIds.map((personId) => ({ personId, ok: false }));
       },
     },
   };

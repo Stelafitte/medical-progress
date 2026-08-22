@@ -3,6 +3,7 @@
  * Remplaçable par une implémentation base de données sans toucher à l'UI.
  */
 import type { DataAccess } from "@/application/ports/repositories";
+import type { PendingPerson } from "@/domain/peopleStaging";
 import * as fx from "./fixtures";
 import * as pfx from "./professionalFixtures";
 import * as slfx from "./stageLogFixtures";
@@ -36,6 +37,45 @@ export const mockDataAccess: DataAccess = {
     listRoleAssignments: (personId) =>
       ok(fx.roleAssignments.filter((r) => r.personId === personId)),
   },
+  /**
+   * Sas de pré-inscription (D94) : non consommé par la maquette locale
+   * (PeopleEnrollmentsView utilise directoryStore en mode simulé), mais
+   * doit rester fonctionnel pour satisfaire l'interface DataAccess et pour
+   * d'éventuels tests. Purement en mémoire, réinitialisé au rechargement.
+   */
+  peopleStaging: (() => {
+    let pending: PendingPerson[] = [];
+    let counter = 0;
+    return {
+      listPendingPeople: (programId) => ok(pending.filter((p) => p.programId === programId)),
+      createPendingPerson: (input) => {
+        counter += 1;
+        const now = new Date().toISOString();
+        const created: PendingPerson = {
+          id: `mock-pending-${counter}`,
+          programId: input.programId,
+          firstName: input.firstName,
+          lastName: input.lastName,
+          loginEmail: input.loginEmail.trim().toLowerCase(),
+          origin: "individual",
+          status: "pending",
+          createdAt: now,
+          updatedAt: now,
+          ...(input.institutionalId ? { institutionalId: input.institutionalId } : {}),
+          ...(input.intendedCohortId ? { intendedCohortId: input.intendedCohortId } : {}),
+        };
+        pending = [...pending, created];
+        return ok(created);
+      },
+      sendInvitations: (personIds) => {
+        const now = new Date().toISOString();
+        pending = pending.map((p) =>
+          personIds.includes(p.id) ? { ...p, status: "invited", invitedAt: now } : p,
+        );
+        return ok(personIds.map((personId) => ({ personId, ok: true })));
+      },
+    };
+  })(),
   outcomes: {
     listOutcomes: (programId) => ok(fx.outcomes.filter((o) => o.programId === programId)),
     listOutcomeRelations: (programId) => {

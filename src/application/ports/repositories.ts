@@ -66,6 +66,12 @@ import type {
   ProgramId,
   RoleAssignment,
 } from "@/domain/types";
+import type {
+  CreatePendingPersonInput,
+  PendingPerson,
+  PendingPersonId,
+  SendInvitationOutcome,
+} from "@/domain/peopleStaging";
 
 export interface ProgramRepository {
   listPrograms(): Promise<readonly Program[]>;
@@ -79,6 +85,18 @@ export interface PeopleRepository {
   getPerson(id: PersonId): Promise<Person | undefined>;
   listEnrollments(personId: PersonId): Promise<readonly Enrollment[]>;
   listRoleAssignments(personId: PersonId): Promise<readonly RoleAssignment[]>;
+}
+
+/**
+ * Sas de pré-inscription réel (D94) : personnes créées par un membre du
+ * programme mais pas encore connectées. Distinct de PeopleRepository, qui ne
+ * porte que sur des comptes déjà activés (profiles).
+ */
+export interface PeopleStagingRepository {
+  listPendingPeople(programId: ProgramId): Promise<readonly PendingPerson[]>;
+  createPendingPerson(input: CreatePendingPersonInput): Promise<PendingPerson>;
+  /** Déclenche l'envoi réel des invitations (Edge Function invite-person). */
+  sendInvitations(personIds: readonly PendingPersonId[]): Promise<readonly SendInvitationOutcome[]>;
 }
 
 export interface OutcomeRepository {
@@ -243,6 +261,7 @@ export interface AuditRepository {
 export interface DataAccess {
   readonly programs: ProgramRepository;
   readonly people: PeopleRepository;
+  readonly peopleStaging: PeopleStagingRepository;
   readonly outcomes: OutcomeRepository;
   readonly evidence: EvidenceRepository;
   readonly placements: PlacementRepository;

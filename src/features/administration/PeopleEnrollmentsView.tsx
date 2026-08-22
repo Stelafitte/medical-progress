@@ -10,7 +10,7 @@
  * côté client pour la démonstration ; dans le produit réel, il DEVRA être imposé
  * côté serveur (requêtes filtrées + RLS).
  */
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Download, FileSpreadsheet, Upload, UserPlus } from "lucide-react";
 
 import { SectionHeading } from "@/components/section-heading";
@@ -45,8 +45,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { EmptyState, MockBadge, PanelCard, ScopeNotice, StatCard } from "@/features/professional/mock-ui";
-import { useSession } from "@/application/session";
+import {
+  EmptyState,
+  MockBadge,
+  PanelCard,
+  ScopeNotice,
+  StatCard,
+} from "@/features/professional/mock-ui";
+import { useDataAccess, useSession } from "@/application/session";
 import { setDirectoryState, useDirectoryState } from "@/application/directoryStore";
 import { ROLE_LABELS_FR } from "@/domain/roles";
 import type { RoleName } from "@/domain/types";
@@ -78,6 +84,12 @@ import {
   type ExistingEmailStrategy,
   type ImportableRow,
 } from "@/domain/directory";
+import {
+  PENDING_PERSON_STATUS_LABELS_FR,
+  fullNameOfPendingPerson,
+  type PendingPerson,
+  type PendingPersonId,
+} from "@/domain/peopleStaging";
 
 const ROLE_OPTIONS: readonly RoleName[] = ["learner", "teacher", "administrator"];
 const ENROLLMENT_OPTIONS: readonly EnrollmentStatus[] = [
@@ -103,10 +115,22 @@ function nowIso(): string {
 }
 
 export function PeopleEnrollmentsView() {
+  const { isSimulated } = useSession();
+  return isSimulated ? <MockPeopleEnrollmentsView /> : <RealPeopleEnrollmentsView />;
+}
+
+/* ------------------------------------------------------------------ */
+/* 1. Mode simulé (maquette locale)                                    */
+/* ------------------------------------------------------------------ */
+
+function MockPeopleEnrollmentsView() {
   const { activeProgram, isSimulated } = useSession();
   const state = useDirectoryState();
 
-  const scope = useMemo(() => selectProgramDirectory(state, activeProgram.id), [state, activeProgram.id]);
+  const scope = useMemo(
+    () => selectProgramDirectory(state, activeProgram.id),
+    [state, activeProgram.id],
+  );
   const summary = useMemo(() => summariseDirectory(scope), [scope]);
   const activeCohorts = scope.cohorts.filter((c) => c.lifecycle === "active");
 
@@ -120,7 +144,9 @@ export function PeopleEnrollmentsView() {
       <SectionHeading
         title="Personnes et inscriptions"
         level={1}
-        action={<MockBadge label={isSimulated ? "Données simulées" : "Données réelles (Supabase)"} />}
+        action={
+          <MockBadge label={isSimulated ? "Données simulées" : "Données réelles (Supabase)"} />
+        }
         description="Ajout individuel, import groupé, inscriptions, retraits et archivage — pour tout type de programme."
       />
 
@@ -138,7 +164,11 @@ export function PeopleEnrollmentsView() {
           value={scope.cohorts.find((c) => c.id === effectiveCohortId)?.label ?? "—"}
           hint={`${activeCohorts.length} cohorte(s) active(s)`}
         />
-        <StatCard label="Inscrits" value={summary.enrolledCount} hint={`${summary.activeCount} actives`} />
+        <StatCard
+          label="Inscrits"
+          value={summary.enrolledCount}
+          hint={`${summary.activeCount} actives`}
+        />
         <StatCard
           label="Comptes non activés"
           value={summary.withoutActivatedAccount}
@@ -160,7 +190,270 @@ export function PeopleEnrollmentsView() {
 }
 
 /* ------------------------------------------------------------------ */
-/* 3. Ajout individuel                                                 */
+/* Mode réel (Supabase) — sas de pré-inscription D94/D95               */
+/* ------------------------------------------------------------------ */
+
+function RealPeopleEnrollmentsView() {
+  const { activeProgram } = useSession();
+  const dataAccess = useDataAccess();
+
+  const [people, setPeople] = useState<readonly PendingPerson[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [sendingId, setSendingId] = useState<PendingPersonId | null>(null);
+
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    setLoadError(null);
+    try {
+      const rows = await dataAccess.peopleStaging.listPendingPeople(activeProgram.id);
+      setPeople(rows);
+    } catch (reason) {
+      setLoadError(reason instanceof Error ? reason.message : "Chargement impossible.");
+    } finally {
+      setLoading(false);
+    }
+  }, [dataAccess, activeProgram.id]);
+
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
+
+  async function sendInvitation(personId: PendingPersonId) {
+    setSendingId(personId);
+    try {
+      const outcomes = await dataAccess.peopleStaging.sendInvitations([personId]);
+      const outcome = outcomes.find((o) => o.personId === personId);
+      if (outcome && !outcome.ok) {
+        setLoadError(outcome.error ?? "Échec de l'envoi de l'invitation.");
+      }
+      await refresh();
+    } catch (reason) {
+      setLoadError(reason instanceof Error ? reason.message : "Échec de l'envoi de l'invitation.");
+    } finally {
+      setSendingId(null);
+    }
+  }
+
+  const pendingCount = people.filter((p) => p.status === "pending").length;
+  const invitedCount = people.filter((p) => p.status === "invited").length;
+  const activatedCount = people.filter((p) => p.status === "activated").length;
+
+  return (
+    <div className="space-y-8">
+      <SectionHeading
+        title="Personnes et inscriptions"
+        level={1}
+        action={<MockBadge label="Données réelles (Supabase)" />}
+        description="Ajout individuel et envoi d'invitation réelle — pour tout type de programme."
+      />
+
+      <ScopeNotice>
+        Périmètre : {activeProgram.name}. Cette vue lit et écrit pour de vrai dans Supabase (table{" "}
+        <code>people</code>, décision D94). L'import groupé, l'affectation à une cohorte, le retrait
+        et l'archivage ne sont pas encore raccordés en mode réel : aucune cohorte n'existe encore
+        pour ce programme, ils suivront une fois ce prérequis créé.
+      </ScopeNotice>
+
+      {loadError ? (
+        <p className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+          {loadError}
+        </p>
+      ) : null}
+
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <StatCard label="Programme actif" value={activeProgram.code} hint={activeProgram.name} />
+        <StatCard label="En attente d'envoi" value={pendingCount} />
+        <StatCard label="Invitées" value={invitedCount} hint="en attente de première connexion" />
+        <StatCard label="Activées" value={activatedCount} hint="première connexion effectuée" />
+      </div>
+
+      <RealIndividualForm
+        programId={activeProgram.id}
+        dataAccess={dataAccess}
+        onCreated={refresh}
+      />
+
+      <PanelCard
+        title="Personnes du sas de pré-inscription"
+        description="Toute personne créée ici pour ce programme, avec le statut réel de son invitation."
+        action={<MockBadge label="Données réelles (Supabase)" />}
+      >
+        {loading ? (
+          <p className="text-xs text-muted-foreground">Chargement…</p>
+        ) : people.length === 0 ? (
+          <EmptyState>Aucune personne créée pour ce programme pour l'instant.</EmptyState>
+        ) : (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nom</TableHead>
+                  <TableHead>E-mail</TableHead>
+                  <TableHead>Statut</TableHead>
+                  <TableHead>Créée le</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {people.map((person) => (
+                  <TableRow key={person.id}>
+                    <TableCell className="font-medium">{fullNameOfPendingPerson(person)}</TableCell>
+                    <TableCell className="break-all">{person.loginEmail}</TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={person.status === "cancelled" ? "destructive" : "outline"}
+                        className="font-normal"
+                      >
+                        {PENDING_PERSON_STATUS_LABELS_FR[person.status]}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {new Date(person.createdAt).toLocaleDateString("fr-FR")}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {person.status === "pending" || person.status === "invited" ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="min-h-11"
+                          disabled={sendingId === person.id}
+                          onClick={() => void sendInvitation(person.id)}
+                        >
+                          {sendingId === person.id
+                            ? "Envoi…"
+                            : person.status === "invited"
+                              ? "Renvoyer l'invitation"
+                              : "Envoyer l'invitation"}
+                        </Button>
+                      ) : null}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </PanelCard>
+    </div>
+  );
+}
+
+function RealIndividualForm({
+  programId,
+  dataAccess,
+  onCreated,
+}: {
+  programId: string;
+  dataAccess: ReturnType<typeof useDataAccess>;
+  onCreated: () => void | Promise<void>;
+}) {
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+  const [institutionalId, setInstitutionalId] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  async function submit() {
+    setError(null);
+    setSuccess(null);
+    setSubmitting(true);
+    try {
+      const created = await dataAccess.peopleStaging.createPendingPerson({
+        programId,
+        firstName,
+        lastName,
+        loginEmail: email,
+        ...(institutionalId ? { institutionalId } : {}),
+      });
+      setSuccess(
+        `Personne créée pour de vrai (statut « en attente d'envoi ») : ${created.firstName} ${created.lastName}.`,
+      );
+      setFirstName("");
+      setLastName("");
+      setEmail("");
+      setInstitutionalId("");
+      await onCreated();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Création impossible.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <PanelCard
+      title="Ajouter une personne"
+      description="Crée pour de vrai une ligne dans le sas de pré-inscription de ce programme. Aucun e-mail n'est envoyé tant que l'invitation n'est pas déclenchée explicitement."
+      action={<MockBadge label="Données réelles (Supabase)" />}
+    >
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="space-y-2">
+          <Label htmlFor="real-dir-firstname">Prénom</Label>
+          <Input
+            id="real-dir-firstname"
+            value={firstName}
+            className="min-h-11"
+            onChange={(e) => setFirstName(e.target.value)}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="real-dir-lastname">Nom</Label>
+          <Input
+            id="real-dir-lastname"
+            value={lastName}
+            className="min-h-11"
+            onChange={(e) => setLastName(e.target.value)}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="real-dir-email">E-mail de connexion</Label>
+          <Input
+            id="real-dir-email"
+            type="email"
+            value={email}
+            className="min-h-11"
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="real-dir-institutional">Identifiant institutionnel (facultatif)</Label>
+          <Input
+            id="real-dir-institutional"
+            value={institutionalId}
+            className="min-h-11"
+            onChange={(e) => setInstitutionalId(e.target.value)}
+          />
+        </div>
+      </div>
+
+      {error ? (
+        <p className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+          {error}
+        </p>
+      ) : null}
+      {success ? (
+        <p className="rounded-md border border-border bg-muted/40 px-3 py-2 text-xs">{success}</p>
+      ) : null}
+
+      <Button
+        type="button"
+        size="sm"
+        className="min-h-11"
+        disabled={submitting || !firstName || !lastName || !email}
+        onClick={() => void submit()}
+      >
+        <UserPlus className="mr-2 size-4" aria-hidden />
+        {submitting ? "Création…" : "Ajouter à ce programme (réel)"}
+      </Button>
+    </PanelCard>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* 3. Ajout individuel (mode simulé)                                   */
 /* ------------------------------------------------------------------ */
 
 function IndividualForm({
@@ -523,7 +816,10 @@ function BulkImportPanel({ programCohortId }: { programCohortId: string }) {
                       value={String(preview.mapping[column] ?? "none")}
                       onValueChange={(v) =>
                         setManualMapping((prev) => {
-                          const next: Record<string, number> = { ...prev } as Record<string, number>;
+                          const next: Record<string, number> = { ...prev } as Record<
+                            string,
+                            number
+                          >;
                           if (v === "none") delete next[column];
                           else next[column] = Number(v);
                           return next as RosterColumnMapping;
@@ -642,8 +938,8 @@ function BulkImportPanel({ programCohortId }: { programCohortId: string }) {
                 <AlertDialogTitle>Confirmer l'import local</AlertDialogTitle>
                 <AlertDialogDescription>
                   {importableRows.length} ligne(s) seront ajoutées à l'état local de démonstration.
-                  Aucune donnée n'est envoyée, aucun e-mail n'est expédié : les comptes créés restent
-                  au statut « invité ».
+                  Aucune donnée n'est envoyée, aucun e-mail n'est expédié : les comptes créés
+                  restent au statut « invité ».
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -656,7 +952,9 @@ function BulkImportPanel({ programCohortId }: { programCohortId: string }) {
           </AlertDialog>
         </div>
       ) : (
-        <EmptyState>Déposez un fichier CSV/TSV ou collez une liste pour lancer le contrôle.</EmptyState>
+        <EmptyState>
+          Déposez un fichier CSV/TSV ou collez une liste pour lancer le contrôle.
+        </EmptyState>
       )}
 
       {report ? (
