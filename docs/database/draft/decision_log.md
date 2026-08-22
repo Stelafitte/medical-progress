@@ -359,3 +359,48 @@ l'ordre, avec une durée minimale plausible pour empêcher un simple défilement
 sans écoute. Cette règle reste à affiner avec l'équipe pédagogique avant son
 implémentation en Phase 2 (elle conditionnera plus tard les attestations).
 Referme le point ouvert correspondant de `backend_gap_analysis.md`.
+
+## D94 (2026-08-22) — Principe d'inscription confirmé : cohorte créée par l'admin, invitation par e-mail, activation à la première connexion
+
+Décision validée par Stef : le responsable pédagogique crée un groupe
+d'apprenants (cohorte), y ajoute des personnes par import (CSV/TSV) ou à la
+main, ce qui crée le groupe immédiatement. L'outil envoie ensuite un e-mail
+d'invitation à chaque personne pour qu'elle se connecte à la plateforme.
+
+Ce principe correspond exactement à ce que la maquette locale simule déjà
+dans `src/features/administration/PeopleEnrollmentsView.tsx` (ajout
+individuel, import en masse, statut de compte « invité ») : aucun changement
+d'UX n'est nécessaire, seule la persistance réelle et l'envoi effectif de
+l'e-mail restent à construire.
+
+Conception technique retenue, en deux briques additives, aucune ne touchant
+policy RLS ou fonction de sécurité existante :
+
+- `docs/database/draft/004_people_pre_account.sql` (révisé) : la table
+  `people` de D89 gagne `intended_cohort_id` (la cohorte visée dès la
+  création, facultative — une personne peut ne viser aucune cohorte, cf.
+  rationale D89 sur les intervenants externes) et un cycle de vie explicite
+  `status` (pending / invited / activated / cancelled) avec `invited_at`,
+  `invited_by`, `cancelled_at`.
+- `docs/database/draft/005_people_activation_link.sql` (nouveau) : un
+  déclencheur `after insert on public.profiles` qui, à la première connexion
+  réelle, retrouve les lignes `people` correspondant à l'e-mail, les marque
+  `activated`, et crée automatiquement l'inscription (`enrollments`) et le
+  rôle apprenant (`role_assignments`) dans la cohorte visée — sans étape
+  manuelle supplémentaire pour le personnel du programme. N'écrase ni ne
+  modifie le déclencheur `handle_new_auth_user` existant.
+
+Explicitement laissé de côté par ce brouillon, à concevoir et proposer
+séparément avant tout déploiement : l'envoi réel de l'e-mail d'invitation
+lui-même. Cela nécessite l'API admin Supabase Auth (`inviteUserByEmail`,
+clé service_role) donc une Edge Function serveur — jamais depuis le
+frontend — et constitue une vraie communication automatisée vers un tiers
+réel (l'apprenant). Ce composant sera conçu puis proposé à part, et ne sera
+déployé qu'avec un accord explicite distinct de cette validation de schéma,
+conformément à la prudence déjà appliquée pour tout ce qui touche
+Supabase/RLS/auth en environnement réel.
+
+Non appliqué. Reste à trancher avant application : la question, notée dans
+005, de savoir si une contrainte unique doit être ajoutée sur
+`enrollments`/`role_assignments` pour rendre `on conflict do nothing`
+réellement protecteur contre un double déclenchement.
