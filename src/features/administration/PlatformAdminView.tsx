@@ -37,13 +37,20 @@ export function PlatformAdminView() {
         data.administration.listPlatformSupervision(),
         data.administration.listPeople(),
         data.administration.listAllRoleAssignments(),
-        data.audit.listRecentEvents(10),
+        data.audit.listRecentEvents(200),
         data.programs.listPrograms(),
         data.programs.listCohorts(),
       ]);
-      return { rows, people, roles, audit, programs, cohorts };
+      const statsByProgram = await Promise.all(
+        programs.map(async (p) => ({
+          programId: p.id,
+          snapshots: await data.statistics.listCohortStatistics(p.id),
+        })),
+      );
+      return { rows, people, roles, audit, programs, cohorts, statsByProgram };
     },
   });
+
 
   if (isPending || !result) return <Skeleton className="h-80 w-full" />;
 
