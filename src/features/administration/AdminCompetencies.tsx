@@ -269,14 +269,20 @@ export function AdminCompetencies() {
             />
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <Badge variant="secondary">{parsed.length} ligne(s) reconnue(s)</Badge>
-              <Badge variant="outline">{importable.length} compétence(s) importable(s)</Badge>
+              <Badge variant="outline">{diff.newCount} nouvelle(s)</Badge>
+              <Badge variant="outline">{diff.changedCount} déjà présente(s)</Badge>
+              <Badge variant="outline">{diff.unchangedCount} inchangée(s)</Badge>
+              <Badge variant="outline">{diff.ignoredCount} ignorée(s)</Badge>
+            </div>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
               <Button
                 size="sm"
                 className="min-h-11"
-                disabled={importable.length === 0}
+                disabled={diff.newCount === 0}
                 onClick={() => {
                   let added = 0;
-                  for (const row of importable) {
+                  for (const row of diff.rows) {
+                    if (row.kind !== "new") continue;
                     const outcome = createLocalCompetence({
                       input: {
                         ...EMPTY_NEW_COMPETENCE_INPUT,
@@ -293,7 +299,7 @@ export function AdminCompetencies() {
                   setImportText("");
                 }}
               >
-                Importer {importable.length} compétence(s)
+                Importer les {diff.newCount} nouvelle(s) compétence(s)
               </Button>
               <Button
                 size="sm"
@@ -310,12 +316,14 @@ export function AdminCompetencies() {
               ) : null}
             </div>
             <p className="text-muted-foreground mt-2 text-xs">
-              Les lignes de nature « connaissance » ou non précisée sont ignorées : elles relèvent de
-              l'onglet « Base de connaissances ».
+              Seules les lignes nouvelles sont importées : un code déjà présent n'écrase jamais le
+              référentiel en place, et les lignes de nature « connaissance » ou non précisée relèvent
+              de l'onglet « Base de connaissances ». Le rattachement à une version de référentiel est
+              celui de la version active ({curriculumVersionId}).
             </p>
-            {parsed.length > 0 ? (
+            {diff.rows.length > 0 ? (
               <ul className="mt-4 space-y-1 text-sm">
-                {parsed.slice(0, 12).map((row, index) => (
+                {diff.rows.slice(0, 20).map((row, index) => (
                   <li key={`${row.code}-${index}`} className="flex flex-wrap items-center gap-2">
                     <Badge variant="outline" className="font-mono text-[10px]">
                       {row.code}
@@ -324,6 +332,17 @@ export function AdminCompetencies() {
                     <span className="text-muted-foreground text-xs">
                       {row.nature === "unknown" ? "nature à préciser" : NATURE_LABELS_FR[row.nature]}
                     </span>
+                    <Badge
+                      variant={row.kind === "new" ? "secondary" : "outline"}
+                      className="font-normal"
+                    >
+                      {REFERENTIAL_DIFF_LABELS_FR[row.kind]}
+                    </Badge>
+                    {row.kind === "changed" && row.existingLabel ? (
+                      <span className="text-muted-foreground text-xs">
+                        actuellement « {row.existingLabel} »
+                      </span>
+                    ) : null}
                   </li>
                 ))}
               </ul>
