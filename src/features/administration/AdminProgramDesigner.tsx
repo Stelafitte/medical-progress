@@ -129,6 +129,52 @@ const MODE_LABELS: Record<ResourceMode, string> = {
   existing: "Réutiliser l'existant",
 };
 
+/* ------------------------------------------------------------------ */
+/* Planning général (étape 3)                                          */
+/* ------------------------------------------------------------------ */
+
+type ScheduleKind = "date" | "period" | "undated";
+
+const SCHEDULE_KIND_LABELS: Record<ScheduleKind, string> = {
+  date: "Date unique",
+  period: "Période",
+  undated: "Non daté",
+};
+
+interface ScheduleEntry {
+  readonly kind: ScheduleKind;
+  readonly from: string;
+  readonly to: string;
+}
+
+const INITIAL_SCHEDULE: ScheduleEntry = { kind: "date", from: "", to: "" };
+
+/** Échéances proposées pour chaque ressource retenue à l'étape 1. */
+const SCHEDULE_TEMPLATE: Record<ResourceKind, readonly { id: string; label: string }[]> = {
+  knowledge: [
+    { id: "knowledge-release", label: "Mise à disposition des supports pédagogiques" },
+    { id: "knowledge-quiz", label: "Ouverture des QCM de connaissance" },
+  ],
+  competences: [
+    { id: "competences-expected", label: "Attendus des compétences" },
+    { id: "competences-review", label: "Bilan de validation des compétences" },
+  ],
+  assessments: [
+    { id: "assessments-continuous", label: "Évaluations en cours de programme" },
+    { id: "assessments-exam", label: "Examen final" },
+  ],
+  stage: [
+    { id: "stage-start", label: "Début de stage" },
+    { id: "stage-logbook-send", label: "Envoi des carnets de stage" },
+    { id: "stage-logbook-return", label: "Retour des carnets de stage validés" },
+  ],
+  documents: [
+    { id: "documents-deposit", label: "Dépôt des pièces administratives" },
+    { id: "documents-certificate", label: "Délivrance du certificat de complétude" },
+  ],
+};
+
+
 /** Analyse (maquette déterministe) des objectifs pédagogiques saisis. */
 function analyseObjectives(text: string): readonly ResourceKind[] {
   const haystack = text.toLowerCase();
