@@ -6,7 +6,6 @@
  * Maquette : aucune écriture réelle.
  */
 import { useState } from "react";
-import { Building2, CalendarRange, MapPin, Users } from "lucide-react";
 import { SectionHeading } from "@/components/section-heading";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MockBadge, ScopeNotice, StatCard } from "@/features/professional/mock-ui";
@@ -67,7 +66,7 @@ export function AdminStages() {
         templates={data.templates}
         competencesExpected={Math.max(
           1,
-          data.outcomes.filter((outcome) => outcome.nature === "real_competency").length,
+          data.outcomes.filter((outcome) => outcome.nature === "real_competence").length,
         )}
         cohortId={selectedId}
         onCohortChange={setCohortId}
