@@ -580,6 +580,51 @@ function LearnerManagementPanel({
         </ul>
       </div>
 
+      {/* Suivi NOMINATIF des compétences : déplacé ici depuis l'onglet Compétences,
+          qui ne porte plus que le référentiel et sa couverture. */}
+      <div className="space-y-2">
+        <h3 className="text-sm font-semibold">Acquisition des compétences, apprenant par apprenant</h3>
+        <p className="text-muted-foreground text-xs">
+          Une compétence en situation réelle n'est comptée acquise qu'après validation par un tiers
+          habilité. Le référentiel lui-même se règle dans l'onglet « Compétences ».
+        </p>
+        {competenceRows.length === 0 ? (
+          <EmptyState>Aucune compétence à suivre sur cette promotion.</EmptyState>
+        ) : (
+          <ul className="space-y-2 text-sm">
+            {competenceRows.map((row) => (
+              <li
+                key={`competence-${row.enrollmentId}`}
+                className="border-border space-y-2 rounded-md border p-3"
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-medium">{row.personName}</span>
+                  <Badge variant="secondary" className="font-normal">
+                    {row.validated} validée(s)
+                  </Badge>
+                  <Badge variant="outline" className="font-normal">
+                    {row.declared} en attente de validation
+                  </Badge>
+                  <Badge variant="outline" className="font-normal">
+                    {row.notStarted} non commencée(s)
+                  </Badge>
+                </div>
+                <Progress value={row.percent} />
+                <p className="text-muted-foreground text-xs">
+                  {row.percent} % des {row.total} compétence(s) du référentiel
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
+        <Button asChild variant="outline" size="sm" className="min-h-11">
+          <Link to="/espace/administration/competences">
+            Référentiel et couverture des compétences
+            <ArrowRight className="ms-1 size-4" aria-hidden />
+          </Link>
+        </Button>
+      </div>
+
       <div className="space-y-2">
         <h3 className="text-sm font-semibold">Synthèse de groupe</h3>
         <div className="flex flex-wrap gap-2 text-sm">
