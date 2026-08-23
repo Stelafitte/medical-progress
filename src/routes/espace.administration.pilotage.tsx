@@ -4,6 +4,10 @@ import { AccessRestricted } from "@/components/access-restricted";
 import { AdminProgramPilot } from "@/features/administration/AdminProgramPilot";
 
 export const Route = createFileRoute("/espace/administration/pilotage")({
+  // Lien profond depuis « Classes d'apprenants » : ?promotion=<cohortId>
+  validateSearch: (search: Record<string, unknown>) => ({
+    promotion: typeof search.promotion === "string" ? search.promotion : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Pilotage de programme — Campus Santé Augmenté" },
