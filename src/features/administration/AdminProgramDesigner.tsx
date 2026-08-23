@@ -154,6 +154,7 @@ export function AdminProgramDesigner() {
     competences: INITIAL_RESOURCE,
     assessments: INITIAL_RESOURCE,
     stage: INITIAL_RESOURCE,
+    documents: INITIAL_RESOURCE,
   });
 
   const [cohortMode, setCohortMode] = useState<"existing" | "new">("existing");
