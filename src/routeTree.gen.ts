@@ -40,6 +40,7 @@ import { Route as EspaceAdministrationPedagogieRouteImport } from './routes/espa
 import { Route as EspaceAdministrationPersonnesRouteImport } from './routes/espace.administration.personnes'
 import { Route as EspaceAdministrationPilotageRouteImport } from './routes/espace.administration.pilotage'
 import { Route as EspaceAdministrationSecuriteRouteImport } from './routes/espace.administration.securite'
+import { Route as EspaceAdministrationStagesRouteImport } from './routes/espace.administration.stages'
 import { Route as EspaceAdministrationStructureRouteImport } from './routes/espace.administration.structure'
 import { Route as EspaceAdministrationSuiviRouteImport } from './routes/espace.administration.suivi'
 import { Route as EspaceEncadrementIndexRouteImport } from './routes/espace.encadrement.index'
@@ -224,6 +225,12 @@ const EspaceAdministrationSecuriteRoute =
     path: '/securite',
     getParentRoute: () => EspaceAdministrationRoute,
   } as any)
+const EspaceAdministrationStagesRoute =
+  EspaceAdministrationStagesRouteImport.update({
+    id: '/stages',
+    path: '/stages',
+    getParentRoute: () => EspaceAdministrationRoute,
+  } as any)
 const EspaceAdministrationStructureRoute =
   EspaceAdministrationStructureRouteImport.update({
     id: '/structure',
@@ -329,6 +336,7 @@ export interface FileRoutesByFullPath {
   '/espace/administration/personnes': typeof EspaceAdministrationPersonnesRoute
   '/espace/administration/pilotage': typeof EspaceAdministrationPilotageRoute
   '/espace/administration/securite': typeof EspaceAdministrationSecuriteRoute
+  '/espace/administration/stages': typeof EspaceAdministrationStagesRoute
   '/espace/administration/structure': typeof EspaceAdministrationStructureRoute
   '/espace/administration/suivi': typeof EspaceAdministrationSuiviRoute
   '/espace/encadrement/alertes': typeof EspaceEncadrementAlertesRoute
@@ -371,6 +379,7 @@ export interface FileRoutesByTo {
   '/espace/administration/personnes': typeof EspaceAdministrationPersonnesRoute
   '/espace/administration/pilotage': typeof EspaceAdministrationPilotageRoute
   '/espace/administration/securite': typeof EspaceAdministrationSecuriteRoute
+  '/espace/administration/stages': typeof EspaceAdministrationStagesRoute
   '/espace/administration/structure': typeof EspaceAdministrationStructureRoute
   '/espace/administration/suivi': typeof EspaceAdministrationSuiviRoute
   '/espace/encadrement/alertes': typeof EspaceEncadrementAlertesRoute
@@ -418,6 +427,7 @@ export interface FileRoutesById {
   '/espace/administration/personnes': typeof EspaceAdministrationPersonnesRoute
   '/espace/administration/pilotage': typeof EspaceAdministrationPilotageRoute
   '/espace/administration/securite': typeof EspaceAdministrationSecuriteRoute
+  '/espace/administration/stages': typeof EspaceAdministrationStagesRoute
   '/espace/administration/structure': typeof EspaceAdministrationStructureRoute
   '/espace/administration/suivi': typeof EspaceAdministrationSuiviRoute
   '/espace/encadrement/alertes': typeof EspaceEncadrementAlertesRoute
@@ -466,6 +476,7 @@ export interface FileRouteTypes {
     | '/espace/administration/personnes'
     | '/espace/administration/pilotage'
     | '/espace/administration/securite'
+    | '/espace/administration/stages'
     | '/espace/administration/structure'
     | '/espace/administration/suivi'
     | '/espace/encadrement/alertes'
@@ -508,6 +519,7 @@ export interface FileRouteTypes {
     | '/espace/administration/personnes'
     | '/espace/administration/pilotage'
     | '/espace/administration/securite'
+    | '/espace/administration/stages'
     | '/espace/administration/structure'
     | '/espace/administration/suivi'
     | '/espace/encadrement/alertes'
@@ -554,6 +566,7 @@ export interface FileRouteTypes {
     | '/espace/administration/personnes'
     | '/espace/administration/pilotage'
     | '/espace/administration/securite'
+    | '/espace/administration/stages'
     | '/espace/administration/structure'
     | '/espace/administration/suivi'
     | '/espace/encadrement/alertes'
@@ -794,6 +807,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EspaceAdministrationSecuriteRouteImport
       parentRoute: typeof EspaceAdministrationRoute
     }
+    '/espace/administration/stages': {
+      id: '/espace/administration/stages'
+      path: '/stages'
+      fullPath: '/espace/administration/stages'
+      preLoaderRoute: typeof EspaceAdministrationStagesRouteImport
+      parentRoute: typeof EspaceAdministrationRoute
+    }
     '/espace/administration/structure': {
       id: '/espace/administration/structure'
       path: '/structure'
@@ -904,6 +924,7 @@ interface EspaceAdministrationRouteChildren {
   EspaceAdministrationPersonnesRoute: typeof EspaceAdministrationPersonnesRoute
   EspaceAdministrationPilotageRoute: typeof EspaceAdministrationPilotageRoute
   EspaceAdministrationSecuriteRoute: typeof EspaceAdministrationSecuriteRoute
+  EspaceAdministrationStagesRoute: typeof EspaceAdministrationStagesRoute
   EspaceAdministrationStructureRoute: typeof EspaceAdministrationStructureRoute
   EspaceAdministrationSuiviRoute: typeof EspaceAdministrationSuiviRoute
   EspaceAdministrationIndexRoute: typeof EspaceAdministrationIndexRoute
@@ -927,6 +948,7 @@ const EspaceAdministrationRouteChildren: EspaceAdministrationRouteChildren = {
   EspaceAdministrationPersonnesRoute: EspaceAdministrationPersonnesRoute,
   EspaceAdministrationPilotageRoute: EspaceAdministrationPilotageRoute,
   EspaceAdministrationSecuriteRoute: EspaceAdministrationSecuriteRoute,
+  EspaceAdministrationStagesRoute: EspaceAdministrationStagesRoute,
   EspaceAdministrationStructureRoute: EspaceAdministrationStructureRoute,
   EspaceAdministrationSuiviRoute: EspaceAdministrationSuiviRoute,
   EspaceAdministrationIndexRoute: EspaceAdministrationIndexRoute,

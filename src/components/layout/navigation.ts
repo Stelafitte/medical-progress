@@ -134,6 +134,12 @@ export const PROGRAM_ADMIN_NAV: readonly NavEntry[] = [
     exact: false,
   },
   {
+    to: "/espace/administration/stages",
+    label: "Gestion des stages",
+    icon: Notebook,
+    exact: false,
+  },
+  {
     to: "/espace/administration/securite",
     label: "Administration et sécurité",
     icon: ShieldCheck,
