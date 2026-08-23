@@ -19,6 +19,7 @@ import {
   StatCard,
 } from "@/features/professional/mock-ui";
 import { CohortRosterSection } from "@/features/administration/CohortRosterSection";
+import { LearnerTrackingSection } from "@/features/administration/LearnerTrackingSection";
 import { useProgramAdmin } from "@/features/administration/useProgramAdmin";
 import {
   COHORT_PHASE_LABELS_FR,
