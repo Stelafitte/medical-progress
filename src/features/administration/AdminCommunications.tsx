@@ -348,18 +348,7 @@ export function AdminCommunications() {
 
   return (
     <div className="space-y-8">
-      <SectionHeading
-        title="Communications de la promotion"
-        level={1}
-        action={<MockBadge label="Simulé — aucun envoi" />}
-        description="Préparez les informations, sollicitations et relances destinées à une promotion ou à certains de ses membres."
-      />
 
-      <AdminWorkLevelBanner
-        level="operations"
-        programName={session.activeProgram.name}
-        cohortCount={data.cohorts.length}
-      />
 
       <div className="grid gap-3 md:grid-cols-3">
         <PanelCard title="Modèles" description="Conception du programme">
