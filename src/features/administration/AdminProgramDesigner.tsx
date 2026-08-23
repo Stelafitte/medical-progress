@@ -33,8 +33,10 @@ import { AdminWorkLevelBanner } from "@/features/administration/AdminWorkLevel";
 import { useProgramAdmin } from "@/features/administration/useProgramAdmin";
 import { CohortCreationForm } from "@/features/administration/CohortCreationForm";
 import { PlacementCreationForm } from "@/features/administration/PlacementCreationForm";
+import { CompetenceCreationForm } from "@/features/administration/CompetenceCreationForm";
 import { useLocalCohorts } from "@/application/cohortDraftStore";
 import { useLocalPlacements } from "@/application/placementDraftStore";
+import { useLocalCompetences } from "@/application/competenceDraftStore";
 import { mergeCohorts } from "@/domain/cohortDraft";
 
 import type { CohortId, CurriculumVersionId, ProgramId } from "@/domain/types";
