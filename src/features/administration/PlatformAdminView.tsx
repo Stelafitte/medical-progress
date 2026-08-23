@@ -318,7 +318,7 @@ export function PlatformAdminView() {
 
       <PanelCard title="Audit global simulé">
         <ul className="space-y-1 text-sm text-muted-foreground">
-          {result.audit.map((e) => (
+          {result.audit.slice(0, 10).map((e) => (
             <li key={e.id}>
               {new Date(e.createdAt).toLocaleDateString("fr-FR")} — {e.action}
             </li>
