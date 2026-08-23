@@ -33,13 +33,15 @@ export function PlatformAdminView() {
   const { data: result, isPending } = useQuery({
     queryKey: ["platform-admin"],
     queryFn: async () => {
-      const [rows, people, roles, audit] = await Promise.all([
+      const [rows, people, roles, audit, programs, cohorts] = await Promise.all([
         data.administration.listPlatformSupervision(),
         data.administration.listPeople(),
         data.administration.listAllRoleAssignments(),
         data.audit.listRecentEvents(10),
+        data.programs.listPrograms(),
+        data.programs.listCohorts(),
       ]);
-      return { rows, people, roles, audit };
+      return { rows, people, roles, audit, programs, cohorts };
     },
   });
 
