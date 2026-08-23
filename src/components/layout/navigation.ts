@@ -263,7 +263,14 @@ export function navSpacesFor(
  * pouvait afficher « Accès restreint » alors que le profil a d'autres droits.
  */
 export function landingRouteFor(spaces: readonly NavSpace[]): string {
-  return spaces[0]?.entries[0]?.to ?? "/espace/profil";
+  const first = spaces[0];
+  if (!first) return "/espace/profil";
+  // Un administrateur (de programme ou de plateforme) commence toujours par la
+  // vue « Tous les programmes » : le périmètre est choisi explicitement.
+  if (first.key === "program_admin" || first.key === "platform_admin") {
+    return "/espace/programmes";
+  }
+  return first.entries[0]?.to ?? "/espace/profil";
 }
 
 /** Vrai si le chemin courant appartient aux espaces visibles. */
