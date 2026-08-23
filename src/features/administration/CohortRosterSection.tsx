@@ -124,13 +124,16 @@ export function CohortRosterSection({
       });
   }, [data, exportCohortId]);
 
-  return (
-    <div className="space-y-8">
-      <PanelCard
-        title="Importer une promotion (liste d'étudiants)"
-        description="Dépôt CSV ou collage d'un tableau : contrôle des colonnes, des doublons et des erreurs avant création."
-        action={<MockBadge />}
-      >
+  const importBlock = (
+    <div className="space-y-4">
+      <div className="space-y-1">
+        <h3 className="text-sm font-medium">Importer une liste d'étudiants</h3>
+        <p className="text-muted-foreground text-xs">
+          Dépôt CSV ou collage d'un tableau : contrôle des colonnes, des doublons et des erreurs
+          avant création.
+        </p>
+      </div>
+      <div className="space-y-4">
         <div className="flex flex-wrap items-center gap-2">
           <input
             ref={fileInput}
