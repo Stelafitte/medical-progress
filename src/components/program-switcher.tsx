@@ -1,5 +1,5 @@
 import { useSession } from "@/application/session";
-import { useRouterState } from "@tanstack/react-router";
+import { useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   Select,
   SelectContent,
@@ -17,10 +17,22 @@ import type { ProgramId } from "@/domain/types";
 export function ProgramSwitcher({ variant = "compact" }: { variant?: "compact" | "full" }) {
   const { programs, activeProgram, setActiveProgramId, canAccessPlatformAdministration } =
     useSession();
+  const navigate = useNavigate();
   const isPlatformOverview = useRouterState({
     select: (state) => state.location.pathname === "/espace/plateforme",
   });
   const showsAllPrograms = canAccessPlatformAdministration && isPlatformOverview;
+
+  const handleChange = (value: string) => {
+    if (value === "all-programs") {
+      void navigate({ to: "/espace/plateforme" });
+      return;
+    }
+    setActiveProgramId(value as ProgramId);
+    if (isPlatformOverview) {
+      void navigate({ to: "/espace/administration" });
+    }
+  };
 
   return (
     <div className={variant === "full" ? "w-full" : "flex min-w-0 items-center gap-2"}>
@@ -29,8 +41,9 @@ export function ProgramSwitcher({ variant = "compact" }: { variant?: "compact" |
       </label>
       <Select
         value={showsAllPrograms ? "all-programs" : activeProgram.id}
-        onValueChange={(value) => setActiveProgramId(value as ProgramId)}
+        onValueChange={handleChange}
       >
+
         <SelectTrigger
           id={`program-switcher-${variant}`}
           className={
