@@ -175,6 +175,8 @@ export function nextMilestone(
 export interface AdministeredProgramCard {
   readonly program: Program;
   readonly cohortCount: number;
+  /** Toutes les cohortes du programme, triées pour le pilotage (filtres, dates). */
+  readonly cohorts: readonly Cohort[];
   readonly activeCohort: Cohort | undefined;
   readonly phase: CohortPhase | undefined;
   readonly progressPercent: number;
@@ -205,6 +207,7 @@ export function buildAdministeredProgramCards(
       return {
         program,
         cohortCount: scoped.length,
+        cohorts: scoped,
         activeCohort,
         phase: activeCohort ? cohortPhase(activeCohort, now) : undefined,
         progressPercent: activeCohort
