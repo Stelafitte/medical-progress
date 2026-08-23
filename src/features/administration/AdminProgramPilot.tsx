@@ -26,6 +26,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState, MockBadge, PanelCard, ScopeNotice } from "@/features/professional/mock-ui";
+import { AdminCommunications } from "@/features/administration/AdminCommunications";
 import { CohortSelector } from "@/features/administration/CohortSelector";
 import { personNameFor, useProgramAdmin } from "@/features/administration/useProgramAdmin";
 import {
@@ -470,6 +471,15 @@ function LearnerManagementPanel({
           </ul>
         )}
       </div>
+
+      <div className="border-border space-y-2 rounded-lg border p-4">
+        <h3 className="text-sm font-semibold">Outil de communication complet</h3>
+        <p className="text-muted-foreground text-xs">
+          L'intégralité de l'outil de communication est disponible ici, sans quitter la gestion des
+          apprenants.
+        </p>
+        <AdminCommunications />
+      </div>
     </div>
   );
 }
@@ -560,47 +570,51 @@ function PilotTools({
                   {badge}
                 </span>
               ) : null}
-              {isOpen ? (
-                <ChevronUp className="ms-1 size-4" aria-hidden />
-              ) : (
-                <ChevronDown className="ms-1 size-4" aria-hidden />
-              )}
             </Button>
           );
         })}
       </div>
 
-      <div className="space-y-3">
-        {TOOLS.filter((tool) => open.includes(tool.key)).map((tool) => (
-          <section
-            key={tool.key}
-            id={`pilot-tool-${tool.key}`}
-            className="border-border bg-card space-y-3 rounded-lg border p-4"
-          >
-            <div className="flex flex-wrap items-start justify-between gap-2">
-              <div>
-                <h3 className="text-sm font-semibold">{tool.label}</h3>
-                <p className="text-muted-foreground text-xs">{tool.hint}</p>
+      <div className="divide-border border-border divide-y rounded-lg border">
+        {TOOLS.map((tool) => {
+          const isOpen = open.includes(tool.key);
+          return (
+            <section key={tool.key} className="p-4">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <h3 className="text-sm font-semibold">{tool.label}</h3>
+                  <p className="text-muted-foreground text-xs">{tool.hint}</p>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="min-h-9"
+                  aria-expanded={isOpen}
+                  aria-controls={`pilot-tool-${tool.key}`}
+                  onClick={() => toggle(tool.key)}
+                >
+                  {isOpen ? "Replier" : "Déplier"}
+                  {isOpen ? (
+                    <ChevronUp className="ms-1 size-4" aria-hidden />
+                  ) : (
+                    <ChevronDown className="ms-1 size-4" aria-hidden />
+                  )}
+                </Button>
               </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="min-h-9"
-                onClick={() => toggle(tool.key)}
-              >
-                Plier
-                <ChevronUp className="ms-1 size-4" aria-hidden />
-              </Button>
-            </div>
-            {tool.key === "programmation" ? <ProgrammingPanel phase={phase} /> : null}
-            {tool.key === "activite" ? <ActivityPanel rows={rows} summary={summary} /> : null}
-            {tool.key === "apprenants" ? (
-              <LearnerManagementPanel rows={rows} summary={summary} />
-            ) : null}
-            {tool.key === "documents" ? <DocumentsPanel /> : null}
-          </section>
-        ))}
+              {isOpen ? (
+                <div id={`pilot-tool-${tool.key}`} className="mt-3 space-y-3">
+                  {tool.key === "programmation" ? <ProgrammingPanel phase={phase} /> : null}
+                  {tool.key === "activite" ? <ActivityPanel rows={rows} summary={summary} /> : null}
+                  {tool.key === "apprenants" ? (
+                    <LearnerManagementPanel rows={rows} summary={summary} />
+                  ) : null}
+                  {tool.key === "documents" ? <DocumentsPanel /> : null}
+                </div>
+              ) : null}
+            </section>
+          );
+        })}
       </div>
     </PanelCard>
   );

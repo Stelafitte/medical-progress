@@ -7,14 +7,21 @@
  * sur cet écran (aucune redite ailleurs).
  */
 import { Link } from "@tanstack/react-router";
-import { ArrowRight, BadgeCheck, BookOpen, ClipboardCheck, Layers, Milestone } from "lucide-react";
+import {
+  ArrowRight,
+  BadgeCheck,
+  BookOpen,
+  ClipboardCheck,
+  Layers,
+  Milestone,
+  Notebook,
+} from "lucide-react";
 import { SectionHeading } from "@/components/section-heading";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState, MockBadge, PanelCard, ScopeNotice } from "@/features/professional/mock-ui";
 import { AdminWorkLevelBanner } from "@/features/administration/AdminWorkLevel";
-import { StageLogTemplatesSection } from "@/features/administration/StageLogTemplatesSection";
 import { useProgramAdmin } from "@/features/administration/useProgramAdmin";
 import { formatFrDate } from "@/features/administration/adminProgramViewModel";
 import { NATURE_LABELS_FR } from "@/domain/mastery";
@@ -177,8 +184,6 @@ export function AdminProgramDesigner() {
         )}
       </PanelCard>
 
-      <StageLogTemplatesSection />
-
       <PanelCard
         title="Poursuivre la conception"
         description="Les contenus détaillés vivent dans leurs écrans dédiés."
@@ -195,6 +200,12 @@ export function AdminProgramDesigner() {
           </Button>
           <Button asChild variant="outline" className="min-h-11">
             <Link to="/espace/administration/evaluations">Évaluations</Link>
+          </Button>
+          <Button asChild variant="outline" className="min-h-11">
+            <Link to="/espace/administration/stages">
+              <Notebook className="me-1 size-4" aria-hidden />
+              Stages : type, lieu, dates, validation (dont carnet)
+            </Link>
           </Button>
           <Button asChild variant="outline" className="min-h-11">
             <Link to="/espace/administration/pilotage">
