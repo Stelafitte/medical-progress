@@ -37,13 +37,20 @@ export function PlatformAdminView() {
         data.administration.listPlatformSupervision(),
         data.administration.listPeople(),
         data.administration.listAllRoleAssignments(),
-        data.audit.listRecentEvents(10),
+        data.audit.listRecentEvents(200),
         data.programs.listPrograms(),
         data.programs.listCohorts(),
       ]);
-      return { rows, people, roles, audit, programs, cohorts };
+      const statsByProgram = await Promise.all(
+        programs.map(async (p) => ({
+          programId: p.id,
+          snapshots: await data.statistics.listCohortStatistics(p.id),
+        })),
+      );
+      return { rows, people, roles, audit, programs, cohorts, statsByProgram };
     },
   });
+
 
   if (isPending || !result) return <Skeleton className="h-80 w-full" />;
 
@@ -104,6 +111,12 @@ export function PlatformAdminView() {
           const running = cohorts.filter((c) => cohortPhase(c) === "running").length;
           const planned = cohorts.filter((c) => cohortPhase(c) === "planned").length;
           const closed = cohorts.filter((c) => cohortPhase(c) === "closed").length;
+          const history = [
+            ...(result.statsByProgram.find((s) => s.programId === program.id)?.snapshots ?? []),
+          ].sort((a, b) => b.academicYear.localeCompare(a.academicYear));
+          const usage = result.audit.filter((e) => e.programId === program.id).slice(0, 6);
+
+
 
           return (
             <PanelCard
@@ -165,7 +178,64 @@ export function PlatformAdminView() {
                 </ul>
               )}
 
+
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Historique des promotions</p>
+                {history.length === 0 ? (
+                  <EmptyState>Aucun historique disponible pour ce programme.</EmptyState>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Année</TableHead>
+                          <TableHead>Promotion</TableHead>
+                          <TableHead className="text-right">Apprenants</TableHead>
+                          <TableHead className="text-right">Achèvement</TableHead>
+                          <TableHead className="text-right">Compétences réelles</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {history.map((s) => (
+                          <TableRow key={s.id}>
+                            <TableCell className="font-medium">{s.academicYear}</TableCell>
+                            <TableCell>{s.cohortLabel}</TableCell>
+                            <TableCell className="text-right">{s.learnerCount}</TableCell>
+                            <TableCell className="text-right">
+                              {Math.round(s.completionRate * 100)} %
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {Math.round(s.realRate * 100)} %
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+                <p className="text-muted-foreground text-xs">
+                  Agrégats pluriannuels simulés, sans aucune donnée nominative.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Historique d'utilisation</p>
+                {usage.length === 0 ? (
+                  <EmptyState>Aucun événement enregistré pour ce programme.</EmptyState>
+                ) : (
+                  <ul className="text-muted-foreground space-y-1 text-xs">
+                    {usage.map((e) => (
+                      <li key={e.id}>
+                        {formatFrDate(e.createdAt)} — {e.action}
+                        {e.detail ? ` · ${e.detail}` : ""}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
               <div className="text-muted-foreground space-y-1 text-xs">
+
                 <p>
                   Administrateurs autorisés :{" "}
                   {admins.length > 0 ? admins.join(", ") : "aucun rôle attribué"}
@@ -248,7 +318,7 @@ export function PlatformAdminView() {
 
       <PanelCard title="Audit global simulé">
         <ul className="space-y-1 text-sm text-muted-foreground">
-          {result.audit.map((e) => (
+          {result.audit.slice(0, 10).map((e) => (
             <li key={e.id}>
               {new Date(e.createdAt).toLocaleDateString("fr-FR")} — {e.action}
             </li>
