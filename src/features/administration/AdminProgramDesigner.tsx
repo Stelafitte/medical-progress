@@ -204,7 +204,7 @@ export function AdminProgramDesigner() {
           <Button asChild variant="outline" className="min-h-11">
             <Link to="/espace/administration/stages">
               <Notebook className="me-1 size-4" aria-hidden />
-              Stages : type, lieu, dates, validation (dont carnet)
+              Stage
             </Link>
           </Button>
           <Button asChild variant="outline" className="min-h-11">
