@@ -290,6 +290,8 @@ export function AllProgramsView() {
             </Button>
           ) : null}
         </div>
+        </>
+        ) : null}
       </section>
 
       {isPending || !cohorts ? (
