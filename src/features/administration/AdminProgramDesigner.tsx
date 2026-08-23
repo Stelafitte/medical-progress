@@ -78,7 +78,7 @@ const RESOURCES: readonly {
   },
   {
     id: "stage",
-    label: "Stage et carnet de stage",
+    label: "Stage",
     icon: Notebook,
     hint: "Type de stage, lieux, dates et mode de validation.",
     keywords: ["stage", "terrain", "carnet", "service", "clinique", "encadrant"],
