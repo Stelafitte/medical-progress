@@ -50,8 +50,10 @@ import {
   programTrack,
   toggleFilterValue,
   type AllProgramsFilterState,
+  type ProgramCategory,
   type ProgramLifecycle,
   type ProgramTrack,
+
 } from "@/features/administration/allProgramsFilters";
 
 const TRACKS: readonly ProgramTrack[] = ["initial", "continuing"];
