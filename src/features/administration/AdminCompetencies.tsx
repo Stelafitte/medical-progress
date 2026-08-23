@@ -52,6 +52,7 @@ export function AdminCompetencies() {
   const { data, isPending } = useProgramAdmin();
   const [cohortId, setCohortId] = useState<string | null>(null);
   const [importText, setImportText] = useState("");
+  const [imported, setImported] = useState<number | null>(null);
   const localCompetences = useLocalCompetences(data?.program?.id);
 
   const cohorts = data?.cohorts ?? [];
