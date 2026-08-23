@@ -58,6 +58,7 @@ export function PlacementSection({
   cohortId,
   onCohortChange,
   showCohortSelector = true,
+  showCreation = true,
 }: {
   readonly programId: ProgramId;
   readonly programName: string;
@@ -72,6 +73,8 @@ export function PlacementSection({
   readonly cohortId: string | undefined;
   readonly onCohortChange?: (cohortId: string) => void;
   readonly showCohortSelector?: boolean;
+  /** `false` dans le pilotage : le modèle se crée dans « Gestion des stages ». */
+  readonly showCreation?: boolean;
 }) {
   const cohortLabel = cohorts.find((c) => c.id === cohortId)?.label ?? "cohorte";
   const logbookTemplates = templates.filter(
@@ -143,6 +146,7 @@ export function PlacementSection({
         )}
       </PanelCard>
 
+      {showCreation ? (
       <PanelCard
         title="Créer un terrain de stage"
         description="Éléments administratifs du stage : nom, établissement, service, places d'accueil, responsable et mode de validation."
@@ -155,6 +159,7 @@ export function PlacementSection({
           hint="Le terrain rejoint la liste unique : il est aussitôt proposé dans le « Concepteur de programme » et dans le pilotage."
         />
       </PanelCard>
+      ) : null}
 
       <PanelCard
         title="Éléments de validation du stage"

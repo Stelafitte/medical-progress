@@ -102,12 +102,15 @@ export function AssessmentModalitySection({
   cohortId,
   onCohortChange,
   showCohortSelector = true,
+  showCreation = true,
 }: {
   readonly programId: ProgramId;
   readonly cohorts: readonly Cohort[];
   readonly cohortId: string | undefined;
   readonly onCohortChange?: (cohortId: string) => void;
   readonly showCohortSelector?: boolean;
+  /** `false` dans le pilotage : les modalités se créent dans « Évaluations ». */
+  readonly showCreation?: boolean;
 }) {
   const [importText, setImportText] = useState("");
   const local = useLocalModalities(programId);
@@ -140,6 +143,7 @@ export function AssessmentModalitySection({
         )}
       </PanelCard>
 
+      {showCreation ? (
       <PanelCard
         title="Créer une modalité d'évaluation"
         description="Nom, type (présentiel ou en ligne), sous-type et usage prévu."
@@ -150,6 +154,7 @@ export function AssessmentModalitySection({
           hint="La modalité créée apparaît immédiatement ci-dessus et dans la partie Évaluation du pilotage de programme."
         />
       </PanelCard>
+      ) : null}
 
       <PanelCard
         title="Importation des résultats externes"
