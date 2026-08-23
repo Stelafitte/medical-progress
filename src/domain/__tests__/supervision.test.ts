@@ -118,8 +118,8 @@ describe("accès par espace", () => {
     expect(canAccessProgramAdministration([programAdminA], "prog-b")).toBe(false);
   });
 
-  it("distingue administrateur de programme et administrateur de plateforme", () => {
-    expect(canAccessProgramAdministration([platformAdmin], "prog-a")).toBe(false);
+  it("l'administrateur de plateforme est un sur-ensemble de l'administrateur de programme", () => {
+    expect(canAccessProgramAdministration([platformAdmin], "prog-a")).toBe(true);
     expect(canAccessPlatformAdministration([platformAdmin])).toBe(true);
     expect(canAccessPlatformAdministration([programAdminA])).toBe(false);
     expect(platformAdminCanOpenLearnerFile()).toBe(false);

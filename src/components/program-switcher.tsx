@@ -1,3 +1,4 @@
+import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { useSession } from "@/application/session";
 import {
   Select,
@@ -8,13 +9,41 @@ import {
 } from "@/components/ui/select";
 import type { ProgramId } from "@/domain/types";
 
+/** Option d'ouverture de la vue en blocs des programmes administrés. */
+export const ALL_PROGRAMS_VALUE = "__all_programs__";
+
 /**
  * Sélecteur de programme.
  * `full` (menu mobile) occupe toute la largeur ; par défaut, il reste compact
  * pour tenir dans l'en-tête dès 360 px sans débordement.
  */
 export function ProgramSwitcher({ variant = "compact" }: { variant?: "compact" | "full" }) {
-  const { programs, activeProgram, setActiveProgramId } = useSession();
+  const {
+    programs,
+    activeProgram,
+    setActiveProgramId,
+    canAccessAdministration,
+    canAccessPlatformAdministration,
+    roles,
+    enrollments,
+  } = useSession();
+  const navigate = useNavigate();
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  // Tant que la vue « Tous les programmes » est ouverte, le sélecteur reste sur
+  // cette option : aucun programme n'est le périmètre courant.
+  const isAllPrograms = pathname.startsWith("/espace/programmes");
+
+  // Un rôle de portée plateforme donne accès à tous les programmes ; sinon, seuls
+  // les programmes où la personne a un rôle ou une inscription sont sélectionnables.
+  const selectableProgramIds = new Set<string>([
+    ...roles.flatMap((role) => ("programId" in role.scope ? [role.scope.programId] : [])),
+    ...enrollments.map((enrollment) => enrollment.programId),
+    activeProgram.id,
+  ]);
+  const visiblePrograms = canAccessPlatformAdministration
+    ? programs
+    : programs.filter((program) => selectableProgramIds.has(program.id));
+
 
   return (
     <div className={variant === "full" ? "w-full" : "flex min-w-0 items-center gap-2"}>
@@ -22,8 +51,15 @@ export function ProgramSwitcher({ variant = "compact" }: { variant?: "compact" |
         Programme actif
       </label>
       <Select
-        value={activeProgram.id}
-        onValueChange={(value) => setActiveProgramId(value as ProgramId)}
+        value={isAllPrograms ? ALL_PROGRAMS_VALUE : activeProgram.id}
+        onValueChange={(value) => {
+          if (value === ALL_PROGRAMS_VALUE) {
+            void navigate({ to: "/espace/programmes" });
+            return;
+          }
+          setActiveProgramId(value as ProgramId);
+          if (isAllPrograms) void navigate({ to: "/espace/administration" });
+        }}
       >
         <SelectTrigger
           id={`program-switcher-${variant}`}
@@ -36,7 +72,13 @@ export function ProgramSwitcher({ variant = "compact" }: { variant?: "compact" |
           <SelectValue placeholder="Choisir un programme" />
         </SelectTrigger>
         <SelectContent>
-          {programs.map((program) => (
+          {canAccessAdministration ? (
+            <SelectItem value={ALL_PROGRAMS_VALUE}>
+              <span className="sm:hidden">Tous</span>
+              <span className="hidden sm:inline">Tous les programmes</span>
+            </SelectItem>
+          ) : null}
+          {visiblePrograms.map((program) => (
             <SelectItem key={program.id} value={program.id}>
               <span className="sm:hidden">{program.code}</span>
               <span className="hidden sm:inline">{program.name}</span>
