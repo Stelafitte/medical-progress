@@ -78,7 +78,7 @@ export function ProgramSwitcher({ variant = "compact" }: { variant?: "compact" |
               <span className="hidden sm:inline">Tous les programmes</span>
             </SelectItem>
           ) : null}
-          {programs.map((program) => (
+          {visiblePrograms.map((program) => (
             <SelectItem key={program.id} value={program.id}>
               <span className="sm:hidden">{program.code}</span>
               <span className="hidden sm:inline">{program.name}</span>
