@@ -103,6 +103,11 @@ export function AdminProgramPilot() {
     expectedLogsPerLearner: data.templates.length,
   });
   const groupSummary = summarizeGroupActivity(learnerRows);
+  /** Suivi NOMINATIF des compétences : il appartient au pilotage, pas au référentiel. */
+  const competenceRows = buildLearnerCompetenceRows(cohortEnrollments, data.outcomes).map((row) => ({
+    ...row,
+    personName: personNameFor(data, row.enrollmentId),
+  }));
 
   return (
     <div className="space-y-6">
