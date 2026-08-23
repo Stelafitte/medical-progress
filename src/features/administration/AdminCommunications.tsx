@@ -11,7 +11,6 @@
  */
 import { useMemo, useState } from "react";
 import { CheckCircle2, Circle, Info } from "lucide-react";
-import { SectionHeading } from "@/components/section-heading";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -26,10 +25,9 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
-import { EmptyState, MockBadge, PanelCard, ScopeNotice } from "@/features/professional/mock-ui";
+import { EmptyState, PanelCard, ScopeNotice } from "@/features/professional/mock-ui";
 import { useProgramAdmin } from "@/features/administration/useProgramAdmin";
 import { useSession } from "@/application/session";
-import { AdminWorkLevelBanner } from "@/features/administration/AdminWorkLevel";
 import { useDirectoryState } from "@/application/directoryStore";
 import {
   addPreparedCampaign,
