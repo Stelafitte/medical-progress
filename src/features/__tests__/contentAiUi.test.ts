@@ -12,12 +12,12 @@ const TUTOR = read("src/features/resources/ContentAiTutorPanel.tsx");
 const RESOURCES = read("src/features/resources/ResourcesView.tsx");
 const READER = read("src/features/resources/NarratedReaderView.tsx");
 const ADD_MEDIA = read("src/features/administration/AddMediaDialog.tsx");
-const PEDAGOGY = read("src/features/administration/AdminPedagogy.tsx");
+const KNOWLEDGE = read("src/features/administration/AdminKnowledgeBase.tsx");
 
 describe("administration — exploitation IA", () => {
-  it("est accessible depuis l'onglet Médiathèque", () => {
-    expect(PEDAGOGY).toContain("ContentAiSection");
-    expect(PEDAGOGY).toContain("exploitation-ia");
+  it("est accessible depuis l'onglet Base de connaissances", () => {
+    expect(KNOWLEDGE).toContain("ContentAiSection");
+    expect(KNOWLEDGE).toContain("Exploitation IA");
   });
 
   it("affiche la couverture, les files et les actions simulées", () => {
