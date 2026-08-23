@@ -246,7 +246,7 @@ export function AppShell() {
                     ) : null}
                     <DropdownMenuRadioGroup
                       value={person.id}
-                      onValueChange={(value) => setActivePersonId(value as PersonId)}
+                      onValueChange={(value) => switchPerson(value as PersonId)}
                     >
                       {people.map((p) => (
                         <DropdownMenuRadioItem key={p.id} value={p.id}>
@@ -260,7 +260,10 @@ export function AppShell() {
                       ))}
                     </DropdownMenuRadioGroup>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onSelect={() => resetDemoSession()}>
+                    <DropdownMenuItem onSelect={() => {
+                      resetDemoSession();
+                      setPendingLanding(true);
+                    }}>
                       <RotateCcw className="size-4" aria-hidden />
                       Revenir au profil par défaut ({defaultPersonName})
                     </DropdownMenuItem>
