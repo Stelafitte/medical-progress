@@ -7,8 +7,14 @@
  */
 import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { AlertTriangle, ArrowRight, Notebook, UserRound, Users } from "lucide-react";
+import { AlertTriangle, ArrowRight, Bell, Notebook, UserRound, Users } from "lucide-react";
 import { SectionHeading } from "@/components/section-heading";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -25,7 +31,21 @@ import {
   formatFrDate,
   nextMilestone,
 } from "@/features/administration/adminProgramViewModel";
+import {
+  LEARNER_MARKER_LABELS_FR,
+  PROGRAMMING_ACTION_LABELS_FR,
+  PROGRAMMING_STATE_LABELS_FR,
+  allowedProgrammingActions,
+  buildLearnerActivityRows,
+  buildSuggestedNotifications,
+  nextProgrammingState,
+  summarizeGroupActivity,
+  type GroupActivitySummary,
+  type LearnerActivityRow,
+  type ProgrammingState,
+} from "@/features/administration/pilotSectionsViewModel";
 import { ROLE_LABELS_FR } from "@/domain/roles";
+import type { CohortPhase } from "@/features/administration/adminProgramViewModel";
 
 const STATE_STYLES = {
   done: "border-border text-muted-foreground",
@@ -63,6 +83,15 @@ export function AdminProgramPilot() {
       r.scope.programId === data.program?.id,
   );
   const progress = selected ? Math.round(cohortProgressRatio(selected) * 100) : 0;
+
+  const learnerRows = buildLearnerActivityRows({
+    enrollments: cohortEnrollments,
+    people: data.people,
+    logs: cohortLogs,
+    alerts: cohortAlerts,
+    expectedLogsPerLearner: data.templates.length,
+  });
+  const groupSummary = summarizeGroupActivity(learnerRows);
 
   return (
     <div className="space-y-6">
@@ -198,28 +227,291 @@ export function AdminProgramPilot() {
 
           <PanelCard
             title="Outils de pilotage"
-            description="Communications, statistiques et documents restent des écrans dédiés."
+            description="Chaque outil s'ouvre directement ici, sans quitter la promotion pilotée."
+            action={<MockBadge />}
           >
-            <div className="flex flex-wrap gap-2">
-              <Button asChild variant="outline" className="min-h-11">
-                <Link to="/espace/administration/communications">Communications</Link>
-              </Button>
-              <Button asChild variant="outline" className="min-h-11">
-                <Link to="/espace/statistiques">Statistiques</Link>
-              </Button>
-              <Button asChild variant="outline" className="min-h-11">
-                <Link to="/espace/administration/documents">Documents et certificats</Link>
-              </Button>
-              <Button asChild variant="outline" className="min-h-11">
-                <Link to="/espace/administration/classes">
-                  Classes d'apprenants
-                  <ArrowRight className="ms-1 size-4" aria-hidden />
-                </Link>
-              </Button>
-            </div>
+            <Accordion type="multiple" defaultValue={["programmation"]} className="w-full">
+              <AccordionItem value="programmation">
+                <AccordionTrigger className="min-h-11 text-start">
+                  Programmation de la promotion
+                </AccordionTrigger>
+                <AccordionContent>
+                  <ProgrammingPanel phase={cohortPhase(selected)} />
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="activite">
+                <AccordionTrigger className="min-h-11 text-start">
+                  Activité du programme
+                </AccordionTrigger>
+                <AccordionContent>
+                  <ActivityPanel rows={learnerRows} summary={groupSummary} />
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="apprenants">
+                <AccordionTrigger className="min-h-11 text-start">
+                  Gestion des apprenants
+                </AccordionTrigger>
+                <AccordionContent>
+                  <LearnerManagementPanel rows={learnerRows} summary={groupSummary} />
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="documents">
+                <AccordionTrigger className="min-h-11 text-start">
+                  Documents et certificats
+                </AccordionTrigger>
+                <AccordionContent>
+                  <div className="space-y-3">
+                    <p className="text-muted-foreground text-sm">
+                      Pièces administratives et certificats de complétude de ce programme.
+                    </p>
+                    <Button asChild variant="outline" className="min-h-11">
+                      <Link to="/espace/administration/documents">
+                        Ouvrir documents et certificats
+                        <ArrowRight className="ms-1 size-4" aria-hidden />
+                      </Link>
+                    </Button>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
           </PanelCard>
         </>
       )}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Programmation (simulée)                                             */
+/* ------------------------------------------------------------------ */
+
+const PHASE_TO_PROGRAMMING: Record<CohortPhase, ProgrammingState> = {
+  planned: "planned",
+  running: "active",
+  closed: "closed",
+};
+
+function ProgrammingPanel({ phase }: { phase: CohortPhase }) {
+  const [state, setState] = useState<ProgrammingState>(PHASE_TO_PROGRAMMING[phase]);
+  const [journal, setJournal] = useState<readonly string[]>([]);
+
+  const apply = (action: keyof typeof PROGRAMMING_ACTION_LABELS_FR) => {
+    const next = nextProgrammingState(state, action);
+    if (!next) return;
+    setState(next);
+    setJournal((entries) => [
+      `${PROGRAMMING_ACTION_LABELS_FR[action]} → ${PROGRAMMING_STATE_LABELS_FR[next]}`,
+      ...entries,
+    ]);
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-sm font-medium">État de la programmation</span>
+        <Badge variant="secondary" className="font-normal">
+          {PROGRAMMING_STATE_LABELS_FR[state]}
+        </Badge>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {allowedProgrammingActions(state).map((action) => (
+          <Button
+            key={action}
+            variant="outline"
+            className="min-h-11"
+            onClick={() => apply(action)}
+          >
+            {PROGRAMMING_ACTION_LABELS_FR[action]}
+          </Button>
+        ))}
+      </div>
+
+      <div className="border-border grid gap-2 rounded-md border p-3 sm:grid-cols-2">
+        <Button variant="outline" className="min-h-11 justify-start" disabled>
+          Modifier le calendrier (prévu)
+        </Button>
+        <Button variant="outline" className="min-h-11 justify-start" disabled>
+          Message d'urgence à la promotion (prévu)
+        </Button>
+      </div>
+
+      <p className="text-muted-foreground text-xs">
+        Aucune action réelle : les changements d'état restent locaux à cette maquette.
+      </p>
+
+      {journal.length > 0 ? (
+        <ul className="text-muted-foreground space-y-1 text-xs">
+          {journal.map((entry, index) => (
+            <li key={`${entry}-${index}`}>· {entry}</li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Activité du programme                                               */
+/* ------------------------------------------------------------------ */
+
+function MarkerBadge({ row }: { row: LearnerActivityRow }) {
+  return (
+    <Badge variant="outline" className="font-normal">
+      {LEARNER_MARKER_LABELS_FR[row.marker]}
+    </Badge>
+  );
+}
+
+function GroupStats({ summary }: { summary: GroupActivitySummary }) {
+  const stats = [
+    { label: "Apprenants", value: summary.learners },
+    { label: "Avancement moyen", value: `${summary.averageProgressPercent} %` },
+    { label: "Carnets moyens", value: summary.averageLogs },
+    { label: "Observations moyennes", value: summary.averageEntries },
+    { label: "Sans activité", value: summary.idleLearners },
+    { label: "En retard", value: summary.lateLearners },
+  ];
+  return (
+    <dl className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+      {stats.map((stat) => (
+        <div key={stat.label} className="border-border rounded-md border p-3">
+          <dd className="text-xl font-semibold tabular-nums">{stat.value}</dd>
+          <dt className="text-muted-foreground text-xs">{stat.label}</dt>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+function ActivityPanel({
+  rows,
+  summary,
+}: {
+  rows: readonly LearnerActivityRow[];
+  summary: GroupActivitySummary;
+}) {
+  if (rows.length === 0) return <EmptyState>Aucune inscription sur cette promotion.</EmptyState>;
+  return (
+    <div className="space-y-4">
+      <GroupStats summary={summary} />
+      <ul className="space-y-2 text-sm">
+        {rows.map((row) => (
+          <li
+            key={row.enrollmentId}
+            className="border-border flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md border p-3"
+          >
+            <span className="font-medium">{row.personName}</span>
+            <MarkerBadge row={row} />
+            <span className="text-muted-foreground text-xs">
+              {row.logCount} carnet(s) · {row.entryCount} observation(s) · {row.validatedCount}{" "}
+              validé(s)
+            </span>
+            {row.lastActivityAt ? (
+              <span className="text-muted-foreground font-mono text-xs">
+                dernier dépôt {formatFrDate(row.lastActivityAt)}
+              </span>
+            ) : (
+              <span className="text-muted-foreground text-xs">aucun dépôt</span>
+            )}
+          </li>
+        ))}
+      </ul>
+      <p className="text-muted-foreground text-xs">
+        Les moyennes de groupe remplacent l'ancien écran de statistiques pour cette promotion.
+      </p>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Gestion des apprenants et notifications                             */
+/* ------------------------------------------------------------------ */
+
+function LearnerManagementPanel({
+  rows,
+  summary,
+}: {
+  rows: readonly LearnerActivityRow[];
+  summary: GroupActivitySummary;
+}) {
+  const notifications = buildSuggestedNotifications(rows);
+  if (rows.length === 0) return <EmptyState>Aucune inscription sur cette promotion.</EmptyState>;
+  return (
+    <div className="space-y-5">
+      <div className="space-y-2">
+        <h3 className="text-sm font-semibold">Marqueurs d'avancement</h3>
+        <ul className="space-y-2 text-sm">
+          {rows.map((row) => (
+            <li key={row.enrollmentId} className="border-border space-y-2 rounded-md border p-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-medium">{row.personName}</span>
+                <MarkerBadge row={row} />
+                <span className="text-muted-foreground text-xs">
+                  inscription : {row.status}
+                </span>
+                {row.alertCount > 0 ? (
+                  <span className="text-muted-foreground text-xs">
+                    {row.alertCount} signal(s) ouvert(s)
+                  </span>
+                ) : null}
+              </div>
+              <Progress value={row.progressPercent} />
+              <p className="text-muted-foreground text-xs">
+                Avancement {row.progressPercent} % · {row.awaitingCount} en attente de validation
+              </p>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div className="space-y-2">
+        <h3 className="text-sm font-semibold">Synthèse de groupe</h3>
+        <div className="flex flex-wrap gap-2 text-sm">
+          {Object.entries(summary.markerCounts).map(([marker, count]) => (
+            <Badge key={marker} variant="secondary" className="font-normal">
+              {LEARNER_MARKER_LABELS_FR[marker as LearnerActivityRow["marker"]]} : {count}
+            </Badge>
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <h3 className="text-sm font-semibold">Notifications</h3>
+        <p className="text-muted-foreground text-xs">
+          Actions qui découlent des marqueurs d'avancement. Aucun envoi réel dans cette maquette.
+        </p>
+        {notifications.length === 0 ? (
+          <EmptyState>Aucune notification déclenchée par les marqueurs actuels.</EmptyState>
+        ) : (
+          <ul className="space-y-2 text-sm">
+            {notifications.map((notification) => (
+              <li
+                key={notification.id}
+                className="border-border space-y-2 rounded-md border p-3"
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <Bell className="text-muted-foreground size-4" aria-hidden />
+                  <span className="font-medium">{notification.label}</span>
+                  <Badge variant="outline" className="font-normal">
+                    {notification.recipients.length} destinataire(s)
+                  </Badge>
+                </div>
+                <p className="text-muted-foreground text-xs">{notification.rationale}</p>
+                <p className="text-muted-foreground text-xs">
+                  {notification.recipients.join(", ")}
+                </p>
+                <Button variant="outline" className="min-h-11" disabled>
+                  Préparer la notification (simulé)
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }
