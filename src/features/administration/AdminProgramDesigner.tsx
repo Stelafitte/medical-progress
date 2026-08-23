@@ -146,17 +146,19 @@ export function AdminProgramDesigner() {
   const [selectedCohortId, setSelectedCohortId] = useState<string | null>(null);
   const [associated, setAssociated] = useState<string | null>(null);
   const localCohorts = useLocalCohorts(data?.program?.id);
-
+  const localPlacements = useLocalPlacements(data?.program?.id);
 
   const existingCounts = useMemo<Record<ResourceKind, number>>(
     () => ({
       knowledge: data?.resources.length ?? 0,
       competences: data?.outcomes.filter((o) => o.nature !== "knowledge").length ?? 0,
       assessments: data?.ecosScenarios.length ?? 0,
-      stage: (data?.placements.length ?? 0) + (data?.templates.length ?? 0),
+      stage:
+        (data?.placements.length ?? 0) + (data?.templates.length ?? 0) + localPlacements.length,
     }),
-    [data],
+    [data, localPlacements],
   );
+
 
   if (isPending || !data) return <Skeleton className="h-80 w-full" />;
 
