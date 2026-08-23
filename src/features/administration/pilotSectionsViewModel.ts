@@ -85,7 +85,7 @@ export interface LearnerActivityRow {
   readonly validatedCount: number;
   readonly awaitingCount: number;
   readonly alertCount: number;
-  readonly lastActivityAt?: string;
+  readonly lastActivityAt?: string | undefined;
   readonly progressPercent: number;
   readonly marker: LearnerMarker;
 }
