@@ -115,12 +115,32 @@ export function AllProgramsView() {
         className="sticky top-16 z-30 space-y-3 rounded-lg border border-border bg-card/95 p-4 backdrop-blur"
       >
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-sm font-medium">Filtres</p>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="min-h-11 px-2 text-sm font-medium"
+            aria-expanded={filtersOpen}
+            onClick={() => setFiltersOpen((prev) => !prev)}
+          >
+            Filtres
+            <ChevronDown
+              className={`ml-1 h-4 w-4 transition-transform ${filtersOpen ? "rotate-180" : ""}`}
+              aria-hidden="true"
+            />
+            {hasActiveFilters(filters) ? (
+              <Badge variant="secondary" className="ml-2 font-normal">
+                actifs
+              </Badge>
+            ) : null}
+          </Button>
           <p className="text-xs text-muted-foreground">
             {visible.length} programme(s) affiché(s) sur {cards.length}
           </p>
         </div>
 
+        {filtersOpen ? (
+        <>
         <div className="space-y-2">
           <p className="text-xs font-medium text-muted-foreground">Type de formation</p>
           <div className="flex flex-wrap items-center gap-2">
