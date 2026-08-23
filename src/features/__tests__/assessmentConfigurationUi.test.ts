@@ -2,23 +2,26 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const read = (path: string) => readFileSync(new URL(`../../../${path}`, import.meta.url), "utf8");
-const pedagogy = read("src/features/administration/AdminPedagogy.tsx");
+const knowledge = read("src/features/administration/AdminKnowledgeBase.tsx");
+const evaluations = read("src/features/administration/AdminAssessments.tsx");
 const assessment = read("src/features/administration/AssessmentConfigurationSection.tsx");
 const assessmentDomain = read("src/domain/assessment.ts");
 
 describe("configuration pédagogique générique", () => {
-  it("emploie les onglets transversaux validés", () => {
-    for (const label of ["Ressources théoriques", "Compétences", "Évaluations"]) {
-      expect(pedagogy).toContain(`label: "${label}"`);
+  it("répartit les contenus dans les onglets transversaux validés", () => {
+    for (const tab of ["Dépôt et catalogue", "Connaissances visées", "Exploitation IA"]) {
+      expect(knowledge).toContain(tab);
     }
-    expect(pedagogy).not.toContain('label: "Médiathèque"');
-    expect(pedagogy).not.toContain('label: "Évaluations et ECOS"');
+    for (const tab of ["Modalités et QCM", "Simulation et ECOS", "Résultats et notes"]) {
+      expect(evaluations).toContain(tab);
+    }
+    expect(knowledge).not.toContain("Médiathèque</");
   });
 
-  it("réserve l'entraînement ECOS au DFASM dans Compétences", () => {
-    expect(pedagogy).toContain('startsWith("DFASM")');
-    expect(pedagogy).toContain("L'entraînement ECOS est un module réservé aux programmes DFASM");
-    expect(pedagogy).toContain("<EcosMigrationSection");
+  it("réserve l'entraînement ECOS au DFASM dans Évaluations", () => {
+    expect(evaluations).toContain('startsWith("DFASM")');
+    expect(evaluations).toContain("L'entraînement ECOS est un module réservé aux programmes DFASM");
+    expect(evaluations).toContain("<EcosMigrationSection");
   });
 
   it("place les ECOS certificatifs parmi les contenus d'évaluation", () => {
