@@ -494,9 +494,11 @@ function ActivityPanel({ activity }: { activity: ProgramActivity }) {
 function LearnerManagementPanel({
   rows,
   summary,
+  competenceRows,
 }: {
   rows: readonly LearnerActivityRow[];
   summary: GroupActivitySummary;
+  competenceRows: readonly (LearnerCompetenceRow & { readonly personName: string })[];
 }) {
   const notifications = buildSuggestedNotifications(rows);
   if (rows.length === 0) return <EmptyState>Aucune inscription sur cette promotion.</EmptyState>;
