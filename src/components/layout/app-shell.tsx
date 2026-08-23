@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, Outlet } from "@tanstack/react-router";
+import { Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { Boxes, HeartPulse, Menu, RotateCcw, UserRound } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -52,12 +52,15 @@ export function AppShell() {
 
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const spaces = navSpacesFor(
-    roles,
-    activeProgram.id,
-    activeProgram.config,
-    activeProgram.code,
-  );
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  // Dans la vue « Tous les programmes », aucun programme n'est le périmètre
+  // courant : les onglets propres à un programme sont retirés du bandeau.
+  const isAllPrograms = pathname.startsWith("/espace/programmes");
+
+  const allSpaces = navSpacesFor(roles, activeProgram.id, activeProgram.config, activeProgram.code);
+  const spaces = isAllPrograms
+    ? allSpaces.filter((space) => space.key === "platform_admin")
+    : allSpaces;
   const defaultPersonName = people[0]?.fullName ?? "profil par défaut";
 
   return (

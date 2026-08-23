@@ -1,4 +1,4 @@
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { useSession } from "@/application/session";
 import {
   Select,
@@ -20,6 +20,10 @@ export const ALL_PROGRAMS_VALUE = "__all_programs__";
 export function ProgramSwitcher({ variant = "compact" }: { variant?: "compact" | "full" }) {
   const { programs, activeProgram, setActiveProgramId, canAccessAdministration } = useSession();
   const navigate = useNavigate();
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  // Tant que la vue « Tous les programmes » est ouverte, le sélecteur reste sur
+  // cette option : aucun programme n'est le périmètre courant.
+  const isAllPrograms = pathname.startsWith("/espace/programmes");
 
   return (
     <div className={variant === "full" ? "w-full" : "flex min-w-0 items-center gap-2"}>
@@ -27,13 +31,14 @@ export function ProgramSwitcher({ variant = "compact" }: { variant?: "compact" |
         Programme actif
       </label>
       <Select
-        value={activeProgram.id}
+        value={isAllPrograms ? ALL_PROGRAMS_VALUE : activeProgram.id}
         onValueChange={(value) => {
           if (value === ALL_PROGRAMS_VALUE) {
             void navigate({ to: "/espace/programmes" });
             return;
           }
           setActiveProgramId(value as ProgramId);
+          if (isAllPrograms) void navigate({ to: "/espace/administration" });
         }}
       >
         <SelectTrigger
