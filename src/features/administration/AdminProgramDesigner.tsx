@@ -31,6 +31,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { EmptyState, MockBadge, PanelCard, ScopeNotice } from "@/features/professional/mock-ui";
 import { AdminWorkLevelBanner } from "@/features/administration/AdminWorkLevel";
 import { useProgramAdmin } from "@/features/administration/useProgramAdmin";
+import { CohortCreationForm } from "@/features/administration/CohortCreationForm";
+import { useLocalCohorts } from "@/application/cohortDraftStore";
+import { mergeCohorts } from "@/domain/cohortDraft";
+import type { CohortId, CurriculumVersionId, ProgramId } from "@/domain/types";
 import { formatFrDate } from "@/features/administration/adminProgramViewModel";
 
 /* ------------------------------------------------------------------ */
@@ -137,8 +141,9 @@ export function AdminProgramDesigner() {
 
   const [cohortMode, setCohortMode] = useState<"existing" | "new">("existing");
   const [selectedCohortId, setSelectedCohortId] = useState<string | null>(null);
-  const [newCohort, setNewCohort] = useState({ label: "", startsOn: "", endsOn: "", learners: "" });
   const [associated, setAssociated] = useState<string | null>(null);
+  const localCohorts = useLocalCohorts(data?.program?.id);
+
 
   const existingCounts = useMemo<Record<ResourceKind, number>>(
     () => ({
@@ -151,6 +156,12 @@ export function AdminProgramDesigner() {
   );
 
   if (isPending || !data) return <Skeleton className="h-80 w-full" />;
+
+  /** Liste UNIQUE des classes : celles du dépôt et celles créées dans la session. */
+  const cohorts = mergeCohorts(data.cohorts, localCohorts);
+  const activeProgramId = (data.program?.id ?? "program-unknown") as ProgramId;
+  const curriculumVersionId = (data.versions[0]?.id ??
+    `cv-${activeProgramId}`) as CurriculumVersionId;
 
   const modelReady = modelId !== null || modelName.trim().length > 0;
   const chosenResources = RESOURCES.filter((r) => resources[r.id].selected);
@@ -445,7 +456,7 @@ export function AdminProgramDesigner() {
       {/* ---------------- Étape 2 : promotion ---------------- */}
       <PanelCard
         title="2. Préparer et associer la promotion"
-        description="Créez la promotion ici, ou réutilisez une promotion existante, puis associez-la au programme conçu."
+        description="Créez la classe ici avec le même outil que l'onglet « Classes d'apprenants », ou réutilisez une classe déjà créée, puis associez-la au programme conçu."
         action={
           <Badge variant={associated ? "secondary" : "outline"} className="font-normal">
             {associated ? "promotion associée" : "à associer"}
@@ -464,17 +475,20 @@ export function AdminProgramDesigner() {
               onClick={() => setCohortMode(mode)}
             >
               <Users className="me-1 size-4" aria-hidden />
-              {mode === "existing" ? "Utiliser une promotion existante" : "Créer une promotion ici"}
+              {mode === "existing" ? "Utiliser une classe existante" : "Créer une classe ici"}
             </Button>
           ))}
         </div>
 
         {cohortMode === "existing" ? (
-          data.cohorts.length === 0 ? (
-            <EmptyState>Aucune promotion enregistrée pour ce programme.</EmptyState>
+          cohorts.length === 0 ? (
+            <EmptyState>
+              Aucune classe rattachée à ce programme : créez-la ici, ou depuis l'onglet « Classes
+              d'apprenants ».
+            </EmptyState>
           ) : (
             <ul className="space-y-2">
-              {data.cohorts.map((cohort) => {
+              {cohorts.map((cohort) => {
                 const active = selectedCohortId === cohort.id;
                 return (
                   <li key={cohort.id}>
@@ -500,64 +514,28 @@ export function AdminProgramDesigner() {
             </ul>
           )
         ) : (
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="cohort-label">Nom de la promotion</Label>
-              <Input
-                id="cohort-label"
-                value={newCohort.label}
-                onChange={(e) => setNewCohort({ ...newCohort, label: e.target.value })}
-                placeholder="Promotion 2026-2027"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="cohort-learners">Effectif attendu</Label>
-              <Input
-                id="cohort-learners"
-                inputMode="numeric"
-                value={newCohort.learners}
-                onChange={(e) => setNewCohort({ ...newCohort, learners: e.target.value })}
-                placeholder="120"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="cohort-start">Début</Label>
-              <Input
-                id="cohort-start"
-                type="date"
-                value={newCohort.startsOn}
-                onChange={(e) => setNewCohort({ ...newCohort, startsOn: e.target.value })}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="cohort-end">Fin</Label>
-              <Input
-                id="cohort-end"
-                type="date"
-                value={newCohort.endsOn}
-                onChange={(e) => setNewCohort({ ...newCohort, endsOn: e.target.value })}
-              />
-            </div>
-            <p className="text-muted-foreground text-xs sm:col-span-2">
-              La promotion créée ici apparaîtra dans l'onglet « Classes d'apprenants ».
-            </p>
-          </div>
+          <CohortCreationForm
+            idPrefix="designer-cohort"
+            programId={activeProgramId}
+            curriculumVersionId={curriculumVersionId}
+            submitLabel="Créer la classe et l'associer"
+            hint="La classe créée ici est automatiquement rattachée au programme en conception et apparaît dans l'onglet « Classes d'apprenants »."
+            onCreated={(cohort) => {
+              setSelectedCohortId(cohort.id);
+              setCohortMode("existing");
+              setAssociated(cohort.label);
+            }}
+          />
         )}
+
 
         <div className="flex flex-wrap items-center gap-2">
           <Button
             type="button"
             className="min-h-11"
-            disabled={
-              !designReady ||
-              (cohortMode === "existing" ? !selectedCohortId : newCohort.label.trim().length === 0)
-            }
+            disabled={!designReady || cohortMode === "new" || !selectedCohortId}
             onClick={() =>
-              setAssociated(
-                cohortMode === "existing"
-                  ? (data.cohorts.find((c) => c.id === selectedCohortId)?.label ?? null)
-                  : newCohort.label.trim(),
-              )
+              setAssociated(cohorts.find((c) => c.id === selectedCohortId)?.label ?? null)
             }
           >
             Associer la promotion au programme

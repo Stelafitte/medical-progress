@@ -27,14 +27,18 @@ import {
   formatFrDate,
   sortCohortsForPilot,
 } from "@/features/administration/adminProgramViewModel";
+import { CohortCreationForm } from "@/features/administration/CohortCreationForm";
+import { useLocalCohorts } from "@/application/cohortDraftStore";
+import { mergeCohorts } from "@/domain/cohortDraft";
+import type { CurriculumVersionId } from "@/domain/types";
 
 export function AdminLearnerClasses() {
   const { data, isPending } = useProgramAdmin();
-  const [newLabel, setNewLabel] = useState("");
+  const localCohorts = useLocalCohorts(data?.program?.id);
 
   if (isPending || !data) return <Skeleton className="h-80 w-full" />;
 
-  const cohorts = sortCohortsForPilot(data.cohorts);
+  const cohorts = sortCohortsForPilot(mergeCohorts(data.cohorts, localCohorts));
   const running = cohorts.filter((c) => cohortPhase(c) === "running").length;
   const planned = cohorts.filter((c) => cohortPhase(c) === "planned").length;
 
@@ -108,22 +112,24 @@ export function AdminLearnerClasses() {
 
       <PanelCard
         title="Créer une classe"
-        description="Nouvelle promotion sur le même programme, sans dupliquer la pédagogie."
+        description="Même outil que dans le « Concepteur de programme » : une classe créée ici y est immédiatement disponible pour association."
         action={<MockBadge />}
       >
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <Input
-            value={newLabel}
-            onChange={(event) => setNewLabel(event.target.value)}
-            placeholder="Promotion 2026-2027"
-            aria-label="Intitulé de la nouvelle classe"
-            className="min-h-11 sm:max-w-sm"
+        {data.program ? (
+          <CohortCreationForm
+            idPrefix="classes-cohort"
+            programId={data.program.id}
+            curriculumVersionId={
+              data.versions[0]?.id ?? (`cv-${data.program.id}` as CurriculumVersionId)
+            }
+            submitLabel="Créer la classe"
+            hint="Classe créée indépendamment d'une conception en cours : elle sera proposée dans le concepteur au moment d'associer une promotion."
           />
-          <Button className="min-h-11" disabled={newLabel.trim().length === 0}>
-            Créer la classe (simulé)
-          </Button>
-        </div>
+        ) : (
+          <EmptyState>Sélectionnez un programme pour créer une classe.</EmptyState>
+        )}
       </PanelCard>
+
 
       <CohortRosterSection data={data} />
     </div>
