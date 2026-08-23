@@ -52,6 +52,8 @@ import {
   type ProgrammingState,
 } from "@/features/administration/pilotSectionsViewModel";
 import { ROLE_LABELS_FR } from "@/domain/roles";
+import { buildLearnerCompetenceRows } from "@/features/administration/competenceTrackingViewModel";
+import type { LearnerCompetenceRow } from "@/features/administration/competenceTrackingViewModel";
 import type { CohortPhase } from "@/features/administration/adminProgramViewModel";
 
 const STATE_STYLES = {
