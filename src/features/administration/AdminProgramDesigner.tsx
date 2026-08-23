@@ -32,8 +32,11 @@ import { EmptyState, MockBadge, PanelCard, ScopeNotice } from "@/features/profes
 import { AdminWorkLevelBanner } from "@/features/administration/AdminWorkLevel";
 import { useProgramAdmin } from "@/features/administration/useProgramAdmin";
 import { CohortCreationForm } from "@/features/administration/CohortCreationForm";
+import { PlacementCreationForm } from "@/features/administration/PlacementCreationForm";
 import { useLocalCohorts } from "@/application/cohortDraftStore";
+import { useLocalPlacements } from "@/application/placementDraftStore";
 import { mergeCohorts } from "@/domain/cohortDraft";
+
 import type { CohortId, CurriculumVersionId, ProgramId } from "@/domain/types";
 import { formatFrDate } from "@/features/administration/adminProgramViewModel";
 
