@@ -396,7 +396,31 @@ export function AdminProgramDesigner() {
                         ))}
                       </div>
 
-                      {state.mode === "now" ? (
+                      {state.mode === "now" && resource.id === "stage" ? (
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium">Créer un terrain de stage</p>
+                          <PlacementCreationForm
+                            programId={activeProgramId}
+                            idPrefix="designer-stage"
+                            submitLabel="Créer le terrain de stage"
+                            hint="Même outil et même liste que l'onglet « Gestion des stages » : le terrain y apparaît aussitôt, rattaché à ce programme."
+                            onCreated={() => patch("stage", { implemented: true })}
+                          />
+                          {localPlacements.length > 0 ? (
+                            <ul className="text-muted-foreground space-y-1 text-xs">
+                              {localPlacements.map((local) => (
+                                <li key={local.placement.id}>
+                                  {local.placement.name} — {local.placement.site} ·{" "}
+                                  {local.placement.capacity} place(s)
+                                </li>
+                              ))}
+                            </ul>
+                          ) : null}
+                        </div>
+                      ) : null}
+
+                      {state.mode === "now" && resource.id !== "stage" ? (
+
                         <div className="space-y-2">
                           <Label htmlFor={`draft-${resource.id}`}>{resource.draftLabel}</Label>
                           <Textarea
