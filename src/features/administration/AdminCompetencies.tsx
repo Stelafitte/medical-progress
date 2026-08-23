@@ -4,6 +4,8 @@
  * Le suivi affiché est une maquette déterministe (aucune donnée réelle).
  */
 import { useMemo, useState } from "react";
+import { Link } from "@tanstack/react-router";
+import { ArrowRight } from "lucide-react";
 import { SectionHeading } from "@/components/section-heading";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -36,16 +38,33 @@ import {
   parseReferentialText,
 } from "@/features/administration/competenceTrackingViewModel";
 import { NATURE_LABELS_FR } from "@/domain/mastery";
+import { CompetenceCreationForm } from "@/features/administration/CompetenceCreationForm";
+import { createLocalCompetence, useLocalCompetences } from "@/application/competenceDraftStore";
+import {
+  COMPETENCE_MASTERY_LABELS_FR,
+  EMPTY_NEW_COMPETENCE_INPUT,
+  mergeOutcomes,
+  type CompetenceNature,
+} from "@/domain/competenceDraft";
+import type { CurriculumVersionId, ProgramId } from "@/domain/types";
 
 export function AdminCompetencies() {
   const { data, isPending } = useProgramAdmin();
   const [cohortId, setCohortId] = useState<string | null>(null);
   const [importText, setImportText] = useState("");
+  const [imported, setImported] = useState<number | null>(null);
+  const localCompetences = useLocalCompetences(data?.program?.id);
 
   const cohorts = data?.cohorts ?? [];
   const selectedId = cohortId ?? defaultPilotCohortId(cohorts);
   const enrollments = (data?.enrollments ?? []).filter((e) => e.cohortId === selectedId);
-  const outcomes = data?.outcomes ?? [];
+  /** Liste UNIQUE : compétences du dépôt et compétences créées dans la session. */
+  const outcomes = useMemo(
+    () => mergeOutcomes(data?.outcomes ?? [], localCompetences),
+    [data?.outcomes, localCompetences],
+  );
+  const programId = (data?.program?.id ?? "program-unknown") as ProgramId;
+  const curriculumVersionId = (data?.versions[0]?.id ?? "cv-unknown") as CurriculumVersionId;
 
   const learnerRows = useMemo(
     () => buildLearnerCompetenceRows(enrollments, outcomes),
@@ -56,6 +75,14 @@ export function AdminCompetencies() {
     [enrollments, outcomes],
   );
   const parsed = useMemo(() => parseReferentialText(importText), [importText]);
+  /** Seules les lignes de nature compétence peuvent rejoindre ce référentiel. */
+  const importable = useMemo(
+    () =>
+      parsed.filter(
+        (row) => row.nature === "simulated_competence" || row.nature === "real_competence",
+      ),
+    [parsed],
+  );
 
   if (isPending || !data) return <Skeleton className="h-80 w-full" />;
 
@@ -120,8 +147,13 @@ export function AdminCompetencies() {
                         </Badge>
                         <span>{outcome.label}</span>
                         <span className="text-muted-foreground text-xs">
-                          cible {outcome.targetMastery}
+                          cible {COMPETENCE_MASTERY_LABELS_FR[outcome.targetMastery]}
                         </span>
+                        {localCompetences.some((local) => local.id === outcome.id) ? (
+                          <Badge variant="outline" className="font-normal">
+                            créée dans cette session
+                          </Badge>
+                        ) : null}
                       </li>
                     ))}
                     {list.length === 0 ? (
@@ -132,6 +164,46 @@ export function AdminCompetencies() {
               );
             })}
           </div>
+
+          <PanelCard
+            title="Créer une compétence"
+            description="Le même outil de création est disponible ici et dans le « Concepteur de programme » : la liste est unique."
+            action={<MockBadge />}
+          >
+            <CompetenceCreationForm
+              programId={programId}
+              curriculumVersionId={curriculumVersionId}
+              idPrefix="competences-tab"
+              submitLabel="Créer la compétence"
+              hint="La compétence rejoint la liste unique : elle est aussitôt proposée dans le « Concepteur de programme »."
+            />
+          </PanelCard>
+
+          <PanelCard
+            title="Là où ces compétences se travaillent et se prouvent"
+            description="Une compétence se prouve en stage, en simulation ou lors d'une évaluation : les modalités se règlent dans les onglets dédiés."
+          >
+            <div className="flex flex-wrap gap-2">
+              <Button asChild variant="outline" className="min-h-11">
+                <Link to="/espace/administration/stages">
+                  Terrains de stage et validation
+                  <ArrowRight className="ms-1 size-4" aria-hidden />
+                </Link>
+              </Button>
+              <Button asChild variant="outline" className="min-h-11">
+                <Link to="/espace/administration/evaluations">
+                  Évaluations et ECOS
+                  <ArrowRight className="ms-1 size-4" aria-hidden />
+                </Link>
+              </Button>
+              <Button asChild variant="outline" className="min-h-11">
+                <Link to="/espace/administration/pilotage">
+                  Suivi par promotion dans Pilotage
+                  <ArrowRight className="ms-1 size-4" aria-hidden />
+                </Link>
+              </Button>
+            </div>
+          </PanelCard>
         </TabsContent>
 
         <TabsContent value="suivi" className="space-y-6">
@@ -222,8 +294,31 @@ export function AdminCompetencies() {
             />
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <Badge variant="secondary">{parsed.length} ligne(s) reconnue(s)</Badge>
-              <Button size="sm" className="min-h-11" disabled={parsed.length === 0}>
-                Importer {parsed.length} compétence(s) (simulé)
+              <Badge variant="outline">{importable.length} compétence(s) importable(s)</Badge>
+              <Button
+                size="sm"
+                className="min-h-11"
+                disabled={importable.length === 0}
+                onClick={() => {
+                  let added = 0;
+                  for (const row of importable) {
+                    const outcome = createLocalCompetence({
+                      input: {
+                        ...EMPTY_NEW_COMPETENCE_INPUT,
+                        code: row.code,
+                        label: row.label,
+                        nature: row.nature as CompetenceNature,
+                      },
+                      programId,
+                      curriculumVersionId,
+                    });
+                    if (outcome) added += 1;
+                  }
+                  setImported(added);
+                  setImportText("");
+                }}
+              >
+                Importer {importable.length} compétence(s)
               </Button>
               <Button
                 size="sm"
@@ -233,7 +328,16 @@ export function AdminCompetencies() {
               >
                 Effacer
               </Button>
+              {imported !== null ? (
+                <span className="text-muted-foreground text-sm">
+                  {imported} compétence(s) ajoutée(s) au référentiel de cette session.
+                </span>
+              ) : null}
             </div>
+            <p className="text-muted-foreground mt-2 text-xs">
+              Les lignes de nature « connaissance » ou non précisée sont ignorées : elles relèvent de
+              l'onglet « Base de connaissances ».
+            </p>
             {parsed.length > 0 ? (
               <ul className="mt-4 space-y-1 text-sm">
                 {parsed.slice(0, 12).map((row, index) => (

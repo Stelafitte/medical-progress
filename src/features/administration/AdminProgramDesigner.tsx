@@ -33,8 +33,10 @@ import { AdminWorkLevelBanner } from "@/features/administration/AdminWorkLevel";
 import { useProgramAdmin } from "@/features/administration/useProgramAdmin";
 import { CohortCreationForm } from "@/features/administration/CohortCreationForm";
 import { PlacementCreationForm } from "@/features/administration/PlacementCreationForm";
+import { CompetenceCreationForm } from "@/features/administration/CompetenceCreationForm";
 import { useLocalCohorts } from "@/application/cohortDraftStore";
 import { useLocalPlacements } from "@/application/placementDraftStore";
+import { useLocalCompetences } from "@/application/competenceDraftStore";
 import { mergeCohorts } from "@/domain/cohortDraft";
 
 import type { CohortId, CurriculumVersionId, ProgramId } from "@/domain/types";
@@ -147,6 +149,7 @@ export function AdminProgramDesigner() {
   const [associated, setAssociated] = useState<string | null>(null);
   const localCohorts = useLocalCohorts(data?.program?.id);
   const localPlacements = useLocalPlacements(data?.program?.id);
+  const localCompetences = useLocalCompetences(data?.program?.id);
 
   const existingCounts = useMemo<Record<ResourceKind, number>>(
     () => ({
@@ -424,7 +427,32 @@ export function AdminProgramDesigner() {
                         </div>
                       ) : null}
 
-                      {state.mode === "now" && resource.id !== "stage" ? (
+                      {state.mode === "now" && resource.id === "competences" ? (
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium">Créer une compétence</p>
+                          <CompetenceCreationForm
+                            programId={activeProgramId}
+                            curriculumVersionId={curriculumVersionId}
+                            idPrefix="designer-competence"
+                            submitLabel="Créer la compétence"
+                            hint="Même outil et même liste que l'onglet « Compétences » : elle y apparaît aussitôt, rattachée à ce programme."
+                            onCreated={() => patch("competences", { implemented: true })}
+                          />
+                          {localCompetences.length > 0 ? (
+                            <ul className="text-muted-foreground space-y-1 text-xs">
+                              {localCompetences.map((outcome) => (
+                                <li key={outcome.id}>
+                                  {outcome.code} — {outcome.label}
+                                </li>
+                              ))}
+                            </ul>
+                          ) : null}
+                        </div>
+                      ) : null}
+
+                      {state.mode === "now" &&
+                      resource.id !== "stage" &&
+                      resource.id !== "competences" ? (
 
                         <div className="space-y-2">
                           <Label htmlFor={`draft-${resource.id}`}>{resource.draftLabel}</Label>
