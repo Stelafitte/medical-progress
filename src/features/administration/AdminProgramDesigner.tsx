@@ -37,7 +37,11 @@ import { CohortCreationForm } from "@/features/administration/CohortCreationForm
 import { PlacementCreationForm } from "@/features/administration/PlacementCreationForm";
 import { CompetenceCreationForm } from "@/features/administration/CompetenceCreationForm";
 import { DocumentRequirementForm } from "@/features/administration/DocumentRequirementForm";
+import { KnowledgeCreationForm } from "@/features/administration/KnowledgeCreationForm";
+import { AssessmentModalityForm } from "@/features/administration/AssessmentModalityForm";
 import { useLocalDocumentRequirements } from "@/application/documentRequirementStore";
+import { useLocalKnowledge } from "@/application/knowledgeDraftStore";
+import { useLocalModalities } from "@/application/assessmentModalityStore";
 import { useLocalCohorts } from "@/application/cohortDraftStore";
 import { useLocalPlacements } from "@/application/placementDraftStore";
 import { useLocalCompetences } from "@/application/competenceDraftStore";
