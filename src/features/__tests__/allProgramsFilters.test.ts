@@ -5,6 +5,7 @@ import {
   countByLifecycle,
   filterProgramCards,
   hasActiveFilters,
+  programCategory,
   programLifecycle,
   programTrack,
   toggleFilterValue,
@@ -98,5 +99,29 @@ describe("filtres de la vue Tous les programmes", () => {
     expect(counts.construction).toBe(2);
     expect(toggleFilterValue(["initial"], "initial")).toEqual([]);
     expect(toggleFilterValue([], "initial")).toEqual(["initial"]);
+  });
+});
+
+describe("catégories de programme", () => {
+  it("dérive le niveau DFASM et les parcours de formation continue", () => {
+    const kindOf = (name: string, kind: ProgramKind) =>
+      programCategory({ id: "p", code: name, name, kind } as Program);
+    expect(kindOf("DFASM 2 Cardiologie", "dfasm")).toBe("dfasm2");
+    expect(kindOf("Cardiologie", "dfasm")).toBe("dfasm1");
+    expect(kindOf("DIU d'Échocardiographie", "diu")).toBe("diu");
+    expect(kindOf("Master Santé", "other")).toBe("master");
+    expect(kindOf("Parcours congrès ESC", "other")).toBe("congress");
+    expect(kindOf("Certification périodique", "other")).toBe("periodic_certification");
+  });
+
+  it("filtre les blocs sur les catégories sélectionnées", () => {
+    const cards = [card("dfasm", []), card("diu", [])];
+    const filtered = filterProgramCards(
+      cards,
+      { ...EMPTY_ALL_PROGRAMS_FILTERS, categories: ["diu"] },
+      NOW,
+    );
+    expect(filtered).toHaveLength(1);
+    expect(filtered[0]?.program.kind).toBe("diu");
   });
 });

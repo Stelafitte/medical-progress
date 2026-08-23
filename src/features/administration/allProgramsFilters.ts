@@ -10,20 +10,74 @@
  */
 import type { AdministeredProgramCard } from "@/features/administration/adminProgramViewModel";
 import { cohortPhase } from "@/features/administration/adminProgramViewModel";
-import type { ProgramKind } from "@/domain/types";
+import type { Program, ProgramKind } from "@/domain/types";
 
 /** Filière de formation. « toutes » n'est pas une filière : c'est l'absence de filtre. */
 export type ProgramTrack = "initial" | "continuing";
 
 export const PROGRAM_TRACK_LABELS_FR: Record<ProgramTrack, string> = {
-  initial: "Formation initiale",
-  continuing: "Formation continue",
+  initial: "FMI",
+  continuing: "FMC",
 };
 
 /** DFASM relève de la formation initiale ; DIU, DPC et autres de la continue. */
 export function programTrack(kind: ProgramKind): ProgramTrack {
   return kind === "dfasm" ? "initial" : "continuing";
 }
+
+/* ------------------------------------------------------------------ */
+/* Catégories de programme (sous-niveau de la filière)                 */
+/* ------------------------------------------------------------------ */
+
+export type ProgramCategory =
+  | "dfasm1"
+  | "dfasm2"
+  | "dfasm3"
+  | "master"
+  | "diu"
+  | "dpc"
+  | "congress"
+  | "periodic_certification"
+  | "other";
+
+export const PROGRAM_CATEGORY_LABELS_FR: Record<ProgramCategory, string> = {
+  dfasm1: "DFASM 1",
+  dfasm2: "DFASM 2",
+  dfasm3: "DFASM 3",
+  master: "Master",
+  diu: "DIU",
+  dpc: "DPC",
+  congress: "Parcours congrès",
+  periodic_certification: "Certification périodique",
+  other: "Autre",
+};
+
+/** Catégories proposées, regroupées par filière (ordre d'affichage du menu). */
+export const PROGRAM_CATEGORIES_BY_TRACK: Record<ProgramTrack, readonly ProgramCategory[]> = {
+  initial: ["dfasm1", "dfasm2", "dfasm3"],
+  continuing: ["master", "diu", "dpc", "congress", "periodic_certification", "other"],
+};
+
+/**
+ * Catégorie dérivée du programme (jamais saisie à la main) : le type technique
+ * donne la famille, le libellé ou le code précise le niveau (DFASM 1/2/3) ou la
+ * nature du parcours continu (Master, congrès, certification périodique).
+ */
+export function programCategory(program: Program): ProgramCategory {
+  const text = `${program.name} ${program.code}`.toLowerCase();
+  if (program.kind === "dfasm") {
+    if (/(dfasm\s*-?\s*3|\bd3\b)/.test(text)) return "dfasm3";
+    if (/(dfasm\s*-?\s*2|\bd2\b)/.test(text)) return "dfasm2";
+    return "dfasm1";
+  }
+  if (program.kind === "diu") return "diu";
+  if (program.kind === "dpc") return "dpc";
+  if (/master|\bm1\b|\bm2\b/.test(text)) return "master";
+  if (/congr/.test(text)) return "congress";
+  if (/certification/.test(text)) return "periodic_certification";
+  return "other";
+}
+
 
 /**
  * État du programme, dérivé de ses cohortes :
@@ -61,6 +115,7 @@ export function programLifecycle(
 
 export interface AllProgramsFilterState {
   readonly tracks: readonly ProgramTrack[];
+  readonly categories: readonly ProgramCategory[];
   readonly lifecycles: readonly ProgramLifecycle[];
   /** Bornes inclusives au format ISO court (AAAA-MM-JJ), vides si non renseignées. */
   readonly from: string;
@@ -69,6 +124,7 @@ export interface AllProgramsFilterState {
 
 export const EMPTY_ALL_PROGRAMS_FILTERS: AllProgramsFilterState = {
   tracks: [],
+  categories: [],
   lifecycles: [],
   from: "",
   to: "",
@@ -77,11 +133,13 @@ export const EMPTY_ALL_PROGRAMS_FILTERS: AllProgramsFilterState = {
 export function hasActiveFilters(filters: AllProgramsFilterState): boolean {
   return (
     filters.tracks.length > 0 ||
+    filters.categories.length > 0 ||
     filters.lifecycles.length > 0 ||
     filters.from !== "" ||
     filters.to !== ""
   );
 }
+
 
 /** Bascule d'une valeur dans une liste de filtres (sélection multiple). */
 export function toggleFilterValue<T>(values: readonly T[], value: T): readonly T[] {
@@ -113,6 +171,12 @@ export function filterProgramCards(
     if (
       filters.tracks.length > 0 &&
       !filters.tracks.includes(programTrack(card.program.kind))
+    ) {
+      return false;
+    }
+    if (
+      filters.categories.length > 0 &&
+      !filters.categories.includes(programCategory(card.program))
     ) {
       return false;
     }

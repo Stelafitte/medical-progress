@@ -9,7 +9,17 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
+import { ChevronDown } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { SectionHeading } from "@/components/section-heading";
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,11 +36,16 @@ import {
 } from "@/features/administration/adminProgramViewModel";
 import {
   EMPTY_ALL_PROGRAMS_FILTERS,
+  PROGRAM_CATEGORIES_BY_TRACK,
+  PROGRAM_CATEGORY_LABELS_FR,
   PROGRAM_LIFECYCLE_LABELS_FR,
   PROGRAM_TRACK_LABELS_FR,
+
+
   countByLifecycle,
   filterProgramCards,
   hasActiveFilters,
+  programCategory,
   programLifecycle,
   programTrack,
   toggleFilterValue,
@@ -100,7 +115,7 @@ export function AllProgramsView() {
 
         <div className="space-y-2">
           <p className="text-xs font-medium text-muted-foreground">Type de formation</p>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {TRACKS.map((track) => {
               const active = filters.tracks.includes(track);
               return (
@@ -122,8 +137,63 @@ export function AllProgramsView() {
                 </Button>
               );
             })}
+
+            {/* Catégories : sous-niveau de la filière, groupées FMI puis FMC. */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={filters.categories.length > 0 ? "default" : "outline"}
+                  className="min-h-11"
+                >
+                  Catégories
+                  {filters.categories.length > 0 ? (
+                    <Badge variant="secondary" className="ml-2 font-normal">
+                      {filters.categories.length}
+                    </Badge>
+                  ) : null}
+                  <ChevronDown className="ml-1 h-4 w-4" aria-hidden="true" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-60">
+                {TRACKS.map((track, index) => (
+                  <div key={track}>
+                    {index > 0 ? <DropdownMenuSeparator /> : null}
+                    <DropdownMenuLabel>{PROGRAM_TRACK_LABELS_FR[track]}</DropdownMenuLabel>
+                    {PROGRAM_CATEGORIES_BY_TRACK[track].map((category) => (
+                      <DropdownMenuCheckboxItem
+                        key={category}
+                        checked={filters.categories.includes(category)}
+                        onCheckedChange={() =>
+                          setFilters((prev) => ({
+                            ...prev,
+                            categories: toggleFilterValue(prev.categories, category),
+                          }))
+                        }
+                      >
+                        {PROGRAM_CATEGORY_LABELS_FR[category]}
+                      </DropdownMenuCheckboxItem>
+                    ))}
+                  </div>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {filters.categories.length > 0 ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="min-h-11"
+                onClick={() => setFilters((prev) => ({ ...prev, categories: [] }))}
+              >
+                Effacer les catégories
+              </Button>
+            ) : null}
           </div>
         </div>
+
 
         <div className="space-y-2">
           <p className="text-xs font-medium text-muted-foreground">État du programme</p>
@@ -213,8 +283,10 @@ export function AllProgramsView() {
               <div className="space-y-3 text-sm">
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge variant="outline" className="font-normal">
-                    {PROGRAM_TRACK_LABELS_FR[programTrack(card.program.kind)]}
+                    {PROGRAM_TRACK_LABELS_FR[programTrack(card.program.kind)]} ·{" "}
+                    {PROGRAM_CATEGORY_LABELS_FR[programCategory(card.program)]}
                   </Badge>
+
                   <Badge variant="secondary" className="font-normal">
                     {PROGRAM_LIFECYCLE_LABELS_FR[programLifecycle(card)]}
                   </Badge>
