@@ -13,6 +13,7 @@ import {
   ArrowRight,
   BookOpen,
   ClipboardCheck,
+  FileCheck,
   FileUp,
   Sparkles,
   Target,
@@ -161,6 +162,7 @@ export function AdminProgramDesigner() {
   const localCohorts = useLocalCohorts(data?.program?.id);
   const localPlacements = useLocalPlacements(data?.program?.id);
   const localCompetences = useLocalCompetences(data?.program?.id);
+  const localRequirements = useLocalDocumentRequirements(data?.program?.id);
 
   const existingCounts = useMemo<Record<ResourceKind, number>>(
     () => ({
