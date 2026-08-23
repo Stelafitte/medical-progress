@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link, Outlet, useRouterState } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { Boxes, HeartPulse, Menu, RotateCcw, UserRound } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { ProgramSwitcher } from "@/components/program-switcher";
-import { navSpacesFor } from "@/components/layout/navigation";
+import {
+  isRouteWithinSpaces,
+  landingRouteFor,
+  navSpacesFor,
+} from "@/components/layout/navigation";
 import { useSession } from "@/application/session";
 import { initials } from "@/lib/initials";
 import { ROLE_LABELS_FR } from "@/domain/roles";
@@ -51,6 +55,9 @@ export function AppShell() {
   } = useSession();
 
   const [mobileOpen, setMobileOpen] = useState(false);
+  /** Demande de recalage vers la première page accessible du nouveau profil. */
+  const [pendingLanding, setPendingLanding] = useState(false);
+  const navigate = useNavigate();
 
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   // Dans la vue « Tous les programmes », aucun programme n'est le périmètre
@@ -62,6 +69,24 @@ export function AppShell() {
     ? allSpaces.filter((space) => space.key === "platform_admin")
     : allSpaces;
   const defaultPersonName = people[0]?.fullName ?? "profil par défaut";
+
+  /**
+   * Après un changement d'identité simulée, l'écran conservé pouvait ne plus
+   * être autorisé (« Accès restreint »). On recale sur la première page
+   * réellement accessible pour les rôles du nouveau profil.
+   */
+  useEffect(() => {
+    if (!pendingLanding) return;
+    setPendingLanding(false);
+    if (isRouteWithinSpaces(allSpaces, pathname)) return;
+    void navigate({ to: landingRouteFor(allSpaces), replace: true });
+  }, [allSpaces, navigate, pathname, pendingLanding]);
+
+  const switchPerson = (id: PersonId) => {
+    setActivePersonId(id);
+    setPendingLanding(true);
+  };
+
 
   return (
     <div className="min-h-screen bg-surface">
@@ -221,7 +246,7 @@ export function AppShell() {
                     ) : null}
                     <DropdownMenuRadioGroup
                       value={person.id}
-                      onValueChange={(value) => setActivePersonId(value as PersonId)}
+                      onValueChange={(value) => switchPerson(value as PersonId)}
                     >
                       {people.map((p) => (
                         <DropdownMenuRadioItem key={p.id} value={p.id}>
@@ -235,7 +260,10 @@ export function AppShell() {
                       ))}
                     </DropdownMenuRadioGroup>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onSelect={() => resetDemoSession()}>
+                    <DropdownMenuItem onSelect={() => {
+                      resetDemoSession();
+                      setPendingLanding(true);
+                    }}>
                       <RotateCcw className="size-4" aria-hidden />
                       Revenir au profil par défaut ({defaultPersonName})
                     </DropdownMenuItem>

@@ -256,3 +256,21 @@ export function navSpacesFor(
     });
   return spaces;
 }
+
+/**
+ * Première page réellement accessible pour les espaces visibles.
+ * Utilisée après un changement de profil : sans cela, l'écran conservé
+ * pouvait afficher « Accès restreint » alors que le profil a d'autres droits.
+ */
+export function landingRouteFor(spaces: readonly NavSpace[]): string {
+  return spaces[0]?.entries[0]?.to ?? "/espace/profil";
+}
+
+/** Vrai si le chemin courant appartient aux espaces visibles. */
+export function isRouteWithinSpaces(spaces: readonly NavSpace[], pathname: string): boolean {
+  return spaces.some((space) =>
+    space.entries.some((entry) =>
+      entry.exact ? pathname === entry.to : pathname.startsWith(entry.to),
+    ),
+  );
+}
