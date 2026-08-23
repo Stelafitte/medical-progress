@@ -70,6 +70,15 @@ export function AdminProgramPilot() {
   );
   const progress = selected ? Math.round(cohortProgressRatio(selected) * 100) : 0;
 
+  const learnerRows = buildLearnerActivityRows({
+    enrollments: cohortEnrollments,
+    people: data.people,
+    logs: cohortLogs,
+    alerts: cohortAlerts,
+    expectedLogsPerLearner: data.templates.length,
+  });
+  const groupSummary = summarizeGroupActivity(learnerRows);
+
   return (
     <div className="space-y-6">
       <SectionHeading
