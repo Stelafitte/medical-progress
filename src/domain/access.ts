@@ -19,14 +19,16 @@ export function canAccessAdministration(
 }
 
 /**
- * Administration DU PROGRAMME : réservée à un administrateur explicitement
- * rattaché au programme sélectionné. Un administrateur de plateforme n'y accède
- * pas automatiquement (les dossiers pédagogiques ne sont pas un droit implicite).
+ * Administration DU PROGRAMME : ouverte à un administrateur rattaché au
+ * programme sélectionné, ainsi qu'à un administrateur de plateforme — ce rôle
+ * est un sur-ensemble : il voit et fait tout ce que fait un administrateur de
+ * programme, sur chaque programme.
  */
 export function canAccessProgramAdministration(
   assignments: readonly RoleAssignment[],
   programId: ProgramId,
 ): boolean {
+  if (canAccessPlatformAdministration(assignments)) return true;
   return assignments.some(
     (a) =>
       a.role === "administrator" && a.scope.kind === "program" && a.scope.programId === programId,

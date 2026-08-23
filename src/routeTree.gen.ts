@@ -20,18 +20,28 @@ import { Route as EspaceEncadrementRouteImport } from './routes/espace.encadreme
 import { Route as EspacePasseportRouteImport } from './routes/espace.passeport'
 import { Route as EspacePlateformeRouteImport } from './routes/espace.plateforme'
 import { Route as EspaceProfilRouteImport } from './routes/espace.profil'
+import { Route as EspaceProgrammesRouteImport } from './routes/espace.programmes'
 import { Route as EspaceRessourcesRouteImport } from './routes/espace.ressources'
 import { Route as EspaceStageRouteImport } from './routes/espace.stage'
 import { Route as EspaceStatistiquesRouteImport } from './routes/espace.statistiques'
 import { Route as EspaceAdministrationIndexRouteImport } from './routes/espace.administration.index'
 import { Route as EspaceAdministrationAssistantDpcRouteImport } from './routes/espace.administration.assistant-dpc'
+import { Route as EspaceAdministrationClassesRouteImport } from './routes/espace.administration.classes'
 import { Route as EspaceAdministrationCommunicationsRouteImport } from './routes/espace.administration.communications'
+import { Route as EspaceAdministrationCompetencesRouteImport } from './routes/espace.administration.competences'
+import { Route as EspaceAdministrationConcepteurRouteImport } from './routes/espace.administration.concepteur'
+import { Route as EspaceAdministrationConnaissancesRouteImport } from './routes/espace.administration.connaissances'
 import { Route as EspaceAdministrationDocumentsRouteImport } from './routes/espace.administration.documents'
 import { Route as EspaceAdministrationDpcRouteImport } from './routes/espace.administration.dpc'
+import { Route as EspaceAdministrationEvaluationsRouteImport } from './routes/espace.administration.evaluations'
 import { Route as EspaceAdministrationGouvernanceRouteImport } from './routes/espace.administration.gouvernance'
 import { Route as EspaceAdministrationOrganisationRouteImport } from './routes/espace.administration.organisation'
 import { Route as EspaceAdministrationPedagogieRouteImport } from './routes/espace.administration.pedagogie'
 import { Route as EspaceAdministrationPersonnesRouteImport } from './routes/espace.administration.personnes'
+import { Route as EspaceAdministrationPilotageRouteImport } from './routes/espace.administration.pilotage'
+import { Route as EspaceAdministrationSecuriteRouteImport } from './routes/espace.administration.securite'
+import { Route as EspaceAdministrationStagesRouteImport } from './routes/espace.administration.stages'
+import { Route as EspaceAdministrationStructureRouteImport } from './routes/espace.administration.structure'
 import { Route as EspaceAdministrationSuiviRouteImport } from './routes/espace.administration.suivi'
 import { Route as EspaceEncadrementIndexRouteImport } from './routes/espace.encadrement.index'
 import { Route as EspaceEncadrementAlertesRouteImport } from './routes/espace.encadrement.alertes'
@@ -100,6 +110,11 @@ const EspaceProfilRoute = EspaceProfilRouteImport.update({
   path: '/profil',
   getParentRoute: () => EspaceRoute,
 } as any)
+const EspaceProgrammesRoute = EspaceProgrammesRouteImport.update({
+  id: '/programmes',
+  path: '/programmes',
+  getParentRoute: () => EspaceRoute,
+} as any)
 const EspaceRessourcesRoute = EspaceRessourcesRouteImport.update({
   id: '/ressources',
   path: '/ressources',
@@ -127,10 +142,34 @@ const EspaceAdministrationAssistantDpcRoute =
     path: '/assistant-dpc',
     getParentRoute: () => EspaceAdministrationRoute,
   } as any)
+const EspaceAdministrationClassesRoute =
+  EspaceAdministrationClassesRouteImport.update({
+    id: '/classes',
+    path: '/classes',
+    getParentRoute: () => EspaceAdministrationRoute,
+  } as any)
 const EspaceAdministrationCommunicationsRoute =
   EspaceAdministrationCommunicationsRouteImport.update({
     id: '/communications',
     path: '/communications',
+    getParentRoute: () => EspaceAdministrationRoute,
+  } as any)
+const EspaceAdministrationCompetencesRoute =
+  EspaceAdministrationCompetencesRouteImport.update({
+    id: '/competences',
+    path: '/competences',
+    getParentRoute: () => EspaceAdministrationRoute,
+  } as any)
+const EspaceAdministrationConcepteurRoute =
+  EspaceAdministrationConcepteurRouteImport.update({
+    id: '/concepteur',
+    path: '/concepteur',
+    getParentRoute: () => EspaceAdministrationRoute,
+  } as any)
+const EspaceAdministrationConnaissancesRoute =
+  EspaceAdministrationConnaissancesRouteImport.update({
+    id: '/connaissances',
+    path: '/connaissances',
     getParentRoute: () => EspaceAdministrationRoute,
   } as any)
 const EspaceAdministrationDocumentsRoute =
@@ -144,6 +183,12 @@ const EspaceAdministrationDpcRoute = EspaceAdministrationDpcRouteImport.update({
   path: '/dpc',
   getParentRoute: () => EspaceAdministrationRoute,
 } as any)
+const EspaceAdministrationEvaluationsRoute =
+  EspaceAdministrationEvaluationsRouteImport.update({
+    id: '/evaluations',
+    path: '/evaluations',
+    getParentRoute: () => EspaceAdministrationRoute,
+  } as any)
 const EspaceAdministrationGouvernanceRoute =
   EspaceAdministrationGouvernanceRouteImport.update({
     id: '/gouvernance',
@@ -166,6 +211,30 @@ const EspaceAdministrationPersonnesRoute =
   EspaceAdministrationPersonnesRouteImport.update({
     id: '/personnes',
     path: '/personnes',
+    getParentRoute: () => EspaceAdministrationRoute,
+  } as any)
+const EspaceAdministrationPilotageRoute =
+  EspaceAdministrationPilotageRouteImport.update({
+    id: '/pilotage',
+    path: '/pilotage',
+    getParentRoute: () => EspaceAdministrationRoute,
+  } as any)
+const EspaceAdministrationSecuriteRoute =
+  EspaceAdministrationSecuriteRouteImport.update({
+    id: '/securite',
+    path: '/securite',
+    getParentRoute: () => EspaceAdministrationRoute,
+  } as any)
+const EspaceAdministrationStagesRoute =
+  EspaceAdministrationStagesRouteImport.update({
+    id: '/stages',
+    path: '/stages',
+    getParentRoute: () => EspaceAdministrationRoute,
+  } as any)
+const EspaceAdministrationStructureRoute =
+  EspaceAdministrationStructureRouteImport.update({
+    id: '/structure',
+    path: '/structure',
     getParentRoute: () => EspaceAdministrationRoute,
   } as any)
 const EspaceAdministrationSuiviRoute =
@@ -247,18 +316,28 @@ export interface FileRoutesByFullPath {
   '/espace/passeport': typeof EspacePasseportRoute
   '/espace/plateforme': typeof EspacePlateformeRoute
   '/espace/profil': typeof EspaceProfilRoute
+  '/espace/programmes': typeof EspaceProgrammesRoute
   '/espace/ressources': typeof EspaceRessourcesRouteWithChildren
   '/espace/stage': typeof EspaceStageRoute
   '/espace/statistiques': typeof EspaceStatistiquesRoute
   '/espace/': typeof EspaceIndexRoute
   '/espace/administration/assistant-dpc': typeof EspaceAdministrationAssistantDpcRoute
+  '/espace/administration/classes': typeof EspaceAdministrationClassesRoute
   '/espace/administration/communications': typeof EspaceAdministrationCommunicationsRoute
+  '/espace/administration/competences': typeof EspaceAdministrationCompetencesRoute
+  '/espace/administration/concepteur': typeof EspaceAdministrationConcepteurRoute
+  '/espace/administration/connaissances': typeof EspaceAdministrationConnaissancesRoute
   '/espace/administration/documents': typeof EspaceAdministrationDocumentsRoute
   '/espace/administration/dpc': typeof EspaceAdministrationDpcRoute
+  '/espace/administration/evaluations': typeof EspaceAdministrationEvaluationsRoute
   '/espace/administration/gouvernance': typeof EspaceAdministrationGouvernanceRoute
   '/espace/administration/organisation': typeof EspaceAdministrationOrganisationRoute
   '/espace/administration/pedagogie': typeof EspaceAdministrationPedagogieRoute
   '/espace/administration/personnes': typeof EspaceAdministrationPersonnesRoute
+  '/espace/administration/pilotage': typeof EspaceAdministrationPilotageRoute
+  '/espace/administration/securite': typeof EspaceAdministrationSecuriteRoute
+  '/espace/administration/stages': typeof EspaceAdministrationStagesRoute
+  '/espace/administration/structure': typeof EspaceAdministrationStructureRoute
   '/espace/administration/suivi': typeof EspaceAdministrationSuiviRoute
   '/espace/encadrement/alertes': typeof EspaceEncadrementAlertesRoute
   '/espace/encadrement/bilans': typeof EspaceEncadrementBilansRoute
@@ -281,17 +360,27 @@ export interface FileRoutesByTo {
   '/espace/passeport': typeof EspacePasseportRoute
   '/espace/plateforme': typeof EspacePlateformeRoute
   '/espace/profil': typeof EspaceProfilRoute
+  '/espace/programmes': typeof EspaceProgrammesRoute
   '/espace/stage': typeof EspaceStageRoute
   '/espace/statistiques': typeof EspaceStatistiquesRoute
   '/espace': typeof EspaceIndexRoute
   '/espace/administration/assistant-dpc': typeof EspaceAdministrationAssistantDpcRoute
+  '/espace/administration/classes': typeof EspaceAdministrationClassesRoute
   '/espace/administration/communications': typeof EspaceAdministrationCommunicationsRoute
+  '/espace/administration/competences': typeof EspaceAdministrationCompetencesRoute
+  '/espace/administration/concepteur': typeof EspaceAdministrationConcepteurRoute
+  '/espace/administration/connaissances': typeof EspaceAdministrationConnaissancesRoute
   '/espace/administration/documents': typeof EspaceAdministrationDocumentsRoute
   '/espace/administration/dpc': typeof EspaceAdministrationDpcRoute
+  '/espace/administration/evaluations': typeof EspaceAdministrationEvaluationsRoute
   '/espace/administration/gouvernance': typeof EspaceAdministrationGouvernanceRoute
   '/espace/administration/organisation': typeof EspaceAdministrationOrganisationRoute
   '/espace/administration/pedagogie': typeof EspaceAdministrationPedagogieRoute
   '/espace/administration/personnes': typeof EspaceAdministrationPersonnesRoute
+  '/espace/administration/pilotage': typeof EspaceAdministrationPilotageRoute
+  '/espace/administration/securite': typeof EspaceAdministrationSecuriteRoute
+  '/espace/administration/stages': typeof EspaceAdministrationStagesRoute
+  '/espace/administration/structure': typeof EspaceAdministrationStructureRoute
   '/espace/administration/suivi': typeof EspaceAdministrationSuiviRoute
   '/espace/encadrement/alertes': typeof EspaceEncadrementAlertesRoute
   '/espace/encadrement/bilans': typeof EspaceEncadrementBilansRoute
@@ -318,18 +407,28 @@ export interface FileRoutesById {
   '/espace/passeport': typeof EspacePasseportRoute
   '/espace/plateforme': typeof EspacePlateformeRoute
   '/espace/profil': typeof EspaceProfilRoute
+  '/espace/programmes': typeof EspaceProgrammesRoute
   '/espace/ressources': typeof EspaceRessourcesRouteWithChildren
   '/espace/stage': typeof EspaceStageRoute
   '/espace/statistiques': typeof EspaceStatistiquesRoute
   '/espace/': typeof EspaceIndexRoute
   '/espace/administration/assistant-dpc': typeof EspaceAdministrationAssistantDpcRoute
+  '/espace/administration/classes': typeof EspaceAdministrationClassesRoute
   '/espace/administration/communications': typeof EspaceAdministrationCommunicationsRoute
+  '/espace/administration/competences': typeof EspaceAdministrationCompetencesRoute
+  '/espace/administration/concepteur': typeof EspaceAdministrationConcepteurRoute
+  '/espace/administration/connaissances': typeof EspaceAdministrationConnaissancesRoute
   '/espace/administration/documents': typeof EspaceAdministrationDocumentsRoute
   '/espace/administration/dpc': typeof EspaceAdministrationDpcRoute
+  '/espace/administration/evaluations': typeof EspaceAdministrationEvaluationsRoute
   '/espace/administration/gouvernance': typeof EspaceAdministrationGouvernanceRoute
   '/espace/administration/organisation': typeof EspaceAdministrationOrganisationRoute
   '/espace/administration/pedagogie': typeof EspaceAdministrationPedagogieRoute
   '/espace/administration/personnes': typeof EspaceAdministrationPersonnesRoute
+  '/espace/administration/pilotage': typeof EspaceAdministrationPilotageRoute
+  '/espace/administration/securite': typeof EspaceAdministrationSecuriteRoute
+  '/espace/administration/stages': typeof EspaceAdministrationStagesRoute
+  '/espace/administration/structure': typeof EspaceAdministrationStructureRoute
   '/espace/administration/suivi': typeof EspaceAdministrationSuiviRoute
   '/espace/encadrement/alertes': typeof EspaceEncadrementAlertesRoute
   '/espace/encadrement/bilans': typeof EspaceEncadrementBilansRoute
@@ -357,18 +456,28 @@ export interface FileRouteTypes {
     | '/espace/passeport'
     | '/espace/plateforme'
     | '/espace/profil'
+    | '/espace/programmes'
     | '/espace/ressources'
     | '/espace/stage'
     | '/espace/statistiques'
     | '/espace/'
     | '/espace/administration/assistant-dpc'
+    | '/espace/administration/classes'
     | '/espace/administration/communications'
+    | '/espace/administration/competences'
+    | '/espace/administration/concepteur'
+    | '/espace/administration/connaissances'
     | '/espace/administration/documents'
     | '/espace/administration/dpc'
+    | '/espace/administration/evaluations'
     | '/espace/administration/gouvernance'
     | '/espace/administration/organisation'
     | '/espace/administration/pedagogie'
     | '/espace/administration/personnes'
+    | '/espace/administration/pilotage'
+    | '/espace/administration/securite'
+    | '/espace/administration/stages'
+    | '/espace/administration/structure'
     | '/espace/administration/suivi'
     | '/espace/encadrement/alertes'
     | '/espace/encadrement/bilans'
@@ -391,17 +500,27 @@ export interface FileRouteTypes {
     | '/espace/passeport'
     | '/espace/plateforme'
     | '/espace/profil'
+    | '/espace/programmes'
     | '/espace/stage'
     | '/espace/statistiques'
     | '/espace'
     | '/espace/administration/assistant-dpc'
+    | '/espace/administration/classes'
     | '/espace/administration/communications'
+    | '/espace/administration/competences'
+    | '/espace/administration/concepteur'
+    | '/espace/administration/connaissances'
     | '/espace/administration/documents'
     | '/espace/administration/dpc'
+    | '/espace/administration/evaluations'
     | '/espace/administration/gouvernance'
     | '/espace/administration/organisation'
     | '/espace/administration/pedagogie'
     | '/espace/administration/personnes'
+    | '/espace/administration/pilotage'
+    | '/espace/administration/securite'
+    | '/espace/administration/stages'
+    | '/espace/administration/structure'
     | '/espace/administration/suivi'
     | '/espace/encadrement/alertes'
     | '/espace/encadrement/bilans'
@@ -427,18 +546,28 @@ export interface FileRouteTypes {
     | '/espace/passeport'
     | '/espace/plateforme'
     | '/espace/profil'
+    | '/espace/programmes'
     | '/espace/ressources'
     | '/espace/stage'
     | '/espace/statistiques'
     | '/espace/'
     | '/espace/administration/assistant-dpc'
+    | '/espace/administration/classes'
     | '/espace/administration/communications'
+    | '/espace/administration/competences'
+    | '/espace/administration/concepteur'
+    | '/espace/administration/connaissances'
     | '/espace/administration/documents'
     | '/espace/administration/dpc'
+    | '/espace/administration/evaluations'
     | '/espace/administration/gouvernance'
     | '/espace/administration/organisation'
     | '/espace/administration/pedagogie'
     | '/espace/administration/personnes'
+    | '/espace/administration/pilotage'
+    | '/espace/administration/securite'
+    | '/espace/administration/stages'
+    | '/espace/administration/structure'
     | '/espace/administration/suivi'
     | '/espace/encadrement/alertes'
     | '/espace/encadrement/bilans'
@@ -538,6 +667,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EspaceProfilRouteImport
       parentRoute: typeof EspaceRoute
     }
+    '/espace/programmes': {
+      id: '/espace/programmes'
+      path: '/programmes'
+      fullPath: '/espace/programmes'
+      preLoaderRoute: typeof EspaceProgrammesRouteImport
+      parentRoute: typeof EspaceRoute
+    }
     '/espace/ressources': {
       id: '/espace/ressources'
       path: '/ressources'
@@ -573,11 +709,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EspaceAdministrationAssistantDpcRouteImport
       parentRoute: typeof EspaceAdministrationRoute
     }
+    '/espace/administration/classes': {
+      id: '/espace/administration/classes'
+      path: '/classes'
+      fullPath: '/espace/administration/classes'
+      preLoaderRoute: typeof EspaceAdministrationClassesRouteImport
+      parentRoute: typeof EspaceAdministrationRoute
+    }
     '/espace/administration/communications': {
       id: '/espace/administration/communications'
       path: '/communications'
       fullPath: '/espace/administration/communications'
       preLoaderRoute: typeof EspaceAdministrationCommunicationsRouteImport
+      parentRoute: typeof EspaceAdministrationRoute
+    }
+    '/espace/administration/competences': {
+      id: '/espace/administration/competences'
+      path: '/competences'
+      fullPath: '/espace/administration/competences'
+      preLoaderRoute: typeof EspaceAdministrationCompetencesRouteImport
+      parentRoute: typeof EspaceAdministrationRoute
+    }
+    '/espace/administration/concepteur': {
+      id: '/espace/administration/concepteur'
+      path: '/concepteur'
+      fullPath: '/espace/administration/concepteur'
+      preLoaderRoute: typeof EspaceAdministrationConcepteurRouteImport
+      parentRoute: typeof EspaceAdministrationRoute
+    }
+    '/espace/administration/connaissances': {
+      id: '/espace/administration/connaissances'
+      path: '/connaissances'
+      fullPath: '/espace/administration/connaissances'
+      preLoaderRoute: typeof EspaceAdministrationConnaissancesRouteImport
       parentRoute: typeof EspaceAdministrationRoute
     }
     '/espace/administration/documents': {
@@ -592,6 +756,13 @@ declare module '@tanstack/react-router' {
       path: '/dpc'
       fullPath: '/espace/administration/dpc'
       preLoaderRoute: typeof EspaceAdministrationDpcRouteImport
+      parentRoute: typeof EspaceAdministrationRoute
+    }
+    '/espace/administration/evaluations': {
+      id: '/espace/administration/evaluations'
+      path: '/evaluations'
+      fullPath: '/espace/administration/evaluations'
+      preLoaderRoute: typeof EspaceAdministrationEvaluationsRouteImport
       parentRoute: typeof EspaceAdministrationRoute
     }
     '/espace/administration/gouvernance': {
@@ -620,6 +791,34 @@ declare module '@tanstack/react-router' {
       path: '/personnes'
       fullPath: '/espace/administration/personnes'
       preLoaderRoute: typeof EspaceAdministrationPersonnesRouteImport
+      parentRoute: typeof EspaceAdministrationRoute
+    }
+    '/espace/administration/pilotage': {
+      id: '/espace/administration/pilotage'
+      path: '/pilotage'
+      fullPath: '/espace/administration/pilotage'
+      preLoaderRoute: typeof EspaceAdministrationPilotageRouteImport
+      parentRoute: typeof EspaceAdministrationRoute
+    }
+    '/espace/administration/securite': {
+      id: '/espace/administration/securite'
+      path: '/securite'
+      fullPath: '/espace/administration/securite'
+      preLoaderRoute: typeof EspaceAdministrationSecuriteRouteImport
+      parentRoute: typeof EspaceAdministrationRoute
+    }
+    '/espace/administration/stages': {
+      id: '/espace/administration/stages'
+      path: '/stages'
+      fullPath: '/espace/administration/stages'
+      preLoaderRoute: typeof EspaceAdministrationStagesRouteImport
+      parentRoute: typeof EspaceAdministrationRoute
+    }
+    '/espace/administration/structure': {
+      id: '/espace/administration/structure'
+      path: '/structure'
+      fullPath: '/espace/administration/structure'
+      preLoaderRoute: typeof EspaceAdministrationStructureRouteImport
       parentRoute: typeof EspaceAdministrationRoute
     }
     '/espace/administration/suivi': {
@@ -711,27 +910,46 @@ declare module '@tanstack/react-router' {
 
 interface EspaceAdministrationRouteChildren {
   EspaceAdministrationAssistantDpcRoute: typeof EspaceAdministrationAssistantDpcRoute
+  EspaceAdministrationClassesRoute: typeof EspaceAdministrationClassesRoute
   EspaceAdministrationCommunicationsRoute: typeof EspaceAdministrationCommunicationsRoute
+  EspaceAdministrationCompetencesRoute: typeof EspaceAdministrationCompetencesRoute
+  EspaceAdministrationConcepteurRoute: typeof EspaceAdministrationConcepteurRoute
+  EspaceAdministrationConnaissancesRoute: typeof EspaceAdministrationConnaissancesRoute
   EspaceAdministrationDocumentsRoute: typeof EspaceAdministrationDocumentsRoute
   EspaceAdministrationDpcRoute: typeof EspaceAdministrationDpcRoute
+  EspaceAdministrationEvaluationsRoute: typeof EspaceAdministrationEvaluationsRoute
   EspaceAdministrationGouvernanceRoute: typeof EspaceAdministrationGouvernanceRoute
   EspaceAdministrationOrganisationRoute: typeof EspaceAdministrationOrganisationRoute
   EspaceAdministrationPedagogieRoute: typeof EspaceAdministrationPedagogieRoute
   EspaceAdministrationPersonnesRoute: typeof EspaceAdministrationPersonnesRoute
+  EspaceAdministrationPilotageRoute: typeof EspaceAdministrationPilotageRoute
+  EspaceAdministrationSecuriteRoute: typeof EspaceAdministrationSecuriteRoute
+  EspaceAdministrationStagesRoute: typeof EspaceAdministrationStagesRoute
+  EspaceAdministrationStructureRoute: typeof EspaceAdministrationStructureRoute
   EspaceAdministrationSuiviRoute: typeof EspaceAdministrationSuiviRoute
   EspaceAdministrationIndexRoute: typeof EspaceAdministrationIndexRoute
 }
 
 const EspaceAdministrationRouteChildren: EspaceAdministrationRouteChildren = {
   EspaceAdministrationAssistantDpcRoute: EspaceAdministrationAssistantDpcRoute,
+  EspaceAdministrationClassesRoute: EspaceAdministrationClassesRoute,
   EspaceAdministrationCommunicationsRoute:
     EspaceAdministrationCommunicationsRoute,
+  EspaceAdministrationCompetencesRoute: EspaceAdministrationCompetencesRoute,
+  EspaceAdministrationConcepteurRoute: EspaceAdministrationConcepteurRoute,
+  EspaceAdministrationConnaissancesRoute:
+    EspaceAdministrationConnaissancesRoute,
   EspaceAdministrationDocumentsRoute: EspaceAdministrationDocumentsRoute,
   EspaceAdministrationDpcRoute: EspaceAdministrationDpcRoute,
+  EspaceAdministrationEvaluationsRoute: EspaceAdministrationEvaluationsRoute,
   EspaceAdministrationGouvernanceRoute: EspaceAdministrationGouvernanceRoute,
   EspaceAdministrationOrganisationRoute: EspaceAdministrationOrganisationRoute,
   EspaceAdministrationPedagogieRoute: EspaceAdministrationPedagogieRoute,
   EspaceAdministrationPersonnesRoute: EspaceAdministrationPersonnesRoute,
+  EspaceAdministrationPilotageRoute: EspaceAdministrationPilotageRoute,
+  EspaceAdministrationSecuriteRoute: EspaceAdministrationSecuriteRoute,
+  EspaceAdministrationStagesRoute: EspaceAdministrationStagesRoute,
+  EspaceAdministrationStructureRoute: EspaceAdministrationStructureRoute,
   EspaceAdministrationSuiviRoute: EspaceAdministrationSuiviRoute,
   EspaceAdministrationIndexRoute: EspaceAdministrationIndexRoute,
 }
@@ -789,6 +1007,7 @@ interface EspaceRouteChildren {
   EspacePasseportRoute: typeof EspacePasseportRoute
   EspacePlateformeRoute: typeof EspacePlateformeRoute
   EspaceProfilRoute: typeof EspaceProfilRoute
+  EspaceProgrammesRoute: typeof EspaceProgrammesRoute
   EspaceRessourcesRoute: typeof EspaceRessourcesRouteWithChildren
   EspaceStageRoute: typeof EspaceStageRoute
   EspaceStatistiquesRoute: typeof EspaceStatistiquesRoute
@@ -804,6 +1023,7 @@ const EspaceRouteChildren: EspaceRouteChildren = {
   EspacePasseportRoute: EspacePasseportRoute,
   EspacePlateformeRoute: EspacePlateformeRoute,
   EspaceProfilRoute: EspaceProfilRoute,
+  EspaceProgrammesRoute: EspaceProgrammesRoute,
   EspaceRessourcesRoute: EspaceRessourcesRouteWithChildren,
   EspaceStageRoute: EspaceStageRoute,
   EspaceStatistiquesRoute: EspaceStatistiquesRoute,
