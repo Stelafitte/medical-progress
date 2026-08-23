@@ -175,9 +175,18 @@ export function filterProgramCards(
       return false;
     }
     if (
+      filters.categories.length > 0 &&
+      !filters.categories.includes(programCategory(card.program))
+    ) {
+      return false;
+    }
+    if (
       filters.lifecycles.length > 0 &&
       !filters.lifecycles.includes(programLifecycle(card, now))
     ) {
+      return false;
+    }
+
       return false;
     }
     return matchesDateWindow(card, filters.from, filters.to);
