@@ -162,3 +162,59 @@ export function parseReferentialText(text: string): readonly ParsedReferentialRo
       };
     });
 }
+
+/* ------------------------------------------------------------------ */
+/* Diff d'import : nouveaux / modifiés / inchangés                     */
+/* ------------------------------------------------------------------ */
+
+export type ReferentialDiffKind = "new" | "changed" | "unchanged" | "ignored";
+
+export interface ReferentialDiffRow extends ParsedReferentialRow {
+  readonly kind: ReferentialDiffKind;
+  /** Intitulé actuellement enregistré, si le code existe déjà. */
+  readonly existingLabel: string | null;
+}
+
+export interface ReferentialDiff {
+  readonly rows: readonly ReferentialDiffRow[];
+  readonly newCount: number;
+  readonly changedCount: number;
+  readonly unchangedCount: number;
+  readonly ignoredCount: number;
+}
+
+/**
+ * Compare des lignes importées au référentiel existant.
+ * « ignored » : nature absente ou de type connaissance — hors périmètre de cet
+ * onglet, la ligne relève de la base de connaissances.
+ */
+export function diffReferentialRows(
+  parsed: readonly ParsedReferentialRow[],
+  outcomes: readonly Outcome[],
+): ReferentialDiff {
+  const byCode = new Map(competenceOutcomes(outcomes).map((o) => [o.code.toLowerCase(), o]));
+  const rows = parsed.map<ReferentialDiffRow>((row) => {
+    const isCompetence = row.nature === "simulated_competence" || row.nature === "real_competence";
+    const existing = byCode.get(row.code.toLowerCase()) ?? null;
+    if (!isCompetence) {
+      return { ...row, kind: "ignored", existingLabel: existing?.label ?? null };
+    }
+    if (!existing) return { ...row, kind: "new", existingLabel: null };
+    const changed = existing.label.trim() !== row.label.trim() || existing.nature !== row.nature;
+    return { ...row, kind: changed ? "changed" : "unchanged", existingLabel: existing.label };
+  });
+  return {
+    rows,
+    newCount: rows.filter((r) => r.kind === "new").length,
+    changedCount: rows.filter((r) => r.kind === "changed").length,
+    unchangedCount: rows.filter((r) => r.kind === "unchanged").length,
+    ignoredCount: rows.filter((r) => r.kind === "ignored").length,
+  };
+}
+
+export const REFERENTIAL_DIFF_LABELS_FR: Record<ReferentialDiffKind, string> = {
+  new: "nouvelle",
+  changed: "modifiée (code déjà présent)",
+  unchanged: "inchangée",
+  ignored: "ignorée (hors compétences)",
+};
