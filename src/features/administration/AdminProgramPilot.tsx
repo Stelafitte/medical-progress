@@ -28,6 +28,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState, MockBadge, PanelCard, ScopeNotice } from "@/features/professional/mock-ui";
 import { AdminCommunications } from "@/features/administration/AdminCommunications";
 import { CohortSelector } from "@/features/administration/CohortSelector";
+import { AssessmentModalitySection } from "@/features/administration/AssessmentModalitySection";
 import { LearnerTrackingSection } from "@/features/administration/LearnerTrackingSection";
 import { personNameFor, useProgramAdmin } from "@/features/administration/useProgramAdmin";
 import {
@@ -291,6 +292,17 @@ export function AdminProgramPilot() {
             showCohortSelector={false}
             description="Bases théoriques, compétences, stage et évaluations pour chaque apprenant de la promotion pilotée. Vue identique à celle de l'onglet « Classes d'apprenants »."
           />
+
+          {/* Évaluation : même bloc que l'onglet « Évaluations ». */}
+          {data.program ? (
+            <AssessmentModalitySection
+              programId={data.program.id}
+              cohorts={data.cohorts}
+              cohortId={selectedId}
+              showCohortSelector={false}
+            />
+          ) : null}
+
 
 
           <PilotTools
