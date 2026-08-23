@@ -324,7 +324,7 @@ export function AdminProgramDesigner() {
       >
         {/* a) modèle existant */}
         <fieldset className="space-y-2">
-          <legend className="text-sm font-medium">a. Sélectionner un modèle existant</legend>
+          <legend className="text-sm font-medium">Sélectionner un modèle existant</legend>
           {data.versions.length === 0 ? (
             <EmptyState>Aucun modèle de programme enregistré.</EmptyState>
           ) : (
@@ -363,7 +363,7 @@ export function AdminProgramDesigner() {
         {/* b) création du modèle */}
         <fieldset className="border-border space-y-3 rounded-md border p-4">
           <legend className="px-1 text-sm font-medium">
-            b. Sinon, créer le modèle et ses objectifs pédagogiques
+            Sinon, créer le modèle et ses objectifs pédagogiques
           </legend>
           <div className="space-y-1.5">
             <Label htmlFor="model-name">Nom du modèle</Label>
@@ -406,7 +406,7 @@ export function AdminProgramDesigner() {
         {/* c) analyse IA */}
         <fieldset className="border-border space-y-3 rounded-md border p-4">
           <legend className="px-1 text-sm font-medium">
-            c. Analyse du programme et ressources nécessaires
+            Analyse du programme et ressources nécessaires
           </legend>
           <div className="flex flex-wrap items-center gap-2">
             <Button
@@ -737,7 +737,7 @@ export function AdminProgramDesigner() {
         }
       >
         <fieldset className="border-border space-y-3 rounded-md border p-4">
-          <legend className="px-1 text-sm font-medium">a. Bornes du programme</legend>
+          <legend className="px-1 text-sm font-medium">Bornes du programme</legend>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label htmlFor="program-starts-on">Début du programme</Label>
@@ -767,7 +767,7 @@ export function AdminProgramDesigner() {
 
         <fieldset className="border-border space-y-3 rounded-md border p-4">
           <legend className="px-1 text-sm font-medium">
-            b. Échéances des éléments du programme
+            Échéances des éléments du programme
           </legend>
           {scheduleItems.length === 0 ? (
             <EmptyState>
