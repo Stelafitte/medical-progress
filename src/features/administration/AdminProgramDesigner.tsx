@@ -271,6 +271,8 @@ export function AdminProgramDesigner() {
     setSchedule((prev) => ({ ...prev, [id]: { ...(prev[id] ?? INITIAL_SCHEDULE), ...next } }));
 
   const patch = (id: ResourceKind, next: Partial<ResourceState>) =>
+    setResources((prev) => ({ ...prev, [id]: { ...prev[id], ...next } }));
+
 
 
   const runAnalysis = () => {
