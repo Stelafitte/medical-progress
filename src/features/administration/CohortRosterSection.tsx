@@ -290,12 +290,15 @@ export function CohortRosterSection({
             Déposez un fichier ou collez une liste pour afficher le contrôle avant import.
           </EmptyState>
         )}
-      </PanelCard>
+      </div>
+    </div>
+  );
 
-      <PanelCard
-        title="Exporter une promotion"
-        description="Export CSV des identités et des états d'inscription. Les instantanés statistiques restent conservés d'une année à l'autre."
-      >
+  const exportBlock = (
+    <PanelCard
+      title="Exporter une promotion"
+      description="Export CSV des identités et des états d'inscription. Les instantanés statistiques restent conservés d'une année à l'autre."
+    >
         <div className="flex flex-wrap items-end gap-3">
           <div className="min-w-56 space-y-2">
             <Label htmlFor="export-cohort">Promotion</Label>
