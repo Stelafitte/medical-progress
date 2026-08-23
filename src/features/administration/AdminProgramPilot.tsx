@@ -442,7 +442,35 @@ function LearnerManagementPanel({
   return (
     <div className="space-y-5">
       <div className="space-y-2">
+        <h3 className="text-sm font-semibold">Activité des apprenants</h3>
+        <GroupStats summary={summary} />
+        <ul className="space-y-2 text-sm">
+          {rows.map((row) => (
+            <li
+              key={`activity-${row.enrollmentId}`}
+              className="border-border flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md border p-3"
+            >
+              <span className="font-medium">{row.personName}</span>
+              <MarkerBadge row={row} />
+              <span className="text-muted-foreground text-xs">
+                {row.logCount} carnet(s) · {row.entryCount} observation(s) · {row.validatedCount}{" "}
+                validé(s)
+              </span>
+              {row.lastActivityAt ? (
+                <span className="text-muted-foreground font-mono text-xs">
+                  dernier dépôt {formatFrDate(row.lastActivityAt)}
+                </span>
+              ) : (
+                <span className="text-muted-foreground text-xs">aucun dépôt</span>
+              )}
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div className="space-y-2">
         <h3 className="text-sm font-semibold">Marqueurs d'avancement</h3>
+
         <ul className="space-y-2 text-sm">
           {rows.map((row) => (
             <li key={row.enrollmentId} className="border-border space-y-2 rounded-md border p-3">
