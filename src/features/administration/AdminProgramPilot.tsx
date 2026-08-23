@@ -28,6 +28,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState, MockBadge, PanelCard, ScopeNotice } from "@/features/professional/mock-ui";
 import { AdminCommunications } from "@/features/administration/AdminCommunications";
 import { CohortSelector } from "@/features/administration/CohortSelector";
+import { LearnerTrackingSection } from "@/features/administration/LearnerTrackingSection";
 import { personNameFor, useProgramAdmin } from "@/features/administration/useProgramAdmin";
 import {
   COHORT_PHASE_LABELS_FR,
@@ -282,6 +283,14 @@ export function AdminProgramPilot() {
               );
             })()}
           </PanelCard>
+
+          {/* Table de suivi croisée : même composant que dans « Classes d'apprenants ». */}
+          <LearnerTrackingSection
+            data={data}
+            cohortId={selectedId}
+            showCohortSelector={false}
+            description="Bases théoriques, compétences, stage et évaluations pour chaque apprenant de la promotion pilotée. Vue identique à celle de l'onglet « Classes d'apprenants »."
+          />
 
 
           <PilotTools
