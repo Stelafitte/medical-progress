@@ -15,13 +15,35 @@ import type { ProgramId } from "@/domain/types";
  * pour tenir dans l'en-tête dès 360 px sans débordement.
  */
 export function ProgramSwitcher({ variant = "compact" }: { variant?: "compact" | "full" }) {
-  const { programs, activeProgram, setActiveProgramId, canAccessPlatformAdministration } =
-    useSession();
+  const {
+    programs,
+    activeProgram,
+    setActiveProgramId,
+    canAccessPlatformAdministration,
+    roles,
+    enrollments,
+  } = useSession();
   const navigate = useNavigate();
   const isPlatformOverview = useRouterState({
     select: (state) => state.location.pathname === "/espace/plateforme",
   });
   const showsAllPrograms = canAccessPlatformAdministration && isPlatformOverview;
+
+  /**
+   * Un rôle « plateforme » donne accès à tous les programmes. Sinon, on ne
+   * propose que les programmes où la personne possède réellement un rôle ou une
+   * inscription : basculer ailleurs afficherait un écran sans aucun droit.
+   */
+  const scopedProgramIds = new Set<string>([
+    ...roles.flatMap((r) => ("programId" in r.scope ? [r.scope.programId as string] : [])),
+    ...enrollments.map((e) => e.programId as string),
+  ]);
+  const hasPlatformScope = roles.some((r) => r.scope.kind === "platform");
+  const selectablePrograms =
+    hasPlatformScope || scopedProgramIds.size === 0
+      ? programs
+      : programs.filter((p) => scopedProgramIds.has(p.id) || p.id === activeProgram.id);
+
 
   const handleChange = (value: string) => {
     if (value === "all-programs") {
@@ -60,7 +82,7 @@ export function ProgramSwitcher({ variant = "compact" }: { variant?: "compact" |
               <span>Tous les programmes</span>
             </SelectItem>
           ) : null}
-          {programs.map((program) => (
+          {selectablePrograms.map((program) => (
             <SelectItem key={program.id} value={program.id}>
               <span className="sm:hidden">{program.code}</span>
               <span className="hidden sm:inline">{program.name}</span>
