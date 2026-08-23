@@ -29,6 +29,9 @@ import { EmptyState, MockBadge, PanelCard, ScopeNotice } from "@/features/profes
 import { AdminCommunications } from "@/features/administration/AdminCommunications";
 import { CohortSelector } from "@/features/administration/CohortSelector";
 import { AssessmentModalitySection } from "@/features/administration/AssessmentModalitySection";
+import { PlacementSection } from "@/features/administration/PlacementSection";
+import { useLocalPlacements } from "@/application/placementDraftStore";
+import { mergePlacements } from "@/domain/placementDraft";
 import { LearnerTrackingSection } from "@/features/administration/LearnerTrackingSection";
 import { personNameFor, useProgramAdmin } from "@/features/administration/useProgramAdmin";
 import {
@@ -68,6 +71,7 @@ export function AdminProgramPilot() {
   const { data, isPending } = useProgramAdmin();
   const { promotion } = useSearch({ from: "/espace/administration/pilotage" });
   const [cohortId, setCohortId] = useState<string | null>(null);
+  const localPlacements = useLocalPlacements(data?.program?.id);
 
   const cohorts = data?.cohorts ?? [];
   // Priorité : choix explicite de l'utilisateur, puis lien profond venu de « Classes ».
@@ -245,45 +249,28 @@ export function AdminProgramPilot() {
             </PanelCard>
           </div>
 
-          {/* Périodes datées : elles appartiennent à l'exploitation, pas au modèle
-              décrit dans « Gestion des stages ». */}
-          <PanelCard
-            title="Périodes de stage de la promotion"
-            description="Affectations datées des apprenants de cette promotion."
-            action={<MockBadge />}
-          >
-            {(() => {
-              const cohortAssignments = data.assignments.filter((assignment) =>
-                cohortEnrollments.some((e) => e.id === assignment.enrollmentId),
-              );
-              if (cohortAssignments.length === 0)
-                return <EmptyState>Aucune période de stage sur cette promotion.</EmptyState>;
-              return (
-                <ul className="space-y-2 text-sm">
-                  {cohortAssignments.map((assignment) => (
-                    <li
-                      key={assignment.id}
-                      className="border-border flex flex-wrap items-center gap-2 rounded-md border p-3"
-                    >
-                      <span className="font-mono text-xs">
-                        {formatFrDate(assignment.startsOn)} → {formatFrDate(assignment.endsOn)}
-                      </span>
-                      <span className="font-medium">
-                        {personNameFor(data, assignment.enrollmentId)}
-                      </span>
-                      <Badge variant="outline" className="font-normal">
-                        {data.placements.find((p) => p.id === assignment.placementId)?.name ??
-                          assignment.placementId}
-                      </Badge>
-                      <Badge variant="secondary" className="font-normal">
-                        {assignment.status}
-                      </Badge>
-                    </li>
-                  ))}
-                </ul>
-              );
-            })()}
-          </PanelCard>
+          {/* Stages : MÊME bloc que l'onglet « Gestion des stages », en mode suivi
+              (aucune création de terrain ici, le modèle reste dans l'onglet dédié). */}
+          {data.program ? (
+            <PlacementSection
+              programId={data.program.id}
+              programName={data.program.name}
+              placements={mergePlacements(data.placements, localPlacements)}
+              localPlacements={localPlacements}
+              assignments={data.assignments}
+              enrollments={data.enrollments}
+              people={data.people}
+              cohorts={data.cohorts}
+              templates={data.templates}
+              competencesExpected={Math.max(
+                1,
+                data.outcomes.filter((outcome) => outcome.nature === "real_competence").length,
+              )}
+              cohortId={selectedId}
+              showCohortSelector={false}
+              showCreation={false}
+            />
+          ) : null}
 
           {/* Table de suivi croisée : même composant que dans « Classes d'apprenants ». */}
           <LearnerTrackingSection
@@ -300,6 +287,7 @@ export function AdminProgramPilot() {
               cohorts={data.cohorts}
               cohortId={selectedId}
               showCohortSelector={false}
+              showCreation={false}
             />
           ) : null}
 
