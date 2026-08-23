@@ -198,25 +198,56 @@ export function AdminProgramPilot() {
 
           <PanelCard
             title="Outils de pilotage"
-            description="Communications, statistiques et documents restent des écrans dédiés."
+            description="Chaque outil s'ouvre directement ici, sans quitter la promotion pilotée."
+            action={<MockBadge />}
           >
-            <div className="flex flex-wrap gap-2">
-              <Button asChild variant="outline" className="min-h-11">
-                <Link to="/espace/administration/communications">Communications</Link>
-              </Button>
-              <Button asChild variant="outline" className="min-h-11">
-                <Link to="/espace/statistiques">Statistiques</Link>
-              </Button>
-              <Button asChild variant="outline" className="min-h-11">
-                <Link to="/espace/administration/documents">Documents et certificats</Link>
-              </Button>
-              <Button asChild variant="outline" className="min-h-11">
-                <Link to="/espace/administration/classes">
-                  Classes d'apprenants
-                  <ArrowRight className="ms-1 size-4" aria-hidden />
-                </Link>
-              </Button>
-            </div>
+            <Accordion type="multiple" defaultValue={["programmation"]} className="w-full">
+              <AccordionItem value="programmation">
+                <AccordionTrigger className="min-h-11 text-start">
+                  Programmation de la promotion
+                </AccordionTrigger>
+                <AccordionContent>
+                  <ProgrammingPanel phase={cohortPhase(selected)} />
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="activite">
+                <AccordionTrigger className="min-h-11 text-start">
+                  Activité du programme
+                </AccordionTrigger>
+                <AccordionContent>
+                  <ActivityPanel rows={learnerRows} summary={groupSummary} />
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="apprenants">
+                <AccordionTrigger className="min-h-11 text-start">
+                  Gestion des apprenants
+                </AccordionTrigger>
+                <AccordionContent>
+                  <LearnerManagementPanel rows={learnerRows} summary={groupSummary} />
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="documents">
+                <AccordionTrigger className="min-h-11 text-start">
+                  Documents et certificats
+                </AccordionTrigger>
+                <AccordionContent>
+                  <div className="space-y-3">
+                    <p className="text-muted-foreground text-sm">
+                      Pièces administratives et certificats de complétude de ce programme.
+                    </p>
+                    <Button asChild variant="outline" className="min-h-11">
+                      <Link to="/espace/administration/documents">
+                        Ouvrir documents et certificats
+                        <ArrowRight className="ms-1 size-4" aria-hidden />
+                      </Link>
+                    </Button>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
           </PanelCard>
         </>
       )}
