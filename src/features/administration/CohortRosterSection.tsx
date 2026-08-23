@@ -331,7 +331,17 @@ export function CohortRosterSection({
             {exportRows.length} étudiant(s) dans la promotion sélectionnée.
           </span>
         </div>
+    </PanelCard>
+  );
+
+  if (section === "import") return importBlock;
+  if (section === "export") return exportBlock;
+  return (
+    <div className="space-y-8">
+      <PanelCard title="Importer une promotion (liste d'étudiants)" action={<MockBadge />}>
+        {importBlock}
       </PanelCard>
+      {exportBlock}
     </div>
   );
 }
