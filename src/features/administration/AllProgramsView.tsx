@@ -282,8 +282,10 @@ export function AllProgramsView() {
               <div className="space-y-3 text-sm">
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge variant="outline" className="font-normal">
-                    {PROGRAM_TRACK_LABELS_FR[programTrack(card.program.kind)]}
+                    {PROGRAM_TRACK_LABELS_FR[programTrack(card.program.kind)]} ·{" "}
+                    {PROGRAM_CATEGORY_LABELS_FR[programCategory(card.program)]}
                   </Badge>
+
                   <Badge variant="secondary" className="font-normal">
                     {PROGRAM_LIFECYCLE_LABELS_FR[programLifecycle(card)]}
                   </Badge>
