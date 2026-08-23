@@ -39,8 +39,13 @@ import {
 } from "@/features/administration/competenceTrackingViewModel";
 import { NATURE_LABELS_FR } from "@/domain/mastery";
 import { CompetenceCreationForm } from "@/features/administration/CompetenceCreationForm";
-import { useLocalCompetences } from "@/application/competenceDraftStore";
-import { COMPETENCE_MASTERY_LABELS_FR, mergeOutcomes } from "@/domain/competenceDraft";
+import { createLocalCompetence, useLocalCompetences } from "@/application/competenceDraftStore";
+import {
+  COMPETENCE_MASTERY_LABELS_FR,
+  EMPTY_NEW_COMPETENCE_INPUT,
+  mergeOutcomes,
+  type CompetenceNature,
+} from "@/domain/competenceDraft";
 import type { CurriculumVersionId, ProgramId } from "@/domain/types";
 
 export function AdminCompetencies() {
