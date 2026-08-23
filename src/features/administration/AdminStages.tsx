@@ -52,11 +52,6 @@ export function AdminStages() {
         description="Cadre général des stages du programme : types, lieux, périodes et modes de validation."
       />
 
-      <AdminWorkLevelBanner
-        level="program"
-        programName={data.program?.name ?? "Programme sélectionné"}
-        cohortCount={data.cohorts.length}
-      />
 
       <ScopeNotice>
         Les affectations nominatives d'une promotion se règlent dans « Pilotage de programme ». Ici,
