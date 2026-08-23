@@ -55,6 +55,9 @@ export function AppShell() {
   } = useSession();
 
   const [mobileOpen, setMobileOpen] = useState(false);
+  /** Demande de recalage vers la première page accessible du nouveau profil. */
+  const [pendingLanding, setPendingLanding] = useState(false);
+  const navigate = useNavigate();
 
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   // Dans la vue « Tous les programmes », aucun programme n'est le périmètre
@@ -66,6 +69,24 @@ export function AppShell() {
     ? allSpaces.filter((space) => space.key === "platform_admin")
     : allSpaces;
   const defaultPersonName = people[0]?.fullName ?? "profil par défaut";
+
+  /**
+   * Après un changement d'identité simulée, l'écran conservé pouvait ne plus
+   * être autorisé (« Accès restreint »). On recale sur la première page
+   * réellement accessible pour les rôles du nouveau profil.
+   */
+  useEffect(() => {
+    if (!pendingLanding) return;
+    setPendingLanding(false);
+    if (isRouteWithinSpaces(allSpaces, pathname)) return;
+    void navigate({ to: landingRouteFor(allSpaces), replace: true });
+  }, [allSpaces, navigate, pathname, pendingLanding]);
+
+  const switchPerson = (id: PersonId) => {
+    setActivePersonId(id);
+    setPendingLanding(true);
+  };
+
 
   return (
     <div className="min-h-screen bg-surface">
