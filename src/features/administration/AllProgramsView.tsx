@@ -36,8 +36,10 @@ import {
 } from "@/features/administration/adminProgramViewModel";
 import {
   EMPTY_ALL_PROGRAMS_FILTERS,
+  PROGRAM_CATEGORIES_BY_TRACK,
+  PROGRAM_CATEGORY_LABELS_FR,
   PROGRAM_LIFECYCLE_LABELS_FR,
-  PROGRAM_TRACK_LABELS_FR,
+
   countByLifecycle,
   filterProgramCards,
   hasActiveFilters,
