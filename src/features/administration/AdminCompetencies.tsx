@@ -38,16 +38,27 @@ import {
   parseReferentialText,
 } from "@/features/administration/competenceTrackingViewModel";
 import { NATURE_LABELS_FR } from "@/domain/mastery";
+import { CompetenceCreationForm } from "@/features/administration/CompetenceCreationForm";
+import { useLocalCompetences } from "@/application/competenceDraftStore";
+import { COMPETENCE_MASTERY_LABELS_FR, mergeOutcomes } from "@/domain/competenceDraft";
+import type { CurriculumVersionId, ProgramId } from "@/domain/types";
 
 export function AdminCompetencies() {
   const { data, isPending } = useProgramAdmin();
   const [cohortId, setCohortId] = useState<string | null>(null);
   const [importText, setImportText] = useState("");
+  const localCompetences = useLocalCompetences(data?.program?.id);
 
   const cohorts = data?.cohorts ?? [];
   const selectedId = cohortId ?? defaultPilotCohortId(cohorts);
   const enrollments = (data?.enrollments ?? []).filter((e) => e.cohortId === selectedId);
-  const outcomes = data?.outcomes ?? [];
+  /** Liste UNIQUE : compétences du dépôt et compétences créées dans la session. */
+  const outcomes = useMemo(
+    () => mergeOutcomes(data?.outcomes ?? [], localCompetences),
+    [data?.outcomes, localCompetences],
+  );
+  const programId = (data?.program?.id ?? "program-unknown") as ProgramId;
+  const curriculumVersionId = (data?.versions[0]?.id ?? "cv-unknown") as CurriculumVersionId;
 
   const learnerRows = useMemo(
     () => buildLearnerCompetenceRows(enrollments, outcomes),
