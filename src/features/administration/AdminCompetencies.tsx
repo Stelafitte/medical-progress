@@ -4,6 +4,8 @@
  * Le suivi affiché est une maquette déterministe (aucune donnée réelle).
  */
 import { useMemo, useState } from "react";
+import { Link } from "@tanstack/react-router";
+import { ArrowRight } from "lucide-react";
 import { SectionHeading } from "@/components/section-heading";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
