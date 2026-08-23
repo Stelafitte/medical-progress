@@ -207,6 +207,9 @@ export function AdminProgramDesigner() {
   const [cohortMode, setCohortMode] = useState<"existing" | "new">("existing");
   const [selectedCohortId, setSelectedCohortId] = useState<string | null>(null);
   const [associated, setAssociated] = useState<string | null>(null);
+  const [programStartsOn, setProgramStartsOn] = useState("");
+  const [programEndsOn, setProgramEndsOn] = useState("");
+  const [schedule, setSchedule] = useState<Record<string, ScheduleEntry>>({});
   const localCohorts = useLocalCohorts(data?.program?.id);
   const localPlacements = useLocalPlacements(data?.program?.id);
   const localCompetences = useLocalCompetences(data?.program?.id);
