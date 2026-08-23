@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { Outcome } from "@/domain/outcome";
+import type { Outcome } from "@/domain/types";
 import {
   diffReferentialRows,
   parseReferentialText,
