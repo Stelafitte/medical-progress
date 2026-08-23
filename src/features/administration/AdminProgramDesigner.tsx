@@ -565,10 +565,56 @@ export function AdminProgramDesigner() {
                         </div>
                       ) : null}
 
+                      {state.mode === "now" && resource.id === "knowledge" ? (
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium">Créer une base de connaissance</p>
+                          <KnowledgeCreationForm
+                            programId={activeProgramId}
+                            curriculumVersionId={curriculumVersionId}
+                            idPrefix="designer-knowledge"
+                            submitLabel="Créer la connaissance"
+                            hint="Même outil et même liste que l'onglet « Connaissances » : elle y apparaît aussitôt, rattachée à ce programme."
+                            onCreated={() => patch("knowledge", { implemented: true })}
+                          />
+                          {localKnowledge.length > 0 ? (
+                            <ul className="text-muted-foreground space-y-1 text-xs">
+                              {localKnowledge.map((outcome) => (
+                                <li key={outcome.id}>
+                                  {outcome.code} — {outcome.label}
+                                </li>
+                              ))}
+                            </ul>
+                          ) : null}
+                        </div>
+                      ) : null}
+
+                      {state.mode === "now" && resource.id === "assessments" ? (
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium">Créer une modalité d'évaluation</p>
+                          <AssessmentModalityForm
+                            programId={activeProgramId}
+                            idPrefix="designer-assessment"
+                            submitLabel="Créer la modalité d'évaluation"
+                            hint="Même outil et même liste que l'onglet « Évaluations » : la modalité y apparaît aussitôt, rattachée à ce programme."
+                            onCreated={() => patch("assessments", { implemented: true })}
+                          />
+                          {localModalities.length > 0 ? (
+                            <ul className="text-muted-foreground space-y-1 text-xs">
+                              {localModalities.map((modality) => (
+                                <li key={modality.id}>{modality.name}</li>
+                              ))}
+                            </ul>
+                          ) : null}
+                        </div>
+                      ) : null}
+
                       {state.mode === "now" &&
                       resource.id !== "stage" &&
                       resource.id !== "competences" &&
-                      resource.id !== "documents" ? (
+                      resource.id !== "documents" &&
+                      resource.id !== "knowledge" &&
+                      resource.id !== "assessments" ? (
+
 
                         <div className="space-y-2">
                           <Label htmlFor={`draft-${resource.id}`}>{resource.draftLabel}</Label>
