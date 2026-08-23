@@ -12,8 +12,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState, MockBadge, PanelCard, ScopeNotice } from "@/features/professional/mock-ui";
 
 import { StageLogTemplatesSection } from "@/features/administration/StageLogTemplatesSection";
+import { PlacementCreationForm } from "@/features/administration/PlacementCreationForm";
+import { useLocalPlacements } from "@/application/placementDraftStore";
+import { mergePlacements, STAGE_VALIDATION_LABELS_FR } from "@/domain/placementDraft";
+import type { ProgramId } from "@/domain/types";
 import { useProgramAdmin } from "@/features/administration/useProgramAdmin";
 import { formatFrDate } from "@/features/administration/adminProgramViewModel";
+
 
 /** Modes de validation d'un stage, indépendants d'une promotion. */
 const VALIDATION_MODES = [
