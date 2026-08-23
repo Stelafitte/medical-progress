@@ -186,9 +186,6 @@ export function filterProgramCards(
     ) {
       return false;
     }
-
-      return false;
-    }
     return matchesDateWindow(card, filters.from, filters.to);
   });
 }
