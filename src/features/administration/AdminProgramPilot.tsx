@@ -685,7 +685,7 @@ function PilotTools({
               {isOpen ? (
                 <div id={`pilot-tool-${tool.key}`} className="mt-3 space-y-3">
                   {tool.key === "programmation" ? <ProgrammingPanel phase={phase} /> : null}
-                  {tool.key === "activite" ? <ActivityPanel rows={rows} summary={summary} /> : null}
+                  {tool.key === "activite" ? <ActivityPanel activity={activity} /> : null}
                   {tool.key === "apprenants" ? (
                     <LearnerManagementPanel rows={rows} summary={summary} />
                   ) : null}
