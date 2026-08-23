@@ -244,8 +244,34 @@ export function AdminProgramDesigner() {
   const designReady = modelReady && chosenResources.length > 0 && pendingResources.length === 0;
   const readyForPilot = designReady && associated !== null;
 
+  /** Échéances à programmer : dérivées des ressources retenues à l'étape 1. */
+  const scheduleItems = chosenResources.flatMap((resource) =>
+    SCHEDULE_TEMPLATE[resource.id].map((item) => ({
+      id: item.id,
+      label: item.label,
+      originLabel: resource.label,
+    })),
+  );
+
+  const boundsInvalid =
+    programStartsOn !== "" && programEndsOn !== "" && programEndsOn < programStartsOn;
+
+  const scheduleReady =
+    !boundsInvalid &&
+    scheduleItems.every((item) => {
+      const entry = schedule[item.id] ?? INITIAL_SCHEDULE;
+      if (entry.kind === "undated") return true;
+      if (entry.kind === "date") return entry.from !== "";
+      return entry.from !== "" && entry.to !== "" && entry.to >= entry.from;
+    });
+
+  const readyForPilot = designReady && associated !== null && scheduleReady;
+
+  const patchSchedule = (id: string, next: Partial<ScheduleEntry>) =>
+    setSchedule((prev) => ({ ...prev, [id]: { ...(prev[id] ?? INITIAL_SCHEDULE), ...next } }));
+
   const patch = (id: ResourceKind, next: Partial<ResourceState>) =>
-    setResources((prev) => ({ ...prev, [id]: { ...prev[id], ...next } }));
+
 
   const runAnalysis = () => {
     const detected = analyseObjectives(`${objectives} ${importedFile ?? ""}`);
