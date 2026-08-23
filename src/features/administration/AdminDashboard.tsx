@@ -47,6 +47,7 @@ export function AdminDashboard() {
   if (isPending || !data) return <Skeleton className="h-80 w-full" />;
 
   const selectedId = cohortId ?? defaultPilotCohortId(data.cohorts);
+  const pilotSearch = selectedId ? { promotion: selectedId } : {};
   const cohort = data.cohorts.find((c) => c.id === selectedId);
   const cohortLabel = cohort?.label ?? "cohorte";
   const timeline = buildPilotTimeline(data.planSchedule, cohort);
@@ -97,7 +98,7 @@ export function AdminDashboard() {
               </Badge>
             ) : null}
             <Button asChild size="sm" variant="outline" className="min-h-11">
-              <Link to="/espace/administration/pilotage" search={{ promotion: selectedId }}>
+              <Link to="/espace/administration/pilotage" search={pilotSearch}>
                 Ouvrir la chronologie
                 <ArrowRight className="ms-1 size-4" aria-hidden />
               </Link>
@@ -157,7 +158,7 @@ export function AdminDashboard() {
                       {formatFrDate(task.dueOn)}
                     </span>
                     <Button asChild size="sm" variant="ghost" className="min-h-11">
-                      <Link to="/espace/administration/pilotage" search={{ promotion: selectedId }}>
+                      <Link to="/espace/administration/pilotage" search={pilotSearch}>
                         Traiter
                         <ArrowRight className="ms-1 size-4" aria-hidden />
                       </Link>
