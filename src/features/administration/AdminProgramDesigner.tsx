@@ -34,6 +34,8 @@ import { useProgramAdmin } from "@/features/administration/useProgramAdmin";
 import { CohortCreationForm } from "@/features/administration/CohortCreationForm";
 import { PlacementCreationForm } from "@/features/administration/PlacementCreationForm";
 import { CompetenceCreationForm } from "@/features/administration/CompetenceCreationForm";
+import { DocumentRequirementForm } from "@/features/administration/DocumentRequirementForm";
+import { useLocalDocumentRequirements } from "@/application/documentRequirementStore";
 import { useLocalCohorts } from "@/application/cohortDraftStore";
 import { useLocalPlacements } from "@/application/placementDraftStore";
 import { useLocalCompetences } from "@/application/competenceDraftStore";
@@ -46,7 +48,7 @@ import { formatFrDate } from "@/features/administration/adminProgramViewModel";
 /* Ressources du programme                                             */
 /* ------------------------------------------------------------------ */
 
-type ResourceKind = "knowledge" | "competences" | "assessments" | "stage";
+type ResourceKind = "knowledge" | "competences" | "assessments" | "stage" | "documents";
 type ResourceMode = "now" | "later" | "existing";
 
 const RESOURCES: readonly {
@@ -93,6 +95,15 @@ const RESOURCES: readonly {
     keywords: ["stage", "terrain", "carnet", "service", "clinique", "encadrant"],
     draftLabel: "Terrains et modalités de stage (un par ligne)",
     draftPlaceholder: "CHU cardiologie — 4 semaines\nCarnet validé par l'encadrant",
+  },
+  {
+    id: "documents",
+    label: "Pièces administratives exigées",
+    icon: FileCheck,
+    hint: "Pièces à fournir, échéance, qui les dépose et qui les valide.",
+    keywords: ["document", "pièce", "attestation", "convention", "certificat", "assurance"],
+    draftLabel: "Pièces exigées (une par ligne)",
+    draftPlaceholder: "Attestation d'assurance\nConvention de stage signée",
   },
 ];
 
@@ -158,8 +169,9 @@ export function AdminProgramDesigner() {
       assessments: data?.ecosScenarios.length ?? 0,
       stage:
         (data?.placements.length ?? 0) + (data?.templates.length ?? 0) + localPlacements.length,
+      documents: localRequirements.length,
     }),
-    [data, localPlacements],
+    [data, localPlacements, localRequirements],
   );
 
 
@@ -450,9 +462,32 @@ export function AdminProgramDesigner() {
                         </div>
                       ) : null}
 
+                      {state.mode === "now" && resource.id === "documents" ? (
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium">Créer une pièce exigée</p>
+                          <DocumentRequirementForm
+                            programId={activeProgramId}
+                            idPrefix="designer-document"
+                            submitLabel="Créer la pièce exigée"
+                            hint="Même outil et même liste que l'onglet « Documents et certificats » : la pièce y apparaît aussitôt, rattachée à ce programme."
+                            onCreated={() => patch("documents", { implemented: true })}
+                          />
+                          {localRequirements.length > 0 ? (
+                            <ul className="text-muted-foreground space-y-1 text-xs">
+                              {localRequirements.map((item) => (
+                                <li key={item.id}>
+                                  {item.code} — {item.label}
+                                </li>
+                              ))}
+                            </ul>
+                          ) : null}
+                        </div>
+                      ) : null}
+
                       {state.mode === "now" &&
                       resource.id !== "stage" &&
-                      resource.id !== "competences" ? (
+                      resource.id !== "competences" &&
+                      resource.id !== "documents" ? (
 
                         <div className="space-y-2">
                           <Label htmlFor={`draft-${resource.id}`}>{resource.draftLabel}</Label>
