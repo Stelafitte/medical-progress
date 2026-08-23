@@ -111,6 +111,12 @@ export function PlatformAdminView() {
           const running = cohorts.filter((c) => cohortPhase(c) === "running").length;
           const planned = cohorts.filter((c) => cohortPhase(c) === "planned").length;
           const closed = cohorts.filter((c) => cohortPhase(c) === "closed").length;
+          const history = [
+            ...(result.statsByProgram.find((s) => s.programId === program.id)?.snapshots ?? []),
+          ].sort((a, b) => b.academicYear.localeCompare(a.academicYear));
+          const usage = result.audit.filter((e) => e.programId === program.id).slice(0, 6);
+
+
 
           return (
             <PanelCard
