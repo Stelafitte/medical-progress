@@ -7,14 +7,20 @@
  */
 import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { AlertTriangle, ArrowRight, Bell, Notebook, UserRound, Users } from "lucide-react";
-import { SectionHeading } from "@/components/section-heading";
 import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
+  Activity,
+  AlertTriangle,
+  ArrowRight,
+  Bell,
+  CalendarClock,
+  ChevronDown,
+  ChevronUp,
+  FileCheck,
+  Notebook,
+  UserRound,
+  Users,
+} from "lucide-react";
+import { SectionHeading } from "@/components/section-heading";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -464,6 +470,154 @@ function LearnerManagementPanel({
           </ul>
         )}
       </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Outils de pilotage : boutons en tête, contenu déplié en dessous      */
+/* ------------------------------------------------------------------ */
+
+type ToolKey = "programmation" | "activite" | "apprenants" | "documents";
+
+const TOOLS: readonly {
+  readonly key: ToolKey;
+  readonly label: string;
+  readonly icon: typeof CalendarClock;
+  readonly hint: string;
+}[] = [
+  {
+    key: "programmation",
+    label: "Programmation",
+    icon: CalendarClock,
+    hint: "Activation, pause, fin, modification, urgence — pour le programme en cours.",
+  },
+  {
+    key: "activite",
+    label: "Activité du programme",
+    icon: Activity,
+    hint: "Activité de chaque apprenant et moyennes du groupe.",
+  },
+  {
+    key: "apprenants",
+    label: "Gestion des apprenants",
+    icon: Users,
+    hint: "Marqueurs d'avancement, synthèse de groupe et notifications.",
+  },
+  {
+    key: "documents",
+    label: "Documents et certificats",
+    icon: FileCheck,
+    hint: "Pièces administratives et certificats de complétude.",
+  },
+];
+
+function PilotTools({
+  phase,
+  rows,
+  summary,
+}: {
+  phase: CohortPhase;
+  rows: readonly LearnerActivityRow[];
+  summary: GroupActivitySummary;
+}) {
+  const [open, setOpen] = useState<readonly ToolKey[]>(["programmation"]);
+  const toggle = (key: ToolKey) =>
+    setOpen((keys) => (keys.includes(key) ? keys.filter((k) => k !== key) : [...keys, key]));
+
+  const badgeFor = (key: ToolKey): string | null => {
+    if (key === "activite") return `${summary.averageProgressPercent} % moyen`;
+    if (key === "apprenants")
+      return `${summary.lateLearners + summary.idleLearners} à traiter`;
+    if (key === "programmation") return PROGRAMMING_STATE_LABELS_FR[PHASE_TO_PROGRAMMING[phase]];
+    return null;
+  };
+
+  return (
+    <PanelCard
+      title="Outils de pilotage"
+      description="Chaque outil s'ouvre directement sous son bouton, sans quitter la promotion pilotée."
+      action={<MockBadge />}
+    >
+      <div className="flex flex-wrap gap-2">
+        {TOOLS.map((tool) => {
+          const isOpen = open.includes(tool.key);
+          const badge = badgeFor(tool.key);
+          return (
+            <Button
+              key={tool.key}
+              type="button"
+              variant={isOpen ? "default" : "outline"}
+              aria-expanded={isOpen}
+              aria-controls={`pilot-tool-${tool.key}`}
+              onClick={() => toggle(tool.key)}
+              className="min-h-11"
+            >
+              <tool.icon className="me-1 size-4" aria-hidden />
+              {tool.label}
+              {badge ? (
+                <span className="ms-2 rounded-full border px-2 py-0.5 text-xs font-normal">
+                  {badge}
+                </span>
+              ) : null}
+              {isOpen ? (
+                <ChevronUp className="ms-1 size-4" aria-hidden />
+              ) : (
+                <ChevronDown className="ms-1 size-4" aria-hidden />
+              )}
+            </Button>
+          );
+        })}
+      </div>
+
+      <div className="space-y-3">
+        {TOOLS.filter((tool) => open.includes(tool.key)).map((tool) => (
+          <section
+            key={tool.key}
+            id={`pilot-tool-${tool.key}`}
+            className="border-border bg-card space-y-3 rounded-lg border p-4"
+          >
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <div>
+                <h3 className="text-sm font-semibold">{tool.label}</h3>
+                <p className="text-muted-foreground text-xs">{tool.hint}</p>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="min-h-9"
+                onClick={() => toggle(tool.key)}
+              >
+                Plier
+                <ChevronUp className="ms-1 size-4" aria-hidden />
+              </Button>
+            </div>
+            {tool.key === "programmation" ? <ProgrammingPanel phase={phase} /> : null}
+            {tool.key === "activite" ? <ActivityPanel rows={rows} summary={summary} /> : null}
+            {tool.key === "apprenants" ? (
+              <LearnerManagementPanel rows={rows} summary={summary} />
+            ) : null}
+            {tool.key === "documents" ? <DocumentsPanel /> : null}
+          </section>
+        ))}
+      </div>
+    </PanelCard>
+  );
+}
+
+function DocumentsPanel() {
+  return (
+    <div className="space-y-3">
+      <p className="text-muted-foreground text-sm">
+        Pièces administratives et certificats de complétude de ce programme.
+      </p>
+      <Button asChild variant="outline" className="min-h-11">
+        <Link to="/espace/administration/documents">
+          Ouvrir documents et certificats
+          <ArrowRight className="ms-1 size-4" aria-hidden />
+        </Link>
+      </Button>
     </div>
   );
 }
