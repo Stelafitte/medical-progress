@@ -115,6 +115,7 @@ export function programLifecycle(
 
 export interface AllProgramsFilterState {
   readonly tracks: readonly ProgramTrack[];
+  readonly categories: readonly ProgramCategory[];
   readonly lifecycles: readonly ProgramLifecycle[];
   /** Bornes inclusives au format ISO court (AAAA-MM-JJ), vides si non renseignées. */
   readonly from: string;
@@ -123,6 +124,7 @@ export interface AllProgramsFilterState {
 
 export const EMPTY_ALL_PROGRAMS_FILTERS: AllProgramsFilterState = {
   tracks: [],
+  categories: [],
   lifecycles: [],
   from: "",
   to: "",
@@ -131,11 +133,13 @@ export const EMPTY_ALL_PROGRAMS_FILTERS: AllProgramsFilterState = {
 export function hasActiveFilters(filters: AllProgramsFilterState): boolean {
   return (
     filters.tracks.length > 0 ||
+    filters.categories.length > 0 ||
     filters.lifecycles.length > 0 ||
     filters.from !== "" ||
     filters.to !== ""
   );
 }
+
 
 /** Bascule d'une valeur dans une liste de filtres (sélection multiple). */
 export function toggleFilterValue<T>(values: readonly T[], value: T): readonly T[] {
