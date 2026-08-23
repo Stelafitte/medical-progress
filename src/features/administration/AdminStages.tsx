@@ -1,66 +1,35 @@
 /**
- * « Gestion des stages » — éléments GÉNÉRAUX des stages du programme.
- *
- * Écran de programme (non daté par apprenant) : types de stage, lieux,
- * périodes types, modes de validation (dont le carnet de stage) et modèles de
- * carnet. Maquette : aucune écriture réelle.
+ * « Gestion des stages » — flux linéaire, même format que « Évaluations » :
+ * stages existants et leur responsable → création d'un terrain → éléments de
+ * validation (certificat au responsable, carnet de stage) → association aux
+ * apprenants d'une cohorte → suivi des stages et de leurs étapes de validation.
+ * Maquette : aucune écriture réelle.
  */
-import { Link } from "@tanstack/react-router";
-import {
-  ArrowRight,
-  Building2,
-  CalendarRange,
-  ClipboardCheck,
-  MapPin,
-  Notebook,
-  Users,
-} from "lucide-react";
+import { useState } from "react";
 import { SectionHeading } from "@/components/section-heading";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { EmptyState, MockBadge, PanelCard, ScopeNotice } from "@/features/professional/mock-ui";
-
+import { MockBadge, ScopeNotice, StatCard } from "@/features/professional/mock-ui";
+import { PlacementSection } from "@/features/administration/PlacementSection";
 import { StageLogTemplatesSection } from "@/features/administration/StageLogTemplatesSection";
-import { PlacementCreationForm } from "@/features/administration/PlacementCreationForm";
 import { useLocalPlacements } from "@/application/placementDraftStore";
-import { mergePlacements, STAGE_VALIDATION_LABELS_FR } from "@/domain/placementDraft";
+import { mergePlacements } from "@/domain/placementDraft";
 import type { ProgramId } from "@/domain/types";
 import { useProgramAdmin } from "@/features/administration/useProgramAdmin";
-import { formatFrDate } from "@/features/administration/adminProgramViewModel";
-
-
-/** Modes de validation d'un stage, indépendants d'une promotion. */
-const VALIDATION_MODES = [
-  {
-    label: "Carnet de stage",
-    detail: "Activités consignées par l'apprenant, contresignées par l'encadrant.",
-    icon: Notebook,
-  },
-  {
-    label: "Bilan d'encadrement",
-    detail: "Entretien de fin de stage et appréciation écrite du responsable.",
-    icon: ClipboardCheck,
-  },
-  {
-    label: "Validation de compétence réelle",
-    detail: "Toujours prononcée par un validateur humain, jamais par l'apprenant.",
-    icon: Users,
-  },
-] as const;
+import { defaultPilotCohortId } from "@/features/administration/adminProgramViewModel";
 
 export function AdminStages() {
   const { data, isPending } = useProgramAdmin();
+  const [cohortId, setCohortId] = useState<string | null>(null);
   const localPlacements = useLocalPlacements(data?.program?.id);
+
   if (isPending || !data) return <Skeleton className="h-80 w-full" />;
 
   /** Liste UNIQUE des terrains : ceux du dépôt et ceux créés dans la session. */
   const placements = mergePlacements(data.placements, localPlacements);
-  const assignments = data.assignments;
   const sites = Array.from(new Set(placements.map((p) => p.site)));
   const capacity = placements.reduce((total, p) => total + p.capacity, 0);
   const programId = (data.program?.id ?? "program-unknown") as ProgramId;
-
+  const selectedId = cohortId ?? defaultPilotCohortId(data.cohorts);
 
   return (
     <div className="space-y-6">
@@ -68,131 +37,40 @@ export function AdminStages() {
         title="Gestion des stages"
         level={1}
         action={<MockBadge />}
-        description="Cadre général des stages du programme : types, lieux, périodes et modes de validation."
+        description="Stages du programme et leurs responsables, création d'un terrain, éléments de validation, association aux apprenants d'une cohorte et suivi des stages."
       />
 
-
       <ScopeNotice>
-        Les affectations nominatives d'une promotion se règlent dans « Pilotage de programme ». Ici,
-        on décrit ce qu'est un stage dans <strong>{data.program?.name}</strong>.
+        Un programme peut compter plusieurs cohortes : les associations et le suivi se lisent
+        cohorte par cohorte. Les mêmes éléments sont disponibles dans la partie Stages du pilotage
+        de programme. Rien n'est enregistré dans cette maquette.
       </ScopeNotice>
 
-      <dl className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {[
-          { icon: Building2, label: "Terrains de stage", value: placements.length },
-          { icon: MapPin, label: "Lieux distincts", value: sites.length },
-          { icon: Users, label: "Places totales", value: capacity },
-          { icon: CalendarRange, label: "Affectations connues", value: assignments.length },
-        ].map(({ icon: Icon, label, value }) => (
-          <div key={label} className="border-border bg-card rounded-md border p-3">
-            <Icon className="text-muted-foreground size-4" aria-hidden />
-            <dd className="mt-1 text-2xl font-semibold tabular-nums">{value}</dd>
-            <dt className="text-muted-foreground text-xs">{label}</dt>
-          </div>
-        ))}
-      </dl>
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <StatCard label="Terrains de stage" value={placements.length} />
+        <StatCard label="Lieux distincts" value={sites.length} />
+        <StatCard label="Places totales" value={capacity} />
+        <StatCard label="Affectations connues" value={data.assignments.length} />
+      </div>
 
-      <PanelCard
-        title="Types de stage et lieux"
-        description="Un type de stage décrit un terrain, un service et une capacité d'accueil. Le même outil de création est disponible ici et dans le « Concepteur de programme » : la liste est unique."
-      >
-        {placements.length === 0 ? (
-          <EmptyState>Aucun terrain de stage déclaré pour ce programme.</EmptyState>
-        ) : (
-          <ul className="space-y-2 text-sm">
-            {placements.map((placement) => {
-              const local = localPlacements.find((l) => l.placement.id === placement.id);
-              return (
-                <li
-                  key={placement.id}
-                  className="border-border flex flex-wrap items-center gap-2 rounded-md border p-3"
-                >
-                  <span className="font-medium">{placement.name}</span>
-                  <Badge variant="outline" className="font-normal">
-                    {placement.department}
-                  </Badge>
-                  <span className="text-muted-foreground">
-                    <MapPin className="me-1 inline size-3" aria-hidden />
-                    {placement.site}
-                  </span>
-                  <span className="text-muted-foreground text-xs">
-                    {placement.capacity} place(s)
-                  </span>
-                  {local ? (
-                    <>
-                      <Badge variant="secondary" className="font-normal">
-                        {STAGE_VALIDATION_LABELS_FR[local.validationMode]}
-                      </Badge>
-                      <span className="text-muted-foreground text-xs">
-                        {local.supervisor.length > 0
-                          ? `encadrant : ${local.supervisor}`
-                          : "encadrant à rattacher"}
-                      </span>
-                    </>
-                  ) : null}
-                </li>
-              );
-            })}
-          </ul>
+
+      <PlacementSection
+        programId={programId}
+        programName={data.program?.name ?? "ce programme"}
+        placements={placements}
+        localPlacements={localPlacements}
+        assignments={data.assignments}
+        enrollments={data.enrollments}
+        people={data.people}
+        cohorts={data.cohorts}
+        templates={data.templates}
+        competencesExpected={Math.max(
+          1,
+          data.outcomes.filter((outcome) => outcome.nature === "real_competence").length,
         )}
-
-        <div className="border-border mt-4 rounded-md border p-4">
-          <p className="mb-3 text-sm font-medium">Créer un terrain de stage</p>
-          <PlacementCreationForm
-            programId={programId}
-            idPrefix="stages-tab"
-            submitLabel="Créer le terrain de stage"
-            hint="Le terrain rejoint la liste unique : il est aussitôt proposé dans le « Concepteur de programme »."
-          />
-        </div>
-
-      </PanelCard>
-
-      <PanelCard
-        title="Encadrement et carnets"
-        description="Les périodes datées et les affectations nominatives se suivent ailleurs : cet onglet ne décrit que le modèle."
-      >
-        <p className="text-muted-foreground text-sm">
-          {assignments.length} affectation(s) connue(s) pour ce programme, toutes promotions
-          confondues. Les dates se consultent promotion par promotion dans « Pilotage de
-          programme ».
-        </p>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <Button asChild variant="outline" className="min-h-11">
-            <Link to="/espace/administration/pilotage">
-              Voir les périodes dans Pilotage
-              <ArrowRight className="ms-1 size-4" aria-hidden />
-            </Link>
-          </Button>
-          <Button asChild variant="outline" className="min-h-11">
-            <Link to="/espace/encadrement/carnets">
-              Carnets à valider
-              <ArrowRight className="ms-1 size-4" aria-hidden />
-            </Link>
-          </Button>
-          <Button asChild variant="outline" className="min-h-11">
-            <Link to="/espace/encadrement/etudiants">
-              Encadrants et apprenants suivis
-              <ArrowRight className="ms-1 size-4" aria-hidden />
-            </Link>
-          </Button>
-        </div>
-      </PanelCard>
-
-      <PanelCard
-        title="Types de validation"
-        description="Ce qui permet de considérer un stage comme accompli."
-      >
-        <div className="grid gap-3 md:grid-cols-3">
-          {VALIDATION_MODES.map(({ label, detail, icon: Icon }) => (
-            <article key={label} className="border-border rounded-md border p-4">
-              <Icon className="text-muted-foreground size-4" aria-hidden />
-              <p className="mt-2 text-sm font-medium">{label}</p>
-              <p className="text-muted-foreground mt-1 text-xs">{detail}</p>
-            </article>
-          ))}
-        </div>
-      </PanelCard>
+        cohortId={selectedId}
+        onCohortChange={setCohortId}
+      />
 
       <StageLogTemplatesSection />
     </div>
