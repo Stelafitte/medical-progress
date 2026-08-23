@@ -4,7 +4,6 @@
  */
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -163,7 +162,6 @@ export function AccessGrantCreationForm({
         />
       </div>
 
-      <Input type="hidden" value="" readOnly className="hidden" aria-hidden />
 
       {submitted && issues.length > 0 ? (
         <ul className="space-y-1 text-sm text-destructive">
