@@ -57,7 +57,7 @@ export function AdminWorkLevelBanner({
           </Badge>
         ) : null}
       </div>
-      <ol className="grid gap-2 lg:grid-cols-3">
+      <ol className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
         {LEVELS.map((item) => {
           const active = item.id === level;
           return (
