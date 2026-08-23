@@ -280,8 +280,31 @@ export function AdminCompetencies() {
             />
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <Badge variant="secondary">{parsed.length} ligne(s) reconnue(s)</Badge>
-              <Button size="sm" className="min-h-11" disabled={parsed.length === 0}>
-                Importer {parsed.length} compétence(s) (simulé)
+              <Badge variant="outline">{importable.length} compétence(s) importable(s)</Badge>
+              <Button
+                size="sm"
+                className="min-h-11"
+                disabled={importable.length === 0}
+                onClick={() => {
+                  let added = 0;
+                  for (const row of importable) {
+                    const outcome = createLocalCompetence({
+                      input: {
+                        ...EMPTY_NEW_COMPETENCE_INPUT,
+                        code: row.code,
+                        label: row.label,
+                        nature: row.nature as CompetenceNature,
+                      },
+                      programId,
+                      curriculumVersionId,
+                    });
+                    if (outcome) added += 1;
+                  }
+                  setImported(added);
+                  setImportText("");
+                }}
+              >
+                Importer {importable.length} compétence(s)
               </Button>
               <Button
                 size="sm"
@@ -291,7 +314,16 @@ export function AdminCompetencies() {
               >
                 Effacer
               </Button>
+              {imported !== null ? (
+                <span className="text-muted-foreground text-sm">
+                  {imported} compétence(s) ajoutée(s) au référentiel de cette session.
+                </span>
+              ) : null}
             </div>
+            <p className="text-muted-foreground mt-2 text-xs">
+              Les lignes de nature « connaissance » ou non précisée sont ignorées : elles relèvent de
+              l'onglet « Base de connaissances ».
+            </p>
             {parsed.length > 0 ? (
               <ul className="mt-4 space-y-1 text-sm">
                 {parsed.slice(0, 12).map((row, index) => (
