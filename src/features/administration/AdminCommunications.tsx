@@ -62,7 +62,8 @@ import {
 } from "@/domain/communication";
 
 const LIMITS_FR =
-  "Simulation locale : aucun e-mail, aucune notification, aucun appel réseau, aucune tâche programmée. L'historique préparé est perdu au rechargement de la page.";
+  "Simulé — aucun envoi : aucun e-mail, aucune notification, aucun appel réseau, aucune tâche programmée. L'historique préparé est perdu au rechargement de la page.";
+
 
 const HUMAN_CHECK_FR =
   "Ce contrôle automatisé ne garantit pas à lui seul l'absence de données sensibles. Une vérification humaine reste obligatoire.";

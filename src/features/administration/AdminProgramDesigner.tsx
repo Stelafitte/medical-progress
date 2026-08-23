@@ -1,45 +1,183 @@
 /**
- * « Concepteur de programme » — le MODÈLE réutilisable du programme.
+ * « Concepteur de programme » — atelier complet, en un seul onglet.
  *
- * Cet écran ne contient aucune donnée datée d'une promotion : identité,
- * versions de référentiel, objectifs par nature, chronologie type et modèles
- * de carnet de stage. Le rappel des trois étapes de travail n'apparaît que
- * sur cet écran (aucune redite ailleurs).
+ * Tout se fait ICI : choix ou création du modèle, objectifs pédagogiques,
+ * analyse IA (maquette) proposant les ressources nécessaires, implémentation
+ * immédiate ou différée de chaque ressource, puis préparation et association
+ * de la promotion. Le seul lien sortant est le passage au pilotage, une fois
+ * le programme conçu et la promotion associée.
  */
+import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   ArrowRight,
-  BadgeCheck,
   BookOpen,
   ClipboardCheck,
-  Layers,
-  Milestone,
+  FileUp,
+  Sparkles,
+  Target,
+  Users,
   Notebook,
+  Check,
 } from "lucide-react";
 import { SectionHeading } from "@/components/section-heading";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
 import { EmptyState, MockBadge, PanelCard, ScopeNotice } from "@/features/professional/mock-ui";
 import { AdminWorkLevelBanner } from "@/features/administration/AdminWorkLevel";
 import { useProgramAdmin } from "@/features/administration/useProgramAdmin";
 import { formatFrDate } from "@/features/administration/adminProgramViewModel";
-import { NATURE_LABELS_FR } from "@/domain/mastery";
 
-const NATURES = ["knowledge", "simulated_competence", "real_competence"] as const;
+/* ------------------------------------------------------------------ */
+/* Ressources du programme                                             */
+/* ------------------------------------------------------------------ */
 
-const NATURE_ROUTES: Record<(typeof NATURES)[number], { to: string; label: string }> = {
-  knowledge: { to: "/espace/administration/connaissances", label: "Base de connaissances" },
-  simulated_competence: { to: "/espace/administration/competences", label: "Compétences" },
-  real_competence: { to: "/espace/administration/competences", label: "Compétences" },
+type ResourceKind = "knowledge" | "competences" | "assessments" | "stage";
+type ResourceMode = "now" | "later" | "existing";
+
+const RESOURCES: readonly {
+  readonly id: ResourceKind;
+  readonly label: string;
+  readonly icon: typeof BookOpen;
+  readonly hint: string;
+  readonly keywords: readonly string[];
+  readonly draftLabel: string;
+  readonly draftPlaceholder: string;
+}[] = [
+  {
+    id: "knowledge",
+    label: "Base de connaissances propre au programme",
+    icon: BookOpen,
+    hint: "Supports, cours, documents et QCM de connaissance.",
+    keywords: ["cours", "connaissance", "théorie", "support", "qcm", "savoir"],
+    draftLabel: "Premiers modules de connaissance (un par ligne)",
+    draftPlaceholder: "Anatomie échographique\nDoppler : bases physiques",
+  },
+  {
+    id: "competences",
+    label: "Liste de compétences visées",
+    icon: Target,
+    hint: "Compétences simulées et compétences en situation réelle.",
+    keywords: ["compétence", "geste", "savoir-faire", "acquisition", "maîtrise"],
+    draftLabel: "Compétences visées (une par ligne)",
+    draftPlaceholder: "Réaliser une ETT complète\nMesurer la FEVG",
+  },
+  {
+    id: "assessments",
+    label: "Évaluations du programme",
+    icon: ClipboardCheck,
+    hint: "Examens, ECOS, simulations et grilles de notation.",
+    keywords: ["évaluation", "examen", "ecos", "simulation", "note", "certification"],
+    draftLabel: "Évaluations prévues (une par ligne)",
+    draftPlaceholder: "Examen écrit de fin de module\nECOS de synthèse",
+  },
+  {
+    id: "stage",
+    label: "Stage et carnet de stage",
+    icon: Notebook,
+    hint: "Type de stage, lieux, dates et mode de validation.",
+    keywords: ["stage", "terrain", "carnet", "service", "clinique", "encadrant"],
+    draftLabel: "Terrains et modalités de stage (un par ligne)",
+    draftPlaceholder: "CHU cardiologie — 4 semaines\nCarnet validé par l'encadrant",
+  },
+];
+
+interface ResourceState {
+  readonly selected: boolean;
+  readonly mode: ResourceMode;
+  readonly draft: string;
+  readonly implemented: boolean;
+}
+
+const INITIAL_RESOURCE: ResourceState = {
+  selected: false,
+  mode: "now",
+  draft: "",
+  implemented: false,
 };
+
+const MODE_LABELS: Record<ResourceMode, string> = {
+  now: "Implémenter maintenant",
+  later: "Plus tard",
+  existing: "Réutiliser l'existant",
+};
+
+/** Analyse (maquette déterministe) des objectifs pédagogiques saisis. */
+function analyseObjectives(text: string): readonly ResourceKind[] {
+  const haystack = text.toLowerCase();
+  const found = RESOURCES.filter((resource) =>
+    resource.keywords.some((keyword) => haystack.includes(keyword)),
+  ).map((resource) => resource.id);
+  return found.length > 0 ? found : ["knowledge"];
+}
+
+/* ------------------------------------------------------------------ */
+/* Écran                                                              */
+/* ------------------------------------------------------------------ */
 
 export function AdminProgramDesigner() {
   const { data, isPending } = useProgramAdmin();
+
+  const [modelId, setModelId] = useState<string | null>(null);
+  const [modelName, setModelName] = useState("");
+  const [objectives, setObjectives] = useState("");
+  const [importedFile, setImportedFile] = useState<string | null>(null);
+  const [analysed, setAnalysed] = useState<readonly ResourceKind[] | null>(null);
+  const [resources, setResources] = useState<Record<ResourceKind, ResourceState>>({
+    knowledge: INITIAL_RESOURCE,
+    competences: INITIAL_RESOURCE,
+    assessments: INITIAL_RESOURCE,
+    stage: INITIAL_RESOURCE,
+  });
+
+  const [cohortMode, setCohortMode] = useState<"existing" | "new">("existing");
+  const [selectedCohortId, setSelectedCohortId] = useState<string | null>(null);
+  const [newCohort, setNewCohort] = useState({ label: "", startsOn: "", endsOn: "", learners: "" });
+  const [associated, setAssociated] = useState<string | null>(null);
+
+  const existingCounts = useMemo<Record<ResourceKind, number>>(
+    () => ({
+      knowledge: data?.resources.length ?? 0,
+      competences: data?.outcomes.filter((o) => o.nature !== "knowledge").length ?? 0,
+      assessments: data?.ecosScenarios.length ?? 0,
+      stage: (data?.placements.length ?? 0) + (data?.templates.length ?? 0),
+    }),
+    [data],
+  );
+
   if (isPending || !data) return <Skeleton className="h-80 w-full" />;
 
-  const cohorts = data.cohorts;
-  const byNature = (nature: string) => data.outcomes.filter((o) => o.nature === nature);
+  const modelReady = modelId !== null || modelName.trim().length > 0;
+  const chosenResources = RESOURCES.filter((r) => resources[r.id].selected);
+  const pendingResources = chosenResources.filter(
+    (r) => resources[r.id].mode === "now" && !resources[r.id].implemented,
+  );
+  const designReady = modelReady && chosenResources.length > 0 && pendingResources.length === 0;
+  const readyForPilot = designReady && associated !== null;
+
+  const patch = (id: ResourceKind, next: Partial<ResourceState>) =>
+    setResources((prev) => ({ ...prev, [id]: { ...prev[id], ...next } }));
+
+  const runAnalysis = () => {
+    const detected = analyseObjectives(`${objectives} ${importedFile ?? ""}`);
+    setAnalysed(detected);
+    setResources((prev) => {
+      const next = { ...prev };
+      for (const kind of detected) {
+        next[kind] = {
+          ...next[kind],
+          selected: true,
+          mode: existingCounts[kind] > 0 ? "existing" : "now",
+        };
+      }
+      return next;
+    });
+  };
 
   return (
     <div className="space-y-6">
@@ -47,174 +185,415 @@ export function AdminProgramDesigner() {
         title="Concepteur de programme"
         level={1}
         action={<MockBadge />}
-        description="Définissez une seule fois le modèle pédagogique : référentiel, objectifs, chronologie type et carnets."
+        description="Concevez le programme et préparez sa promotion sans quitter cet onglet."
       />
 
       <AdminWorkLevelBanner
         level="program"
         programName={data.program?.name ?? "Programme sélectionné"}
-        cohortCount={cohorts.length}
+        cohortCount={data.cohorts.length}
       />
 
       <ScopeNotice>
-        Rien n'est daté ici. Les dates, inscriptions et suivis appartiennent à l'onglet « Pilotage de
-        programme », promotion par promotion.
+        Tout ce qui est créé ici alimente directement les onglets correspondants (Base de
+        connaissances, Compétences, Évaluations, Gestion des stages, Classes d'apprenants) — et
+        réciproquement.
       </ScopeNotice>
 
-      {/* Carte d'identité du modèle */}
-      <section className="border-border bg-card rounded-lg border p-5">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-muted-foreground text-xs uppercase tracking-wide">
-              Modèle de programme
-            </p>
-            <h2 className="truncate text-lg font-semibold">{data.program?.name ?? "Programme"}</h2>
-            <p className="text-muted-foreground text-sm">
-              {data.program?.institution ?? ""} · {data.program?.code ?? ""} · ≈{" "}
-              {data.program?.annualLearnerEstimate ?? 0} apprenants/an
-            </p>
-          </div>
-          <Badge variant="outline" className="font-normal">
-            {cohorts.length} promotion(s) rejouent ce modèle
+      {/* ---------------- Étape 1 : concevoir ---------------- */}
+      <PanelCard
+        title="1. Concevoir le programme"
+        description="Partez d'un modèle existant ou créez-en un, puis laissez l'analyse proposer les ressources."
+        action={
+          <Badge variant={designReady ? "secondary" : "outline"} className="font-normal">
+            {designReady ? "conception prête" : "en cours"}
           </Badge>
-        </div>
-
-        <dl className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
-          {[
-            { icon: Layers, label: "Versions de référentiel", value: data.versions.length },
-            { icon: BadgeCheck, label: "Objectifs et compétences", value: data.outcomes.length },
-            { icon: Milestone, label: "Jalons type", value: data.planSchedule.length },
-            { icon: ClipboardCheck, label: "Modèles de carnet", value: data.templates.length },
-          ].map(({ icon: Icon, label, value }) => (
-            <div key={label} className="border-border rounded-md border p-3">
-              <Icon className="text-muted-foreground size-4" aria-hidden />
-              <dd className="mt-1 text-2xl font-semibold tabular-nums">{value}</dd>
-              <dt className="text-muted-foreground text-xs">{label}</dt>
-            </div>
-          ))}
-        </dl>
-      </section>
-
-      <PanelCard
-        title="Versions de référentiel"
-        description="Une version encadre les objectifs et les promotions qui s'y rattachent."
+        }
       >
-        {data.versions.length === 0 ? (
-          <EmptyState>Aucune version de référentiel.</EmptyState>
-        ) : (
-          <ol className="space-y-2">
-            {data.versions.map((version) => (
-              <li
-                key={version.id}
-                className="border-border flex flex-wrap items-center gap-2 rounded-md border p-3 text-sm"
-              >
-                <span className="font-medium">{version.label}</span>
-                <Badge variant="outline" className="font-normal">
-                  {version.status}
-                </Badge>
-                <span className="text-muted-foreground">
-                  en vigueur depuis {formatFrDate(version.effectiveFrom)}
-                </span>
-              </li>
-            ))}
-          </ol>
-        )}
-      </PanelCard>
+        {/* a) modèle existant */}
+        <fieldset className="space-y-2">
+          <legend className="text-sm font-medium">a. Sélectionner un modèle existant</legend>
+          {data.versions.length === 0 ? (
+            <EmptyState>Aucun modèle de programme enregistré.</EmptyState>
+          ) : (
+            <ul className="space-y-2">
+              {data.versions.map((version) => {
+                const active = modelId === version.id;
+                return (
+                  <li key={version.id}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setModelId(active ? null : version.id);
+                        if (!active) setModelName("");
+                      }}
+                      aria-pressed={active}
+                      className={`flex min-h-11 w-full flex-wrap items-center gap-2 rounded-md border p-3 text-start text-sm ${
+                        active ? "border-primary bg-primary/5" : "border-border"
+                      }`}
+                    >
+                      <span className="font-medium">{version.label}</span>
+                      <Badge variant="outline" className="font-normal">
+                        {version.status}
+                      </Badge>
+                      <span className="text-muted-foreground text-xs">
+                        depuis {formatFrDate(version.effectiveFrom)}
+                      </span>
+                      {active ? <Check className="text-primary ms-auto size-4" aria-hidden /> : null}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </fieldset>
 
-      <PanelCard
-        title="Objectifs du programme, par nature"
-        description="Connaissance, compétence simulée et compétence en situation réelle ne se prouvent pas de la même façon."
-      >
-        <div className="grid gap-3 md:grid-cols-3">
-          {NATURES.map((nature) => {
-            const route = NATURE_ROUTES[nature];
-            return (
-              <article key={nature} className="border-border rounded-md border p-4">
-                <p className="text-sm font-medium">{NATURE_LABELS_FR[nature]}</p>
-                <p className="mt-1 text-3xl font-semibold tabular-nums">
-                  {byNature(nature).length}
-                </p>
-                <p className="text-muted-foreground mt-1 text-xs">
-                  {nature === "knowledge"
-                    ? "Preuves par supports et QCM"
-                    : nature === "simulated_competence"
-                      ? "Preuves par simulation et ECOS"
-                      : "Validation humaine obligatoire"}
-                </p>
-                <Button asChild variant="ghost" size="sm" className="mt-3 min-h-11 px-0">
-                  <Link to={route.to}>
-                    {route.label}
-                    <ArrowRight className="ms-1 size-4" aria-hidden />
-                  </Link>
-                </Button>
-              </article>
-            );
-          })}
-        </div>
-      </PanelCard>
-
-      <PanelCard
-        title="Chronologie type"
-        description="Jalons réutilisables, exprimés indépendamment des dates d'une promotion."
-      >
-        {data.planSchedule.length === 0 ? (
-          <EmptyState>Aucun jalon type défini.</EmptyState>
-        ) : (
-          <ol className="border-border space-y-0 border-s ps-4">
-            {data.planSchedule.map((entry) => (
-              <li key={`${entry.outcomeId}-${entry.dueOn}`} className="relative py-3">
-                <span
-                  aria-hidden
-                  className="bg-primary absolute -start-[1.3rem] top-5 size-2 rounded-full"
+        {/* b) création du modèle */}
+        <fieldset className="border-border space-y-3 rounded-md border p-4">
+          <legend className="px-1 text-sm font-medium">
+            b. Sinon, créer le modèle et ses objectifs pédagogiques
+          </legend>
+          <div className="space-y-1.5">
+            <Label htmlFor="model-name">Nom du modèle</Label>
+            <Input
+              id="model-name"
+              value={modelName}
+              disabled={modelId !== null}
+              onChange={(event) => setModelName(event.target.value)}
+              placeholder="Référentiel 2026 — échocardiographie"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="objectives">Objectifs pédagogiques (texte libre)</Label>
+            <Textarea
+              id="objectives"
+              rows={5}
+              value={objectives}
+              onChange={(event) => setObjectives(event.target.value)}
+              placeholder="Décrivez les objectifs : connaissances, compétences, évaluations, stage…"
+            />
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button asChild variant="outline" className="min-h-11">
+              <label>
+                <FileUp className="me-1 size-4" aria-hidden />
+                Importer un fichier d'objectifs
+                <input
+                  type="file"
+                  className="sr-only"
+                  onChange={(event) => setImportedFile(event.target.files?.[0]?.name ?? null)}
                 />
-                <div className="flex flex-wrap items-center gap-2 text-sm">
-                  <span className="font-medium">{entry.milestoneLabel}</span>
-                  {entry.official ? (
-                    <Badge variant="secondary" className="font-normal">
-                      échéance institutionnelle
-                    </Badge>
+              </label>
+            </Button>
+            {importedFile ? (
+              <span className="text-muted-foreground text-xs">{importedFile} (maquette)</span>
+            ) : null}
+          </div>
+        </fieldset>
+
+        {/* c) analyse IA */}
+        <fieldset className="border-border space-y-3 rounded-md border p-4">
+          <legend className="px-1 text-sm font-medium">
+            c. Analyse du programme et ressources nécessaires
+          </legend>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              className="min-h-11"
+              disabled={objectives.trim().length === 0 && importedFile === null}
+              onClick={runAnalysis}
+            >
+              <Sparkles className="me-1 size-4" aria-hidden />
+              Analyser les objectifs
+            </Button>
+            <MockBadge label="Analyse simulée" />
+          </div>
+
+          {analysed ? (
+            <p className="text-muted-foreground text-sm">
+              Ressources proposées :{" "}
+              {analysed
+                .map((kind) => RESOURCES.find((r) => r.id === kind)?.label ?? kind)
+                .join(", ")}
+              . Complétez librement la sélection ci-dessous.
+            </p>
+          ) : (
+            <p className="text-muted-foreground text-sm">
+              Vous pouvez aussi cocher directement les ressources voulues, sans analyse.
+            </p>
+          )}
+
+          <div className="space-y-3">
+            {RESOURCES.map((resource) => {
+              const state = resources[resource.id];
+              const suggested = analysed?.includes(resource.id) ?? false;
+              const Icon = resource.icon;
+              return (
+                <article
+                  key={resource.id}
+                  className={`rounded-md border p-4 ${
+                    state.selected ? "border-primary/40 bg-primary/5" : "border-border"
+                  }`}
+                >
+                  <div className="flex flex-wrap items-start gap-3">
+                    <Checkbox
+                      id={`res-${resource.id}`}
+                      checked={state.selected}
+                      onCheckedChange={(checked) =>
+                        patch(resource.id, { selected: checked === true })
+                      }
+                    />
+                    <div className="min-w-0 flex-1">
+                      <Label htmlFor={`res-${resource.id}`} className="flex items-center gap-2">
+                        <Icon className="text-muted-foreground size-4" aria-hidden />
+                        {resource.label}
+                      </Label>
+                      <p className="text-muted-foreground mt-1 text-xs">{resource.hint}</p>
+                      <div className="mt-1 flex flex-wrap gap-2">
+                        {suggested ? (
+                          <Badge variant="secondary" className="font-normal">
+                            proposé par l'analyse
+                          </Badge>
+                        ) : null}
+                        <Badge variant="outline" className="font-normal">
+                          {existingCounts[resource.id]} élément(s) déjà dans l'onglet dédié
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+
+                  {state.selected ? (
+                    <div className="mt-3 space-y-3">
+                      <div
+                        role="group"
+                        aria-label={`Mode d'implémentation — ${resource.label}`}
+                        className="flex flex-wrap gap-2"
+                      >
+                        {(Object.keys(MODE_LABELS) as ResourceMode[]).map((mode) => (
+                          <Button
+                            key={mode}
+                            type="button"
+                            size="sm"
+                            variant={state.mode === mode ? "default" : "outline"}
+                            aria-pressed={state.mode === mode}
+                            disabled={mode === "existing" && existingCounts[resource.id] === 0}
+                            className="min-h-11"
+                            onClick={() => patch(resource.id, { mode })}
+                          >
+                            {MODE_LABELS[mode]}
+                          </Button>
+                        ))}
+                      </div>
+
+                      {state.mode === "now" ? (
+                        <div className="space-y-2">
+                          <Label htmlFor={`draft-${resource.id}`}>{resource.draftLabel}</Label>
+                          <Textarea
+                            id={`draft-${resource.id}`}
+                            rows={3}
+                            value={state.draft}
+                            placeholder={resource.draftPlaceholder}
+                            onChange={(event) =>
+                              patch(resource.id, {
+                                draft: event.target.value,
+                                implemented: false,
+                              })
+                            }
+                          />
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Button
+                              type="button"
+                              size="sm"
+                              className="min-h-11"
+                              disabled={state.draft.trim().length === 0}
+                              onClick={() => patch(resource.id, { implemented: true })}
+                            >
+                              Créer dans ce programme
+                            </Button>
+                            {state.implemented ? (
+                              <span className="text-muted-foreground text-xs">
+                                {state.draft.split("\n").filter((line) => line.trim()).length}{" "}
+                                élément(s) créés ici — visibles ensuite dans l'onglet dédié.
+                              </span>
+                            ) : null}
+                          </div>
+                        </div>
+                      ) : null}
+
+                      {state.mode === "existing" ? (
+                        <p className="text-muted-foreground text-sm">
+                          Les {existingCounts[resource.id]} élément(s) déjà saisis dans l'onglet
+                          dédié seront associés à ce programme.
+                        </p>
+                      ) : null}
+
+                      {state.mode === "later" ? (
+                        <p className="text-muted-foreground text-sm">
+                          Ressource retenue mais non implémentée : elle restera à compléter plus
+                          tard.
+                        </p>
+                      ) : null}
+                    </div>
                   ) : null}
-                  <span className="text-muted-foreground font-mono text-xs">
-                    {formatFrDate(entry.startsOn)} → {formatFrDate(entry.dueOn)}
-                  </span>
-                </div>
-              </li>
-            ))}
-          </ol>
-        )}
+                </article>
+              );
+            })}
+          </div>
+        </fieldset>
       </PanelCard>
 
+      {/* ---------------- Étape 2 : promotion ---------------- */}
       <PanelCard
-        title="Poursuivre la conception"
-        description="Les contenus détaillés vivent dans leurs écrans dédiés."
+        title="2. Préparer et associer la promotion"
+        description="Créez la promotion ici, ou réutilisez une promotion existante, puis associez-la au programme conçu."
+        action={
+          <Badge variant={associated ? "secondary" : "outline"} className="font-normal">
+            {associated ? "promotion associée" : "à associer"}
+          </Badge>
+        }
       >
         <div className="flex flex-wrap gap-2">
-          <Button asChild variant="outline" className="min-h-11">
-            <Link to="/espace/administration/connaissances">
-              <BookOpen className="me-1 size-4" aria-hidden />
-              Base de connaissances
-            </Link>
+          {(["existing", "new"] as const).map((mode) => (
+            <Button
+              key={mode}
+              type="button"
+              size="sm"
+              className="min-h-11"
+              variant={cohortMode === mode ? "default" : "outline"}
+              aria-pressed={cohortMode === mode}
+              onClick={() => setCohortMode(mode)}
+            >
+              <Users className="me-1 size-4" aria-hidden />
+              {mode === "existing" ? "Utiliser une promotion existante" : "Créer une promotion ici"}
+            </Button>
+          ))}
+        </div>
+
+        {cohortMode === "existing" ? (
+          data.cohorts.length === 0 ? (
+            <EmptyState>Aucune promotion enregistrée pour ce programme.</EmptyState>
+          ) : (
+            <ul className="space-y-2">
+              {data.cohorts.map((cohort) => {
+                const active = selectedCohortId === cohort.id;
+                return (
+                  <li key={cohort.id}>
+                    <button
+                      type="button"
+                      aria-pressed={active}
+                      onClick={() => setSelectedCohortId(active ? null : cohort.id)}
+                      className={`flex min-h-11 w-full flex-wrap items-center gap-2 rounded-md border p-3 text-start text-sm ${
+                        active ? "border-primary bg-primary/5" : "border-border"
+                      }`}
+                    >
+                      <span className="font-medium">{cohort.label}</span>
+                      <span className="text-muted-foreground font-mono text-xs">
+                        {formatFrDate(cohort.startsOn)} → {formatFrDate(cohort.endsOn)}
+                      </span>
+                      <Badge variant="outline" className="font-normal">
+                        {cohort.learnerCount} apprenants
+                      </Badge>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="cohort-label">Nom de la promotion</Label>
+              <Input
+                id="cohort-label"
+                value={newCohort.label}
+                onChange={(e) => setNewCohort({ ...newCohort, label: e.target.value })}
+                placeholder="Promotion 2026-2027"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="cohort-learners">Effectif attendu</Label>
+              <Input
+                id="cohort-learners"
+                inputMode="numeric"
+                value={newCohort.learners}
+                onChange={(e) => setNewCohort({ ...newCohort, learners: e.target.value })}
+                placeholder="120"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="cohort-start">Début</Label>
+              <Input
+                id="cohort-start"
+                type="date"
+                value={newCohort.startsOn}
+                onChange={(e) => setNewCohort({ ...newCohort, startsOn: e.target.value })}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="cohort-end">Fin</Label>
+              <Input
+                id="cohort-end"
+                type="date"
+                value={newCohort.endsOn}
+                onChange={(e) => setNewCohort({ ...newCohort, endsOn: e.target.value })}
+              />
+            </div>
+            <p className="text-muted-foreground text-xs sm:col-span-2">
+              La promotion créée ici apparaîtra dans l'onglet « Classes d'apprenants ».
+            </p>
+          </div>
+        )}
+
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            className="min-h-11"
+            disabled={
+              !designReady ||
+              (cohortMode === "existing" ? !selectedCohortId : newCohort.label.trim().length === 0)
+            }
+            onClick={() =>
+              setAssociated(
+                cohortMode === "existing"
+                  ? (data.cohorts.find((c) => c.id === selectedCohortId)?.label ?? null)
+                  : newCohort.label.trim(),
+              )
+            }
+          >
+            Associer la promotion au programme
           </Button>
-          <Button asChild variant="outline" className="min-h-11">
-            <Link to="/espace/administration/competences">Compétences</Link>
-          </Button>
-          <Button asChild variant="outline" className="min-h-11">
-            <Link to="/espace/administration/evaluations">Évaluations</Link>
-          </Button>
-          <Button asChild variant="outline" className="min-h-11">
-            <Link to="/espace/administration/stages">
-              <Notebook className="me-1 size-4" aria-hidden />
-              Stage
-            </Link>
-          </Button>
-          <Button asChild variant="outline" className="min-h-11">
-            <Link to="/espace/administration/pilotage">
-              Pilotage de programme
-              <ArrowRight className="ms-1 size-4" aria-hidden />
-            </Link>
-          </Button>
+          {associated ? (
+            <span className="text-muted-foreground text-sm">
+              {associated} est associée à {data.program?.name ?? "ce programme"}.
+            </span>
+          ) : !designReady ? (
+            <span className="text-muted-foreground text-sm">
+              Terminez d'abord l'étape 1 (ressources choisies et implémentations en attente
+              réglées).
+            </span>
+          ) : null}
         </div>
       </PanelCard>
+
+      {/* ---------------- Sortie vers le pilotage ---------------- */}
+      <section className="border-border bg-card flex flex-wrap items-center justify-between gap-3 rounded-lg border p-5">
+        <div className="min-w-0">
+          <h2 className="text-base font-semibold">3. Tout est programmé ?</h2>
+          <p className="text-muted-foreground text-sm">
+            C'est le seul moment où l'on quitte le concepteur : le suivi se fait dans le pilotage.
+          </p>
+        </div>
+        <Button asChild={readyForPilot} className="min-h-11" disabled={!readyForPilot}>
+          {readyForPilot ? (
+            <Link to="/espace/administration/pilotage">
+              Piloter le programme
+              <ArrowRight className="ms-1 size-4" aria-hidden />
+            </Link>
+          ) : (
+            <span>Piloter le programme</span>
+          )}
+        </Button>
+      </section>
     </div>
   );
 }
