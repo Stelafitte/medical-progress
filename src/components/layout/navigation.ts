@@ -11,6 +11,7 @@ import {
   BadgeCheck,
   BookOpen,
   ClipboardCheck,
+  FileCheck,
   Gauge,
   GraduationCap,
   IdCard,
@@ -137,6 +138,12 @@ export const PROGRAM_ADMIN_NAV: readonly NavEntry[] = [
     to: "/espace/administration/stages",
     label: "Gestion des stages",
     icon: Notebook,
+    exact: false,
+  },
+  {
+    to: "/espace/administration/documents",
+    label: "Documents et certificats",
+    icon: FileCheck,
     exact: false,
   },
   {

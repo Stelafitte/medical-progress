@@ -6,7 +6,16 @@ import { EmptyState, MockBadge, PanelCard, ScopeNotice } from "@/features/profes
 import { useProgramAdmin } from "@/features/administration/useProgramAdmin";
 import { EXPORT_NO_PATIENT_DATA_FR, RETENTION_TBD_FR } from "@/domain/administration";
 import { ROLE_LABELS_FR } from "@/domain/roles";
+import { Link } from "@tanstack/react-router";
 import { useSession } from "@/application/session";
+
+/** Libellés français des portées de rôle : aucune valeur technique à l'écran. */
+const SCOPE_LABELS_FR: Record<string, string> = {
+  platform: "plateforme",
+  program: "programme",
+  cohort: "promotion",
+  placement: "terrain de stage",
+};
 
 export function AdminGovernance() {
   const { activeProgram } = useSession();
@@ -21,7 +30,7 @@ export function AdminGovernance() {
   return (
     <div className="space-y-8">
       <SectionHeading
-        title="Gouvernance"
+        title="Administration et sécurité"
         level={1}
         action={<MockBadge />}
         description="Droits par programme, partage, conservation, audit et paramètres de sécurité."
@@ -42,7 +51,7 @@ export function AdminGovernance() {
               <Badge variant="outline" className="font-normal">
                 {ROLE_LABELS_FR[r.role]}
               </Badge>
-              <span className="text-muted-foreground">portée : {r.scope.kind}</span>
+              <span className="text-muted-foreground">portée : {SCOPE_LABELS_FR[r.scope.kind] ?? r.scope.kind}</span>
             </li>
           ))}
           {programRoles.length === 0 ? (
@@ -59,6 +68,15 @@ export function AdminGovernance() {
             <Badge variant="outline" className="font-normal">
               {RETENTION_TBD_FR}
             </Badge>
+          </li>
+          <li>
+            Pièces administratives et certificats : le référentiel des pièces exigées et le suivi
+            des dépôts se règlent dans{" "}
+            <Link className="underline" to="/espace/administration/documents">
+              « Documents et certificats »
+            </Link>
+            . La signature du certificat de complétude revient au responsable de stage, jamais à
+            l'administration.
           </li>
           <li>
             Fragments photo : stockage privé prévu, jamais d'URL publique. Aucun stockage réel dans
