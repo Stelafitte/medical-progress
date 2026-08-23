@@ -48,15 +48,12 @@ export function AdminStages() {
       </ScopeNotice>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard label="Terrains de stage" value={placements.length} icon={Building2} />
-        <StatCard label="Lieux distincts" value={sites.length} icon={MapPin} />
-        <StatCard label="Places totales" value={capacity} icon={Users} />
-        <StatCard
-          label="Affectations connues"
-          value={data.assignments.length}
-          icon={CalendarRange}
-        />
+        <StatCard label="Terrains de stage" value={placements.length} />
+        <StatCard label="Lieux distincts" value={sites.length} />
+        <StatCard label="Places totales" value={capacity} />
+        <StatCard label="Affectations connues" value={data.assignments.length} />
       </div>
+
 
       <PlacementSection
         programId={programId}
