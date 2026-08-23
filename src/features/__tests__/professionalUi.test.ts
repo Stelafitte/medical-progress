@@ -107,7 +107,9 @@ describe("aucune opération réelle", () => {
   });
 
   it("marque la conservation comme à définir avant backend", () => {
-    expect(read("src/features/administration/AdminGovernance.tsx")).toContain("RETENTION_TBD_FR");
+    expect(read("src/features/administration/AccessGrantSection.tsx")).toContain(
+      "RETENTION_TBD_FR",
+    );
   });
 });
 
