@@ -75,14 +75,8 @@ export function AdminCompetencies() {
     [enrollments, outcomes],
   );
   const parsed = useMemo(() => parseReferentialText(importText), [importText]);
-  /** Seules les lignes de nature compétence peuvent rejoindre ce référentiel. */
-  const importable = useMemo(
-    () =>
-      parsed.filter(
-        (row) => row.nature === "simulated_competence" || row.nature === "real_competence",
-      ),
-    [parsed],
-  );
+  /** Prévisualisation des conflits : nouvelles, déjà présentes, inchangées, ignorées. */
+  const diff = useMemo(() => diffReferentialRows(parsed, outcomes), [parsed, outcomes]);
 
   if (isPending || !data) return <Skeleton className="h-80 w-full" />;
 
