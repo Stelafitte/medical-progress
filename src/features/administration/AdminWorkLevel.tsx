@@ -15,9 +15,10 @@ const LEVELS: readonly { id: AdminWorkLevel; label: string; detail: string }[] =
   },
   {
     id: "operations",
-    label: "3. Piloter la promotion",
+    label: "3. Piloter le programme",
     detail: "Suivi, validations et communications",
   },
+
 ];
 
 interface AdminWorkLevelBannerProps {
