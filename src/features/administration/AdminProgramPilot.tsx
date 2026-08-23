@@ -236,7 +236,23 @@ export function AdminProgramPilot() {
             phase={cohortPhase(selected)}
             rows={learnerRows}
             summary={groupSummary}
+            activity={{
+              milestonesTotal: timeline.length,
+              milestonesPassed: timeline.filter((i) => i.state === "done").length,
+              progressPercent: progress,
+              outcomes: data.outcomes.length,
+              resources: data.resources.length,
+              evaluations: data.ecosScenarios.length,
+              stagePlacements: data.placements.length,
+              logbookTemplates: data.templates.length,
+              mediaItems: data.media.length,
+              versions: data.versions.length,
+              nextMilestoneLabel: upcoming
+                ? `${upcoming.label} le ${formatFrDate(upcoming.date)}`
+                : "tous les jalons connus sont passés",
+            }}
           />
+
         </>
       )}
     </div>
