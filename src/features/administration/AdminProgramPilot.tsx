@@ -284,6 +284,14 @@ export function AdminProgramPilot() {
             })()}
           </PanelCard>
 
+          {/* Table de suivi croisée : même composant que dans « Classes d'apprenants ». */}
+          <LearnerTrackingSection
+            data={data}
+            cohortId={selectedId}
+            showCohortSelector={false}
+            description="Bases théoriques, compétences, stage et évaluations pour chaque apprenant de la promotion pilotée. Vue identique à celle de l'onglet « Classes d'apprenants »."
+          />
+
 
           <PilotTools
             phase={cohortPhase(selected)}
