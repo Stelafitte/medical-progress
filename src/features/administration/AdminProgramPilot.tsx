@@ -774,7 +774,11 @@ function PilotTools({
                   {tool.key === "programmation" ? <ProgrammingPanel phase={phase} /> : null}
                   {tool.key === "activite" ? <ActivityPanel activity={activity} /> : null}
                   {tool.key === "apprenants" ? (
-                    <LearnerManagementPanel rows={rows} summary={summary} />
+                    <LearnerManagementPanel
+                      rows={rows}
+                      summary={summary}
+                      competenceRows={competenceRows}
+                    />
                   ) : null}
                   {tool.key === "documents" ? <DocumentsPanel /> : null}
                 </div>
