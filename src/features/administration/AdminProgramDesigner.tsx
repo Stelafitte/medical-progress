@@ -37,7 +37,11 @@ import { CohortCreationForm } from "@/features/administration/CohortCreationForm
 import { PlacementCreationForm } from "@/features/administration/PlacementCreationForm";
 import { CompetenceCreationForm } from "@/features/administration/CompetenceCreationForm";
 import { DocumentRequirementForm } from "@/features/administration/DocumentRequirementForm";
+import { KnowledgeCreationForm } from "@/features/administration/KnowledgeCreationForm";
+import { AssessmentModalityForm } from "@/features/administration/AssessmentModalityForm";
 import { useLocalDocumentRequirements } from "@/application/documentRequirementStore";
+import { useLocalKnowledge } from "@/application/knowledgeDraftStore";
+import { useLocalModalities } from "@/application/assessmentModalityStore";
 import { useLocalCohorts } from "@/application/cohortDraftStore";
 import { useLocalPlacements } from "@/application/placementDraftStore";
 import { useLocalCompetences } from "@/application/competenceDraftStore";
@@ -214,17 +218,28 @@ export function AdminProgramDesigner() {
   const localPlacements = useLocalPlacements(data?.program?.id);
   const localCompetences = useLocalCompetences(data?.program?.id);
   const localRequirements = useLocalDocumentRequirements(data?.program?.id);
+  const localKnowledge = useLocalKnowledge(data?.program?.id);
+  const localModalities = useLocalModalities(data?.program?.id);
 
   const existingCounts = useMemo<Record<ResourceKind, number>>(
     () => ({
-      knowledge: data?.resources.length ?? 0,
-      competences: data?.outcomes.filter((o) => o.nature !== "knowledge").length ?? 0,
-      assessments: data?.ecosScenarios.length ?? 0,
+      knowledge: (data?.resources.length ?? 0) + localKnowledge.length,
+      competences:
+        (data?.outcomes.filter((o) => o.nature !== "knowledge").length ?? 0) +
+        localCompetences.length,
+      assessments: localModalities.length,
       stage:
         (data?.placements.length ?? 0) + (data?.templates.length ?? 0) + localPlacements.length,
       documents: localRequirements.length,
     }),
-    [data, localPlacements, localRequirements],
+    [
+      data,
+      localPlacements,
+      localRequirements,
+      localKnowledge,
+      localModalities,
+      localCompetences,
+    ],
   );
 
 
@@ -565,10 +580,56 @@ export function AdminProgramDesigner() {
                         </div>
                       ) : null}
 
+                      {state.mode === "now" && resource.id === "knowledge" ? (
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium">Créer une base de connaissance</p>
+                          <KnowledgeCreationForm
+                            programId={activeProgramId}
+                            curriculumVersionId={curriculumVersionId}
+                            idPrefix="designer-knowledge"
+                            submitLabel="Créer la connaissance"
+                            hint="Même outil et même liste que l'onglet « Connaissances » : elle y apparaît aussitôt, rattachée à ce programme."
+                            onCreated={() => patch("knowledge", { implemented: true })}
+                          />
+                          {localKnowledge.length > 0 ? (
+                            <ul className="text-muted-foreground space-y-1 text-xs">
+                              {localKnowledge.map((outcome) => (
+                                <li key={outcome.id}>
+                                  {outcome.code} — {outcome.label}
+                                </li>
+                              ))}
+                            </ul>
+                          ) : null}
+                        </div>
+                      ) : null}
+
+                      {state.mode === "now" && resource.id === "assessments" ? (
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium">Créer une modalité d'évaluation</p>
+                          <AssessmentModalityForm
+                            programId={activeProgramId}
+                            idPrefix="designer-assessment"
+                            submitLabel="Créer la modalité d'évaluation"
+                            hint="Même outil et même liste que l'onglet « Évaluations » : la modalité y apparaît aussitôt, rattachée à ce programme."
+                            onCreated={() => patch("assessments", { implemented: true })}
+                          />
+                          {localModalities.length > 0 ? (
+                            <ul className="text-muted-foreground space-y-1 text-xs">
+                              {localModalities.map((modality) => (
+                                <li key={modality.id}>{modality.name}</li>
+                              ))}
+                            </ul>
+                          ) : null}
+                        </div>
+                      ) : null}
+
                       {state.mode === "now" &&
                       resource.id !== "stage" &&
                       resource.id !== "competences" &&
-                      resource.id !== "documents" ? (
+                      resource.id !== "documents" &&
+                      resource.id !== "knowledge" &&
+                      resource.id !== "assessments" ? (
+
 
                         <div className="space-y-2">
                           <Label htmlFor={`draft-${resource.id}`}>{resource.draftLabel}</Label>
