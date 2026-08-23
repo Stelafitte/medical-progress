@@ -242,7 +242,7 @@ export function AdminProgramDesigner() {
     (r) => resources[r.id].mode === "now" && !resources[r.id].implemented,
   );
   const designReady = modelReady && chosenResources.length > 0 && pendingResources.length === 0;
-  const readyForPilot = designReady && associated !== null;
+  
 
   /** Échéances à programmer : dérivées des ressources retenues à l'étape 1. */
   const scheduleItems = chosenResources.flatMap((resource) =>
