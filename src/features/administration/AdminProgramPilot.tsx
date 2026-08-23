@@ -112,8 +112,10 @@ export function AdminProgramPilot() {
       />
 
       <ScopeNotice>
-        Le modèle pédagogique ne se modifie pas ici : il se conçoit dans « Concepteur de programme ».
-        Cet écran n'agit que sur la promotion sélectionnée.
+        Cet onglet est celui du <strong>suivi</strong> : avancement, retards, relances sur la
+        promotion sélectionnée. La composition des classes (inscriptions, imports, archivage) se
+        traite dans « Classes d'apprenants », et le modèle pédagogique dans « Concepteur de
+        programme ».
       </ScopeNotice>
 
       <CohortSelector cohorts={cohorts} value={selectedId} onChange={setCohortId} label="Promotion pilotée" />
