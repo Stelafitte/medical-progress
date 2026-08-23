@@ -602,22 +602,26 @@ function PilotTools({
   phase,
   rows,
   summary,
+  activity,
 }: {
   phase: CohortPhase;
   rows: readonly LearnerActivityRow[];
   summary: GroupActivitySummary;
+  activity: ProgramActivity;
 }) {
   const [open, setOpen] = useState<readonly ToolKey[]>(["programmation"]);
   const toggle = (key: ToolKey) =>
     setOpen((keys) => (keys.includes(key) ? keys.filter((k) => k !== key) : [...keys, key]));
 
   const badgeFor = (key: ToolKey): string | null => {
-    if (key === "activite") return `${summary.averageProgressPercent} % moyen`;
+    if (key === "activite")
+      return `${activity.milestonesPassed}/${activity.milestonesTotal} jalons`;
     if (key === "apprenants")
       return `${summary.lateLearners + summary.idleLearners} à traiter`;
     if (key === "programmation") return PROGRAMMING_STATE_LABELS_FR[PHASE_TO_PROGRAMMING[phase]];
     return null;
   };
+
 
   return (
     <PanelCard
