@@ -581,14 +581,15 @@ const TOOLS: readonly {
     key: "activite",
     label: "Activité du programme",
     icon: Activity,
-    hint: "Activité de chaque apprenant et moyennes du groupe.",
+    hint: "Dispositif, contenus, jalons et ouvertures du programme — hors apprenants.",
   },
   {
     key: "apprenants",
     label: "Gestion des apprenants",
     icon: Users,
-    hint: "Marqueurs d'avancement, synthèse de groupe et notifications.",
+    hint: "Activité des apprenants, marqueurs, notifications et outil de communication complet.",
   },
+
   {
     key: "documents",
     label: "Documents et certificats",
