@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { SectionHeading } from "@/components/section-heading";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -10,10 +11,18 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { MockBadge, PanelCard, ScopeNotice, StatCard } from "@/features/professional/mock-ui";
+import { EmptyState, MockBadge, PanelCard, ScopeNotice, StatCard } from "@/features/professional/mock-ui";
 import { useDataAccess } from "@/application/session";
 import { RETENTION_TBD_FR, platformAdminCanOpenLearnerFile } from "@/domain/administration";
 import { ROLE_LABELS_FR } from "@/domain/roles";
+import {
+  COHORT_PHASE_LABELS_FR,
+  cohortPhase,
+  cohortProgressRatio,
+  daysUntil,
+  formatFrDate,
+  sortCohortsForPilot,
+} from "@/features/administration/adminProgramViewModel";
 
 /**
  * Administration PLATEFORME : supervision seulement.
