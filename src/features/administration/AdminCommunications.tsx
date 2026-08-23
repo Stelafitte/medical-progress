@@ -11,6 +11,7 @@
  */
 import { useMemo, useState } from "react";
 import { CheckCircle2, Circle, Info } from "lucide-react";
+import { SectionHeading } from "@/components/section-heading";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -25,9 +26,10 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
-import { EmptyState, PanelCard, ScopeNotice } from "@/features/professional/mock-ui";
+import { EmptyState, MockBadge, PanelCard, ScopeNotice } from "@/features/professional/mock-ui";
 import { useProgramAdmin } from "@/features/administration/useProgramAdmin";
 import { useSession } from "@/application/session";
+import { AdminWorkLevelBanner } from "@/features/administration/AdminWorkLevel";
 import { useDirectoryState } from "@/application/directoryStore";
 import {
   addPreparedCampaign,
@@ -62,8 +64,7 @@ import {
 } from "@/domain/communication";
 
 const LIMITS_FR =
-  "Simulé — aucun envoi : aucun e-mail, aucune notification, aucun appel réseau, aucune tâche programmée. L'historique préparé est perdu au rechargement de la page.";
-
+  "Simulation locale : aucun e-mail, aucune notification, aucun appel réseau, aucune tâche programmée. L'historique préparé est perdu au rechargement de la page.";
 
 const HUMAN_CHECK_FR =
   "Ce contrôle automatisé ne garantit pas à lui seul l'absence de données sensibles. Une vérification humaine reste obligatoire.";
@@ -347,7 +348,18 @@ export function AdminCommunications() {
 
   return (
     <div className="space-y-8">
+      <SectionHeading
+        title="Communications de la promotion"
+        level={1}
+        action={<MockBadge label="Simulé — aucun envoi" />}
+        description="Préparez les informations, sollicitations et relances destinées à une promotion ou à certains de ses membres."
+      />
 
+      <AdminWorkLevelBanner
+        level="operations"
+        programName={session.activeProgram.name}
+        cohortCount={data.cohorts.length}
+      />
 
       <div className="grid gap-3 md:grid-cols-3">
         <PanelCard title="Modèles" description="Conception du programme">

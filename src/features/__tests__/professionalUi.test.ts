@@ -50,17 +50,10 @@ describe("protection des routes", () => {
     expect(adminRoutes.length).toBeGreaterThanOrEqual(7);
     for (const file of adminRoutes) {
       const source = read(`src/routes/${file}`);
-      // Les anciennes URL conservées ne rendent rien : elles redirigent vers
-      // l'onglet courant, lui-même gardé.
-      if (source.includes("throw redirect(")) {
-        expect(source).toContain("/espace/administration/");
-        continue;
-      }
       expect(source).toContain("canAccessProgramAdministration");
       expect(source).toContain("AccessRestricted");
     }
   });
-
 
   it("l'administration plateforme est gardée séparément", () => {
     const source = read("src/routes/espace.plateforme.tsx");
@@ -107,9 +100,7 @@ describe("aucune opération réelle", () => {
   });
 
   it("marque la conservation comme à définir avant backend", () => {
-    expect(read("src/features/administration/AccessGrantSection.tsx")).toContain(
-      "RETENTION_TBD_FR",
-    );
+    expect(read("src/features/administration/AdminGovernance.tsx")).toContain("RETENTION_TBD_FR");
   });
 });
 

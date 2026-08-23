@@ -7,17 +7,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { useDataAccess, useSession } from "@/application/session";
 import { scopedToSupervisedEnrollments, supervisedEnrollmentIds } from "@/domain/supervision";
-import { useLocalPlacements } from "@/application/placementDraftStore";
-import { mergePlacements } from "@/domain/placementDraft";
 
 export function useSupervision() {
   const data = useDataAccess();
   const { person, activeProgram } = useSession();
-  /** Les terrains créés par l'administration en session sont visibles ici aussi. */
-  const localPlacements = useLocalPlacements(activeProgram.id);
 
   return useQuery({
-    queryKey: ["supervision", person.id, activeProgram.id, localPlacements.length],
+    queryKey: ["supervision", person.id, activeProgram.id],
     queryFn: async () => {
       const assignments = await data.placements.listAssignmentsForSupervisor(
         person.id,
@@ -25,7 +21,7 @@ export function useSupervision() {
       );
       const enrollmentIds = supervisedEnrollmentIds(assignments, person.id);
       const [
-        storedPlacements,
+        placements,
         outcomes,
         enrollments,
         alerts,
@@ -52,7 +48,7 @@ export function useSupervision() {
         enrollmentIds,
         enrollments,
         learners,
-        placements: mergePlacements(storedPlacements, localPlacements),
+        placements,
         outcomes,
         logsToValidate,
         alerts: scopedToSupervisedEnrollments(alerts, enrollmentIds),

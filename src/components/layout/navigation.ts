@@ -10,8 +10,8 @@ import {
   AlertTriangle,
   BadgeCheck,
   BookOpen,
+  Building2,
   ClipboardCheck,
-  FileCheck,
   Gauge,
   GraduationCap,
   IdCard,
@@ -99,56 +99,32 @@ export const SUPERVISION_NAV: readonly NavEntry[] = [
 export const PROGRAM_ADMIN_NAV: readonly NavEntry[] = [
   { to: "/espace/administration", label: "Vue d’ensemble", icon: Gauge, exact: true },
   {
-    to: "/espace/administration/concepteur",
-    label: "Concepteur de programme",
-    icon: GraduationCap,
-    exact: false,
-  },
-  {
-    to: "/espace/administration/pilotage",
-    label: "Pilotage de programme",
-    icon: Gauge,
-    exact: false,
-  },
-  {
-    to: "/espace/administration/classes",
-    label: "Classes d'apprenants",
+    to: "/espace/administration/personnes",
+    label: "Personnes et inscriptions",
     icon: Users,
     exact: false,
   },
   {
-    to: "/espace/administration/connaissances",
-    label: "Base de connaissances",
-    icon: BookOpen,
+    to: "/espace/administration/pedagogie",
+    label: "Concevoir le programme",
+    icon: GraduationCap,
     exact: false,
   },
   {
-    to: "/espace/administration/competences",
-    label: "Compétences",
-    icon: BadgeCheck,
+    to: "/espace/administration/organisation",
+    label: "Préparer la promotion",
+    icon: Building2,
     exact: false,
   },
   {
-    to: "/espace/administration/evaluations",
-    label: "Évaluations",
+    to: "/espace/administration/suivi",
+    label: "Piloter la promotion",
     icon: ClipboardCheck,
     exact: false,
   },
   {
-    to: "/espace/administration/stages",
-    label: "Gestion des stages",
-    icon: Notebook,
-    exact: false,
-  },
-  {
-    to: "/espace/administration/documents",
-    label: "Documents et certificats",
-    icon: FileCheck,
-    exact: false,
-  },
-  {
-    to: "/espace/administration/securite",
-    label: "Administration et sécurité",
+    to: "/espace/administration/gouvernance",
+    label: "Gouvernance",
     icon: ShieldCheck,
     exact: false,
   },
@@ -208,7 +184,7 @@ export function learnerNavFor(config?: NavProgramConfig): readonly NavEntry[] {
 export function programAdminNavFor(config?: NavProgramConfig): readonly NavEntry[] {
   if (!config?.dpcEnabled) return PROGRAM_ADMIN_NAV;
   const index = PROGRAM_ADMIN_NAV.findIndex(
-    (entry) => entry.to === "/espace/administration/pilotage",
+    (entry) => entry.to === "/espace/administration/pedagogie",
   );
   const entries = [...PROGRAM_ADMIN_NAV];
   entries.splice(index + 1, 0, ADMIN_DPC_ENTRY);
@@ -262,29 +238,4 @@ export function navSpacesFor(
       entries: PLATFORM_ADMIN_NAV,
     });
   return spaces;
-}
-
-/**
- * Première page réellement accessible pour les espaces visibles.
- * Utilisée après un changement de profil : sans cela, l'écran conservé
- * pouvait afficher « Accès restreint » alors que le profil a d'autres droits.
- */
-export function landingRouteFor(spaces: readonly NavSpace[]): string {
-  const first = spaces[0];
-  if (!first) return "/espace/profil";
-  // Un administrateur (de programme ou de plateforme) commence toujours par la
-  // vue « Tous les programmes » : le périmètre est choisi explicitement.
-  if (first.key === "program_admin" || first.key === "platform_admin") {
-    return "/espace/programmes";
-  }
-  return first.entries[0]?.to ?? "/espace/profil";
-}
-
-/** Vrai si le chemin courant appartient aux espaces visibles. */
-export function isRouteWithinSpaces(spaces: readonly NavSpace[], pathname: string): boolean {
-  return spaces.some((space) =>
-    space.entries.some((entry) =>
-      entry.exact ? pathname === entry.to : pathname.startsWith(entry.to),
-    ),
-  );
 }

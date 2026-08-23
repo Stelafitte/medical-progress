@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 
-export type AdminWorkLevel = "program" | "promotion" | "schedule" | "operations";
+export type AdminWorkLevel = "program" | "promotion" | "operations";
 
 const LEVELS: readonly { id: AdminWorkLevel; label: string; detail: string }[] = [
   {
@@ -11,20 +11,14 @@ const LEVELS: readonly { id: AdminWorkLevel; label: string; detail: string }[] =
   {
     id: "promotion",
     label: "2. Préparer la promotion",
-    detail: "Inscriptions et affectations",
-  },
-  {
-    id: "schedule",
-    label: "3. Programmer le planning général",
-    detail: "Dates ou périodes de tous les éléments du programme",
+    detail: "Inscriptions, calendrier et affectations",
   },
   {
     id: "operations",
-    label: "4. Basculer dans le pilotage",
+    label: "3. Piloter la promotion",
     detail: "Suivi, validations et communications",
   },
 ];
-
 
 interface AdminWorkLevelBannerProps {
   level: AdminWorkLevel;
@@ -57,7 +51,7 @@ export function AdminWorkLevelBanner({
           </Badge>
         ) : null}
       </div>
-      <ol className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+      <ol className="grid gap-2 lg:grid-cols-3">
         {LEVELS.map((item) => {
           const active = item.id === level;
           return (

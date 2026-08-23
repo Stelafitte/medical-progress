@@ -61,14 +61,7 @@ function download(filename: string, content: string) {
   URL.revokeObjectURL(url);
 }
 
-export function CohortRosterSection({
-  data,
-  section = "all",
-}: {
-  data: ProgramAdminScope;
-  /** « import » sert à embarquer le dépôt de liste dans le bloc « Créer une classe ». */
-  section?: "all" | "import" | "export";
-}) {
+export function CohortRosterSection({ data }: { data: ProgramAdminScope }) {
   const fileInput = useRef<HTMLInputElement>(null);
   const [rawText, setRawText] = useState("");
   const [fileName, setFileName] = useState<string | null>(null);
@@ -124,16 +117,13 @@ export function CohortRosterSection({
       });
   }, [data, exportCohortId]);
 
-  const importBlock = (
-    <div className="space-y-4">
-      <div className="space-y-1">
-        <h3 className="text-sm font-medium">Importer une liste d'étudiants</h3>
-        <p className="text-muted-foreground text-xs">
-          Dépôt CSV ou collage d'un tableau : contrôle des colonnes, des doublons et des erreurs
-          avant création.
-        </p>
-      </div>
-      <div className="space-y-4">
+  return (
+    <div className="space-y-8">
+      <PanelCard
+        title="Importer une promotion (liste d'étudiants)"
+        description="Dépôt CSV ou collage d'un tableau : contrôle des colonnes, des doublons et des erreurs avant création."
+        action={<MockBadge />}
+      >
         <div className="flex flex-wrap items-center gap-2">
           <input
             ref={fileInput}
@@ -290,15 +280,12 @@ export function CohortRosterSection({
             Déposez un fichier ou collez une liste pour afficher le contrôle avant import.
           </EmptyState>
         )}
-      </div>
-    </div>
-  );
+      </PanelCard>
 
-  const exportBlock = (
-    <PanelCard
-      title="Exporter une promotion"
-      description="Export CSV des identités et des états d'inscription. Les instantanés statistiques restent conservés d'une année à l'autre."
-    >
+      <PanelCard
+        title="Exporter une promotion"
+        description="Export CSV des identités et des états d'inscription. Les instantanés statistiques restent conservés d'une année à l'autre."
+      >
         <div className="flex flex-wrap items-end gap-3">
           <div className="min-w-56 space-y-2">
             <Label htmlFor="export-cohort">Promotion</Label>
@@ -331,17 +318,7 @@ export function CohortRosterSection({
             {exportRows.length} étudiant(s) dans la promotion sélectionnée.
           </span>
         </div>
-    </PanelCard>
-  );
-
-  if (section === "import") return importBlock;
-  if (section === "export") return exportBlock;
-  return (
-    <div className="space-y-8">
-      <PanelCard title="Importer une promotion (liste d'étudiants)" action={<MockBadge />}>
-        {importBlock}
       </PanelCard>
-      {exportBlock}
     </div>
   );
 }
