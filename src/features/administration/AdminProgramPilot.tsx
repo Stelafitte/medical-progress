@@ -31,7 +31,21 @@ import {
   formatFrDate,
   nextMilestone,
 } from "@/features/administration/adminProgramViewModel";
+import {
+  LEARNER_MARKER_LABELS_FR,
+  PROGRAMMING_ACTION_LABELS_FR,
+  PROGRAMMING_STATE_LABELS_FR,
+  allowedProgrammingActions,
+  buildLearnerActivityRows,
+  buildSuggestedNotifications,
+  nextProgrammingState,
+  summarizeGroupActivity,
+  type GroupActivitySummary,
+  type LearnerActivityRow,
+  type ProgrammingState,
+} from "@/features/administration/pilotSectionsViewModel";
 import { ROLE_LABELS_FR } from "@/domain/roles";
+import type { CohortPhase } from "@/features/administration/adminProgramViewModel";
 
 const STATE_STYLES = {
   done: "border-border text-muted-foreground",
