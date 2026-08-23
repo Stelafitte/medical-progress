@@ -14,6 +14,14 @@ import { MockBadge, PanelCard, ScopeNotice, StatCard } from "@/features/professi
 import { useDataAccess } from "@/application/session";
 import { RETENTION_TBD_FR, platformAdminCanOpenLearnerFile } from "@/domain/administration";
 import { ROLE_LABELS_FR } from "@/domain/roles";
+import type { ProgramKind } from "@/domain/types";
+
+const PROGRAM_KIND_LABELS: Record<ProgramKind, string> = {
+  diu: "Formation diplômante",
+  dfasm: "Formation initiale",
+  dpc: "Développement professionnel continu",
+  other: "Autre programme",
+};
 
 /**
  * Administration PLATEFORME : supervision seulement.
@@ -21,6 +29,7 @@ import { ROLE_LABELS_FR } from "@/domain/roles";
  */
 export function PlatformAdminView() {
   const data = useDataAccess();
+  const { programs } = useSession();
   const { data: result, isPending } = useQuery({
     queryKey: ["platform-admin"],
     queryFn: async () => {
@@ -37,14 +46,19 @@ export function PlatformAdminView() {
   if (isPending || !result) return <Skeleton className="h-80 w-full" />;
 
   const administrators = result.roles.filter((r) => r.role === "administrator");
+  const supervisionByProgram = new Map(result.rows.map((row) => [row.programId, row]));
+  const learnerTotal = programs.reduce((total, program) => {
+    const supervision = supervisionByProgram.get(program.id);
+    return total + (supervision?.learners ?? program.annualLearnerEstimate);
+  }, 0);
 
   return (
     <div className="space-y-8">
       <SectionHeading
-        title="Administration plateforme"
+        title="Direction plateforme"
         level={1}
         action={<MockBadge label="Maquette limitée" />}
-        description="Programmes, administrateurs autorisés, paramètres communs et supervision."
+        description="Vue d’ensemble de tous les programmes, de leur activité et de leur gouvernance."
       />
 
       <ScopeNotice>
@@ -54,36 +68,53 @@ export function PlatformAdminView() {
       </ScopeNotice>
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <StatCard label="Programmes" value={result.rows.length} />
-        <StatCard
-          label="Apprenants (tous programmes)"
-          value={result.rows.reduce((n, r) => n + r.learners, 0)}
-        />
+        <StatCard label="Programmes configurés" value={programs.length} />
+        <StatCard label="Apprenants (tous programmes)" value={learnerTotal} />
         <StatCard label="Rôles administrateur" value={administrators.length} />
       </div>
 
-      <PanelCard title="Programmes et administrateurs autorisés">
+      <PanelCard
+        title="Tous les programmes"
+        description="Vue consolidée de la plateforme, indépendante du programme actif dans les autres espaces."
+      >
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Programme</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Établissement</TableHead>
                 <TableHead>Administrateurs</TableHead>
                 <TableHead className="text-right">Apprenants</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {result.rows.map((row) => (
-                <TableRow key={row.programId}>
-                  <TableCell className="font-medium">{row.programLabel}</TableCell>
+              {programs.map((program) => {
+                const row = supervisionByProgram.get(program.id);
+                const administratorNames = row?.authorizedAdministrators
+                  .map((id) => result.people.find((p) => p.id === id)?.fullName ?? id)
+                  .join(", ");
+                return (
+                <TableRow key={program.id}>
                   <TableCell>
-                    {row.authorizedAdministrators
-                      .map((id) => result.people.find((p) => p.id === id)?.fullName ?? id)
-                      .join(", ")}
+                    <span className="block font-medium">{program.name}</span>
+                    <span className="text-xs text-muted-foreground">{program.code}</span>
                   </TableCell>
-                  <TableCell className="text-right">{row.learners}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className="font-normal">
+                      {PROGRAM_KIND_LABELS[program.kind]}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">{program.institution}</TableCell>
+                  <TableCell>
+                    {administratorNames || "À attribuer"}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {row?.learners ?? program.annualLearnerEstimate}
+                  </TableCell>
                 </TableRow>
-              ))}
+                );
+              })}
             </TableBody>
           </Table>
         </div>

@@ -1,4 +1,5 @@
 import { useSession } from "@/application/session";
+import { useRouterState } from "@tanstack/react-router";
 import {
   Select,
   SelectContent,
@@ -14,7 +15,12 @@ import type { ProgramId } from "@/domain/types";
  * pour tenir dans l'en-tête dès 360 px sans débordement.
  */
 export function ProgramSwitcher({ variant = "compact" }: { variant?: "compact" | "full" }) {
-  const { programs, activeProgram, setActiveProgramId } = useSession();
+  const { programs, activeProgram, setActiveProgramId, canAccessPlatformAdministration } =
+    useSession();
+  const isPlatformOverview = useRouterState({
+    select: (state) => state.location.pathname === "/espace/plateforme",
+  });
+  const showsAllPrograms = canAccessPlatformAdministration && isPlatformOverview;
 
   return (
     <div className={variant === "full" ? "w-full" : "flex min-w-0 items-center gap-2"}>
@@ -22,7 +28,7 @@ export function ProgramSwitcher({ variant = "compact" }: { variant?: "compact" |
         Programme actif
       </label>
       <Select
-        value={activeProgram.id}
+        value={showsAllPrograms ? "all-programs" : activeProgram.id}
         onValueChange={(value) => setActiveProgramId(value as ProgramId)}
       >
         <SelectTrigger
@@ -36,6 +42,11 @@ export function ProgramSwitcher({ variant = "compact" }: { variant?: "compact" |
           <SelectValue placeholder="Choisir un programme" />
         </SelectTrigger>
         <SelectContent>
+          {showsAllPrograms ? (
+            <SelectItem value="all-programs">
+              <span>Tous les programmes</span>
+            </SelectItem>
+          ) : null}
           {programs.map((program) => (
             <SelectItem key={program.id} value={program.id}>
               <span className="sm:hidden">{program.code}</span>
