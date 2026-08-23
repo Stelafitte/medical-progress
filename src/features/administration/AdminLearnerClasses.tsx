@@ -27,14 +27,18 @@ import {
   formatFrDate,
   sortCohortsForPilot,
 } from "@/features/administration/adminProgramViewModel";
+import { CohortCreationForm } from "@/features/administration/CohortCreationForm";
+import { useLocalCohorts } from "@/application/cohortDraftStore";
+import { mergeCohorts } from "@/domain/cohortDraft";
+import type { CurriculumVersionId } from "@/domain/types";
 
 export function AdminLearnerClasses() {
   const { data, isPending } = useProgramAdmin();
-  const [newLabel, setNewLabel] = useState("");
+  const localCohorts = useLocalCohorts(data?.program?.id);
 
   if (isPending || !data) return <Skeleton className="h-80 w-full" />;
 
-  const cohorts = sortCohortsForPilot(data.cohorts);
+  const cohorts = sortCohortsForPilot(mergeCohorts(data.cohorts, localCohorts));
   const running = cohorts.filter((c) => cohortPhase(c) === "running").length;
   const planned = cohorts.filter((c) => cohortPhase(c) === "planned").length;
 

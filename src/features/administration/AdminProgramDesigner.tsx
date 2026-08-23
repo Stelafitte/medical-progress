@@ -31,6 +31,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { EmptyState, MockBadge, PanelCard, ScopeNotice } from "@/features/professional/mock-ui";
 import { AdminWorkLevelBanner } from "@/features/administration/AdminWorkLevel";
 import { useProgramAdmin } from "@/features/administration/useProgramAdmin";
+import { CohortCreationForm } from "@/features/administration/CohortCreationForm";
+import { useLocalCohorts } from "@/application/cohortDraftStore";
+import { mergeCohorts } from "@/domain/cohortDraft";
+import type { CohortId, CurriculumVersionId, ProgramId } from "@/domain/types";
 import { formatFrDate } from "@/features/administration/adminProgramViewModel";
 
 /* ------------------------------------------------------------------ */
