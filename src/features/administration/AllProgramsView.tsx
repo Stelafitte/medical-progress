@@ -45,6 +45,7 @@ import {
   countByLifecycle,
   filterProgramCards,
   hasActiveFilters,
+  programCategory,
   programLifecycle,
   programTrack,
   toggleFilterValue,
