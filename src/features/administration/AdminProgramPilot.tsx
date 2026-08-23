@@ -236,7 +236,23 @@ export function AdminProgramPilot() {
             phase={cohortPhase(selected)}
             rows={learnerRows}
             summary={groupSummary}
+            activity={{
+              milestonesTotal: timeline.length,
+              milestonesPassed: timeline.filter((i) => i.state === "done").length,
+              progressPercent: progress,
+              outcomes: data.outcomes.length,
+              resources: data.resources.length,
+              evaluations: data.ecosScenarios.length,
+              stagePlacements: data.placements.length,
+              logbookTemplates: data.templates.length,
+              mediaItems: data.media.length,
+              versions: data.versions.length,
+              nextMilestoneLabel: upcoming
+                ? `${upcoming.label} le ${formatFrDate(upcoming.date)}`
+                : "tous les jalons connus sont passés",
+            }}
           />
+
         </>
       )}
     </div>
@@ -314,7 +330,7 @@ function ProgrammingPanel({ phase }: { phase: CohortPhase }) {
 }
 
 /* ------------------------------------------------------------------ */
-/* Activité du programme                                               */
+/* Activité DU PROGRAMME (jamais des apprenants)                       */
 /* ------------------------------------------------------------------ */
 
 function MarkerBadge({ row }: { row: LearnerActivityRow }) {
@@ -346,45 +362,85 @@ function GroupStats({ summary }: { summary: GroupActivitySummary }) {
   );
 }
 
-function ActivityPanel({
-  rows,
-  summary,
-}: {
-  rows: readonly LearnerActivityRow[];
-  summary: GroupActivitySummary;
-}) {
-  if (rows.length === 0) return <EmptyState>Aucune inscription sur cette promotion.</EmptyState>;
+export interface ProgramActivity {
+  readonly milestonesTotal: number;
+  readonly milestonesPassed: number;
+  readonly progressPercent: number;
+  readonly outcomes: number;
+  readonly resources: number;
+  readonly evaluations: number;
+  readonly stagePlacements: number;
+  readonly logbookTemplates: number;
+  readonly mediaItems: number;
+  readonly versions: number;
+  readonly nextMilestoneLabel: string;
+}
+
+/** Actions portant sur le PROGRAMME : aucune action apprenant ici. */
+const PROGRAM_ACTIONS: readonly { readonly label: string; readonly to: string }[] = [
+  { label: "Calendrier et jalons", to: "/espace/administration/concepteur" },
+  { label: "Contenus et connaissances", to: "/espace/administration/connaissances" },
+  { label: "Compétences visées", to: "/espace/administration/competences" },
+  { label: "Évaluations du programme", to: "/espace/administration/evaluations" },
+  { label: "Gestion des stages", to: "/espace/administration/stages" },
+  { label: "Documents et certificats", to: "/espace/administration/documents" },
+  { label: "Administration et sécurité", to: "/espace/administration/securite" },
+  { label: "Vue d'ensemble du programme", to: "/espace/administration" },
+];
+
+function ActivityPanel({ activity }: { activity: ProgramActivity }) {
+  const stats = [
+    { label: "Avancement calendaire", value: `${activity.progressPercent} %` },
+    {
+      label: "Jalons franchis",
+      value: `${activity.milestonesPassed}/${activity.milestonesTotal}`,
+    },
+    { label: "Versions du programme", value: activity.versions },
+    { label: "Compétences et connaissances visées", value: activity.outcomes },
+    { label: "Ressources publiées", value: activity.resources },
+    { label: "Évaluations configurées", value: activity.evaluations },
+    { label: "Terrains de stage ouverts", value: activity.stagePlacements },
+    { label: "Modèles de carnet actifs", value: activity.logbookTemplates },
+    { label: "Médias de la médiathèque", value: activity.mediaItems },
+  ];
+
   return (
     <div className="space-y-4">
-      <GroupStats summary={summary} />
-      <ul className="space-y-2 text-sm">
-        {rows.map((row) => (
-          <li
-            key={row.enrollmentId}
-            className="border-border flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md border p-3"
-          >
-            <span className="font-medium">{row.personName}</span>
-            <MarkerBadge row={row} />
-            <span className="text-muted-foreground text-xs">
-              {row.logCount} carnet(s) · {row.entryCount} observation(s) · {row.validatedCount}{" "}
-              validé(s)
-            </span>
-            {row.lastActivityAt ? (
-              <span className="text-muted-foreground font-mono text-xs">
-                dernier dépôt {formatFrDate(row.lastActivityAt)}
-              </span>
-            ) : (
-              <span className="text-muted-foreground text-xs">aucun dépôt</span>
-            )}
-          </li>
-        ))}
-      </ul>
       <p className="text-muted-foreground text-xs">
-        Les moyennes de groupe remplacent l'ancien écran de statistiques pour cette promotion.
+        Cet outil ne porte que sur le programme lui-même : dispositif, contenus, jalons et
+        ouvertures. L'activité des apprenants est dans « Gestion des apprenants ».
       </p>
+
+      <dl className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+        {stats.map((stat) => (
+          <div key={stat.label} className="border-border rounded-md border p-3">
+            <dd className="text-xl font-semibold tabular-nums">{stat.value}</dd>
+            <dt className="text-muted-foreground text-xs">{stat.label}</dt>
+          </div>
+        ))}
+      </dl>
+
+      <p className="text-muted-foreground text-sm">
+        Prochaine étape du programme : {activity.nextMilestoneLabel}
+      </p>
+
+      <div className="space-y-2">
+        <h4 className="text-sm font-semibold">Actions sur le programme</h4>
+        <div className="flex flex-wrap gap-2">
+          {PROGRAM_ACTIONS.map((action) => (
+            <Button key={action.to} asChild variant="outline" size="sm" className="min-h-11">
+              <Link to={action.to}>
+                {action.label}
+                <ArrowRight className="ms-1 size-4" aria-hidden />
+              </Link>
+            </Button>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
+
 
 /* ------------------------------------------------------------------ */
 /* Gestion des apprenants et notifications                             */
@@ -402,7 +458,35 @@ function LearnerManagementPanel({
   return (
     <div className="space-y-5">
       <div className="space-y-2">
+        <h3 className="text-sm font-semibold">Activité des apprenants</h3>
+        <GroupStats summary={summary} />
+        <ul className="space-y-2 text-sm">
+          {rows.map((row) => (
+            <li
+              key={`activity-${row.enrollmentId}`}
+              className="border-border flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md border p-3"
+            >
+              <span className="font-medium">{row.personName}</span>
+              <MarkerBadge row={row} />
+              <span className="text-muted-foreground text-xs">
+                {row.logCount} carnet(s) · {row.entryCount} observation(s) · {row.validatedCount}{" "}
+                validé(s)
+              </span>
+              {row.lastActivityAt ? (
+                <span className="text-muted-foreground font-mono text-xs">
+                  dernier dépôt {formatFrDate(row.lastActivityAt)}
+                </span>
+              ) : (
+                <span className="text-muted-foreground text-xs">aucun dépôt</span>
+              )}
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div className="space-y-2">
         <h3 className="text-sm font-semibold">Marqueurs d'avancement</h3>
+
         <ul className="space-y-2 text-sm">
           {rows.map((row) => (
             <li key={row.enrollmentId} className="border-border space-y-2 rounded-md border p-3">
@@ -513,14 +597,15 @@ const TOOLS: readonly {
     key: "activite",
     label: "Activité du programme",
     icon: Activity,
-    hint: "Activité de chaque apprenant et moyennes du groupe.",
+    hint: "Dispositif, contenus, jalons et ouvertures du programme — hors apprenants.",
   },
   {
     key: "apprenants",
     label: "Gestion des apprenants",
     icon: Users,
-    hint: "Marqueurs d'avancement, synthèse de groupe et notifications.",
+    hint: "Activité des apprenants, marqueurs, notifications et outil de communication complet.",
   },
+
   {
     key: "documents",
     label: "Documents et certificats",
@@ -533,22 +618,26 @@ function PilotTools({
   phase,
   rows,
   summary,
+  activity,
 }: {
   phase: CohortPhase;
   rows: readonly LearnerActivityRow[];
   summary: GroupActivitySummary;
+  activity: ProgramActivity;
 }) {
   const [open, setOpen] = useState<readonly ToolKey[]>(["programmation"]);
   const toggle = (key: ToolKey) =>
     setOpen((keys) => (keys.includes(key) ? keys.filter((k) => k !== key) : [...keys, key]));
 
   const badgeFor = (key: ToolKey): string | null => {
-    if (key === "activite") return `${summary.averageProgressPercent} % moyen`;
+    if (key === "activite")
+      return `${activity.milestonesPassed}/${activity.milestonesTotal} jalons`;
     if (key === "apprenants")
       return `${summary.lateLearners + summary.idleLearners} à traiter`;
     if (key === "programmation") return PROGRAMMING_STATE_LABELS_FR[PHASE_TO_PROGRAMMING[phase]];
     return null;
   };
+
 
   return (
     <PanelCard
@@ -612,7 +701,7 @@ function PilotTools({
               {isOpen ? (
                 <div id={`pilot-tool-${tool.key}`} className="mt-3 space-y-3">
                   {tool.key === "programmation" ? <ProgrammingPanel phase={phase} /> : null}
-                  {tool.key === "activite" ? <ActivityPanel rows={rows} summary={summary} /> : null}
+                  {tool.key === "activite" ? <ActivityPanel activity={activity} /> : null}
                   {tool.key === "apprenants" ? (
                     <LearnerManagementPanel rows={rows} summary={summary} />
                   ) : null}
