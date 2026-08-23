@@ -688,11 +688,13 @@ function PilotTools({
   rows,
   summary,
   activity,
+  competenceRows,
 }: {
   phase: CohortPhase;
   rows: readonly LearnerActivityRow[];
   summary: GroupActivitySummary;
   activity: ProgramActivity;
+  competenceRows: readonly (LearnerCompetenceRow & { readonly personName: string })[];
 }) {
   const [open, setOpen] = useState<readonly ToolKey[]>(["programmation"]);
   const toggle = (key: ToolKey) =>
