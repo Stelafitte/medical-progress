@@ -12,8 +12,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState, MockBadge, PanelCard, ScopeNotice } from "@/features/professional/mock-ui";
 
 import { StageLogTemplatesSection } from "@/features/administration/StageLogTemplatesSection";
+import { PlacementCreationForm } from "@/features/administration/PlacementCreationForm";
+import { useLocalPlacements } from "@/application/placementDraftStore";
+import { mergePlacements, STAGE_VALIDATION_LABELS_FR } from "@/domain/placementDraft";
+import type { ProgramId } from "@/domain/types";
 import { useProgramAdmin } from "@/features/administration/useProgramAdmin";
 import { formatFrDate } from "@/features/administration/adminProgramViewModel";
+
 
 /** Modes de validation d'un stage, indépendants d'une promotion. */
 const VALIDATION_MODES = [
@@ -36,12 +41,16 @@ const VALIDATION_MODES = [
 
 export function AdminStages() {
   const { data, isPending } = useProgramAdmin();
+  const localPlacements = useLocalPlacements(data?.program?.id);
   if (isPending || !data) return <Skeleton className="h-80 w-full" />;
 
-  const placements = data.placements;
+  /** Liste UNIQUE des terrains : ceux du dépôt et ceux créés dans la session. */
+  const placements = mergePlacements(data.placements, localPlacements);
   const assignments = data.assignments;
   const sites = Array.from(new Set(placements.map((p) => p.site)));
   const capacity = placements.reduce((total, p) => total + p.capacity, 0);
+  const programId = (data.program?.id ?? "program-unknown") as ProgramId;
+
 
   return (
     <div className="space-y-6">
@@ -75,32 +84,58 @@ export function AdminStages() {
 
       <PanelCard
         title="Types de stage et lieux"
-        description="Un type de stage décrit un terrain, un service et une capacité d'accueil."
+        description="Un type de stage décrit un terrain, un service et une capacité d'accueil. Le même outil de création est disponible ici et dans le « Concepteur de programme » : la liste est unique."
       >
         {placements.length === 0 ? (
           <EmptyState>Aucun terrain de stage déclaré pour ce programme.</EmptyState>
         ) : (
           <ul className="space-y-2 text-sm">
-            {placements.map((placement) => (
-              <li
-                key={placement.id}
-                className="border-border flex flex-wrap items-center gap-2 rounded-md border p-3"
-              >
-                <span className="font-medium">{placement.name}</span>
-                <Badge variant="outline" className="font-normal">
-                  {placement.department}
-                </Badge>
-                <span className="text-muted-foreground">
-                  <MapPin className="me-1 inline size-3" aria-hidden />
-                  {placement.site}
-                </span>
-                <span className="text-muted-foreground text-xs">
-                  {placement.capacity} place(s)
-                </span>
-              </li>
-            ))}
+            {placements.map((placement) => {
+              const local = localPlacements.find((l) => l.placement.id === placement.id);
+              return (
+                <li
+                  key={placement.id}
+                  className="border-border flex flex-wrap items-center gap-2 rounded-md border p-3"
+                >
+                  <span className="font-medium">{placement.name}</span>
+                  <Badge variant="outline" className="font-normal">
+                    {placement.department}
+                  </Badge>
+                  <span className="text-muted-foreground">
+                    <MapPin className="me-1 inline size-3" aria-hidden />
+                    {placement.site}
+                  </span>
+                  <span className="text-muted-foreground text-xs">
+                    {placement.capacity} place(s)
+                  </span>
+                  {local ? (
+                    <>
+                      <Badge variant="secondary" className="font-normal">
+                        {STAGE_VALIDATION_LABELS_FR[local.validationMode]}
+                      </Badge>
+                      <span className="text-muted-foreground text-xs">
+                        {local.supervisor.length > 0
+                          ? `encadrant : ${local.supervisor}`
+                          : "encadrant à rattacher"}
+                      </span>
+                    </>
+                  ) : null}
+                </li>
+              );
+            })}
           </ul>
         )}
+
+        <div className="border-border mt-4 rounded-md border p-4">
+          <p className="mb-3 text-sm font-medium">Créer un terrain de stage</p>
+          <PlacementCreationForm
+            programId={programId}
+            idPrefix="stages-tab"
+            submitLabel="Créer le terrain de stage"
+            hint="Le terrain rejoint la liste unique : il est aussitôt proposé dans le « Concepteur de programme »."
+          />
+        </div>
+
       </PanelCard>
 
       <PanelCard

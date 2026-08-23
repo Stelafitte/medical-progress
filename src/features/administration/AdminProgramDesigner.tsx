@@ -32,8 +32,11 @@ import { EmptyState, MockBadge, PanelCard, ScopeNotice } from "@/features/profes
 import { AdminWorkLevelBanner } from "@/features/administration/AdminWorkLevel";
 import { useProgramAdmin } from "@/features/administration/useProgramAdmin";
 import { CohortCreationForm } from "@/features/administration/CohortCreationForm";
+import { PlacementCreationForm } from "@/features/administration/PlacementCreationForm";
 import { useLocalCohorts } from "@/application/cohortDraftStore";
+import { useLocalPlacements } from "@/application/placementDraftStore";
 import { mergeCohorts } from "@/domain/cohortDraft";
+
 import type { CohortId, CurriculumVersionId, ProgramId } from "@/domain/types";
 import { formatFrDate } from "@/features/administration/adminProgramViewModel";
 
@@ -143,17 +146,19 @@ export function AdminProgramDesigner() {
   const [selectedCohortId, setSelectedCohortId] = useState<string | null>(null);
   const [associated, setAssociated] = useState<string | null>(null);
   const localCohorts = useLocalCohorts(data?.program?.id);
-
+  const localPlacements = useLocalPlacements(data?.program?.id);
 
   const existingCounts = useMemo<Record<ResourceKind, number>>(
     () => ({
       knowledge: data?.resources.length ?? 0,
       competences: data?.outcomes.filter((o) => o.nature !== "knowledge").length ?? 0,
       assessments: data?.ecosScenarios.length ?? 0,
-      stage: (data?.placements.length ?? 0) + (data?.templates.length ?? 0),
+      stage:
+        (data?.placements.length ?? 0) + (data?.templates.length ?? 0) + localPlacements.length,
     }),
-    [data],
+    [data, localPlacements],
   );
+
 
   if (isPending || !data) return <Skeleton className="h-80 w-full" />;
 
@@ -396,7 +401,31 @@ export function AdminProgramDesigner() {
                         ))}
                       </div>
 
-                      {state.mode === "now" ? (
+                      {state.mode === "now" && resource.id === "stage" ? (
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium">Créer un terrain de stage</p>
+                          <PlacementCreationForm
+                            programId={activeProgramId}
+                            idPrefix="designer-stage"
+                            submitLabel="Créer le terrain de stage"
+                            hint="Même outil et même liste que l'onglet « Gestion des stages » : le terrain y apparaît aussitôt, rattaché à ce programme."
+                            onCreated={() => patch("stage", { implemented: true })}
+                          />
+                          {localPlacements.length > 0 ? (
+                            <ul className="text-muted-foreground space-y-1 text-xs">
+                              {localPlacements.map((local) => (
+                                <li key={local.placement.id}>
+                                  {local.placement.name} — {local.placement.site} ·{" "}
+                                  {local.placement.capacity} place(s)
+                                </li>
+                              ))}
+                            </ul>
+                          ) : null}
+                        </div>
+                      ) : null}
+
+                      {state.mode === "now" && resource.id !== "stage" ? (
+
                         <div className="space-y-2">
                           <Label htmlFor={`draft-${resource.id}`}>{resource.draftLabel}</Label>
                           <Textarea
