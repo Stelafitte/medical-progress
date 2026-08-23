@@ -178,7 +178,64 @@ export function PlatformAdminView() {
                 </ul>
               )}
 
+
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Historique des promotions</p>
+                {history.length === 0 ? (
+                  <EmptyState>Aucun historique disponible pour ce programme.</EmptyState>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Année</TableHead>
+                          <TableHead>Promotion</TableHead>
+                          <TableHead className="text-right">Apprenants</TableHead>
+                          <TableHead className="text-right">Achèvement</TableHead>
+                          <TableHead className="text-right">Compétences réelles</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {history.map((s) => (
+                          <TableRow key={s.id}>
+                            <TableCell className="font-medium">{s.academicYear}</TableCell>
+                            <TableCell>{s.cohortLabel}</TableCell>
+                            <TableCell className="text-right">{s.learnerCount}</TableCell>
+                            <TableCell className="text-right">
+                              {Math.round(s.completionRate * 100)} %
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {Math.round(s.realRate * 100)} %
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+                <p className="text-muted-foreground text-xs">
+                  Agrégats pluriannuels simulés, sans aucune donnée nominative.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Historique d'utilisation</p>
+                {usage.length === 0 ? (
+                  <EmptyState>Aucun événement enregistré pour ce programme.</EmptyState>
+                ) : (
+                  <ul className="text-muted-foreground space-y-1 text-xs">
+                    {usage.map((e) => (
+                      <li key={e.id}>
+                        {formatFrDate(e.createdAt)} — {e.action}
+                        {e.detail ? ` · ${e.detail}` : ""}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
               <div className="text-muted-foreground space-y-1 text-xs">
+
                 <p>
                   Administrateurs autorisés :{" "}
                   {admins.length > 0 ? admins.join(", ") : "aucun rôle attribué"}
