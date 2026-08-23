@@ -15,7 +15,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { ProgramSwitcher } from "@/components/program-switcher";
-import { navSpacesFor } from "@/components/layout/navigation";
+import {
+  isRouteWithinSpaces,
+  landingRouteFor,
+  navSpacesFor,
+} from "@/components/layout/navigation";
 import { useSession } from "@/application/session";
 import { initials } from "@/lib/initials";
 import { ROLE_LABELS_FR } from "@/domain/roles";
