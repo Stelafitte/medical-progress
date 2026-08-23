@@ -61,7 +61,14 @@ function download(filename: string, content: string) {
   URL.revokeObjectURL(url);
 }
 
-export function CohortRosterSection({ data }: { data: ProgramAdminScope }) {
+export function CohortRosterSection({
+  data,
+  section = "all",
+}: {
+  data: ProgramAdminScope;
+  /** « import » sert à embarquer le dépôt de liste dans le bloc « Créer une classe ». */
+  section?: "all" | "import" | "export";
+}) {
   const fileInput = useRef<HTMLInputElement>(null);
   const [rawText, setRawText] = useState("");
   const [fileName, setFileName] = useState<string | null>(null);
