@@ -68,6 +68,10 @@ export function AllProgramsView() {
   const session = useSession();
   const navigate = useNavigate();
   const [filters, setFilters] = useState<AllProgramsFilterState>(EMPTY_ALL_PROGRAMS_FILTERS);
+  // Le filtre catégorie est un choix unique : la première valeur fait foi.
+  const selectedCategory: ProgramCategory | undefined = filters.categories[0];
+
+
 
   const { data: cohorts, isPending } = useQuery({
     queryKey: ["all-programs-cohorts"],
