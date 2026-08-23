@@ -132,6 +132,9 @@ export function AdminLearnerClasses() {
       </PanelCard>
 
 
+      {/* Suivi croisé : même table que dans « Pilotage de programme ». */}
+      <LearnerTrackingSection data={data} />
+
       <CohortRosterSection data={data} />
     </div>
   );
