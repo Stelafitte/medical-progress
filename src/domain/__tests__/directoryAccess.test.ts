@@ -43,8 +43,9 @@ describe("accès à la gestion des personnes et inscriptions", () => {
     expect(canAccessProgramAdministration(roles, "prog-dfasm")).toBe(false);
   });
 
-  it("n'accorde pas l'accès implicite à un administrateur de plateforme", () => {
+  it("accorde l'accès à un administrateur de plateforme sur tout programme", () => {
     const roles = [assignment({ role: "administrator", scope: { kind: "platform" } })];
-    expect(canAccessProgramAdministration(roles, "prog-dfasm")).toBe(false);
+    expect(canAccessProgramAdministration(roles, "prog-dfasm")).toBe(true);
+    expect(canAccessProgramAdministration(roles, "prog-diu")).toBe(true);
   });
 });
