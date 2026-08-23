@@ -28,6 +28,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState, MockBadge, PanelCard, ScopeNotice } from "@/features/professional/mock-ui";
 import { AdminCommunications } from "@/features/administration/AdminCommunications";
 import { CohortSelector } from "@/features/administration/CohortSelector";
+import { AssessmentModalitySection } from "@/features/administration/AssessmentModalitySection";
 import { LearnerTrackingSection } from "@/features/administration/LearnerTrackingSection";
 import { personNameFor, useProgramAdmin } from "@/features/administration/useProgramAdmin";
 import {
