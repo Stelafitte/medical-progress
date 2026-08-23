@@ -32,9 +32,11 @@ import { CohortSelector } from "@/features/administration/CohortSelector";
 import { personNameFor, useProgramAdmin } from "@/features/administration/useProgramAdmin";
 import { defaultPilotCohortId } from "@/features/administration/adminProgramViewModel";
 import {
+  REFERENTIAL_DIFF_LABELS_FR,
   buildCompetenceCoverage,
   buildLearnerCompetenceRows,
   competenceOutcomes,
+  diffReferentialRows,
   parseReferentialText,
 } from "@/features/administration/competenceTrackingViewModel";
 import { NATURE_LABELS_FR } from "@/domain/mastery";
