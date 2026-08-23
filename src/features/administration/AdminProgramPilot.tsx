@@ -6,7 +6,7 @@
  * Aucun rappel des trois étapes ici (il reste sur le concepteur).
  */
 import { useMemo, useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useSearch } from "@tanstack/react-router";
 import {
   Activity,
   AlertTriangle,
@@ -62,10 +62,12 @@ const STATE_STYLES = {
 
 export function AdminProgramPilot() {
   const { data, isPending } = useProgramAdmin();
+  const { promotion } = useSearch({ from: "/espace/administration/pilotage" });
   const [cohortId, setCohortId] = useState<string | null>(null);
 
   const cohorts = data?.cohorts ?? [];
-  const selectedId = cohortId ?? defaultPilotCohortId(cohorts);
+  // Priorité : choix explicite de l'utilisateur, puis lien profond venu de « Classes ».
+  const selectedId = cohortId ?? promotion ?? defaultPilotCohortId(cohorts);
   const selected = cohorts.find((c) => c.id === selectedId);
 
   const timeline = useMemo(
