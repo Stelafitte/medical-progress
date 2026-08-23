@@ -38,6 +38,7 @@ import { Route as EspaceAdministrationGouvernanceRouteImport } from './routes/es
 import { Route as EspaceAdministrationOrganisationRouteImport } from './routes/espace.administration.organisation'
 import { Route as EspaceAdministrationPedagogieRouteImport } from './routes/espace.administration.pedagogie'
 import { Route as EspaceAdministrationPersonnesRouteImport } from './routes/espace.administration.personnes'
+import { Route as EspaceAdministrationPilotageRouteImport } from './routes/espace.administration.pilotage'
 import { Route as EspaceAdministrationSecuriteRouteImport } from './routes/espace.administration.securite'
 import { Route as EspaceAdministrationStructureRouteImport } from './routes/espace.administration.structure'
 import { Route as EspaceAdministrationSuiviRouteImport } from './routes/espace.administration.suivi'
@@ -211,6 +212,12 @@ const EspaceAdministrationPersonnesRoute =
     path: '/personnes',
     getParentRoute: () => EspaceAdministrationRoute,
   } as any)
+const EspaceAdministrationPilotageRoute =
+  EspaceAdministrationPilotageRouteImport.update({
+    id: '/pilotage',
+    path: '/pilotage',
+    getParentRoute: () => EspaceAdministrationRoute,
+  } as any)
 const EspaceAdministrationSecuriteRoute =
   EspaceAdministrationSecuriteRouteImport.update({
     id: '/securite',
@@ -320,6 +327,7 @@ export interface FileRoutesByFullPath {
   '/espace/administration/organisation': typeof EspaceAdministrationOrganisationRoute
   '/espace/administration/pedagogie': typeof EspaceAdministrationPedagogieRoute
   '/espace/administration/personnes': typeof EspaceAdministrationPersonnesRoute
+  '/espace/administration/pilotage': typeof EspaceAdministrationPilotageRoute
   '/espace/administration/securite': typeof EspaceAdministrationSecuriteRoute
   '/espace/administration/structure': typeof EspaceAdministrationStructureRoute
   '/espace/administration/suivi': typeof EspaceAdministrationSuiviRoute
@@ -361,6 +369,7 @@ export interface FileRoutesByTo {
   '/espace/administration/organisation': typeof EspaceAdministrationOrganisationRoute
   '/espace/administration/pedagogie': typeof EspaceAdministrationPedagogieRoute
   '/espace/administration/personnes': typeof EspaceAdministrationPersonnesRoute
+  '/espace/administration/pilotage': typeof EspaceAdministrationPilotageRoute
   '/espace/administration/securite': typeof EspaceAdministrationSecuriteRoute
   '/espace/administration/structure': typeof EspaceAdministrationStructureRoute
   '/espace/administration/suivi': typeof EspaceAdministrationSuiviRoute
@@ -407,6 +416,7 @@ export interface FileRoutesById {
   '/espace/administration/organisation': typeof EspaceAdministrationOrganisationRoute
   '/espace/administration/pedagogie': typeof EspaceAdministrationPedagogieRoute
   '/espace/administration/personnes': typeof EspaceAdministrationPersonnesRoute
+  '/espace/administration/pilotage': typeof EspaceAdministrationPilotageRoute
   '/espace/administration/securite': typeof EspaceAdministrationSecuriteRoute
   '/espace/administration/structure': typeof EspaceAdministrationStructureRoute
   '/espace/administration/suivi': typeof EspaceAdministrationSuiviRoute
@@ -454,6 +464,7 @@ export interface FileRouteTypes {
     | '/espace/administration/organisation'
     | '/espace/administration/pedagogie'
     | '/espace/administration/personnes'
+    | '/espace/administration/pilotage'
     | '/espace/administration/securite'
     | '/espace/administration/structure'
     | '/espace/administration/suivi'
@@ -495,6 +506,7 @@ export interface FileRouteTypes {
     | '/espace/administration/organisation'
     | '/espace/administration/pedagogie'
     | '/espace/administration/personnes'
+    | '/espace/administration/pilotage'
     | '/espace/administration/securite'
     | '/espace/administration/structure'
     | '/espace/administration/suivi'
@@ -540,6 +552,7 @@ export interface FileRouteTypes {
     | '/espace/administration/organisation'
     | '/espace/administration/pedagogie'
     | '/espace/administration/personnes'
+    | '/espace/administration/pilotage'
     | '/espace/administration/securite'
     | '/espace/administration/structure'
     | '/espace/administration/suivi'
@@ -767,6 +780,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EspaceAdministrationPersonnesRouteImport
       parentRoute: typeof EspaceAdministrationRoute
     }
+    '/espace/administration/pilotage': {
+      id: '/espace/administration/pilotage'
+      path: '/pilotage'
+      fullPath: '/espace/administration/pilotage'
+      preLoaderRoute: typeof EspaceAdministrationPilotageRouteImport
+      parentRoute: typeof EspaceAdministrationRoute
+    }
     '/espace/administration/securite': {
       id: '/espace/administration/securite'
       path: '/securite'
@@ -882,6 +902,7 @@ interface EspaceAdministrationRouteChildren {
   EspaceAdministrationOrganisationRoute: typeof EspaceAdministrationOrganisationRoute
   EspaceAdministrationPedagogieRoute: typeof EspaceAdministrationPedagogieRoute
   EspaceAdministrationPersonnesRoute: typeof EspaceAdministrationPersonnesRoute
+  EspaceAdministrationPilotageRoute: typeof EspaceAdministrationPilotageRoute
   EspaceAdministrationSecuriteRoute: typeof EspaceAdministrationSecuriteRoute
   EspaceAdministrationStructureRoute: typeof EspaceAdministrationStructureRoute
   EspaceAdministrationSuiviRoute: typeof EspaceAdministrationSuiviRoute
@@ -904,6 +925,7 @@ const EspaceAdministrationRouteChildren: EspaceAdministrationRouteChildren = {
   EspaceAdministrationOrganisationRoute: EspaceAdministrationOrganisationRoute,
   EspaceAdministrationPedagogieRoute: EspaceAdministrationPedagogieRoute,
   EspaceAdministrationPersonnesRoute: EspaceAdministrationPersonnesRoute,
+  EspaceAdministrationPilotageRoute: EspaceAdministrationPilotageRoute,
   EspaceAdministrationSecuriteRoute: EspaceAdministrationSecuriteRoute,
   EspaceAdministrationStructureRoute: EspaceAdministrationStructureRoute,
   EspaceAdministrationSuiviRoute: EspaceAdministrationSuiviRoute,

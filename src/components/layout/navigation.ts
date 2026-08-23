@@ -98,9 +98,15 @@ export const SUPERVISION_NAV: readonly NavEntry[] = [
 export const PROGRAM_ADMIN_NAV: readonly NavEntry[] = [
   { to: "/espace/administration", label: "Vue d’ensemble", icon: Gauge, exact: true },
   {
-    to: "/espace/administration/structure",
-    label: "Structure du programme",
+    to: "/espace/administration/concepteur",
+    label: "Concepteur de programme",
     icon: GraduationCap,
+    exact: false,
+  },
+  {
+    to: "/espace/administration/pilotage",
+    label: "Pilotage de programme",
+    icon: Gauge,
     exact: false,
   },
   {
@@ -189,7 +195,7 @@ export function learnerNavFor(config?: NavProgramConfig): readonly NavEntry[] {
 export function programAdminNavFor(config?: NavProgramConfig): readonly NavEntry[] {
   if (!config?.dpcEnabled) return PROGRAM_ADMIN_NAV;
   const index = PROGRAM_ADMIN_NAV.findIndex(
-    (entry) => entry.to === "/espace/administration/structure",
+    (entry) => entry.to === "/espace/administration/pilotage",
   );
   const entries = [...PROGRAM_ADMIN_NAV];
   entries.splice(index + 1, 0, ADMIN_DPC_ENTRY);
