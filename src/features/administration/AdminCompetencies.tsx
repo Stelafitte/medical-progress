@@ -210,44 +210,19 @@ export function AdminCompetencies() {
           <CohortSelector cohorts={cohorts} value={selectedId} onChange={setCohortId} />
 
           <PanelCard
-            title="Acquisition par apprenant"
-            description="Validations obtenues, déclarations en attente et compétences non commencées."
+            title="Le suivi nominatif est dans le Pilotage"
+            description="Cet onglet décrit le référentiel et sa couverture. Le tableau apprenant par apprenant appartient à l'exploitation d'une promotion."
           >
-            {learnerRows.length === 0 ? (
-              <EmptyState>Aucun apprenant inscrit dans cette cohorte.</EmptyState>
-            ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Apprenant</TableHead>
-                      <TableHead className="text-right">Validées</TableHead>
-                      <TableHead className="text-right">En attente</TableHead>
-                      <TableHead className="text-right">Non commencées</TableHead>
-                      <TableHead className="w-40">Avancement</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {learnerRows.map((row) => (
-                      <TableRow key={row.enrollmentId}>
-                        <TableCell className="font-medium">
-                          {personNameFor(data, row.enrollmentId)}
-                        </TableCell>
-                        <TableCell className="text-right">{row.validated}</TableCell>
-                        <TableCell className="text-right">{row.declared}</TableCell>
-                        <TableCell className="text-right">{row.notStarted}</TableCell>
-                        <TableCell>
-                          <div className="space-y-1">
-                            <Progress value={row.percent} />
-                            <span className="text-muted-foreground text-xs">{row.percent} %</span>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
+            <p className="text-muted-foreground text-sm">
+              {learnerRows.length} apprenant(s) suivis sur cette promotion, {averagePercent} %
+              d'acquisition moyenne.
+            </p>
+            <Button asChild variant="outline" className="mt-3 min-h-11">
+              <Link to="/espace/administration/pilotage">
+                Ouvrir le suivi nominatif dans Pilotage
+                <ArrowRight className="ms-1 size-4" aria-hidden />
+              </Link>
+            </Button>
           </PanelCard>
 
           <PanelCard
