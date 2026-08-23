@@ -149,6 +149,7 @@ export function AdminProgramDesigner() {
   const [associated, setAssociated] = useState<string | null>(null);
   const localCohorts = useLocalCohorts(data?.program?.id);
   const localPlacements = useLocalPlacements(data?.program?.id);
+  const localCompetences = useLocalCompetences(data?.program?.id);
 
   const existingCounts = useMemo<Record<ResourceKind, number>>(
     () => ({
