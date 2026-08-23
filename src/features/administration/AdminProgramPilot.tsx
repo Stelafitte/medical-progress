@@ -750,7 +750,7 @@ function PilotTools({
   activity: ProgramActivity;
   competenceRows: readonly (LearnerCompetenceRow & { readonly personName: string })[];
 }) {
-  const [open, setOpen] = useState<readonly ToolKey[]>(["programmation"]);
+  const [open, setOpen] = useState<readonly ToolKey[]>([]);
   const toggle = (key: ToolKey) =>
     setOpen((keys) => (keys.includes(key) ? keys.filter((k) => k !== key) : [...keys, key]));
 
@@ -767,44 +767,29 @@ function PilotTools({
   return (
     <PanelCard
       title="Outils de pilotage"
-      description="Chaque outil s'ouvre directement sous son bouton, sans quitter la promotion pilotée."
+      description="Chaque outil se déplie directement dans la liste, sans quitter la promotion pilotée."
       action={<MockBadge />}
     >
-      <div className="flex flex-wrap gap-2">
+      <div className="divide-border border-border divide-y rounded-lg border">
         {TOOLS.map((tool) => {
           const isOpen = open.includes(tool.key);
           const badge = badgeFor(tool.key);
           return (
-            <Button
-              key={tool.key}
-              type="button"
-              variant={isOpen ? "default" : "outline"}
-              aria-expanded={isOpen}
-              aria-controls={`pilot-tool-${tool.key}`}
-              onClick={() => toggle(tool.key)}
-              className="min-h-11"
-            >
-              <tool.icon className="me-1 size-4" aria-hidden />
-              {tool.label}
-              {badge ? (
-                <span className="ms-2 rounded-full border px-2 py-0.5 text-xs font-normal">
-                  {badge}
-                </span>
-              ) : null}
-            </Button>
-          );
-        })}
-      </div>
-
-      <div className="divide-border border-border divide-y rounded-lg border">
-        {TOOLS.map((tool) => {
-          const isOpen = open.includes(tool.key);
-          return (
             <section key={tool.key} className="p-4">
               <div className="flex flex-wrap items-start justify-between gap-2">
-                <div>
-                  <h3 className="text-sm font-semibold">{tool.label}</h3>
-                  <p className="text-muted-foreground text-xs">{tool.hint}</p>
+                <div className="flex items-start gap-2">
+                  <tool.icon className="text-muted-foreground mt-0.5 size-4 shrink-0" aria-hidden />
+                  <div>
+                    <h3 className="flex flex-wrap items-center gap-2 text-sm font-semibold">
+                      {tool.label}
+                      {badge ? (
+                        <span className="rounded-full border px-2 py-0.5 text-xs font-normal">
+                          {badge}
+                        </span>
+                      ) : null}
+                    </h3>
+                    <p className="text-muted-foreground text-xs">{tool.hint}</p>
+                  </div>
                 </div>
                 <Button
                   type="button"
