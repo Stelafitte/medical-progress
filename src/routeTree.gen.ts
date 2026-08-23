@@ -29,6 +29,7 @@ import { Route as EspaceAdministrationAssistantDpcRouteImport } from './routes/e
 import { Route as EspaceAdministrationClassesRouteImport } from './routes/espace.administration.classes'
 import { Route as EspaceAdministrationCommunicationsRouteImport } from './routes/espace.administration.communications'
 import { Route as EspaceAdministrationCompetencesRouteImport } from './routes/espace.administration.competences'
+import { Route as EspaceAdministrationConcepteurRouteImport } from './routes/espace.administration.concepteur'
 import { Route as EspaceAdministrationConnaissancesRouteImport } from './routes/espace.administration.connaissances'
 import { Route as EspaceAdministrationDocumentsRouteImport } from './routes/espace.administration.documents'
 import { Route as EspaceAdministrationDpcRouteImport } from './routes/espace.administration.dpc'
@@ -155,6 +156,12 @@ const EspaceAdministrationCompetencesRoute =
   EspaceAdministrationCompetencesRouteImport.update({
     id: '/competences',
     path: '/competences',
+    getParentRoute: () => EspaceAdministrationRoute,
+  } as any)
+const EspaceAdministrationConcepteurRoute =
+  EspaceAdministrationConcepteurRouteImport.update({
+    id: '/concepteur',
+    path: '/concepteur',
     getParentRoute: () => EspaceAdministrationRoute,
   } as any)
 const EspaceAdministrationConnaissancesRoute =
@@ -304,6 +311,7 @@ export interface FileRoutesByFullPath {
   '/espace/administration/classes': typeof EspaceAdministrationClassesRoute
   '/espace/administration/communications': typeof EspaceAdministrationCommunicationsRoute
   '/espace/administration/competences': typeof EspaceAdministrationCompetencesRoute
+  '/espace/administration/concepteur': typeof EspaceAdministrationConcepteurRoute
   '/espace/administration/connaissances': typeof EspaceAdministrationConnaissancesRoute
   '/espace/administration/documents': typeof EspaceAdministrationDocumentsRoute
   '/espace/administration/dpc': typeof EspaceAdministrationDpcRoute
@@ -344,6 +352,7 @@ export interface FileRoutesByTo {
   '/espace/administration/classes': typeof EspaceAdministrationClassesRoute
   '/espace/administration/communications': typeof EspaceAdministrationCommunicationsRoute
   '/espace/administration/competences': typeof EspaceAdministrationCompetencesRoute
+  '/espace/administration/concepteur': typeof EspaceAdministrationConcepteurRoute
   '/espace/administration/connaissances': typeof EspaceAdministrationConnaissancesRoute
   '/espace/administration/documents': typeof EspaceAdministrationDocumentsRoute
   '/espace/administration/dpc': typeof EspaceAdministrationDpcRoute
@@ -389,6 +398,7 @@ export interface FileRoutesById {
   '/espace/administration/classes': typeof EspaceAdministrationClassesRoute
   '/espace/administration/communications': typeof EspaceAdministrationCommunicationsRoute
   '/espace/administration/competences': typeof EspaceAdministrationCompetencesRoute
+  '/espace/administration/concepteur': typeof EspaceAdministrationConcepteurRoute
   '/espace/administration/connaissances': typeof EspaceAdministrationConnaissancesRoute
   '/espace/administration/documents': typeof EspaceAdministrationDocumentsRoute
   '/espace/administration/dpc': typeof EspaceAdministrationDpcRoute
@@ -435,6 +445,7 @@ export interface FileRouteTypes {
     | '/espace/administration/classes'
     | '/espace/administration/communications'
     | '/espace/administration/competences'
+    | '/espace/administration/concepteur'
     | '/espace/administration/connaissances'
     | '/espace/administration/documents'
     | '/espace/administration/dpc'
@@ -475,6 +486,7 @@ export interface FileRouteTypes {
     | '/espace/administration/classes'
     | '/espace/administration/communications'
     | '/espace/administration/competences'
+    | '/espace/administration/concepteur'
     | '/espace/administration/connaissances'
     | '/espace/administration/documents'
     | '/espace/administration/dpc'
@@ -519,6 +531,7 @@ export interface FileRouteTypes {
     | '/espace/administration/classes'
     | '/espace/administration/communications'
     | '/espace/administration/competences'
+    | '/espace/administration/concepteur'
     | '/espace/administration/connaissances'
     | '/espace/administration/documents'
     | '/espace/administration/dpc'
@@ -691,6 +704,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EspaceAdministrationCompetencesRouteImport
       parentRoute: typeof EspaceAdministrationRoute
     }
+    '/espace/administration/concepteur': {
+      id: '/espace/administration/concepteur'
+      path: '/concepteur'
+      fullPath: '/espace/administration/concepteur'
+      preLoaderRoute: typeof EspaceAdministrationConcepteurRouteImport
+      parentRoute: typeof EspaceAdministrationRoute
+    }
     '/espace/administration/connaissances': {
       id: '/espace/administration/connaissances'
       path: '/connaissances'
@@ -853,6 +873,7 @@ interface EspaceAdministrationRouteChildren {
   EspaceAdministrationClassesRoute: typeof EspaceAdministrationClassesRoute
   EspaceAdministrationCommunicationsRoute: typeof EspaceAdministrationCommunicationsRoute
   EspaceAdministrationCompetencesRoute: typeof EspaceAdministrationCompetencesRoute
+  EspaceAdministrationConcepteurRoute: typeof EspaceAdministrationConcepteurRoute
   EspaceAdministrationConnaissancesRoute: typeof EspaceAdministrationConnaissancesRoute
   EspaceAdministrationDocumentsRoute: typeof EspaceAdministrationDocumentsRoute
   EspaceAdministrationDpcRoute: typeof EspaceAdministrationDpcRoute
@@ -873,6 +894,7 @@ const EspaceAdministrationRouteChildren: EspaceAdministrationRouteChildren = {
   EspaceAdministrationCommunicationsRoute:
     EspaceAdministrationCommunicationsRoute,
   EspaceAdministrationCompetencesRoute: EspaceAdministrationCompetencesRoute,
+  EspaceAdministrationConcepteurRoute: EspaceAdministrationConcepteurRoute,
   EspaceAdministrationConnaissancesRoute:
     EspaceAdministrationConnaissancesRoute,
   EspaceAdministrationDocumentsRoute: EspaceAdministrationDocumentsRoute,
