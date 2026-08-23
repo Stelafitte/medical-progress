@@ -157,6 +157,12 @@ export function AdminProgramDesigner() {
 
   if (isPending || !data) return <Skeleton className="h-80 w-full" />;
 
+  /** Liste UNIQUE des classes : celles du dépôt et celles créées dans la session. */
+  const cohorts = mergeCohorts(data.cohorts, localCohorts);
+  const activeProgramId = (data.program?.id ?? "program-unknown") as ProgramId;
+  const curriculumVersionId = (data.versions[0]?.id ??
+    `cv-${activeProgramId}`) as CurriculumVersionId;
+
   const modelReady = modelId !== null || modelName.trim().length > 0;
   const chosenResources = RESOURCES.filter((r) => resources[r.id].selected);
   const pendingResources = chosenResources.filter(
@@ -527,16 +533,9 @@ export function AdminProgramDesigner() {
           <Button
             type="button"
             className="min-h-11"
-            disabled={
-              !designReady ||
-              (cohortMode === "existing" ? !selectedCohortId : newCohort.label.trim().length === 0)
-            }
+            disabled={!designReady || cohortMode === "new" || !selectedCohortId}
             onClick={() =>
-              setAssociated(
-                cohortMode === "existing"
-                  ? (data.cohorts.find((c) => c.id === selectedCohortId)?.label ?? null)
-                  : newCohort.label.trim(),
-              )
+              setAssociated(cohorts.find((c) => c.id === selectedCohortId)?.label ?? null)
             }
           >
             Associer la promotion au programme
