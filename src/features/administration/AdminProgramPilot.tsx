@@ -292,6 +292,17 @@ export function AdminProgramPilot() {
             description="Bases théoriques, compétences, stage et évaluations pour chaque apprenant de la promotion pilotée. Vue identique à celle de l'onglet « Classes d'apprenants »."
           />
 
+          {/* Évaluation : même bloc que l'onglet « Évaluations ». */}
+          {data.program ? (
+            <AssessmentModalitySection
+              programId={data.program.id}
+              cohorts={data.cohorts}
+              cohortId={selectedId}
+              showCohortSelector={false}
+            />
+          ) : null}
+
+
 
           <PilotTools
             phase={cohortPhase(selected)}
