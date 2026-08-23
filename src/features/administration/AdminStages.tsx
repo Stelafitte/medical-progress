@@ -36,12 +36,16 @@ const VALIDATION_MODES = [
 
 export function AdminStages() {
   const { data, isPending } = useProgramAdmin();
+  const localPlacements = useLocalPlacements(data?.program?.id);
   if (isPending || !data) return <Skeleton className="h-80 w-full" />;
 
-  const placements = data.placements;
+  /** Liste UNIQUE des terrains : ceux du dépôt et ceux créés dans la session. */
+  const placements = mergePlacements(data.placements, localPlacements);
   const assignments = data.assignments;
   const sites = Array.from(new Set(placements.map((p) => p.site)));
   const capacity = placements.reduce((total, p) => total + p.capacity, 0);
+  const programId = (data.program?.id ?? "program-unknown") as ProgramId;
+
 
   return (
     <div className="space-y-6">
