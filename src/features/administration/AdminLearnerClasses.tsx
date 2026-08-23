@@ -113,29 +113,42 @@ export function AdminLearnerClasses() {
 
       <PanelCard
         title="Créer une classe"
-        description="Même outil que dans le « Concepteur de programme » : une classe créée ici y est immédiatement disponible pour association."
+        description="Deux façons de créer une classe : la saisie manuelle, ou l'import d'une liste d'étudiants. Une classe créée ici est immédiatement disponible dans le « Concepteur de programme »."
         action={<MockBadge />}
       >
         {data.program ? (
-          <CohortCreationForm
-            idPrefix="classes-cohort"
-            programId={data.program.id}
-            curriculumVersionId={
-              data.versions[0]?.id ?? (`cv-${data.program.id}` as CurriculumVersionId)
-            }
-            submitLabel="Créer la classe"
-            hint="Classe créée indépendamment d'une conception en cours : elle sera proposée dans le concepteur au moment d'associer une promotion."
-          />
+          <div className="space-y-6">
+            <div className="space-y-4">
+              <div className="space-y-1">
+                <h3 className="text-sm font-medium">Saisie manuelle</h3>
+                <p className="text-muted-foreground text-xs">
+                  Renseignez le nom de la classe, sa période et son effectif attendu.
+                </p>
+              </div>
+              <CohortCreationForm
+                idPrefix="classes-cohort"
+                programId={data.program.id}
+                curriculumVersionId={
+                  data.versions[0]?.id ?? (`cv-${data.program.id}` as CurriculumVersionId)
+                }
+                submitLabel="Créer la classe"
+                hint="Classe créée indépendamment d'une conception en cours : elle sera proposée dans le concepteur au moment d'associer une promotion."
+              />
+            </div>
+
+            <div className="border-border border-t pt-6">
+              <CohortRosterSection data={data} section="import" />
+            </div>
+          </div>
         ) : (
           <EmptyState>Sélectionnez un programme pour créer une classe.</EmptyState>
         )}
       </PanelCard>
 
-
       {/* Suivi croisé : même table que dans « Pilotage de programme ». */}
       <LearnerTrackingSection data={data} />
 
-      <CohortRosterSection data={data} />
+      <CohortRosterSection data={data} section="export" />
     </div>
   );
 }
