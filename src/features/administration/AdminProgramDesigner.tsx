@@ -218,17 +218,28 @@ export function AdminProgramDesigner() {
   const localPlacements = useLocalPlacements(data?.program?.id);
   const localCompetences = useLocalCompetences(data?.program?.id);
   const localRequirements = useLocalDocumentRequirements(data?.program?.id);
+  const localKnowledge = useLocalKnowledge(data?.program?.id);
+  const localModalities = useLocalModalities(data?.program?.id);
 
   const existingCounts = useMemo<Record<ResourceKind, number>>(
     () => ({
-      knowledge: data?.resources.length ?? 0,
-      competences: data?.outcomes.filter((o) => o.nature !== "knowledge").length ?? 0,
-      assessments: data?.ecosScenarios.length ?? 0,
+      knowledge: (data?.resources.length ?? 0) + localKnowledge.length,
+      competences:
+        (data?.outcomes.filter((o) => o.nature !== "knowledge").length ?? 0) +
+        localCompetences.length,
+      assessments: localModalities.length,
       stage:
         (data?.placements.length ?? 0) + (data?.templates.length ?? 0) + localPlacements.length,
       documents: localRequirements.length,
     }),
-    [data, localPlacements, localRequirements],
+    [
+      data,
+      localPlacements,
+      localRequirements,
+      localKnowledge,
+      localModalities,
+      localCompetences,
+    ],
   );
 
 
