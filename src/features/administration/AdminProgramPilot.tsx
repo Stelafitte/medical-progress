@@ -461,6 +461,20 @@ function LearnerManagementPanel({
   if (rows.length === 0) return <EmptyState>Aucune inscription sur cette promotion.</EmptyState>;
   return (
     <div className="space-y-5">
+      {/* Frontière b : ici on suit, on ne compose pas. Toute action d'inscription part vers Classes. */}
+      <div className="border-border bg-muted/40 flex flex-wrap items-center justify-between gap-2 rounded-md border p-3">
+        <p className="text-muted-foreground text-xs">
+          Liste en lecture seule : inscrire, retirer, importer ou archiver un apprenant se fait dans
+          « Classes d'apprenants ».
+        </p>
+        <Button asChild variant="outline" size="sm" className="min-h-11">
+          <Link to="/espace/administration/classes">
+            Modifier les inscriptions
+            <ArrowRight className="ms-1 size-4" aria-hidden />
+          </Link>
+        </Button>
+      </div>
+
       <div className="space-y-2">
         <h3 className="text-sm font-semibold">Activité des apprenants</h3>
         <GroupStats summary={summary} />
