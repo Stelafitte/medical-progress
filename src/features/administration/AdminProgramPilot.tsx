@@ -288,6 +288,7 @@ export function AdminProgramPilot() {
             phase={cohortPhase(selected)}
             rows={learnerRows}
             summary={groupSummary}
+            competenceRows={competenceRows}
             activity={{
               milestonesTotal: timeline.length,
               milestonesPassed: timeline.filter((i) => i.state === "done").length,
