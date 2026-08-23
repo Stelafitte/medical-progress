@@ -31,13 +31,14 @@ export function ProgramSwitcher({ variant = "compact" }: { variant?: "compact" |
         Programme actif
       </label>
       <Select
-        value={activeProgram.id}
+        value={isAllPrograms ? ALL_PROGRAMS_VALUE : activeProgram.id}
         onValueChange={(value) => {
           if (value === ALL_PROGRAMS_VALUE) {
             void navigate({ to: "/espace/programmes" });
             return;
           }
           setActiveProgramId(value as ProgramId);
+          if (isAllPrograms) void navigate({ to: "/espace/administration" });
         }}
       >
         <SelectTrigger
