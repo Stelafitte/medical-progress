@@ -5,9 +5,19 @@
  * périodes types, modes de validation (dont le carnet de stage) et modèles de
  * carnet. Maquette : aucune écriture réelle.
  */
-import { Building2, CalendarRange, ClipboardCheck, MapPin, Notebook, Users } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import {
+  ArrowRight,
+  Building2,
+  CalendarRange,
+  ClipboardCheck,
+  MapPin,
+  Notebook,
+  Users,
+} from "lucide-react";
 import { SectionHeading } from "@/components/section-heading";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState, MockBadge, PanelCard, ScopeNotice } from "@/features/professional/mock-ui";
 
