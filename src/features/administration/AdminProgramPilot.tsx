@@ -236,6 +236,47 @@ export function AdminProgramPilot() {
             </PanelCard>
           </div>
 
+          {/* Périodes datées : elles appartiennent à l'exploitation, pas au modèle
+              décrit dans « Gestion des stages ». */}
+          <PanelCard
+            title="Périodes de stage de la promotion"
+            description="Affectations datées des apprenants de cette promotion."
+            action={<MockBadge />}
+          >
+            {(() => {
+              const cohortAssignments = data.assignments.filter((assignment) =>
+                cohortEnrollments.some((e) => e.id === assignment.enrollmentId),
+              );
+              if (cohortAssignments.length === 0)
+                return <EmptyState>Aucune période de stage sur cette promotion.</EmptyState>;
+              return (
+                <ul className="space-y-2 text-sm">
+                  {cohortAssignments.map((assignment) => (
+                    <li
+                      key={assignment.id}
+                      className="border-border flex flex-wrap items-center gap-2 rounded-md border p-3"
+                    >
+                      <span className="font-mono text-xs">
+                        {formatFrDate(assignment.startsOn)} → {formatFrDate(assignment.endsOn)}
+                      </span>
+                      <span className="font-medium">
+                        {personNameFor(data, assignment.enrollmentId)}
+                      </span>
+                      <Badge variant="outline" className="font-normal">
+                        {data.placements.find((p) => p.id === assignment.placementId)?.name ??
+                          assignment.placementId}
+                      </Badge>
+                      <Badge variant="secondary" className="font-normal">
+                        {assignment.status}
+                      </Badge>
+                    </li>
+                  ))}
+                </ul>
+              );
+            })()}
+          </PanelCard>
+
+
           <PilotTools
             phase={cohortPhase(selected)}
             rows={learnerRows}

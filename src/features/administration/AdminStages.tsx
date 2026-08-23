@@ -5,9 +5,19 @@
  * périodes types, modes de validation (dont le carnet de stage) et modèles de
  * carnet. Maquette : aucune écriture réelle.
  */
-import { Building2, CalendarRange, ClipboardCheck, MapPin, Notebook, Users } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import {
+  ArrowRight,
+  Building2,
+  CalendarRange,
+  ClipboardCheck,
+  MapPin,
+  Notebook,
+  Users,
+} from "lucide-react";
 import { SectionHeading } from "@/components/section-heading";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState, MockBadge, PanelCard, ScopeNotice } from "@/features/professional/mock-ui";
 
@@ -139,32 +149,34 @@ export function AdminStages() {
       </PanelCard>
 
       <PanelCard
-        title="Périodes de stage"
-        description="Dates observées sur les affectations existantes, toutes promotions confondues."
+        title="Encadrement et carnets"
+        description="Les périodes datées et les affectations nominatives se suivent ailleurs : cet onglet ne décrit que le modèle."
       >
-        {assignments.length === 0 ? (
-          <EmptyState>Aucune période de stage enregistrée.</EmptyState>
-        ) : (
-          <ul className="space-y-2 text-sm">
-            {assignments.map((assignment) => {
-              const placement = placements.find((p) => p.id === assignment.placementId);
-              return (
-                <li
-                  key={assignment.id}
-                  className="border-border flex flex-wrap items-center gap-2 rounded-md border p-3"
-                >
-                  <span className="font-mono text-xs">
-                    {formatFrDate(assignment.startsOn)} → {formatFrDate(assignment.endsOn)}
-                  </span>
-                  <span className="font-medium">{placement?.name ?? assignment.placementId}</span>
-                  <Badge variant="secondary" className="font-normal">
-                    {assignment.status}
-                  </Badge>
-                </li>
-              );
-            })}
-          </ul>
-        )}
+        <p className="text-muted-foreground text-sm">
+          {assignments.length} affectation(s) connue(s) pour ce programme, toutes promotions
+          confondues. Les dates se consultent promotion par promotion dans « Pilotage de
+          programme ».
+        </p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Button asChild variant="outline" className="min-h-11">
+            <Link to="/espace/administration/pilotage">
+              Voir les périodes dans Pilotage
+              <ArrowRight className="ms-1 size-4" aria-hidden />
+            </Link>
+          </Button>
+          <Button asChild variant="outline" className="min-h-11">
+            <Link to="/espace/encadrement/carnets">
+              Carnets à valider
+              <ArrowRight className="ms-1 size-4" aria-hidden />
+            </Link>
+          </Button>
+          <Button asChild variant="outline" className="min-h-11">
+            <Link to="/espace/encadrement/etudiants">
+              Encadrants et apprenants suivis
+              <ArrowRight className="ms-1 size-4" aria-hidden />
+            </Link>
+          </Button>
+        </div>
       </PanelCard>
 
       <PanelCard
