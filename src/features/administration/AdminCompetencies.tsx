@@ -120,8 +120,13 @@ export function AdminCompetencies() {
                         </Badge>
                         <span>{outcome.label}</span>
                         <span className="text-muted-foreground text-xs">
-                          cible {outcome.targetMastery}
+                          cible {COMPETENCE_MASTERY_LABELS_FR[outcome.targetMastery]}
                         </span>
+                        {localCompetences.some((local) => local.id === outcome.id) ? (
+                          <Badge variant="outline" className="font-normal">
+                            créée dans cette session
+                          </Badge>
+                        ) : null}
                       </li>
                     ))}
                     {list.length === 0 ? (
@@ -132,6 +137,46 @@ export function AdminCompetencies() {
               );
             })}
           </div>
+
+          <PanelCard
+            title="Créer une compétence"
+            description="Le même outil de création est disponible ici et dans le « Concepteur de programme » : la liste est unique."
+            action={<MockBadge />}
+          >
+            <CompetenceCreationForm
+              programId={programId}
+              curriculumVersionId={curriculumVersionId}
+              idPrefix="competences-tab"
+              submitLabel="Créer la compétence"
+              hint="La compétence rejoint la liste unique : elle est aussitôt proposée dans le « Concepteur de programme »."
+            />
+          </PanelCard>
+
+          <PanelCard
+            title="Là où ces compétences se travaillent et se prouvent"
+            description="Une compétence se prouve en stage, en simulation ou lors d'une évaluation : les modalités se règlent dans les onglets dédiés."
+          >
+            <div className="flex flex-wrap gap-2">
+              <Button asChild variant="outline" className="min-h-11">
+                <Link to="/espace/administration/stages">
+                  Terrains de stage et validation
+                  <ArrowRight className="ms-1 size-4" aria-hidden />
+                </Link>
+              </Button>
+              <Button asChild variant="outline" className="min-h-11">
+                <Link to="/espace/administration/evaluations">
+                  Évaluations et ECOS
+                  <ArrowRight className="ms-1 size-4" aria-hidden />
+                </Link>
+              </Button>
+              <Button asChild variant="outline" className="min-h-11">
+                <Link to="/espace/administration/pilotage">
+                  Suivi par promotion dans Pilotage
+                  <ArrowRight className="ms-1 size-4" aria-hidden />
+                </Link>
+              </Button>
+            </div>
+          </PanelCard>
         </TabsContent>
 
         <TabsContent value="suivi" className="space-y-6">
