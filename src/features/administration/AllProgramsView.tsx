@@ -138,21 +138,18 @@ export function AllProgramsView() {
               );
             })}
 
-            {/* Catégories : sous-niveau de la filière, groupées FMI puis FMC. */}
+            {/* Catégories : choix unique, sous-niveau de la filière (FMI puis FMC). */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
                   type="button"
                   size="sm"
-                  variant={filters.categories.length > 0 ? "default" : "outline"}
+                  variant={selectedCategory ? "default" : "outline"}
                   className="min-h-11"
                 >
-                  Catégories
-                  {filters.categories.length > 0 ? (
-                    <Badge variant="secondary" className="ml-2 font-normal">
-                      {filters.categories.length}
-                    </Badge>
-                  ) : null}
+                  {selectedCategory
+                    ? `Catégorie : ${PROGRAM_CATEGORY_LABELS_FR[selectedCategory]}`
+                    : "Catégories"}
                   <ChevronDown className="ml-1 h-4 w-4" aria-hidden="true" />
                 </Button>
               </DropdownMenuTrigger>
@@ -164,11 +161,11 @@ export function AllProgramsView() {
                     {PROGRAM_CATEGORIES_BY_TRACK[track].map((category) => (
                       <DropdownMenuCheckboxItem
                         key={category}
-                        checked={filters.categories.includes(category)}
+                        checked={selectedCategory === category}
                         onCheckedChange={() =>
                           setFilters((prev) => ({
                             ...prev,
-                            categories: toggleFilterValue(prev.categories, category),
+                            categories: prev.categories[0] === category ? [] : [category],
                           }))
                         }
                       >
@@ -180,7 +177,7 @@ export function AllProgramsView() {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {filters.categories.length > 0 ? (
+            {selectedCategory ? (
               <Button
                 type="button"
                 size="sm"
@@ -188,9 +185,10 @@ export function AllProgramsView() {
                 className="min-h-11"
                 onClick={() => setFilters((prev) => ({ ...prev, categories: [] }))}
               >
-                Effacer les catégories
+                Effacer la catégorie
               </Button>
             ) : null}
+
           </div>
         </div>
 
