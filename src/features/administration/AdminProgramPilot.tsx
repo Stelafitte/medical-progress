@@ -6,7 +6,7 @@
  * Aucun rappel des trois étapes ici (il reste sur le concepteur).
  */
 import { useMemo, useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useSearch } from "@tanstack/react-router";
 import {
   Activity,
   AlertTriangle,
@@ -62,10 +62,12 @@ const STATE_STYLES = {
 
 export function AdminProgramPilot() {
   const { data, isPending } = useProgramAdmin();
+  const { promotion } = useSearch({ from: "/espace/administration/pilotage" });
   const [cohortId, setCohortId] = useState<string | null>(null);
 
   const cohorts = data?.cohorts ?? [];
-  const selectedId = cohortId ?? defaultPilotCohortId(cohorts);
+  // Priorité : choix explicite de l'utilisateur, puis lien profond venu de « Classes ».
+  const selectedId = cohortId ?? promotion ?? defaultPilotCohortId(cohorts);
   const selected = cohorts.find((c) => c.id === selectedId);
 
   const timeline = useMemo(
@@ -110,8 +112,10 @@ export function AdminProgramPilot() {
       />
 
       <ScopeNotice>
-        Le modèle pédagogique ne se modifie pas ici : il se conçoit dans « Concepteur de programme ».
-        Cet écran n'agit que sur la promotion sélectionnée.
+        Cet onglet est celui du <strong>suivi</strong> : avancement, retards, relances sur la
+        promotion sélectionnée. La composition des classes (inscriptions, imports, archivage) se
+        traite dans « Classes d'apprenants », et le modèle pédagogique dans « Concepteur de
+        programme ».
       </ScopeNotice>
 
       <CohortSelector cohorts={cohorts} value={selectedId} onChange={setCohortId} label="Promotion pilotée" />
@@ -457,6 +461,20 @@ function LearnerManagementPanel({
   if (rows.length === 0) return <EmptyState>Aucune inscription sur cette promotion.</EmptyState>;
   return (
     <div className="space-y-5">
+      {/* Frontière b : ici on suit, on ne compose pas. Toute action d'inscription part vers Classes. */}
+      <div className="border-border bg-muted/40 flex flex-wrap items-center justify-between gap-2 rounded-md border p-3">
+        <p className="text-muted-foreground text-xs">
+          Liste en lecture seule : inscrire, retirer, importer ou archiver un apprenant se fait dans
+          « Classes d'apprenants ».
+        </p>
+        <Button asChild variant="outline" size="sm" className="min-h-11">
+          <Link to="/espace/administration/classes">
+            Modifier les inscriptions
+            <ArrowRight className="ms-1 size-4" aria-hidden />
+          </Link>
+        </Button>
+      </div>
+
       <div className="space-y-2">
         <h3 className="text-sm font-semibold">Activité des apprenants</h3>
         <GroupStats summary={summary} />
