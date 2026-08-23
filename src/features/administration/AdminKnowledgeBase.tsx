@@ -245,10 +245,11 @@ export function AdminKnowledgeBase() {
 
       {/* 3. Les supports qui portent ces connaissances */}
       <SectionHeading
-        title="Supports et exploitation IA"
+        title="Supports pédagogiques — Dépôt et catalogue"
         level={2}
-        description="Dépôt des supports, conversion HTML5 des diaporamas sonorisés et exploitation IA des contenus publiés."
+        description="Dépôt et catalogue des supports, conversion HTML5 des diaporamas sonorisés, puis Exploitation IA des contenus publiés."
       />
+
 
       <MediaLibrarySection
         programName={data.program?.name ?? "ce programme"}
