@@ -476,10 +476,17 @@ function LearnerManagementPanel({
         <h3 className="text-sm font-semibold">Outil de communication complet</h3>
         <p className="text-muted-foreground text-xs">
           L'intégralité de l'outil de communication est disponible ici, sans quitter la gestion des
-          apprenants.
+          apprenants. La même page existe en plein écran pour un travail de rédaction long.
         </p>
+        <Button asChild variant="outline" size="sm" className="min-h-11">
+          <Link to="/espace/administration/communications">
+            Ouvrir en plein écran
+            <ArrowRight className="ms-1 size-4" aria-hidden />
+          </Link>
+        </Button>
         <AdminCommunications />
       </div>
+
     </div>
   );
 }

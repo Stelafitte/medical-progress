@@ -1,31 +1,12 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useSession } from "@/application/session";
-import { AccessRestricted } from "@/components/access-restricted";
-import { AdminOrganisation } from "@/features/administration/AdminOrganisation";
+/**
+ * Ancien hub « Préparation de la promotion » — remplacé par l'onglet Classes
+ * d'apprenants, qui ouvre Personnes et inscriptions.
+ * L'URL est conservée en redirection.
+ */
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/espace/administration/organisation")({
-  head: () => ({
-    meta: [
-      { title: "Préparation de la promotion — Campus Santé Augmenté" },
-      {
-        name: "description",
-        content: "Cursus, promotions, utilisateurs, rôles, terrains de stage et affectations.",
-      },
-      { property: "og:title", content: "Préparation de la promotion — Campus Santé Augmenté" },
-      {
-        property: "og:description",
-        content: "Cursus, promotions, utilisateurs, rôles, terrains de stage et affectations.",
-      },
-      { name: "robots", content: "noindex" },
-    ],
-  }),
-  component: Guarded,
+  beforeLoad: () => {
+    throw redirect({ to: "/espace/administration/classes", replace: true });
+  },
 });
-
-/** Garde d'accès dérivée des RoleAssignment contextualisés du programme actif. */
-function Guarded() {
-  const session = useSession();
-  if (!session.canAccessProgramAdministration)
-    return <AccessRestricted area="L'administration du programme" />;
-  return <AdminOrganisation />;
-}
