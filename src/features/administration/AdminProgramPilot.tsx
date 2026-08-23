@@ -52,6 +52,8 @@ import {
   type ProgrammingState,
 } from "@/features/administration/pilotSectionsViewModel";
 import { ROLE_LABELS_FR } from "@/domain/roles";
+import { buildLearnerCompetenceRows } from "@/features/administration/competenceTrackingViewModel";
+import type { LearnerCompetenceRow } from "@/features/administration/competenceTrackingViewModel";
 import type { CohortPhase } from "@/features/administration/adminProgramViewModel";
 
 const STATE_STYLES = {
@@ -101,6 +103,11 @@ export function AdminProgramPilot() {
     expectedLogsPerLearner: data.templates.length,
   });
   const groupSummary = summarizeGroupActivity(learnerRows);
+  /** Suivi NOMINATIF des compétences : il appartient au pilotage, pas au référentiel. */
+  const competenceRows = buildLearnerCompetenceRows(cohortEnrollments, data.outcomes).map((row) => ({
+    ...row,
+    personName: personNameFor(data, row.enrollmentId),
+  }));
 
   return (
     <div className="space-y-6">
@@ -281,6 +288,7 @@ export function AdminProgramPilot() {
             phase={cohortPhase(selected)}
             rows={learnerRows}
             summary={groupSummary}
+            competenceRows={competenceRows}
             activity={{
               milestonesTotal: timeline.length,
               milestonesPassed: timeline.filter((i) => i.state === "done").length,
@@ -494,9 +502,11 @@ function ActivityPanel({ activity }: { activity: ProgramActivity }) {
 function LearnerManagementPanel({
   rows,
   summary,
+  competenceRows,
 }: {
   rows: readonly LearnerActivityRow[];
   summary: GroupActivitySummary;
+  competenceRows: readonly (LearnerCompetenceRow & { readonly personName: string })[];
 }) {
   const notifications = buildSuggestedNotifications(rows);
   if (rows.length === 0) return <EmptyState>Aucune inscription sur cette promotion.</EmptyState>;
@@ -568,6 +578,51 @@ function LearnerManagementPanel({
             </li>
           ))}
         </ul>
+      </div>
+
+      {/* Suivi NOMINATIF des compétences : déplacé ici depuis l'onglet Compétences,
+          qui ne porte plus que le référentiel et sa couverture. */}
+      <div className="space-y-2">
+        <h3 className="text-sm font-semibold">Acquisition des compétences, apprenant par apprenant</h3>
+        <p className="text-muted-foreground text-xs">
+          Une compétence en situation réelle n'est comptée acquise qu'après validation par un tiers
+          habilité. Le référentiel lui-même se règle dans l'onglet « Compétences ».
+        </p>
+        {competenceRows.length === 0 ? (
+          <EmptyState>Aucune compétence à suivre sur cette promotion.</EmptyState>
+        ) : (
+          <ul className="space-y-2 text-sm">
+            {competenceRows.map((row) => (
+              <li
+                key={`competence-${row.enrollmentId}`}
+                className="border-border space-y-2 rounded-md border p-3"
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-medium">{row.personName}</span>
+                  <Badge variant="secondary" className="font-normal">
+                    {row.validated} validée(s)
+                  </Badge>
+                  <Badge variant="outline" className="font-normal">
+                    {row.declared} en attente de validation
+                  </Badge>
+                  <Badge variant="outline" className="font-normal">
+                    {row.notStarted} non commencée(s)
+                  </Badge>
+                </div>
+                <Progress value={row.percent} />
+                <p className="text-muted-foreground text-xs">
+                  {row.percent} % des {row.total} compétence(s) du référentiel
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
+        <Button asChild variant="outline" size="sm" className="min-h-11">
+          <Link to="/espace/administration/competences">
+            Référentiel et couverture des compétences
+            <ArrowRight className="ms-1 size-4" aria-hidden />
+          </Link>
+        </Button>
       </div>
 
       <div className="space-y-2">
@@ -678,11 +733,13 @@ function PilotTools({
   rows,
   summary,
   activity,
+  competenceRows,
 }: {
   phase: CohortPhase;
   rows: readonly LearnerActivityRow[];
   summary: GroupActivitySummary;
   activity: ProgramActivity;
+  competenceRows: readonly (LearnerCompetenceRow & { readonly personName: string })[];
 }) {
   const [open, setOpen] = useState<readonly ToolKey[]>(["programmation"]);
   const toggle = (key: ToolKey) =>
@@ -762,7 +819,11 @@ function PilotTools({
                   {tool.key === "programmation" ? <ProgrammingPanel phase={phase} /> : null}
                   {tool.key === "activite" ? <ActivityPanel activity={activity} /> : null}
                   {tool.key === "apprenants" ? (
-                    <LearnerManagementPanel rows={rows} summary={summary} />
+                    <LearnerManagementPanel
+                      rows={rows}
+                      summary={summary}
+                      competenceRows={competenceRows}
+                    />
                   ) : null}
                   {tool.key === "documents" ? <DocumentsPanel /> : null}
                 </div>

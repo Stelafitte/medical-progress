@@ -32,9 +32,11 @@ import { CohortSelector } from "@/features/administration/CohortSelector";
 import { personNameFor, useProgramAdmin } from "@/features/administration/useProgramAdmin";
 import { defaultPilotCohortId } from "@/features/administration/adminProgramViewModel";
 import {
+  REFERENTIAL_DIFF_LABELS_FR,
   buildCompetenceCoverage,
   buildLearnerCompetenceRows,
   competenceOutcomes,
+  diffReferentialRows,
   parseReferentialText,
 } from "@/features/administration/competenceTrackingViewModel";
 import { NATURE_LABELS_FR } from "@/domain/mastery";
@@ -75,14 +77,8 @@ export function AdminCompetencies() {
     [enrollments, outcomes],
   );
   const parsed = useMemo(() => parseReferentialText(importText), [importText]);
-  /** Seules les lignes de nature compétence peuvent rejoindre ce référentiel. */
-  const importable = useMemo(
-    () =>
-      parsed.filter(
-        (row) => row.nature === "simulated_competence" || row.nature === "real_competence",
-      ),
-    [parsed],
-  );
+  /** Prévisualisation des conflits : nouvelles, déjà présentes, inchangées, ignorées. */
+  const diff = useMemo(() => diffReferentialRows(parsed, outcomes), [parsed, outcomes]);
 
   if (isPending || !data) return <Skeleton className="h-80 w-full" />;
 
@@ -210,44 +206,19 @@ export function AdminCompetencies() {
           <CohortSelector cohorts={cohorts} value={selectedId} onChange={setCohortId} />
 
           <PanelCard
-            title="Acquisition par apprenant"
-            description="Validations obtenues, déclarations en attente et compétences non commencées."
+            title="Le suivi nominatif est dans le Pilotage"
+            description="Cet onglet décrit le référentiel et sa couverture. Le tableau apprenant par apprenant appartient à l'exploitation d'une promotion."
           >
-            {learnerRows.length === 0 ? (
-              <EmptyState>Aucun apprenant inscrit dans cette cohorte.</EmptyState>
-            ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Apprenant</TableHead>
-                      <TableHead className="text-right">Validées</TableHead>
-                      <TableHead className="text-right">En attente</TableHead>
-                      <TableHead className="text-right">Non commencées</TableHead>
-                      <TableHead className="w-40">Avancement</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {learnerRows.map((row) => (
-                      <TableRow key={row.enrollmentId}>
-                        <TableCell className="font-medium">
-                          {personNameFor(data, row.enrollmentId)}
-                        </TableCell>
-                        <TableCell className="text-right">{row.validated}</TableCell>
-                        <TableCell className="text-right">{row.declared}</TableCell>
-                        <TableCell className="text-right">{row.notStarted}</TableCell>
-                        <TableCell>
-                          <div className="space-y-1">
-                            <Progress value={row.percent} />
-                            <span className="text-muted-foreground text-xs">{row.percent} %</span>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
+            <p className="text-muted-foreground text-sm">
+              {learnerRows.length} apprenant(s) suivis sur cette promotion, {averagePercent} %
+              d'acquisition moyenne.
+            </p>
+            <Button asChild variant="outline" className="mt-3 min-h-11">
+              <Link to="/espace/administration/pilotage">
+                Ouvrir le suivi nominatif dans Pilotage
+                <ArrowRight className="ms-1 size-4" aria-hidden />
+              </Link>
+            </Button>
           </PanelCard>
 
           <PanelCard
@@ -294,14 +265,20 @@ export function AdminCompetencies() {
             />
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <Badge variant="secondary">{parsed.length} ligne(s) reconnue(s)</Badge>
-              <Badge variant="outline">{importable.length} compétence(s) importable(s)</Badge>
+              <Badge variant="outline">{diff.newCount} nouvelle(s)</Badge>
+              <Badge variant="outline">{diff.changedCount} déjà présente(s)</Badge>
+              <Badge variant="outline">{diff.unchangedCount} inchangée(s)</Badge>
+              <Badge variant="outline">{diff.ignoredCount} ignorée(s)</Badge>
+            </div>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
               <Button
                 size="sm"
                 className="min-h-11"
-                disabled={importable.length === 0}
+                disabled={diff.newCount === 0}
                 onClick={() => {
                   let added = 0;
-                  for (const row of importable) {
+                  for (const row of diff.rows) {
+                    if (row.kind !== "new") continue;
                     const outcome = createLocalCompetence({
                       input: {
                         ...EMPTY_NEW_COMPETENCE_INPUT,
@@ -318,7 +295,7 @@ export function AdminCompetencies() {
                   setImportText("");
                 }}
               >
-                Importer {importable.length} compétence(s)
+                Importer les {diff.newCount} nouvelle(s) compétence(s)
               </Button>
               <Button
                 size="sm"
@@ -335,12 +312,14 @@ export function AdminCompetencies() {
               ) : null}
             </div>
             <p className="text-muted-foreground mt-2 text-xs">
-              Les lignes de nature « connaissance » ou non précisée sont ignorées : elles relèvent de
-              l'onglet « Base de connaissances ».
+              Seules les lignes nouvelles sont importées : un code déjà présent n'écrase jamais le
+              référentiel en place, et les lignes de nature « connaissance » ou non précisée relèvent
+              de l'onglet « Base de connaissances ». Le rattachement à une version de référentiel est
+              celui de la version active ({curriculumVersionId}).
             </p>
-            {parsed.length > 0 ? (
+            {diff.rows.length > 0 ? (
               <ul className="mt-4 space-y-1 text-sm">
-                {parsed.slice(0, 12).map((row, index) => (
+                {diff.rows.slice(0, 20).map((row, index) => (
                   <li key={`${row.code}-${index}`} className="flex flex-wrap items-center gap-2">
                     <Badge variant="outline" className="font-mono text-[10px]">
                       {row.code}
@@ -349,6 +328,17 @@ export function AdminCompetencies() {
                     <span className="text-muted-foreground text-xs">
                       {row.nature === "unknown" ? "nature à préciser" : NATURE_LABELS_FR[row.nature]}
                     </span>
+                    <Badge
+                      variant={row.kind === "new" ? "secondary" : "outline"}
+                      className="font-normal"
+                    >
+                      {REFERENTIAL_DIFF_LABELS_FR[row.kind]}
+                    </Badge>
+                    {row.kind === "changed" && row.existingLabel ? (
+                      <span className="text-muted-foreground text-xs">
+                        actuellement « {row.existingLabel} »
+                      </span>
+                    ) : null}
                   </li>
                 ))}
               </ul>
