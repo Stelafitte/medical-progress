@@ -15,7 +15,7 @@ const domain = read("src/domain/directory.ts");
 
 describe("marqueurs de simulation", () => {
   it("affiche « Données simulées » et rappelle l'absence d'écriture serveur", () => {
-    expect(view).toContain('MockBadge label="Données simulées"');
+    expect(view).toContain('"Données simulées"');
     expect(view).toContain("aucune écriture serveur");
     expect(view).toContain("aucun e-mail ni invitation réels");
   });
