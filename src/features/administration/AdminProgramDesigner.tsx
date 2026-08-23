@@ -141,8 +141,9 @@ export function AdminProgramDesigner() {
 
   const [cohortMode, setCohortMode] = useState<"existing" | "new">("existing");
   const [selectedCohortId, setSelectedCohortId] = useState<string | null>(null);
-  const [newCohort, setNewCohort] = useState({ label: "", startsOn: "", endsOn: "", learners: "" });
   const [associated, setAssociated] = useState<string | null>(null);
+  const localCohorts = useLocalCohorts(data?.program?.id);
+
 
   const existingCounts = useMemo<Record<ResourceKind, number>>(
     () => ({

@@ -120,7 +120,7 @@ export function AdminLearnerClasses() {
             idPrefix="classes-cohort"
             programId={data.program.id}
             curriculumVersionId={
-              data.versions[0]?.id ?? (`cv-${data.program.id}` as typeof data.program.id & string)
+              data.versions[0]?.id ?? (`cv-${data.program.id}` as CurriculumVersionId)
             }
             submitLabel="Créer la classe"
             hint="Classe créée indépendamment d'une conception en cours : elle sera proposée dans le concepteur au moment d'associer une promotion."
