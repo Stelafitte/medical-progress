@@ -5,8 +5,8 @@ import { canAccessLearnerSpace } from "@/domain/access";
 import { LearnerAuditsView } from "@/features/audits/LearnerAuditsView";
 
 function AuditsRoute() {
-  const { roles, activeProgram } = useSession();
-  if (!canAccessLearnerSpace(roles, activeProgram.id)) {
+  const { rolesForAccess, activeProgram } = useSession();
+  if (!canAccessLearnerSpace(rolesForAccess, activeProgram.id)) {
     return <AccessRestricted area="L'espace apprenant" />;
   }
   if (!activeProgram.config.auditsEnabled) {

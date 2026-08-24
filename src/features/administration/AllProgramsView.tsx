@@ -86,7 +86,7 @@ export function AllProgramsView() {
     () =>
       cohorts
         ? buildAdministeredProgramCards(session.programs, cohorts, (programId) =>
-            canAccessProgramAdministration(session.roles, programId),
+            canAccessProgramAdministration(session.rolesForAccess, programId),
           )
         : [],
     [cohorts, session.programs, session.roles],

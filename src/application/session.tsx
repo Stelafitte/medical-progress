@@ -34,7 +34,7 @@ import {
   canAccessStatistics,
   canAccessSupervision,
 } from "@/domain/access";
-import { rolesInContext } from "@/domain/roles";
+import { rolesInContext, roleAssignmentKey } from "@/domain/roles";
 import type {
   Enrollment,
   Person,
@@ -53,6 +53,15 @@ export interface SessionValue {
   readonly activeEnrollment?: Enrollment;
   readonly enrollments: readonly Enrollment[];
   readonly roles: readonly RoleAssignment[];
+  /** Rôle actif choisi parmi les rôles réels de la personne (bascule "voir en tant que"). */
+  readonly activeRole: RoleAssignment | null;
+  /**
+   * Rôle(s) à utiliser pour toute décision d'accès ou de navigation : le rôle
+   * actif seul si un rôle actif est sélectionné, sinon `roles` en entier.
+   * Ne JAMAIS utiliser `roles` (liste complète) pour du contrôle d'accès ou
+   * de la construction de navigation — utiliser systématiquement ce champ.
+   */
+  readonly rolesForAccess: readonly RoleAssignment[];
   /** Rôles effectifs dans le programme sélectionné. */
   readonly rolesInActiveProgram: readonly RoleName[];
   /** Dérivé des RoleAssignment, recalculé à chaque changement de programme. */
@@ -71,6 +80,8 @@ export interface SessionValue {
   setActiveProgramId(id: ProgramId): void;
   /** Bascule d'identité simulée (démonstration des rôles, pas une authentification). */
   setActivePersonId(id: PersonId): void;
+  /** Change le rôle actif ("voir en tant que") pour une session authentifiée. Sans effet en session simulée. */
+  setActiveRole(role: RoleAssignment | null): void;
   /** Revient au profil et au programme par défaut, et efface la persistance locale. */
   resetDemoSession(): void;
   signOut(): Promise<void>;
@@ -153,6 +164,8 @@ function MockSessionProvider({ children }: { children: ReactNode }) {
       activeEnrollment,
       enrollments,
       roles,
+      activeRole: roles[0] ?? null,
+      rolesForAccess: roles,
       rolesInActiveProgram: rolesInContext(roles, { programId: activeProgram.id }),
       canAccessAdministration: canAccessAdministration(roles, activeProgram.id),
       canAccessProgramAdministration: canAccessProgramAdministration(roles, activeProgram.id),
@@ -163,6 +176,7 @@ function MockSessionProvider({ children }: { children: ReactNode }) {
       isSimulated: true,
       setActiveProgramId,
       setActivePersonId: selectPerson,
+      setActiveRole: () => undefined,
       resetDemoSession,
       signOut: async () => undefined,
       hasRoleInProgram: (role, programId) =>
@@ -190,13 +204,17 @@ function SupabaseSessionProvider({ children }: { children: ReactNode }) {
   const client = getBrowserSupabaseClient();
   const [state, setState] = useState<SupabaseSessionState | null>(null);
   const [activeProgramId, setActiveProgramId] = useState<ProgramId | null>(null);
+  /** Clé du rôle actif choisi ("voir en tant que") ; null = pas encore choisi, on prend le premier rôle. */
+  const [activeRoleKey, setActiveRoleKeyState] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [authenticationRequired, setAuthenticationRequired] = useState(false);
 
   const load = useCallback(async () => {
     if (!client) throw new Error("Le client Supabase n’est pas configuré.");
-    const { person, programs, enrollments, roles } =
-      await loadAuthenticatedSupabaseSession(client, dataAccess);
+    const { person, programs, enrollments, roles } = await loadAuthenticatedSupabaseSession(
+      client,
+      dataAccess,
+    );
     setState({ person, programs, enrollments, roles });
     setActiveProgramId((current) =>
       current && programs.some((program) => program.id === current) ? current : programs[0]!.id,
@@ -209,6 +227,17 @@ function SupabaseSessionProvider({ children }: { children: ReactNode }) {
     setState(null);
     setAuthenticationRequired(reason instanceof AuthenticationRequiredError);
     setError(reason instanceof Error ? reason.message : "Chargement Supabase impossible.");
+  }, []);
+
+  /**
+   * Change le rôle actif. Si ce rôle est rattaché à un programme précis, le
+   * programme actif est aligné dessus (une portée plateforme laisse le choix libre).
+   */
+  const setActiveRole = useCallback((role: RoleAssignment | null) => {
+    setActiveRoleKeyState(role ? roleAssignmentKey(role) : null);
+    if (role && "programId" in role.scope) {
+      setActiveProgramId(role.scope.programId);
+    }
   }, []);
 
   useEffect(() => {
@@ -228,7 +257,18 @@ function SupabaseSessionProvider({ children }: { children: ReactNode }) {
     const activeEnrollment = state.enrollments.find(
       (enrollment) => enrollment.programId === activeProgram.id,
     );
-    const rolesInActiveProgram = rolesInContext(state.roles, { programId: activeProgram.id });
+    /**
+     * Une personne peut cumuler plusieurs rôles réels (ex. Admin Plateforme +
+     * Enseignant). Par défaut on affiche le premier ; l'utilisateur peut
+     * ensuite choisir un rôle actif ("voir en tant que") via le sélecteur de
+     * l'en-tête. Les droits affichés ne portent alors que sur CE rôle, jamais
+     * sur l'union de tous ses rôles — cohérence avec la règle "aucun rôle
+     * global implicite".
+     */
+    const activeRole =
+      state.roles.find((r) => roleAssignmentKey(r) === activeRoleKey) ?? state.roles[0] ?? null;
+    const rolesForAccess = activeRole ? [activeRole] : state.roles;
+    const rolesInActiveProgram = rolesInContext(rolesForAccess, { programId: activeProgram.id });
     return {
       person: state.person,
       people: [state.person],
@@ -237,19 +277,22 @@ function SupabaseSessionProvider({ children }: { children: ReactNode }) {
       ...(activeEnrollment ? { activeEnrollment } : {}),
       enrollments: state.enrollments,
       roles: state.roles,
+      activeRole,
+      rolesForAccess,
       rolesInActiveProgram,
-      canAccessAdministration: canAccessAdministration(state.roles, activeProgram.id),
+      canAccessAdministration: canAccessAdministration(rolesForAccess, activeProgram.id),
       canAccessProgramAdministration: canAccessProgramAdministration(
-        state.roles,
+        rolesForAccess,
         activeProgram.id,
       ),
-      canAccessPlatformAdministration: canAccessPlatformAdministration(state.roles),
-      canAccessSupervision: canAccessSupervision(state.roles, activeProgram.id),
-      canAccessStatistics: canAccessStatistics(state.roles, activeProgram.id),
+      canAccessPlatformAdministration: canAccessPlatformAdministration(rolesForAccess),
+      canAccessSupervision: canAccessSupervision(rolesForAccess, activeProgram.id),
+      canAccessStatistics: canAccessStatistics(rolesForAccess, activeProgram.id),
       canAccessProfile: canAccessOwnProfile(true),
       isSimulated: false,
       setActiveProgramId,
       setActivePersonId: () => undefined,
+      setActiveRole,
       resetDemoSession: () => undefined,
       signOut: async () => {
         if (!client) return;
@@ -264,7 +307,7 @@ function SupabaseSessionProvider({ children }: { children: ReactNode }) {
               ("programId" in assignment.scope && assignment.scope.programId === programId)),
         ),
     };
-  }, [activeProgramId, client, state]);
+  }, [activeProgramId, activeRoleKey, client, setActiveRole, state]);
 
   if (error) {
     return (
