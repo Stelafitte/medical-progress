@@ -55,6 +55,13 @@ export interface SessionValue {
   readonly roles: readonly RoleAssignment[];
   /** Rôle actif choisi parmi les rôles réels de la personne (bascule "voir en tant que"). */
   readonly activeRole: RoleAssignment | null;
+  /**
+   * Rôle(s) à utiliser pour toute décision d'accès ou de navigation : le rôle
+   * actif seul si un rôle actif est sélectionné, sinon `roles` en entier.
+   * Ne JAMAIS utiliser `roles` (liste complète) pour du contrôle d'accès ou
+   * de la construction de navigation — utiliser systématiquement ce champ.
+   */
+  readonly rolesForAccess: readonly RoleAssignment[];
   /** Rôles effectifs dans le programme sélectionné. */
   readonly rolesInActiveProgram: readonly RoleName[];
   /** Dérivé des RoleAssignment, recalculé à chaque changement de programme. */
@@ -158,6 +165,7 @@ function MockSessionProvider({ children }: { children: ReactNode }) {
       enrollments,
       roles,
       activeRole: roles[0] ?? null,
+      rolesForAccess: roles,
       rolesInActiveProgram: rolesInContext(roles, { programId: activeProgram.id }),
       canAccessAdministration: canAccessAdministration(roles, activeProgram.id),
       canAccessProgramAdministration: canAccessProgramAdministration(roles, activeProgram.id),
@@ -270,6 +278,7 @@ function SupabaseSessionProvider({ children }: { children: ReactNode }) {
       enrollments: state.enrollments,
       roles: state.roles,
       activeRole,
+      rolesForAccess,
       rolesInActiveProgram,
       canAccessAdministration: canAccessAdministration(rolesForAccess, activeProgram.id),
       canAccessProgramAdministration: canAccessProgramAdministration(

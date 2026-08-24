@@ -57,6 +57,7 @@ export function AppShell() {
     resetDemoSession,
     signOut,
     roles,
+    rolesForAccess,
     activeRole,
     setActiveRole,
     rolesInActiveProgram,
@@ -74,7 +75,16 @@ export function AppShell() {
   // courant : les onglets propres à un programme sont retirés du bandeau.
   const isAllPrograms = pathname.startsWith("/espace/programmes");
 
-  const allSpaces = navSpacesFor(roles, activeProgram.id, activeProgram.config, activeProgram.code);
+  // navSpacesFor doit refléter le RÔLE ACTIF ("voir en tant que"), jamais
+  // l'union de tous les rôles réels de la personne — sinon la navigation
+  // affiche tous les espaces (apprenant + encadrant + admin) simultanément,
+  // même quand un seul rôle est sélectionné.
+  const allSpaces = navSpacesFor(
+    rolesForAccess,
+    activeProgram.id,
+    activeProgram.config,
+    activeProgram.code,
+  );
   const spaces = isAllPrograms
     ? allSpaces.filter((space) => space.key === "platform_admin")
     : allSpaces;

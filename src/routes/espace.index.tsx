@@ -5,8 +5,8 @@ import { canAccessLearnerSpace } from "@/domain/access";
 import { DashboardView } from "@/features/dashboard/DashboardView";
 
 function EspaceIndexRoute() {
-  const { roles, activeProgram } = useSession();
-  if (!canAccessLearnerSpace(roles, activeProgram.id)) {
+  const { rolesForAccess, activeProgram } = useSession();
+  if (!canAccessLearnerSpace(rolesForAccess, activeProgram.id)) {
     return <AccessRestricted area="Le tableau de bord apprenant" />;
   }
   return <DashboardView />;
