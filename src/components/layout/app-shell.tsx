@@ -15,16 +15,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { ProgramSwitcher } from "@/components/program-switcher";
-import {
-  isRouteWithinSpaces,
-  landingRouteFor,
-  navSpacesFor,
-} from "@/components/layout/navigation";
+import { isRouteWithinSpaces, landingRouteFor, navSpacesFor } from "@/components/layout/navigation";
 import { useSession } from "@/application/session";
 import { initials } from "@/lib/initials";
-import { ROLE_LABELS_FR } from "@/domain/roles";
+import { ROLE_LABELS_FR, roleAssignmentKey } from "@/domain/roles";
 import { IS_DEV } from "@/lib/env";
-import type { PersonId } from "@/domain/types";
+import type { PersonId, Program, RoleAssignment } from "@/domain/types";
 
 const linkClass =
   "flex min-h-11 items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground";
@@ -41,14 +37,28 @@ const DEMO_PROFILE_HINTS: Record<string, string> = {
   "per-platform-admin": "administrateur plateforme",
 };
 
+/** Libellé lisible d'une assignation de rôle réelle, pour le sélecteur "voir en tant que". */
+function roleAssignmentLabel(role: RoleAssignment, programs: readonly Program[]): string {
+  const base = ROLE_LABELS_FR[role.role];
+  if (role.scope.kind === "platform") return `${base} — Plateforme`;
+  const program = programs.find((p) => "programId" in role.scope && p.id === role.scope.programId);
+  const programLabel = program?.name ?? "programme inconnu";
+  if (role.scope.kind === "program") return `${base} — ${programLabel}`;
+  if (role.scope.kind === "cohort") return `${base} — ${programLabel} (cohorte)`;
+  return `${base} — ${programLabel} (stage)`;
+}
+
 export function AppShell() {
   const {
     person,
     people,
+    programs,
     setActivePersonId,
     resetDemoSession,
     signOut,
     roles,
+    activeRole,
+    setActiveRole,
     rolesInActiveProgram,
     activeProgram,
     isSimulated,
@@ -86,7 +96,6 @@ export function AppShell() {
     setActivePersonId(id);
     setPendingLanding(true);
   };
-
 
   return (
     <div className="min-h-screen bg-surface">
@@ -260,10 +269,12 @@ export function AppShell() {
                       ))}
                     </DropdownMenuRadioGroup>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onSelect={() => {
-                      resetDemoSession();
-                      setPendingLanding(true);
-                    }}>
+                    <DropdownMenuItem
+                      onSelect={() => {
+                        resetDemoSession();
+                        setPendingLanding(true);
+                      }}
+                    >
                       <RotateCcw className="size-4" aria-hidden />
                       Revenir au profil par défaut ({defaultPersonName})
                     </DropdownMenuItem>
@@ -274,6 +285,34 @@ export function AppShell() {
                   </>
                 ) : (
                   <>
+                    {roles.length > 1 ? (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+                          Voir en tant que
+                        </DropdownMenuLabel>
+                        <DropdownMenuRadioGroup
+                          value={activeRole ? roleAssignmentKey(activeRole) : ""}
+                          onValueChange={(value) => {
+                            const next = roles.find((r) => roleAssignmentKey(r) === value) ?? null;
+                            setActiveRole(next);
+                            setPendingLanding(true);
+                          }}
+                        >
+                          {roles.map((r) => (
+                            <DropdownMenuRadioItem
+                              key={roleAssignmentKey(r)}
+                              value={roleAssignmentKey(r)}
+                            >
+                              {roleAssignmentLabel(r, programs)}
+                            </DropdownMenuRadioItem>
+                          ))}
+                        </DropdownMenuRadioGroup>
+                        <p className="px-2 pb-1 text-xs text-muted-foreground">
+                          Les écrans affichés correspondent uniquement au rôle choisi ci-dessus.
+                        </p>
+                      </>
+                    ) : null}
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onSelect={() => void signOut()}>
                       Se déconnecter
