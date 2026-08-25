@@ -16,16 +16,22 @@ import { CONFIRMATION_DECISION_LABELS_FR, canConfirmRealCompetence } from "@/dom
 import { MASTERY_LABELS_FR } from "@/domain/mastery";
 import { MASTERY_ORDER, type MasteryLevel } from "@/domain/types";
 import { useSession } from "@/application/session";
+import { useCompetenceJournal } from "@/application/competenceJournalStore";
+import { tutorNotifications } from "@/domain/competenceListView";
 
 export function SupervisionCompetences() {
   const { rolesInActiveProgram } = useSession();
   const { data, isPending } = useSupervision();
+  const journal = useCompetenceJournal();
   const [levels, setLevels] = useState<Record<string, MasteryLevel>>({});
   const [feedback, setFeedback] = useState<string | null>(null);
 
   if (isPending || !data) return <Skeleton className="h-72 w-full" />;
 
   const canConfirm = canConfirmRealCompetence(rolesInActiveProgram);
+  /** Remontée des auto-déclarations et questions saisies par les apprenants. */
+  const notifications = tutorNotifications(journal, data.outcomes);
+
 
   return (
     <div className="space-y-6">
