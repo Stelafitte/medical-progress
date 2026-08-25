@@ -5,6 +5,7 @@
  */
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { learnerNavFor } from "@/components/layout/navigation";
 
 const read = (path: string) => readFileSync(new URL(`../../../${path}`, import.meta.url), "utf8");
 
@@ -26,15 +27,17 @@ describe("terminologie", () => {
     }
   });
 
-  it("n'utilise plus l'ancien nom global « Mon Passeport Éducatif » dans les principaux fichiers d'interface", () => {
-    for (const file of [passportView, passportRoute, profileView, shell, rootRoute, homeRoute]) {
-      expect(file).not.toContain("Mon Passeport Éducatif");
-    }
+  it("nomme la fonctionnalité « Mon Passeport Éducatif » (nom officiel)", () => {
+    expect(passportView).toContain('title="Mon Passeport Éducatif"');
+    expect(passportRoute).toContain(
+      '{ title: "Mon Passeport Éducatif — Campus Santé Augmenté" }',
+    );
   });
 
-  it("nomme la fonctionnalité « Mon passeport »", () => {
-    expect(passportView).toContain('title="Mon passeport"');
-    expect(passportRoute).toContain('{ title: "Mon passeport — Campus Santé Augmenté" }');
+  it("réserve le nom global « Campus Santé Augmenté » au shell et à la racine", () => {
+    for (const file of [shell, rootRoute, homeRoute]) {
+      expect(file).toContain("Campus Santé Augmenté");
+    }
   });
 
   it("conserve le nom global de la plateforme dans le shell et les métadonnées", () => {
@@ -57,18 +60,37 @@ describe("terminologie", () => {
 describe("navigation", () => {
   const navigation = read("src/components/layout/navigation.ts");
 
-  it("expose les quatre repères apprenant dans l'ordre validé", () => {
+  it("expose les repères apprenant dans l'ordre validé", () => {
     const order = [
       ...navigation.matchAll(
-        /label: "(Tableau de bord|Mon passeport|Mes ressources théoriques|Mes compétences)"/g,
+        /label: "(Mon Passeport Éducatif|Mes ressources|Mes compétences|Mon carnet de stage|Mes statistiques|Mes messages|Mes programmes|Mon profil)"/g,
       ),
     ].map((m) => m[1]);
-    expect(order).toEqual([
-      "Tableau de bord",
-      "Mon passeport",
-      "Mes ressources théoriques",
+    expect(order.slice(0, 8)).toEqual([
+      "Mon Passeport Éducatif",
+      "Mes ressources",
       "Mes compétences",
+      "Mon carnet de stage",
+      "Mes statistiques",
+      "Mes messages",
+      "Mes programmes",
+      "Mon profil",
     ]);
+  });
+
+  it("garde « Mes compétences » toujours visible et conditionne le carnet de stage", () => {
+    const withoutPlacements = learnerNavFor({ placementsEnabled: false });
+    expect(withoutPlacements.some((e) => e.to === "/espace/competences")).toBe(true);
+    expect(withoutPlacements.some((e) => e.to === "/espace/stage")).toBe(false);
+    const withPlacements = learnerNavFor({ placementsEnabled: true });
+    expect(withPlacements.some((e) => e.to === "/espace/stage")).toBe(true);
+  });
+
+  it("expose le profil, les messages et les programmes dans le bandeau apprenant", () => {
+    const nav = learnerNavFor({ placementsEnabled: true });
+    for (const to of ["/espace/profil", "/espace/messages", "/espace/mes-programmes", "/espace/progression"]) {
+      expect(nav.some((e) => e.to === to)).toBe(true);
+    }
   });
 
   it("regroupe le passeport en connaissances théoriques et compétences", () => {

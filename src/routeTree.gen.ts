@@ -15,12 +15,16 @@ import { Route as EspaceIndexRouteImport } from './routes/espace.index'
 import { Route as EspaceAdministrationRouteImport } from './routes/espace.administration'
 import { Route as EspaceArchitectureRouteImport } from './routes/espace.architecture'
 import { Route as EspaceAuditsRouteImport } from './routes/espace.audits'
+import { Route as EspaceCompetencesRouteImport } from './routes/espace.competences'
 import { Route as EspaceDpcRouteImport } from './routes/espace.dpc'
 import { Route as EspaceEncadrementRouteImport } from './routes/espace.encadrement'
+import { Route as EspaceMesProgrammesRouteImport } from './routes/espace.mes-programmes'
+import { Route as EspaceMessagesRouteImport } from './routes/espace.messages'
 import { Route as EspacePasseportRouteImport } from './routes/espace.passeport'
 import { Route as EspacePlateformeRouteImport } from './routes/espace.plateforme'
 import { Route as EspaceProfilRouteImport } from './routes/espace.profil'
 import { Route as EspaceProgrammesRouteImport } from './routes/espace.programmes'
+import { Route as EspaceProgressionRouteImport } from './routes/espace.progression'
 import { Route as EspaceRessourcesRouteImport } from './routes/espace.ressources'
 import { Route as EspaceStageRouteImport } from './routes/espace.stage'
 import { Route as EspaceStatistiquesRouteImport } from './routes/espace.statistiques'
@@ -89,6 +93,11 @@ const EspaceAuditsRoute = EspaceAuditsRouteImport.update({
   path: '/audits',
   getParentRoute: () => EspaceRoute,
 } as any)
+const EspaceCompetencesRoute = EspaceCompetencesRouteImport.update({
+  id: '/competences',
+  path: '/competences',
+  getParentRoute: () => EspaceRoute,
+} as any)
 const EspaceDpcRoute = EspaceDpcRouteImport.update({
   id: '/dpc',
   path: '/dpc',
@@ -97,6 +106,16 @@ const EspaceDpcRoute = EspaceDpcRouteImport.update({
 const EspaceEncadrementRoute = EspaceEncadrementRouteImport.update({
   id: '/encadrement',
   path: '/encadrement',
+  getParentRoute: () => EspaceRoute,
+} as any)
+const EspaceMesProgrammesRoute = EspaceMesProgrammesRouteImport.update({
+  id: '/mes-programmes',
+  path: '/mes-programmes',
+  getParentRoute: () => EspaceRoute,
+} as any)
+const EspaceMessagesRoute = EspaceMessagesRouteImport.update({
+  id: '/messages',
+  path: '/messages',
   getParentRoute: () => EspaceRoute,
 } as any)
 const EspacePasseportRoute = EspacePasseportRouteImport.update({
@@ -117,6 +136,11 @@ const EspaceProfilRoute = EspaceProfilRouteImport.update({
 const EspaceProgrammesRoute = EspaceProgrammesRouteImport.update({
   id: '/programmes',
   path: '/programmes',
+  getParentRoute: () => EspaceRoute,
+} as any)
+const EspaceProgressionRoute = EspaceProgressionRouteImport.update({
+  id: '/progression',
+  path: '/progression',
   getParentRoute: () => EspaceRoute,
 } as any)
 const EspaceRessourcesRoute = EspaceRessourcesRouteImport.update({
@@ -338,12 +362,16 @@ export interface FileRoutesByFullPath {
   '/espace/administration': typeof EspaceAdministrationRouteWithChildren
   '/espace/architecture': typeof EspaceArchitectureRoute
   '/espace/audits': typeof EspaceAuditsRoute
+  '/espace/competences': typeof EspaceCompetencesRoute
   '/espace/dpc': typeof EspaceDpcRoute
   '/espace/encadrement': typeof EspaceEncadrementRouteWithChildren
+  '/espace/mes-programmes': typeof EspaceMesProgrammesRoute
+  '/espace/messages': typeof EspaceMessagesRoute
   '/espace/passeport': typeof EspacePasseportRoute
   '/espace/plateforme': typeof EspacePlateformeRouteWithChildren
   '/espace/profil': typeof EspaceProfilRoute
   '/espace/programmes': typeof EspaceProgrammesRoute
+  '/espace/progression': typeof EspaceProgressionRoute
   '/espace/ressources': typeof EspaceRessourcesRouteWithChildren
   '/espace/stage': typeof EspaceStageRoute
   '/espace/statistiques': typeof EspaceStatistiquesRoute
@@ -387,10 +415,14 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/espace/architecture': typeof EspaceArchitectureRoute
   '/espace/audits': typeof EspaceAuditsRoute
+  '/espace/competences': typeof EspaceCompetencesRoute
   '/espace/dpc': typeof EspaceDpcRoute
+  '/espace/mes-programmes': typeof EspaceMesProgrammesRoute
+  '/espace/messages': typeof EspaceMessagesRoute
   '/espace/passeport': typeof EspacePasseportRoute
   '/espace/profil': typeof EspaceProfilRoute
   '/espace/programmes': typeof EspaceProgrammesRoute
+  '/espace/progression': typeof EspaceProgressionRoute
   '/espace/stage': typeof EspaceStageRoute
   '/espace/statistiques': typeof EspaceStatistiquesRoute
   '/espace': typeof EspaceIndexRoute
@@ -436,12 +468,16 @@ export interface FileRoutesById {
   '/espace/administration': typeof EspaceAdministrationRouteWithChildren
   '/espace/architecture': typeof EspaceArchitectureRoute
   '/espace/audits': typeof EspaceAuditsRoute
+  '/espace/competences': typeof EspaceCompetencesRoute
   '/espace/dpc': typeof EspaceDpcRoute
   '/espace/encadrement': typeof EspaceEncadrementRouteWithChildren
+  '/espace/mes-programmes': typeof EspaceMesProgrammesRoute
+  '/espace/messages': typeof EspaceMessagesRoute
   '/espace/passeport': typeof EspacePasseportRoute
   '/espace/plateforme': typeof EspacePlateformeRouteWithChildren
   '/espace/profil': typeof EspaceProfilRoute
   '/espace/programmes': typeof EspaceProgrammesRoute
+  '/espace/progression': typeof EspaceProgressionRoute
   '/espace/ressources': typeof EspaceRessourcesRouteWithChildren
   '/espace/stage': typeof EspaceStageRoute
   '/espace/statistiques': typeof EspaceStatistiquesRoute
@@ -489,12 +525,16 @@ export interface FileRouteTypes {
     | '/espace/administration'
     | '/espace/architecture'
     | '/espace/audits'
+    | '/espace/competences'
     | '/espace/dpc'
     | '/espace/encadrement'
+    | '/espace/mes-programmes'
+    | '/espace/messages'
     | '/espace/passeport'
     | '/espace/plateforme'
     | '/espace/profil'
     | '/espace/programmes'
+    | '/espace/progression'
     | '/espace/ressources'
     | '/espace/stage'
     | '/espace/statistiques'
@@ -538,10 +578,14 @@ export interface FileRouteTypes {
     | '/'
     | '/espace/architecture'
     | '/espace/audits'
+    | '/espace/competences'
     | '/espace/dpc'
+    | '/espace/mes-programmes'
+    | '/espace/messages'
     | '/espace/passeport'
     | '/espace/profil'
     | '/espace/programmes'
+    | '/espace/progression'
     | '/espace/stage'
     | '/espace/statistiques'
     | '/espace'
@@ -586,12 +630,16 @@ export interface FileRouteTypes {
     | '/espace/administration'
     | '/espace/architecture'
     | '/espace/audits'
+    | '/espace/competences'
     | '/espace/dpc'
     | '/espace/encadrement'
+    | '/espace/mes-programmes'
+    | '/espace/messages'
     | '/espace/passeport'
     | '/espace/plateforme'
     | '/espace/profil'
     | '/espace/programmes'
+    | '/espace/progression'
     | '/espace/ressources'
     | '/espace/stage'
     | '/espace/statistiques'
@@ -681,6 +729,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EspaceAuditsRouteImport
       parentRoute: typeof EspaceRoute
     }
+    '/espace/competences': {
+      id: '/espace/competences'
+      path: '/competences'
+      fullPath: '/espace/competences'
+      preLoaderRoute: typeof EspaceCompetencesRouteImport
+      parentRoute: typeof EspaceRoute
+    }
     '/espace/dpc': {
       id: '/espace/dpc'
       path: '/dpc'
@@ -693,6 +748,20 @@ declare module '@tanstack/react-router' {
       path: '/encadrement'
       fullPath: '/espace/encadrement'
       preLoaderRoute: typeof EspaceEncadrementRouteImport
+      parentRoute: typeof EspaceRoute
+    }
+    '/espace/mes-programmes': {
+      id: '/espace/mes-programmes'
+      path: '/mes-programmes'
+      fullPath: '/espace/mes-programmes'
+      preLoaderRoute: typeof EspaceMesProgrammesRouteImport
+      parentRoute: typeof EspaceRoute
+    }
+    '/espace/messages': {
+      id: '/espace/messages'
+      path: '/messages'
+      fullPath: '/espace/messages'
+      preLoaderRoute: typeof EspaceMessagesRouteImport
       parentRoute: typeof EspaceRoute
     }
     '/espace/passeport': {
@@ -721,6 +790,13 @@ declare module '@tanstack/react-router' {
       path: '/programmes'
       fullPath: '/espace/programmes'
       preLoaderRoute: typeof EspaceProgrammesRouteImport
+      parentRoute: typeof EspaceRoute
+    }
+    '/espace/progression': {
+      id: '/espace/progression'
+      path: '/progression'
+      fullPath: '/espace/progression'
+      preLoaderRoute: typeof EspaceProgressionRouteImport
       parentRoute: typeof EspaceRoute
     }
     '/espace/ressources': {
@@ -1096,12 +1172,16 @@ interface EspaceRouteChildren {
   EspaceAdministrationRoute: typeof EspaceAdministrationRouteWithChildren
   EspaceArchitectureRoute: typeof EspaceArchitectureRoute
   EspaceAuditsRoute: typeof EspaceAuditsRoute
+  EspaceCompetencesRoute: typeof EspaceCompetencesRoute
   EspaceDpcRoute: typeof EspaceDpcRoute
   EspaceEncadrementRoute: typeof EspaceEncadrementRouteWithChildren
+  EspaceMesProgrammesRoute: typeof EspaceMesProgrammesRoute
+  EspaceMessagesRoute: typeof EspaceMessagesRoute
   EspacePasseportRoute: typeof EspacePasseportRoute
   EspacePlateformeRoute: typeof EspacePlateformeRouteWithChildren
   EspaceProfilRoute: typeof EspaceProfilRoute
   EspaceProgrammesRoute: typeof EspaceProgrammesRoute
+  EspaceProgressionRoute: typeof EspaceProgressionRoute
   EspaceRessourcesRoute: typeof EspaceRessourcesRouteWithChildren
   EspaceStageRoute: typeof EspaceStageRoute
   EspaceStatistiquesRoute: typeof EspaceStatistiquesRoute
@@ -1112,12 +1192,16 @@ const EspaceRouteChildren: EspaceRouteChildren = {
   EspaceAdministrationRoute: EspaceAdministrationRouteWithChildren,
   EspaceArchitectureRoute: EspaceArchitectureRoute,
   EspaceAuditsRoute: EspaceAuditsRoute,
+  EspaceCompetencesRoute: EspaceCompetencesRoute,
   EspaceDpcRoute: EspaceDpcRoute,
   EspaceEncadrementRoute: EspaceEncadrementRouteWithChildren,
+  EspaceMesProgrammesRoute: EspaceMesProgrammesRoute,
+  EspaceMessagesRoute: EspaceMessagesRoute,
   EspacePasseportRoute: EspacePasseportRoute,
   EspacePlateformeRoute: EspacePlateformeRouteWithChildren,
   EspaceProfilRoute: EspaceProfilRoute,
   EspaceProgrammesRoute: EspaceProgrammesRoute,
+  EspaceProgressionRoute: EspaceProgressionRoute,
   EspaceRessourcesRoute: EspaceRessourcesRouteWithChildren,
   EspaceStageRoute: EspaceStageRoute,
   EspaceStatistiquesRoute: EspaceStatistiquesRoute,

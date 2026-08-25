@@ -51,24 +51,31 @@ export interface NavSpace {
 }
 
 /**
- * Espace apprenant — quatre repères stables : pilotage immédiat, plan
- * longitudinal, apprentissages théoriques et acquisition des compétences.
+ * Espace apprenant — vocabulaire d'entrée aligné sur les espaces admin
+ * (« Vue d'ensemble »). Les compétences existent indépendamment des stages :
+ * « Mes compétences » reste toujours visible, seul « Mon carnet de stage »
+ * dépend du module stages du programme.
  */
 export const LEARNER_NAV: readonly NavEntry[] = [
-  { to: "/espace", label: "Tableau de bord", icon: LayoutDashboard, exact: true },
+  { to: "/espace", label: "Vue d'ensemble", icon: LayoutDashboard, exact: true },
   {
     to: "/espace/passeport",
-    label: "Mon passeport",
+    label: "Mon Passeport Éducatif",
     icon: IdCard,
     exact: false,
   },
   {
     to: "/espace/ressources",
-    label: "Mes ressources théoriques",
+    label: "Mes ressources",
     icon: BookOpen,
     exact: false,
   },
-  { to: "/espace/stage", label: "Mes compétences", icon: BadgeCheck, exact: false },
+  { to: "/espace/competences", label: "Mes compétences", icon: BadgeCheck, exact: false },
+  { to: "/espace/stage", label: "Mon carnet de stage", icon: Notebook, exact: false },
+  { to: "/espace/progression", label: "Mes statistiques", icon: BarChart3, exact: false },
+  { to: "/espace/messages", label: "Mes messages", icon: Mail, exact: false },
+  { to: "/espace/mes-programmes", label: "Mes programmes", icon: Layers, exact: false },
+  { to: "/espace/profil", label: "Mon profil", icon: UserRound, exact: false },
 ];
 
 export const SUPERVISION_NAV: readonly NavEntry[] = [
