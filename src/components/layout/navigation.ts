@@ -15,8 +15,11 @@ import {
   Gauge,
   GraduationCap,
   IdCard,
+  Layers,
   LayoutDashboard,
   Mail,
+  SlidersHorizontal,
+
   MessagesSquare,
   Notebook,
   BarChart3,
