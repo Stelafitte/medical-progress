@@ -9,7 +9,7 @@
  * preuves et une compétence réelle exige une validation humaine tierce.
  */
 import { useMemo, useState } from "react";
-import { CalendarDays, MessageSquare } from "lucide-react";
+import { CalendarDays, Download, MessageSquare, Search } from "lucide-react";
 import { SectionHeading } from "@/components/section-heading";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -33,11 +40,21 @@ import type { OutcomeProgress } from "@/domain/mastery";
 import type { AcquisitionPlanItem } from "@/domain/acquisitionPlan";
 import { selfDeclarationState, type CompetenceJournalEntry } from "@/domain/competenceJournal";
 import {
+  COMPETENCE_STATUS_LABELS_FR,
+  EMPTY_COMPETENCE_FILTERS,
+  buildJournalExportHtml,
+  filterCompetences,
+  type CompetenceListFilters,
+  type CompetenceStatusFilter,
+} from "@/domain/competenceListView";
+import type { OutcomeNature } from "@/domain/types";
+import {
   declareCompetence,
   saveExperienceNote,
   sendJournalMessage,
   useCompetenceJournal,
 } from "@/application/competenceJournalStore";
+
 
 function formatDate(iso?: string): string {
   if (!iso) return "—";
