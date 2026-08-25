@@ -208,8 +208,14 @@ docs/                architecture, base de données (draft), politiques
   `/espace/ressources`, `/espace/ressources/:id/lecture`, `/espace/profil`.
 - **Responsable de stage** : `/espace/encadrement` + étudiants, compétences, carnets, cas, alertes,
   bilans, messages, profil.
-- **Administration** : `/espace/administration` et ses onglets (voir §4).
-- **Plateforme / tous programmes** : `/espace/plateforme`, `/espace/programmes`.
+- **Administration de programme** : `/espace/administration` et ses 10 onglets (voir §4) :
+  Vue d'ensemble · Concepteur de programme · Pilotage de programme · Classes d'apprenants ·
+  Base de connaissances · Compétences · Évaluations · Gestion des stages · Documents et certificats ·
+  Administration et sécurité (`PROGRAM_ADMIN_NAV`, entrée DPC insérée seulement si `dpcEnabled`).
+- **Direction plateforme** : `/espace/plateforme` (Vue d'ensemble), `/espace/plateforme/programmes`
+  (Programmes agrégés), `/espace/plateforme/statistiques`, `/espace/plateforme/pilotage`
+  (Pilotage et paramétrage) — `PLATFORM_ADMIN_NAV`, voir §4.18.
+- **Tous les programmes** : `/espace/programmes`.
 
 ### 3.3 Domaine métier implémenté
 `mastery.ts` (progression dérivée des preuves, validation tierce obligatoire pour une compétence
