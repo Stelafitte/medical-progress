@@ -11,7 +11,7 @@
  * simulation.
  */
 import { containsUnsafeMarkup, scanPatientData } from "./communication";
-import type { ProgramId, Role } from "./types";
+import type { ProgramId, RoleName } from "./types";
 
 export const PLATFORM_GOVERNANCE_MOCK_FR =
   "Gouvernance simulée : ces règles décrivent le cadre cible et ne pilotent encore aucun service.";
@@ -98,7 +98,7 @@ export function validateRetentionPolicy(policy: DataRetentionPolicy): readonly s
 
 export interface RoleDelegationDraft {
   readonly personId: string;
-  readonly role: Role;
+  readonly role: RoleName;
   /** Portée : un programme, ou la plateforme entière. */
   readonly scope: "platform" | "program";
   readonly programId?: ProgramId;
@@ -212,7 +212,7 @@ export function validateMaintenance(settings: MaintenanceSettings): readonly str
     errors.push("Le mode lecture seule exige un message d'information d'au moins 10 caractères.");
   if (containsUnsafeMarkup(settings.bannerMessage))
     errors.push("Le message comporte du balisage exécutable : il est refusé.");
-  if (scanPatientData(settings.bannerMessage).verdict !== "none")
+  if (scanPatientData(settings.bannerMessage, settings.bannerMessage).verdict !== "none")
     errors.push("Le bandeau ne doit contenir aucune donnée patient.");
   if (message.length > 240) errors.push("Le message doit rester sous 240 caractères.");
   return errors;
