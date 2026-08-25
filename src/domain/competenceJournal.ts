@@ -53,11 +53,10 @@ export function toggleSelfDeclaration(
   acquired: boolean,
   now: IsoDateTime,
 ): CompetenceJournalEntry {
-  return {
-    ...entry,
-    selfDeclaredAcquired: acquired,
-    declaredAt: acquired ? now : undefined,
-  };
+  const { declaredAt: _previous, ...rest } = entry;
+  return acquired
+    ? { ...rest, selfDeclaredAcquired: true, declaredAt: now }
+    : { ...rest, selfDeclaredAcquired: false };
 }
 
 export function setExperienceNote(
