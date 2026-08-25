@@ -208,8 +208,14 @@ docs/                architecture, base de données (draft), politiques
   `/espace/ressources`, `/espace/ressources/:id/lecture`, `/espace/profil`.
 - **Responsable de stage** : `/espace/encadrement` + étudiants, compétences, carnets, cas, alertes,
   bilans, messages, profil.
-- **Administration** : `/espace/administration` et ses onglets (voir §4).
-- **Plateforme / tous programmes** : `/espace/plateforme`, `/espace/programmes`.
+- **Administration de programme** : `/espace/administration` et ses 10 onglets (voir §4) :
+  Vue d'ensemble · Concepteur de programme · Pilotage de programme · Classes d'apprenants ·
+  Base de connaissances · Compétences · Évaluations · Gestion des stages · Documents et certificats ·
+  Administration et sécurité (`PROGRAM_ADMIN_NAV`, entrée DPC insérée seulement si `dpcEnabled`).
+- **Direction plateforme** : `/espace/plateforme` (Vue d'ensemble), `/espace/plateforme/programmes`
+  (Programmes agrégés), `/espace/plateforme/statistiques`, `/espace/plateforme/pilotage`
+  (Pilotage et paramétrage) — `PLATFORM_ADMIN_NAV`, voir §4.18.
+- **Tous les programmes** : `/espace/programmes`.
 
 ### 3.3 Domaine métier implémenté
 `mastery.ts` (progression dérivée des preuves, validation tierce obligatoire pour une compétence
@@ -239,10 +245,17 @@ décision. **Rien n'est activé** : validation du schéma requise avant bascule.
 ## 4. Fonctionnalités côté administration — inventaire complet
 
 ### 4.1 Sélecteur de programme et bandeau
-- Entrée « Tous les programmes » ; onglets spécifiques masqués dans ce mode, révélés dès la
+- Entrée « Tous les programmes » : proposée **uniquement** à un administrateur de plateforme et
+  depuis la route `/espace/plateforme` ; onglets spécifiques masqués dans ce mode, révélés dès la
   sélection d'un programme.
+- Liste filtrée : une personne ne voit que les programmes où elle possède un rôle ou une inscription
+  active ; un rôle de portée **plateforme** conserve l'accès à tous les programmes.
+- Navigation automatique au changement de programme : choisir un programme depuis la Direction
+  plateforme ouvre son administration ; « Tous les programmes » ramène à la vue d'ensemble.
 - Atterrissage par rôle via `landingRouteFor` : un administrateur arrive sur `/espace/programmes`
   (bug de redirection au changement d'identité simulée corrigé).
+- Deux bandeaux distincts : `PROGRAM_ADMIN_NAV` (administration d'un programme) et
+  `PLATFORM_ADMIN_NAV` (Direction plateforme). Jamais fusionnés.
 
 ### 4.2 Tous les programmes
 Bandeau de filtres sticky repliable (filière FMI/FMC, états, dates), bouton **Catégories** à choix
@@ -329,6 +342,34 @@ journalisation). Tout est **simulé** et étiqueté comme tel.
 Assistant d'implémentation, comparaison d'audits T0/T1, section audit clinique, migration ECOS.
 Conservé mais non prioritaire.
 
+### 4.18 Direction plateforme (profil administrateur de plateforme)
+Espace **transversal**, strictement distinct de l'administration d'un programme : aucun dossier
+pédagogique nominatif n'y est ouvrable (`platformAdminCanOpenLearnerFile()` reste faux). Garde
+d'accès `canAccessPlatformAdministration` sur la route parente `/espace/plateforme`.
+
+Bandeau à 4 onglets (`PLATFORM_ADMIN_NAV`) :
+
+1. **Vue d'ensemble** (`PlatformOverview`, page d'atterrissage) : compteurs programmes, apprenants
+   tous programmes, promotions ouvertes, supports pédagogiques, intervenants (hors apprenants),
+   conservation « à définir » ; panneaux « Programmes en cours et états », « Classes en cours et
+   avancement », « Intervenants et interventions », « Consommation stockage et IA », « Aller plus
+   loin ».
+2. **Programmes agrégés** (`PlatformProgramsView`) : un bloc détaillé par programme (promotions et
+   phases, avancement calendaire, supports, terrains de stage, crédits IA, administrateurs
+   autorisés, historique pluriannuel et historique d'utilisation). Message explicite : pour ouvrir
+   un programme complet, cliquer sur son bloc ou passer par le menu déroulant.
+3. **Statistiques** (`espace.plateforme.statistiques`) : agrégats pluriannuels simulés, sans donnée
+   nominative.
+4. **Pilotage et paramétrage** (`PlatformPilotageView`) : utilisateurs par groupe de rôle (admin
+   plateforme, admin programme, responsable de stage, enseignant, apprenant) avec fiche consultable
+   et modifiable par l'admin plateforme, paramètres généraux de la plateforme, paramètres par
+   programme, notifications et sollicitations, et outil de **courriel aux intervenants (hors
+   apprenants)**. Domaines `platformGovernance.ts`, `platformSettings.ts`, `platformDirectory.ts` ;
+   store `platformSettingsStore`. Aucun envoi réel, tout est étiqueté simulé.
+
+`PlatformAdminView` reste la vue de supervision historique (programmes, administrateurs autorisés,
+quotas, audit global simulé).
+
 ---
 
 ## 5. Historique des changements (chronologie des lots livrés)
@@ -363,6 +404,15 @@ Conservé mais non prioritaire.
     connaissances, compétences et terrains créés côté administration ; **boucle encadrant** —
     `useSupervision` voit les mêmes terrains. Test de contrat
     `src/features/__tests__/sharedPilotSections.test.ts`.
+18. Incident de synchronisation GitHub : `main` avait écrasé la refonte admin ; restauration
+    exacte du brouillon « Archivé la plateforme admin » (93 fichiers), puis réapplication du
+    sélecteur de programme (navigation automatique + filtrage par rôle/inscription).
+19. **Dernier lot — Direction plateforme** : bandeau à 4 onglets (Vue d'ensemble / Programmes
+    agrégés / Statistiques / Pilotage et paramétrage), nouvelles routes
+    `/espace/plateforme/{programmes,statistiques,pilotage}`, vues `PlatformOverview`,
+    `PlatformProgramsView`, `PlatformPilotageView` (utilisateurs par groupe de rôle avec fiche
+    modifiable, paramètres généraux et par programme, notifications, courriel aux intervenants hors
+    apprenants) ; domaines `platformGovernance.ts`, `platformSettings.ts`, `platformDirectory.ts`.
 
 ---
 
