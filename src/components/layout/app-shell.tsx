@@ -73,6 +73,10 @@ export function AppShell() {
 
   const defaultPersonName = people[0]?.fullName ?? "profil par défaut";
 
+  /** L'admin plateforme peut quitter un programme pour revenir au bandeau général. */
+  const canReturnToPlatform =
+    !isPlatformScope && allSpaces.some((space) => space.key === "platform_admin");
+
   /**
    * Après un changement d'identité simulée, l'écran conservé pouvait ne plus
    * être autorisé (« Accès restreint »). On recale sur la première page
