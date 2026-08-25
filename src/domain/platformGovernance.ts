@@ -101,7 +101,7 @@ export interface RoleDelegationDraft {
   readonly role: RoleName;
   /** Portée : un programme, ou la plateforme entière. */
   readonly scope: "platform" | "program";
-  readonly programId?: ProgramId;
+  readonly programId?: ProgramId | undefined;
   readonly reason: string;
   /** Fin de délégation au format ISO (obligatoire, jamais illimitée). */
   readonly expiresOn: string;
@@ -232,8 +232,8 @@ export const AUDIT_EXPORT_SCOPE_LABELS_FR: Record<AuditExportScope, string> = {
 
 export interface AuditExportDraft {
   readonly scope: AuditExportScope;
-  readonly programId?: ProgramId;
-  readonly personId?: string;
+  readonly programId?: ProgramId | undefined;
+  readonly personId?: string | undefined;
   readonly fromDate: string;
   readonly toDate: string;
   /** Inclure les identités nominatives (motif alors renforcé). */
