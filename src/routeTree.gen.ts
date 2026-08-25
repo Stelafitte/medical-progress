@@ -53,6 +53,7 @@ import { Route as EspaceEncadrementEtudiantsRouteImport } from './routes/espace.
 import { Route as EspaceEncadrementMessagesRouteImport } from './routes/espace.encadrement.messages'
 import { Route as EspaceEncadrementProfilRouteImport } from './routes/espace.encadrement.profil'
 import { Route as EspacePlateformeIndexRouteImport } from './routes/espace.plateforme.index'
+import { Route as EspacePlateformePilotageRouteImport } from './routes/espace.plateforme.pilotage'
 import { Route as EspacePlateformeProgrammesRouteImport } from './routes/espace.plateforme.programmes'
 import { Route as EspaceRessourcesIndexRouteImport } from './routes/espace.ressources.index'
 import { Route as EspaceRessourcesResourceIdLectureRouteImport } from './routes/espace.ressources.$resourceId.lecture'
@@ -300,6 +301,12 @@ const EspacePlateformeIndexRoute = EspacePlateformeIndexRouteImport.update({
   path: '/',
   getParentRoute: () => EspacePlateformeRoute,
 } as any)
+const EspacePlateformePilotageRoute =
+  EspacePlateformePilotageRouteImport.update({
+    id: '/pilotage',
+    path: '/pilotage',
+    getParentRoute: () => EspacePlateformeRoute,
+  } as any)
 const EspacePlateformeProgrammesRoute =
   EspacePlateformeProgrammesRouteImport.update({
     id: '/programmes',
@@ -360,6 +367,7 @@ export interface FileRoutesByFullPath {
   '/espace/encadrement/etudiants': typeof EspaceEncadrementEtudiantsRoute
   '/espace/encadrement/messages': typeof EspaceEncadrementMessagesRoute
   '/espace/encadrement/profil': typeof EspaceEncadrementProfilRoute
+  '/espace/plateforme/pilotage': typeof EspacePlateformePilotageRoute
   '/espace/plateforme/programmes': typeof EspacePlateformeProgrammesRoute
   '/espace/administration/': typeof EspaceAdministrationIndexRoute
   '/espace/encadrement/': typeof EspaceEncadrementIndexRoute
@@ -404,6 +412,7 @@ export interface FileRoutesByTo {
   '/espace/encadrement/etudiants': typeof EspaceEncadrementEtudiantsRoute
   '/espace/encadrement/messages': typeof EspaceEncadrementMessagesRoute
   '/espace/encadrement/profil': typeof EspaceEncadrementProfilRoute
+  '/espace/plateforme/pilotage': typeof EspacePlateformePilotageRoute
   '/espace/plateforme/programmes': typeof EspacePlateformeProgrammesRoute
   '/espace/administration': typeof EspaceAdministrationIndexRoute
   '/espace/encadrement': typeof EspaceEncadrementIndexRoute
@@ -454,6 +463,7 @@ export interface FileRoutesById {
   '/espace/encadrement/etudiants': typeof EspaceEncadrementEtudiantsRoute
   '/espace/encadrement/messages': typeof EspaceEncadrementMessagesRoute
   '/espace/encadrement/profil': typeof EspaceEncadrementProfilRoute
+  '/espace/plateforme/pilotage': typeof EspacePlateformePilotageRoute
   '/espace/plateforme/programmes': typeof EspacePlateformeProgrammesRoute
   '/espace/administration/': typeof EspaceAdministrationIndexRoute
   '/espace/encadrement/': typeof EspaceEncadrementIndexRoute
@@ -505,6 +515,7 @@ export interface FileRouteTypes {
     | '/espace/encadrement/etudiants'
     | '/espace/encadrement/messages'
     | '/espace/encadrement/profil'
+    | '/espace/plateforme/pilotage'
     | '/espace/plateforme/programmes'
     | '/espace/administration/'
     | '/espace/encadrement/'
@@ -549,6 +560,7 @@ export interface FileRouteTypes {
     | '/espace/encadrement/etudiants'
     | '/espace/encadrement/messages'
     | '/espace/encadrement/profil'
+    | '/espace/plateforme/pilotage'
     | '/espace/plateforme/programmes'
     | '/espace/administration'
     | '/espace/encadrement'
@@ -598,6 +610,7 @@ export interface FileRouteTypes {
     | '/espace/encadrement/etudiants'
     | '/espace/encadrement/messages'
     | '/espace/encadrement/profil'
+    | '/espace/plateforme/pilotage'
     | '/espace/plateforme/programmes'
     | '/espace/administration/'
     | '/espace/encadrement/'
@@ -921,6 +934,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EspacePlateformeIndexRouteImport
       parentRoute: typeof EspacePlateformeRoute
     }
+    '/espace/plateforme/pilotage': {
+      id: '/espace/plateforme/pilotage'
+      path: '/pilotage'
+      fullPath: '/espace/plateforme/pilotage'
+      preLoaderRoute: typeof EspacePlateformePilotageRouteImport
+      parentRoute: typeof EspacePlateformeRoute
+    }
     '/espace/plateforme/programmes': {
       id: '/espace/plateforme/programmes'
       path: '/programmes'
@@ -1022,11 +1042,13 @@ const EspaceEncadrementRouteWithChildren =
   EspaceEncadrementRoute._addFileChildren(EspaceEncadrementRouteChildren)
 
 interface EspacePlateformeRouteChildren {
+  EspacePlateformePilotageRoute: typeof EspacePlateformePilotageRoute
   EspacePlateformeProgrammesRoute: typeof EspacePlateformeProgrammesRoute
   EspacePlateformeIndexRoute: typeof EspacePlateformeIndexRoute
 }
 
 const EspacePlateformeRouteChildren: EspacePlateformeRouteChildren = {
+  EspacePlateformePilotageRoute: EspacePlateformePilotageRoute,
   EspacePlateformeProgrammesRoute: EspacePlateformeProgrammesRoute,
   EspacePlateformeIndexRoute: EspacePlateformeIndexRoute,
 }
