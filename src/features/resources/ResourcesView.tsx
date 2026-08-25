@@ -71,6 +71,50 @@ export function ResourcesView() {
         contenus et le suivi de consultation sont prévus après validation du schéma de données.
       </p>
 
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="relative">
+          <Search
+            className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+            aria-hidden
+          />
+          <Input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Rechercher un support…"
+            aria-label="Rechercher un support"
+            className="pl-9"
+          />
+        </div>
+        <Select value={format} onValueChange={setFormat}>
+          <SelectTrigger aria-label="Filtrer par format">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tous les formats</SelectItem>
+            {formats.map((value) => (
+              <SelectItem key={value} value={value}>
+                {FORMAT_FR[value] ?? value}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={outcomeId} onValueChange={setOutcomeId}>
+          <SelectTrigger aria-label="Filtrer par acquis visé">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tous les acquis</SelectItem>
+            {outcomes.map((outcome) => (
+              <SelectItem key={outcome.id} value={outcome.id}>
+                {outcome.code} · {outcome.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+
+
       {narratedDecks.length > 0 ? (
         <section className="space-y-4">
           <SectionHeading
