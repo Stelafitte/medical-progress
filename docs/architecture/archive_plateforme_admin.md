@@ -204,8 +204,13 @@ docs/                architecture, base de données (draft), politiques
 
 ### 3.2 Espaces et routes principales
 - **Accueil** `/`, **Architecture** `/espace/architecture`, **Audits** `/espace/audits`.
-- **Apprenant** : `/espace` (tableau de bord), `/espace/passeport`, `/espace/stage`,
-  `/espace/ressources`, `/espace/ressources/:id/lecture`, `/espace/profil`.
+- **Apprenant** (`LEARNER_NAV`, 8 entrées) : `/espace` (Vue d'ensemble), `/espace/passeport`
+  (« Mon Passeport Éducatif »), `/espace/ressources` (+ `/espace/ressources/:id/lecture`),
+  `/espace/competences` (« Mes compétences », toujours visible), `/espace/stage`
+  (« Mon carnet de stage », seulement si `placementsEnabled`), `/espace/progression`
+  (« Mes statistiques »), `/espace/messages` (« Mes messages »), `/espace/profil`.
+  Entrée `Mon parcours DPC` insérée seulement si `dpcEnabled` (gelé), sinon
+  `Audits de pratique` si `auditsEnabled`.
 - **Responsable de stage** : `/espace/encadrement` + étudiants, compétences, carnets, cas, alertes,
   bilans, messages, profil.
 - **Administration de programme** : `/espace/administration` et ses 10 onglets (voir §4) :
@@ -407,12 +412,28 @@ quotas, audit global simulé).
 18. Incident de synchronisation GitHub : `main` avait écrasé la refonte admin ; restauration
     exacte du brouillon « Archivé la plateforme admin » (93 fichiers), puis réapplication du
     sélecteur de programme (navigation automatique + filtrage par rôle/inscription).
-19. **Dernier lot — Direction plateforme** : bandeau à 4 onglets (Vue d'ensemble / Programmes
+19. **Direction plateforme** : bandeau à 4 onglets (Vue d'ensemble / Programmes
     agrégés / Statistiques / Pilotage et paramétrage), nouvelles routes
     `/espace/plateforme/{programmes,statistiques,pilotage}`, vues `PlatformOverview`,
     `PlatformProgramsView`, `PlatformPilotageView` (utilisateurs par groupe de rôle avec fiche
     modifiable, paramètres généraux et par programme, notifications, courriel aux intervenants hors
     apprenants) ; domaines `platformGovernance.ts`, `platformSettings.ts`, `platformDirectory.ts`.
+20. **Dernier lot — bandeau apprenant aligné sur les espaces admin** :
+    - vocabulaire d'entrée unifié — « Tableau de bord » devient **« Vue d'ensemble »** comme dans les
+      deux espaces d'administration ;
+    - nom officiel respecté dans le menu : **« Mon Passeport Éducatif »** (au lieu de
+      « Mon passeport ») ; « Mes ressources théoriques » simplifié en **« Mes ressources »** ;
+    - **correction de périmètre (P0)** : `Mes compétences` (`/espace/competences`) est désormais
+      toujours visible, indépendamment des stages ; seul **`Mon carnet de stage`**
+      (`/espace/stage`) reste conditionné à `placementsEnabled`. Auparavant un programme sans stage
+      faisait disparaître l'accès aux compétences ;
+    - ajout de **`Mes statistiques`** (`/espace/progression`, `LearnerStatisticsView`) en symétrie
+      des Statistiques de supervision et de plateforme ;
+    - ajout de **`Mes messages`** (`/espace/messages`, `LearnerMessagesView`) comme point de
+      réception des campagnes du module Communication ;
+    - **`Mon profil`** exposé dans le bandeau (et plus seulement via l'avatar), en symétrie de
+      « Mon profil d'encadrant » côté supervision.
+    Les entrées conditionnelles DPC/audits restent inchangées et le DPC demeure gelé.
 
 ---
 
