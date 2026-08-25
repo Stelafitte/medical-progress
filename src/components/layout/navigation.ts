@@ -291,9 +291,8 @@ export function landingRouteFor(spaces: readonly NavSpace[]): string {
   if (!first) return "/espace/profil";
   // Un administrateur (de programme ou de plateforme) commence toujours par la
   // vue « Tous les programmes » : le périmètre est choisi explicitement.
-  if (first.key === "program_admin" || first.key === "platform_admin") {
-    return "/espace/programmes";
-  }
+  if (first.key === "platform_admin") return "/espace/plateforme";
+  if (first.key === "program_admin") return "/espace/programmes";
   return first.entries[0]?.to ?? "/espace/profil";
 }
 
