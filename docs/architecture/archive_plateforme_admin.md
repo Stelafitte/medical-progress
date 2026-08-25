@@ -245,10 +245,17 @@ décision. **Rien n'est activé** : validation du schéma requise avant bascule.
 ## 4. Fonctionnalités côté administration — inventaire complet
 
 ### 4.1 Sélecteur de programme et bandeau
-- Entrée « Tous les programmes » ; onglets spécifiques masqués dans ce mode, révélés dès la
+- Entrée « Tous les programmes » : proposée **uniquement** à un administrateur de plateforme et
+  depuis la route `/espace/plateforme` ; onglets spécifiques masqués dans ce mode, révélés dès la
   sélection d'un programme.
+- Liste filtrée : une personne ne voit que les programmes où elle possède un rôle ou une inscription
+  active ; un rôle de portée **plateforme** conserve l'accès à tous les programmes.
+- Navigation automatique au changement de programme : choisir un programme depuis la Direction
+  plateforme ouvre son administration ; « Tous les programmes » ramène à la vue d'ensemble.
 - Atterrissage par rôle via `landingRouteFor` : un administrateur arrive sur `/espace/programmes`
   (bug de redirection au changement d'identité simulée corrigé).
+- Deux bandeaux distincts : `PROGRAM_ADMIN_NAV` (administration d'un programme) et
+  `PLATFORM_ADMIN_NAV` (Direction plateforme). Jamais fusionnés.
 
 ### 4.2 Tous les programmes
 Bandeau de filtres sticky repliable (filière FMI/FMC, états, dates), bouton **Catégories** à choix
