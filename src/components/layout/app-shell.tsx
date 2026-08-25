@@ -195,6 +195,14 @@ export function AppShell() {
           </Link>
 
           <div className="ms-auto flex min-w-0 shrink-0 items-center gap-2 sm:gap-3">
+            {canReturnToPlatform ? (
+              <Button asChild variant="outline" size="sm" className="hidden lg:inline-flex">
+                <Link to="/espace/plateforme">
+                  <ArrowLeft className="size-4" aria-hidden />
+                  Direction plateforme
+                </Link>
+              </Button>
+            ) : null}
             {/* Sur smartphone, le programme actif se choisit dans le menu latéral. */}
             <div className="hidden sm:block">
               <ProgramSwitcher />
