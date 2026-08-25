@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
-import { Boxes, HeartPulse, Menu, RotateCcw, UserRound } from "lucide-react";
+import { ArrowLeft, Boxes, HeartPulse, Menu, RotateCcw, UserRound } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -73,6 +73,10 @@ export function AppShell() {
 
   const defaultPersonName = people[0]?.fullName ?? "profil par défaut";
 
+  /** L'admin plateforme peut quitter un programme pour revenir au bandeau général. */
+  const canReturnToPlatform =
+    !isPlatformScope && allSpaces.some((space) => space.key === "platform_admin");
+
   /**
    * Après un changement d'identité simulée, l'écran conservé pouvait ne plus
    * être autorisé (« Accès restreint »). On recale sur la première page
@@ -126,6 +130,16 @@ export function AppShell() {
                 </p>
                 <ProgramSwitcher variant="full" />
               </div>
+              {canReturnToPlatform ? (
+                <div className="mt-4">
+                  <Button asChild variant="outline" size="sm" className="w-full justify-start">
+                    <Link to="/espace/plateforme" onClick={() => setMobileOpen(false)}>
+                      <ArrowLeft className="size-4" aria-hidden />
+                      Revenir à la direction plateforme
+                    </Link>
+                  </Button>
+                </div>
+              ) : null}
               <nav aria-label="Navigation mobile" className="mt-4 flex flex-col gap-4">
                 {spaces.map((space) => (
                   <div key={space.key} className="flex flex-col gap-1">
@@ -191,6 +205,14 @@ export function AppShell() {
           </Link>
 
           <div className="ms-auto flex min-w-0 shrink-0 items-center gap-2 sm:gap-3">
+            {canReturnToPlatform ? (
+              <Button asChild variant="outline" size="sm" className="hidden lg:inline-flex">
+                <Link to="/espace/plateforme">
+                  <ArrowLeft className="size-4" aria-hidden />
+                  Direction plateforme
+                </Link>
+              </Button>
+            ) : null}
             {/* Sur smartphone, le programme actif se choisit dans le menu latéral. */}
             <div className="hidden sm:block">
               <ProgramSwitcher />
@@ -293,6 +315,14 @@ export function AppShell() {
           className="mx-auto hidden max-w-6xl px-4 sm:px-6 md:block"
         >
           <ul className="flex flex-wrap items-center gap-1 pb-2">
+            {canReturnToPlatform ? (
+              <li className="lg:hidden">
+                <Link to="/espace/plateforme" className={linkClass}>
+                  <ArrowLeft className="size-4" aria-hidden />
+                  Direction plateforme
+                </Link>
+              </li>
+            ) : null}
             {spaces.map((space) => (
               <li key={space.key} className="flex flex-wrap items-center gap-1">
                 <span className="sr-only">{space.label}</span>
