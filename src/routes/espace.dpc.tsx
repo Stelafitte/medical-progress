@@ -5,11 +5,10 @@ import { canAccessLearnerSpace } from "@/domain/access";
 import { DpcLearnerView } from "@/features/dpc/DpcLearnerView";
 
 function DpcRoute() {
-  const { roles, activeProgram } = useSession();
-  if (!canAccessLearnerSpace(roles, activeProgram.id))
+  const { rolesForAccess, activeProgram } = useSession();
+  if (!canAccessLearnerSpace(rolesForAccess, activeProgram.id))
     return <AccessRestricted area="L'espace apprenant" />;
-  if (!activeProgram.config.dpcEnabled)
-    return <AccessRestricted area="Le parcours DPC" />;
+  if (!activeProgram.config.dpcEnabled) return <AccessRestricted area="Le parcours DPC" />;
   return <DpcLearnerView />;
 }
 

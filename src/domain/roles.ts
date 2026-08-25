@@ -68,6 +68,25 @@ export const ROLE_LABELS_FR: Record<RoleName, string> = {
 };
 
 /**
+ * Clé stable identifiant une assignation de rôle par sa nature (rôle + portée),
+ * pas par un identifiant de ligne technique. Sert à permettre à une personne
+ * cumulant plusieurs rôles réels de choisir laquelle de ses portées est active
+ * ("voir en tant que"), sans dépendre d'un id de base de données.
+ */
+export function roleAssignmentKey(assignment: RoleAssignment): string {
+  const scope = assignment.scope;
+  const scopeId =
+    scope.kind === "platform"
+      ? ""
+      : scope.kind === "program"
+        ? scope.programId
+        : scope.kind === "cohort"
+          ? scope.cohortId
+          : scope.placementId;
+  return `${assignment.role}:${scope.kind}:${scopeId}`;
+}
+
+/**
  * Règle PURE de cohérence entre un rôle et sa portée.
  * - `placement_supervisor` : exige une portée stage ;
  * - `teacher` / `learner` : exigent un programme ou une cohorte ;

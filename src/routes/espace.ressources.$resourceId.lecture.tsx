@@ -28,7 +28,7 @@ export const Route = createFileRoute("/espace/ressources/$resourceId/lecture")({
 function Guarded() {
   const session = useSession();
   const { resourceId } = Route.useParams();
-  if (!canAccessLearnerSpace(session.roles, session.activeProgram.id))
+  if (!canAccessLearnerSpace(session.rolesForAccess, session.activeProgram.id))
     return <AccessRestricted area="La lecture des cours de l'espace apprenant" />;
   return <NarratedReaderView resourceId={resourceId} />;
 }
