@@ -10,6 +10,17 @@ import type {
   PlatformGeneralSettings,
   ProgramPlatformSettings,
 } from "@/domain/platformSettings";
+import {
+  DEFAULT_FEATURE_FLAGS,
+  auditExportLabel,
+  roleDelegationAuditLabel,
+  type AuditExportDraft,
+  type DataRetentionPolicy,
+  type FeatureFlags,
+  type MaintenanceSettings,
+  type PlatformSecurityPolicy,
+  type RoleDelegationDraft,
+} from "@/domain/platformGovernance";
 import type { AccountStatus, PersonEditInput } from "@/domain/platformDirectory";
 import type { PersonId, ProgramId } from "@/domain/types";
 
@@ -32,7 +43,21 @@ export interface PreparedMailing {
   readonly state: "prepared_not_sent";
 }
 
+/** Trace locale d'une action de gouvernance (aucune écriture serveur). */
+export interface GovernanceTrace {
+  readonly id: string;
+  readonly label: string;
+  readonly reason: string;
+  readonly createdAt: string;
+}
+
 export interface PlatformSettingsState {
+  readonly security: PlatformSecurityPolicy;
+  readonly retention: DataRetentionPolicy;
+  readonly flagsByProgram: Readonly<Record<string, FeatureFlags>>;
+  readonly maintenance: MaintenanceSettings;
+  readonly delegations: readonly GovernanceTrace[];
+  readonly auditExports: readonly GovernanceTrace[];
   readonly general: PlatformGeneralSettings;
   readonly byProgram: Readonly<Record<string, ProgramPlatformSettings>>;
   readonly notificationRules: readonly NotificationRule[];
@@ -41,6 +66,24 @@ export interface PlatformSettingsState {
 }
 
 const DEFAULT_STATE: PlatformSettingsState = {
+  security: {
+    mfaRequiredForAdmins: true,
+    sessionTimeoutMinutes: 60,
+    passwordMinLength: 14,
+    allowedEmailDomains: ["univ-bordeaux.fr", "chu-bordeaux.fr"],
+    logPersonFileAccess: true,
+  },
+  retention: {
+    evidenceMonths: 60,
+    auditMonths: 72,
+    mediaMonths: 36,
+    purgeAfterExport: false,
+    dpoEmail: "dpo@campus-sante-augmente.fr",
+  },
+  flagsByProgram: {},
+  maintenance: { readOnlyMode: false, bannerMessage: "", windowLabel: "" },
+  delegations: [],
+  auditExports: [],
   general: {
     platformName: "Campus Santé Augmenté",
     supportEmail: "support@campus-sante-augmente.fr",
@@ -158,4 +201,48 @@ export function addPreparedMailing(args: {
     state: "prepared_not_sent",
   };
   emit({ ...current, preparedMailings: [mailing, ...current.preparedMailings] });
+}
+
+/* ------------------------------------------------------------------ */
+/* Gouvernance                                                         */
+/* ------------------------------------------------------------------ */
+
+export function setSecurityPolicy(security: PlatformSecurityPolicy): void {
+  emit({ ...current, security });
+}
+
+export function setRetentionPolicy(retention: DataRetentionPolicy): void {
+  emit({ ...current, retention });
+}
+
+export function setMaintenanceSettings(maintenance: MaintenanceSettings): void {
+  emit({ ...current, maintenance });
+}
+
+export function featureFlagsFor(state: PlatformSettingsState, programId: ProgramId): FeatureFlags {
+  return state.flagsByProgram[programId] ?? DEFAULT_FEATURE_FLAGS;
+}
+
+export function setFeatureFlags(programId: ProgramId, flags: FeatureFlags): void {
+  emit({ ...current, flagsByProgram: { ...current.flagsByProgram, [programId]: flags } });
+}
+
+export function addRoleDelegation(draft: RoleDelegationDraft): void {
+  const trace: GovernanceTrace = {
+    id: `deleg-${current.delegations.length + 1}`,
+    label: roleDelegationAuditLabel(draft),
+    reason: draft.reason.trim(),
+    createdAt: new Date().toISOString(),
+  };
+  emit({ ...current, delegations: [trace, ...current.delegations] });
+}
+
+export function addAuditExport(draft: AuditExportDraft): void {
+  const trace: GovernanceTrace = {
+    id: `export-${current.auditExports.length + 1}`,
+    label: auditExportLabel(draft),
+    reason: draft.reason.trim(),
+    createdAt: new Date().toISOString(),
+  };
+  emit({ ...current, auditExports: [trace, ...current.auditExports] });
 }
