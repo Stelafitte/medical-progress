@@ -204,8 +204,13 @@ docs/                architecture, base de données (draft), politiques
 
 ### 3.2 Espaces et routes principales
 - **Accueil** `/`, **Architecture** `/espace/architecture`, **Audits** `/espace/audits`.
-- **Apprenant** : `/espace` (tableau de bord), `/espace/passeport`, `/espace/stage`,
-  `/espace/ressources`, `/espace/ressources/:id/lecture`, `/espace/profil`.
+- **Apprenant** (`LEARNER_NAV`, 8 entrées) : `/espace` (Vue d'ensemble), `/espace/passeport`
+  (« Mon Passeport Éducatif »), `/espace/ressources` (+ `/espace/ressources/:id/lecture`),
+  `/espace/competences` (« Mes compétences », toujours visible), `/espace/stage`
+  (« Mon carnet de stage », seulement si `placementsEnabled`), `/espace/progression`
+  (« Mes statistiques »), `/espace/messages` (« Mes messages »), `/espace/profil`.
+  Entrée `Mon parcours DPC` insérée seulement si `dpcEnabled` (gelé), sinon
+  `Audits de pratique` si `auditsEnabled`.
 - **Responsable de stage** : `/espace/encadrement` + étudiants, compétences, carnets, cas, alertes,
   bilans, messages, profil.
 - **Administration de programme** : `/espace/administration` et ses 10 onglets (voir §4) :
