@@ -15,6 +15,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { SectionHeading } from "@/components/section-heading";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -711,17 +712,22 @@ function NotificationsSection() {
 function MailingSection({ rows }: { rows: readonly PlatformDirectoryRow[] }) {
   const state = usePlatformSettings();
   const [groupKeys, setGroupKeys] = useState<readonly string[]>(["platform_admin"]);
+  const [excludedIds, setExcludedIds] = useState<readonly string[]>([]);
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
 
   const staff = resolveNonLearnerRecipients(rows);
-  const recipients = staff.filter((row) =>
+  const candidates = staff.filter((row) =>
     row.groups.some((g) => groupKeys.includes(g as string)),
   );
+  const recipients = candidates.filter((row) => !excludedIds.includes(row.personId as string));
   const check = checkNonLearnerMailing({ subject, body, groupKeys }, recipients.length);
 
   const toggle = (key: string) =>
     setGroupKeys((keys) => (keys.includes(key) ? keys.filter((k) => k !== key) : [...keys, key]));
+
+  const togglePerson = (id: string) =>
+    setExcludedIds((ids) => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]));
 
   return (
     <PanelCard
@@ -742,9 +748,67 @@ function MailingSection({ rows }: { rows: readonly PlatformDirectoryRow[] }) {
         ))}
       </div>
 
+      <div className="space-y-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <Label>Destinataires individuels</Label>
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              className="min-h-9"
+              onClick={() => setExcludedIds([])}
+            >
+              Tout cocher
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="min-h-9"
+              onClick={() => setExcludedIds(candidates.map((row) => row.personId as string))}
+            >
+              Tout décocher
+            </Button>
+          </div>
+        </div>
+        {candidates.length === 0 ? (
+          <EmptyState>Aucun intervenant dans les groupes sélectionnés.</EmptyState>
+        ) : (
+          <ul className="border-border max-h-64 space-y-1 overflow-y-auto rounded-md border p-2">
+            {candidates.map((row) => {
+              const id = row.personId as string;
+              const checked = !excludedIds.includes(id);
+              return (
+                <li key={id} className="flex items-start gap-3 px-1 py-1.5">
+                  <Checkbox
+                    id={`mailing-person-${id}`}
+                    checked={checked}
+                    onCheckedChange={() => togglePerson(id)}
+                    className="mt-0.5"
+                  />
+                  <Label
+                    htmlFor={`mailing-person-${id}`}
+                    className="flex-1 cursor-pointer flex-col items-start gap-0.5 font-normal"
+                  >
+                    <span className="font-medium">{row.fullName}</span>
+                    <span className="text-muted-foreground text-xs">
+                      {row.email} ·{" "}
+                      {row.groups
+                        .map((g) => PLATFORM_ROLE_GROUP_LABELS_FR[g] ?? g)
+                        .join(" · ")}
+                    </span>
+                  </Label>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+
       <p className="text-muted-foreground text-xs">
-        {recipients.length} destinataire(s) résolu(s) sur {staff.length} intervenant(s).
+        {recipients.length} destinataire(s) sélectionné(s) sur {candidates.length} résolu(s) —{" "}
+        {staff.length} intervenant(s) au total.
       </p>
+
 
       <div className="space-y-2">
         <Label htmlFor="mailing-subject">Objet</Label>
