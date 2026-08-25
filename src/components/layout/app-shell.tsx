@@ -135,7 +135,7 @@ export function AppShell() {
                   <Button asChild variant="outline" size="sm" className="w-full justify-start">
                     <Link to="/espace/plateforme" onClick={() => setMobileOpen(false)}>
                       <ArrowLeft className="size-4" aria-hidden />
-                      Revenir à la direction plateforme
+                      Quitter le programme
                     </Link>
                   </Button>
                 </div>
@@ -209,7 +209,7 @@ export function AppShell() {
               <Button asChild variant="outline" size="sm" className="hidden lg:inline-flex">
                 <Link to="/espace/plateforme">
                   <ArrowLeft className="size-4" aria-hidden />
-                  Direction plateforme
+                  Quitter le programme
                 </Link>
               </Button>
             ) : null}
@@ -319,7 +319,7 @@ export function AppShell() {
               <li className="lg:hidden">
                 <Link to="/espace/plateforme" className={linkClass}>
                   <ArrowLeft className="size-4" aria-hidden />
-                  Direction plateforme
+                  Quitter le programme
                 </Link>
               </li>
             ) : null}
