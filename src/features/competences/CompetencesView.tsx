@@ -120,7 +120,7 @@ function CompetenceRow({
   entry,
 }: {
   item: OutcomeProgress;
-  planItem?: AcquisitionPlanItem;
+  planItem: AcquisitionPlanItem | undefined;
   entry: CompetenceJournalEntry;
 }) {
   const [openJournal, setOpenJournal] = useState(false);
