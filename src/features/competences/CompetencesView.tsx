@@ -204,6 +204,12 @@ function CompetenceRow({
         </Label>
       </div>
       <DeclarationNotice item={item} />
+      {declaration === "awaiting_validation" ? (
+        <p className="text-xs text-muted-foreground">
+          Tuteur notifié de votre déclaration (notification simulée, aucun envoi réel).
+        </p>
+      ) : null}
+
       {item.blockedBySelfDeclaration ? (
         <p className="text-xs text-warning">
           Auto-déclaration enregistrée : une validation par un tiers est nécessaire pour une
