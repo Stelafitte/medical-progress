@@ -63,17 +63,16 @@ describe("navigation", () => {
   it("expose les repères apprenant dans l'ordre validé", () => {
     const order = [
       ...navigation.matchAll(
-        /label: "(Mon Passeport Éducatif|Mes ressources|Mes compétences|Mon carnet de stage|Mes statistiques|Mes messages|Mes programmes|Mon profil)"/g,
+        /label: "(Mon Passeport Éducatif|Mes ressources|Mes compétences|Mon carnet de stage|Mes statistiques|Mes messages|Mon profil)"/g,
       ),
     ].map((m) => m[1]);
-    expect(order.slice(0, 8)).toEqual([
+    expect(order.slice(0, 7)).toEqual([
       "Mon Passeport Éducatif",
       "Mes ressources",
       "Mes compétences",
       "Mon carnet de stage",
       "Mes statistiques",
       "Mes messages",
-      "Mes programmes",
       "Mon profil",
     ]);
   });
@@ -86,9 +85,9 @@ describe("navigation", () => {
     expect(withPlacements.some((e) => e.to === "/espace/stage")).toBe(true);
   });
 
-  it("expose le profil, les messages et les programmes dans le bandeau apprenant", () => {
+  it("expose le profil et les messages dans le bandeau apprenant", () => {
     const nav = learnerNavFor({ placementsEnabled: true });
-    for (const to of ["/espace/profil", "/espace/messages", "/espace/mes-programmes", "/espace/progression"]) {
+    for (const to of ["/espace/profil", "/espace/messages", "/espace/progression"]) {
       expect(nav.some((e) => e.to === to)).toBe(true);
     }
   });

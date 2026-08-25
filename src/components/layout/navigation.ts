@@ -74,7 +74,6 @@ export const LEARNER_NAV: readonly NavEntry[] = [
   { to: "/espace/stage", label: "Mon carnet de stage", icon: Notebook, exact: false },
   { to: "/espace/progression", label: "Mes statistiques", icon: BarChart3, exact: false },
   { to: "/espace/messages", label: "Mes messages", icon: Mail, exact: false },
-  { to: "/espace/mes-programmes", label: "Mes programmes", icon: Layers, exact: false },
   { to: "/espace/profil", label: "Mon profil", icon: UserRound, exact: false },
 ];
 
