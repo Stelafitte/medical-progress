@@ -166,7 +166,9 @@ describe("exports d'audit", () => {
   });
 
   it("exige un motif détaillé pour un export nominatif", () => {
-    expect(validateAuditExport({ ...EXPORT, includeIdentities: true })).not.toHaveLength(0);
+    expect(
+      validateAuditExport({ ...EXPORT, includeIdentities: true, reason: "Contrôle annuel." }),
+    ).not.toHaveLength(0);
   });
 
   it("exige une période cohérente et une cible", () => {
