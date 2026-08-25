@@ -55,6 +55,7 @@ import { Route as EspaceEncadrementProfilRouteImport } from './routes/espace.enc
 import { Route as EspacePlateformeIndexRouteImport } from './routes/espace.plateforme.index'
 import { Route as EspacePlateformePilotageRouteImport } from './routes/espace.plateforme.pilotage'
 import { Route as EspacePlateformeProgrammesRouteImport } from './routes/espace.plateforme.programmes'
+import { Route as EspacePlateformeStatistiquesRouteImport } from './routes/espace.plateforme.statistiques'
 import { Route as EspaceRessourcesIndexRouteImport } from './routes/espace.ressources.index'
 import { Route as EspaceRessourcesResourceIdLectureRouteImport } from './routes/espace.ressources.$resourceId.lecture'
 
@@ -313,6 +314,12 @@ const EspacePlateformeProgrammesRoute =
     path: '/programmes',
     getParentRoute: () => EspacePlateformeRoute,
   } as any)
+const EspacePlateformeStatistiquesRoute =
+  EspacePlateformeStatistiquesRouteImport.update({
+    id: '/statistiques',
+    path: '/statistiques',
+    getParentRoute: () => EspacePlateformeRoute,
+  } as any)
 const EspaceRessourcesIndexRoute = EspaceRessourcesIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -369,6 +376,7 @@ export interface FileRoutesByFullPath {
   '/espace/encadrement/profil': typeof EspaceEncadrementProfilRoute
   '/espace/plateforme/pilotage': typeof EspacePlateformePilotageRoute
   '/espace/plateforme/programmes': typeof EspacePlateformeProgrammesRoute
+  '/espace/plateforme/statistiques': typeof EspacePlateformeStatistiquesRoute
   '/espace/administration/': typeof EspaceAdministrationIndexRoute
   '/espace/encadrement/': typeof EspaceEncadrementIndexRoute
   '/espace/plateforme/': typeof EspacePlateformeIndexRoute
@@ -414,6 +422,7 @@ export interface FileRoutesByTo {
   '/espace/encadrement/profil': typeof EspaceEncadrementProfilRoute
   '/espace/plateforme/pilotage': typeof EspacePlateformePilotageRoute
   '/espace/plateforme/programmes': typeof EspacePlateformeProgrammesRoute
+  '/espace/plateforme/statistiques': typeof EspacePlateformeStatistiquesRoute
   '/espace/administration': typeof EspaceAdministrationIndexRoute
   '/espace/encadrement': typeof EspaceEncadrementIndexRoute
   '/espace/plateforme': typeof EspacePlateformeIndexRoute
@@ -465,6 +474,7 @@ export interface FileRoutesById {
   '/espace/encadrement/profil': typeof EspaceEncadrementProfilRoute
   '/espace/plateforme/pilotage': typeof EspacePlateformePilotageRoute
   '/espace/plateforme/programmes': typeof EspacePlateformeProgrammesRoute
+  '/espace/plateforme/statistiques': typeof EspacePlateformeStatistiquesRoute
   '/espace/administration/': typeof EspaceAdministrationIndexRoute
   '/espace/encadrement/': typeof EspaceEncadrementIndexRoute
   '/espace/plateforme/': typeof EspacePlateformeIndexRoute
@@ -517,6 +527,7 @@ export interface FileRouteTypes {
     | '/espace/encadrement/profil'
     | '/espace/plateforme/pilotage'
     | '/espace/plateforme/programmes'
+    | '/espace/plateforme/statistiques'
     | '/espace/administration/'
     | '/espace/encadrement/'
     | '/espace/plateforme/'
@@ -562,6 +573,7 @@ export interface FileRouteTypes {
     | '/espace/encadrement/profil'
     | '/espace/plateforme/pilotage'
     | '/espace/plateforme/programmes'
+    | '/espace/plateforme/statistiques'
     | '/espace/administration'
     | '/espace/encadrement'
     | '/espace/plateforme'
@@ -612,6 +624,7 @@ export interface FileRouteTypes {
     | '/espace/encadrement/profil'
     | '/espace/plateforme/pilotage'
     | '/espace/plateforme/programmes'
+    | '/espace/plateforme/statistiques'
     | '/espace/administration/'
     | '/espace/encadrement/'
     | '/espace/plateforme/'
@@ -948,6 +961,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EspacePlateformeProgrammesRouteImport
       parentRoute: typeof EspacePlateformeRoute
     }
+    '/espace/plateforme/statistiques': {
+      id: '/espace/plateforme/statistiques'
+      path: '/statistiques'
+      fullPath: '/espace/plateforme/statistiques'
+      preLoaderRoute: typeof EspacePlateformeStatistiquesRouteImport
+      parentRoute: typeof EspacePlateformeRoute
+    }
     '/espace/ressources/': {
       id: '/espace/ressources/'
       path: '/'
@@ -1044,12 +1064,14 @@ const EspaceEncadrementRouteWithChildren =
 interface EspacePlateformeRouteChildren {
   EspacePlateformePilotageRoute: typeof EspacePlateformePilotageRoute
   EspacePlateformeProgrammesRoute: typeof EspacePlateformeProgrammesRoute
+  EspacePlateformeStatistiquesRoute: typeof EspacePlateformeStatistiquesRoute
   EspacePlateformeIndexRoute: typeof EspacePlateformeIndexRoute
 }
 
 const EspacePlateformeRouteChildren: EspacePlateformeRouteChildren = {
   EspacePlateformePilotageRoute: EspacePlateformePilotageRoute,
   EspacePlateformeProgrammesRoute: EspacePlateformeProgrammesRoute,
+  EspacePlateformeStatistiquesRoute: EspacePlateformeStatistiquesRoute,
   EspacePlateformeIndexRoute: EspacePlateformeIndexRoute,
 }
 
