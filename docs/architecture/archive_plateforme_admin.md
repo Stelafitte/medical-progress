@@ -370,6 +370,8 @@ Bandeau à 4 onglets (`PLATFORM_ADMIN_NAV`) :
 `PlatformAdminView` reste la vue de supervision historique (programmes, administrateurs autorisés,
 quotas, audit global simulé).
 
+---
+
 ## 5. Historique des changements (chronologie des lots livrés)
 
 1. Socle technique, modèle métier, mock repositories, vitest, README.
