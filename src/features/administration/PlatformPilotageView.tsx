@@ -90,6 +90,7 @@ import {
   setProgramSettings,
   usePlatformSettings,
 } from "@/application/platformSettingsStore";
+import { PlatformGovernanceSections } from "@/features/administration/PlatformGovernanceSections";
 import { formatFrDate } from "@/features/administration/adminProgramViewModel";
 import type { Program } from "@/domain/types";
 
@@ -121,7 +122,7 @@ export function PlatformPilotageView() {
         title="Pilotage et paramétrage"
         level={1}
         action={<MockBadge label="Maquette limitée" />}
-        description="Utilisateurs par groupe de rôle, cadre général, cadre par programme, notifications et courriel aux intervenants."
+        description="Utilisateurs et fiches, cadre général, cadre par programme, sécurité, conservation, délégations de rôles, fonctionnalités, maintenance, exports d'audit, notifications et courriel aux intervenants."
       />
 
       <ScopeNotice>{PLATFORM_SETTINGS_MOCK_FR}</ScopeNotice>
@@ -131,6 +132,7 @@ export function PlatformPilotageView() {
       <GeneralSettingsSection value={settings.general} />
       <ProgramSettingsSection programs={result.programs} cohorts={result.cohorts} />
       <NotificationsSection />
+      <PlatformGovernanceSections programs={result.programs} people={result.people} />
       <MailingSection rows={directory} />
     </div>
   );
