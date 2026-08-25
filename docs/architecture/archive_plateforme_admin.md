@@ -404,6 +404,15 @@ quotas, audit global simulé).
     connaissances, compétences et terrains créés côté administration ; **boucle encadrant** —
     `useSupervision` voit les mêmes terrains. Test de contrat
     `src/features/__tests__/sharedPilotSections.test.ts`.
+18. Incident de synchronisation GitHub : `main` avait écrasé la refonte admin ; restauration
+    exacte du brouillon « Archivé la plateforme admin » (93 fichiers), puis réapplication du
+    sélecteur de programme (navigation automatique + filtrage par rôle/inscription).
+19. **Dernier lot — Direction plateforme** : bandeau à 4 onglets (Vue d'ensemble / Programmes
+    agrégés / Statistiques / Pilotage et paramétrage), nouvelles routes
+    `/espace/plateforme/{programmes,statistiques,pilotage}`, vues `PlatformOverview`,
+    `PlatformProgramsView`, `PlatformPilotageView` (utilisateurs par groupe de rôle avec fiche
+    modifiable, paramètres généraux et par programme, notifications, courriel aux intervenants hors
+    apprenants) ; domaines `platformGovernance.ts`, `platformSettings.ts`, `platformDirectory.ts`.
 
 ---
 
