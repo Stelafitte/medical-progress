@@ -158,7 +158,7 @@ export const PROGRAM_ADMIN_NAV: readonly NavEntry[] = [
 ];
 
 export const PLATFORM_ADMIN_NAV: readonly NavEntry[] = [
-  { to: "/espace/plateforme", label: "Vue d'ensemble", icon: Gauge, exact: true },
+  { to: "/espace/plateforme", label: "Vue d'ensemble plateforme", icon: Gauge, exact: true },
   { to: "/espace/plateforme/programmes", label: "Programmes agrégés", icon: Layers, exact: false },
   { to: "/espace/statistiques", label: "Statistiques", icon: BarChart3, exact: false },
   {
