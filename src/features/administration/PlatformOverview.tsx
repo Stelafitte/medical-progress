@@ -293,7 +293,7 @@ export function PlatformOverview() {
             </Link>
           </Button>
           <Button asChild variant="outline" className="min-h-11">
-            <Link to="/espace/statistiques">
+            <Link to="/espace/plateforme/statistiques">
               Statistiques
               <ArrowRight className="ms-1 size-4" aria-hidden />
             </Link>

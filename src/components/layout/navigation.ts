@@ -160,7 +160,12 @@ export const PROGRAM_ADMIN_NAV: readonly NavEntry[] = [
 export const PLATFORM_ADMIN_NAV: readonly NavEntry[] = [
   { to: "/espace/plateforme", label: "Vue d'ensemble plateforme", icon: Gauge, exact: true },
   { to: "/espace/plateforme/programmes", label: "Programmes agrégés", icon: Layers, exact: false },
-  { to: "/espace/statistiques", label: "Statistiques", icon: BarChart3, exact: false },
+  {
+    to: "/espace/plateforme/statistiques",
+    label: "Statistiques",
+    icon: BarChart3,
+    exact: false,
+  },
   {
     to: "/espace/plateforme/pilotage",
     label: "Pilotage et paramétrage",
@@ -168,6 +173,7 @@ export const PLATFORM_ADMIN_NAV: readonly NavEntry[] = [
     exact: false,
   },
 ];
+
 
 
 /**
@@ -285,9 +291,8 @@ export function landingRouteFor(spaces: readonly NavSpace[]): string {
   if (!first) return "/espace/profil";
   // Un administrateur (de programme ou de plateforme) commence toujours par la
   // vue « Tous les programmes » : le périmètre est choisi explicitement.
-  if (first.key === "program_admin" || first.key === "platform_admin") {
-    return "/espace/programmes";
-  }
+  if (first.key === "platform_admin") return "/espace/plateforme";
+  if (first.key === "program_admin") return "/espace/programmes";
   return first.entries[0]?.to ?? "/espace/profil";
 }
 
