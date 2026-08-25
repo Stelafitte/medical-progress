@@ -246,9 +246,10 @@ function CompetenceRow({
 }
 
 export function CompetencesView() {
-  const { activeProgram, activeEnrollment } = useSession();
+  const { activeProgram, activeEnrollment, person } = useSession();
   const { data, isPending } = useLearnerPassport();
   const journal = useCompetenceJournal();
+  const [filters, setFilters] = useState<CompetenceListFilters>(EMPTY_COMPETENCE_FILTERS);
 
   const journalById = useMemo(
     () => new Map(journal.map((entry) => [entry.outcomeId, entry] as const)),
@@ -263,6 +264,7 @@ export function CompetencesView() {
   if (isPending || !data) return <Skeleton className="h-80 w-full" />;
 
   const competences = data.progress.filter((p) => p.outcome.nature !== "knowledge");
+  const visible = filterCompetences(competences, filters, journalById);
   const summary = summarizeProgress(competences);
   const planById = new Map(data.plan.items.map((i) => [i.id, i] as const));
   const declaredCount = competences.filter(
@@ -274,6 +276,23 @@ export function CompetencesView() {
     .filter((item): item is AcquisitionPlanItem => Boolean(item))
     .sort((a, b) => a.dueOn.localeCompare(b.dueOn));
 
+  /** Export local imprimable : « Enregistrer en PDF » depuis la boîte d'impression. */
+  const exportJournal = () => {
+    const html = buildJournalExportHtml({
+      programName: activeProgram.name,
+      learnerName: person.fullName,
+      generatedAt: new Date().toISOString(),
+      items: visible,
+      journal: journalById,
+    });
+    const win = window.open("", "_blank");
+    if (!win) return;
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+    win.print();
+  };
+
   return (
     <div className="space-y-8">
       <SectionHeading
@@ -284,9 +303,9 @@ export function CompetencesView() {
       />
 
       <ScopeNotice>
-        Cocher une compétence est une auto-déclaration : elle est signalée à votre tuteur mais ne
-        vaut jamais acquisition d'une compétence en situation réelle, qui exige une validation
-        humaine par un tiers habilité.
+        Cocher une compétence est une auto-déclaration : elle est notifiée à votre tuteur, qui la
+        retrouve dans « Compétences à confirmer », mais elle ne vaut jamais acquisition d'une
+        compétence en situation réelle, qui exige une validation humaine par un tiers habilité.
       </ScopeNotice>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -302,12 +321,76 @@ export function CompetencesView() {
       <PanelCard
         title="Liste de mes compétences"
         description="Une seule liste : la nature (simulée ou réelle) est un attribut de la compétence."
+        action={
+          <Button type="button" variant="outline" size="sm" className="gap-2" onClick={exportJournal}>
+            <Download className="size-4" aria-hidden />
+            Exporter mon journal (PDF)
+          </Button>
+        }
       >
+        <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="relative">
+            <Search
+              className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+              aria-hidden
+            />
+            <Input
+              value={filters.search ?? ""}
+              onChange={(event) => setFilters((f) => ({ ...f, search: event.target.value }))}
+              placeholder="Rechercher une compétence…"
+              aria-label="Rechercher une compétence"
+              className="pl-9"
+            />
+          </div>
+          <Select
+            value={filters.nature ?? "all"}
+            onValueChange={(value) =>
+              setFilters((f) => ({ ...f, nature: value as OutcomeNature | "all" }))
+            }
+          >
+            <SelectTrigger aria-label="Filtrer par nature">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Toutes les natures</SelectItem>
+              <SelectItem value="simulated_competence">
+                {NATURE_LABELS_FR.simulated_competence}
+              </SelectItem>
+              <SelectItem value="real_competence">{NATURE_LABELS_FR.real_competence}</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select
+            value={filters.status ?? "all"}
+            onValueChange={(value) =>
+              setFilters((f) => ({ ...f, status: value as CompetenceStatusFilter }))
+            }
+          >
+            <SelectTrigger aria-label="Filtrer par statut">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {(
+                ["all", "at_target", "declared", "in_progress", "not_started"] as const
+              ).map((status) => (
+                <SelectItem key={status} value={status}>
+                  {COMPETENCE_STATUS_LABELS_FR[status]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <p className="mb-3 text-xs text-muted-foreground">
+          {visible.length} compétence(s) affichée(s) sur {competences.length}.
+        </p>
+
         {competences.length === 0 ? (
           <EmptyState>Aucune compétence définie dans ce programme.</EmptyState>
+        ) : visible.length === 0 ? (
+          <EmptyState>Aucune compétence ne correspond à cette recherche.</EmptyState>
         ) : (
           <ul className="space-y-4">
-            {competences.map((item) => (
+            {visible.map((item) => (
               <CompetenceRow
                 key={item.outcome.id}
                 item={item}
@@ -323,6 +406,7 @@ export function CompetencesView() {
           </ul>
         )}
       </PanelCard>
+
 
       <PanelCard
         title="Calendrier de montée en compétence"
