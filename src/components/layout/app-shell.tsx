@@ -60,14 +60,17 @@ export function AppShell() {
   const navigate = useNavigate();
 
   const pathname = useRouterState({ select: (state) => state.location.pathname });
-  // Dans la vue « Tous les programmes », aucun programme n'est le périmètre
-  // courant : les onglets propres à un programme sont retirés du bandeau.
-  const isAllPrograms = pathname.startsWith("/espace/programmes");
+  // Périmètre plateforme : « Tous les programmes ». Aucun programme n'est le
+  // périmètre courant, donc le bandeau programme est retiré. À l'inverse, dès
+  // qu'un programme est ouvert, le bandeau plateforme disparaît.
+  const isPlatformScope =
+    pathname.startsWith("/espace/programmes") || pathname.startsWith("/espace/plateforme");
 
   const allSpaces = navSpacesFor(roles, activeProgram.id, activeProgram.config, activeProgram.code);
-  const spaces = isAllPrograms
+  const spaces = isPlatformScope
     ? allSpaces.filter((space) => space.key === "platform_admin")
-    : allSpaces;
+    : allSpaces.filter((space) => space.key !== "platform_admin");
+
   const defaultPersonName = people[0]?.fullName ?? "profil par défaut";
 
   /**
