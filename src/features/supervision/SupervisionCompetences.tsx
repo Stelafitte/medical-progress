@@ -16,16 +16,22 @@ import { CONFIRMATION_DECISION_LABELS_FR, canConfirmRealCompetence } from "@/dom
 import { MASTERY_LABELS_FR } from "@/domain/mastery";
 import { MASTERY_ORDER, type MasteryLevel } from "@/domain/types";
 import { useSession } from "@/application/session";
+import { useCompetenceJournal } from "@/application/competenceJournalStore";
+import { tutorNotifications } from "@/domain/competenceListView";
 
 export function SupervisionCompetences() {
   const { rolesInActiveProgram } = useSession();
   const { data, isPending } = useSupervision();
+  const journal = useCompetenceJournal();
   const [levels, setLevels] = useState<Record<string, MasteryLevel>>({});
   const [feedback, setFeedback] = useState<string | null>(null);
 
   if (isPending || !data) return <Skeleton className="h-72 w-full" />;
 
   const canConfirm = canConfirmRealCompetence(rolesInActiveProgram);
+  /** Remontée des auto-déclarations et questions saisies par les apprenants. */
+  const notifications = tutorNotifications(journal, data.outcomes);
+
 
   return (
     <div className="space-y-6">
@@ -36,7 +42,42 @@ export function SupervisionCompetences() {
         description="Toute compétence réelle exige une validation humaine : l'apprenant ne peut jamais l'auto-déclarer acquise."
       />
 
+      <PanelCard
+        title="Déclarations d'apprenants reçues"
+        description="Auto-déclarations et questions remontées depuis « Mes compétences ». Aucune n'entraîne d'acquisition."
+        action={<MockBadge label="Simulé" />}
+      >
+        {notifications.length === 0 ? (
+          <EmptyState>Aucune déclaration ni question en attente.</EmptyState>
+        ) : (
+          <ul className="space-y-3">
+            {notifications.map((notification) => (
+              <li
+                key={`${notification.outcomeId}-${notification.kind}-${notification.at}`}
+                className="space-y-1 border-b border-border pb-2 last:border-0"
+              >
+                <p className="flex flex-wrap items-center gap-2 text-sm">
+                  <span className="font-medium">
+                    {notification.code} — {notification.label}
+                  </span>
+                  <Badge variant="outline" className="font-normal">
+                    {notification.kind === "declaration"
+                      ? "Auto-déclaration à examiner"
+                      : "Question de l'apprenant"}
+                  </Badge>
+                  <span className="text-xs text-muted-foreground">
+                    {new Date(notification.at).toLocaleString("fr-FR")}
+                  </span>
+                </p>
+                <p className="text-xs text-muted-foreground">{notification.body}</p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </PanelCard>
+
       <ScopeNotice>
+
         Vous statuez uniquement sur les activités des étudiants que vous encadrez. Le niveau
         d'autonomie proposé reste modifiable avant décision.
       </ScopeNotice>

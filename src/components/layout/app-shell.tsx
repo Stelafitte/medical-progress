@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
-import { Boxes, HeartPulse, Menu, RotateCcw, UserRound } from "lucide-react";
+import { ArrowLeft, Boxes, HeartPulse, Menu, RotateCcw, UserRound } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -71,9 +71,11 @@ export function AppShell() {
   const navigate = useNavigate();
 
   const pathname = useRouterState({ select: (state) => state.location.pathname });
-  // Dans la vue « Tous les programmes », aucun programme n'est le périmètre
-  // courant : les onglets propres à un programme sont retirés du bandeau.
-  const isAllPrograms = pathname.startsWith("/espace/programmes");
+  // Périmètre plateforme : « Tous les programmes ». Aucun programme n'est le
+  // périmètre courant, donc le bandeau programme est retiré. À l'inverse, dès
+  // qu'un programme est ouvert, le bandeau plateforme disparaît.
+  const isPlatformScope =
+    pathname.startsWith("/espace/programmes") || pathname.startsWith("/espace/plateforme");
 
   // navSpacesFor doit refléter le RÔLE ACTIF ("voir en tant que"), jamais
   // l'union de tous les rôles réels de la personne — sinon la navigation
@@ -85,10 +87,15 @@ export function AppShell() {
     activeProgram.config,
     activeProgram.code,
   );
-  const spaces = isAllPrograms
+  const spaces = isPlatformScope
     ? allSpaces.filter((space) => space.key === "platform_admin")
-    : allSpaces;
+    : allSpaces.filter((space) => space.key !== "platform_admin");
+
   const defaultPersonName = people[0]?.fullName ?? "profil par défaut";
+
+  /** L'admin plateforme peut quitter un programme pour revenir au bandeau général. */
+  const canReturnToPlatform =
+    !isPlatformScope && allSpaces.some((space) => space.key === "platform_admin");
 
   /**
    * Après un changement d'identité simulée, l'écran conservé pouvait ne plus
@@ -142,6 +149,16 @@ export function AppShell() {
                 </p>
                 <ProgramSwitcher variant="full" />
               </div>
+              {canReturnToPlatform ? (
+                <div className="mt-4">
+                  <Button asChild variant="outline" size="sm" className="w-full justify-start">
+                    <Link to="/espace/plateforme" onClick={() => setMobileOpen(false)}>
+                      <ArrowLeft className="size-4" aria-hidden />
+                      Quitter le programme
+                    </Link>
+                  </Button>
+                </div>
+              ) : null}
               <nav aria-label="Navigation mobile" className="mt-4 flex flex-col gap-4">
                 {spaces.map((space) => (
                   <div key={space.key} className="flex flex-col gap-1">
@@ -207,6 +224,14 @@ export function AppShell() {
           </Link>
 
           <div className="ms-auto flex min-w-0 shrink-0 items-center gap-2 sm:gap-3">
+            {canReturnToPlatform ? (
+              <Button asChild variant="outline" size="sm" className="hidden lg:inline-flex">
+                <Link to="/espace/plateforme">
+                  <ArrowLeft className="size-4" aria-hidden />
+                  Quitter le programme
+                </Link>
+              </Button>
+            ) : null}
             {/* Sur smartphone, le programme actif se choisit dans le menu latéral. */}
             <div className="hidden sm:block">
               <ProgramSwitcher />
@@ -339,6 +364,14 @@ export function AppShell() {
           className="mx-auto hidden max-w-6xl px-4 sm:px-6 md:block"
         >
           <ul className="flex flex-wrap items-center gap-1 pb-2">
+            {canReturnToPlatform ? (
+              <li className="lg:hidden">
+                <Link to="/espace/plateforme" className={linkClass}>
+                  <ArrowLeft className="size-4" aria-hidden />
+                  Quitter le programme
+                </Link>
+              </li>
+            ) : null}
             {spaces.map((space) => (
               <li key={space.key} className="flex flex-wrap items-center gap-1">
                 <span className="sr-only">{space.label}</span>

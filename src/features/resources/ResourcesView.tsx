@@ -1,9 +1,18 @@
-import { BookOpen, Globe, PlayCircle } from "lucide-react";
+import { useState } from "react";
+import { BookOpen, Globe, PlayCircle, Search } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { SectionHeading } from "@/components/section-heading";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatPlayerDuration } from "@/domain/mediaLibrary";
 import { useLearnerPassport } from "@/features/dashboard/useLearnerPassport";
@@ -15,6 +24,11 @@ import {
   WEB_REFERENCE_CTA_FR,
 } from "@/domain/contentAi";
 import { MEDIA_KIND_LABELS_FR } from "@/domain/mediaLibrary";
+import {
+  filterLearnerResources,
+  learnerResourceFormats,
+  searchResources,
+} from "@/domain/learnerLibrary";
 
 const FORMAT_FR: Record<string, string> = {
   course: "Cours",
@@ -26,10 +40,18 @@ const FORMAT_FR: Record<string, string> = {
 
 export function ResourcesView() {
   const { data, isPending } = useLearnerPassport();
+  const [search, setSearch] = useState("");
+  const [format, setFormat] = useState<string>("all");
+  const [outcomeId, setOutcomeId] = useState<string>("all");
 
   if (isPending || !data) return <Skeleton className="h-64 w-full" />;
 
-  const { resources, outcomes, narratedDecks, aiResources } = data;
+  const { outcomes } = data;
+  const formats = learnerResourceFormats(data.resources);
+  const resources = filterLearnerResources(data.resources, { search, format, outcomeId });
+  const narratedDecks = searchResources(data.narratedDecks, search);
+  const aiResources = searchResources(data.aiResources, search);
+
 
   return (
     <div className="space-y-8">
@@ -48,6 +70,50 @@ export function ResourcesView() {
         Catalogue simulé : les ressources proviennent des repositories mock. La lecture réelle des
         contenus et le suivi de consultation sont prévus après validation du schéma de données.
       </p>
+
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="relative">
+          <Search
+            className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+            aria-hidden
+          />
+          <Input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Rechercher un support…"
+            aria-label="Rechercher un support"
+            className="pl-9"
+          />
+        </div>
+        <Select value={format} onValueChange={setFormat}>
+          <SelectTrigger aria-label="Filtrer par format">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tous les formats</SelectItem>
+            {formats.map((value) => (
+              <SelectItem key={value} value={value}>
+                {FORMAT_FR[value] ?? value}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={outcomeId} onValueChange={setOutcomeId}>
+          <SelectTrigger aria-label="Filtrer par acquis visé">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tous les acquis</SelectItem>
+            {outcomes.map((outcome) => (
+              <SelectItem key={outcome.id} value={outcome.id}>
+                {outcome.code} · {outcome.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+
 
       {narratedDecks.length > 0 ? (
         <section className="space-y-4">

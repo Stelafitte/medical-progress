@@ -31,7 +31,8 @@ export function ProgramSwitcher({ variant = "compact" }: { variant?: "compact" |
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   // Tant que la vue « Tous les programmes » est ouverte, le sélecteur reste sur
   // cette option : aucun programme n'est le périmètre courant.
-  const isAllPrograms = pathname.startsWith("/espace/programmes");
+  const isAllPrograms =
+    pathname.startsWith("/espace/programmes") || pathname.startsWith("/espace/plateforme");
 
   // Un rôle de portée plateforme donne accès à tous les programmes ; sinon, seuls
   // les programmes où la personne a un rôle ou une inscription sont sélectionnables.
@@ -54,7 +55,11 @@ export function ProgramSwitcher({ variant = "compact" }: { variant?: "compact" |
         value={isAllPrograms ? ALL_PROGRAMS_VALUE : activeProgram.id}
         onValueChange={(value) => {
           if (value === ALL_PROGRAMS_VALUE) {
-            void navigate({ to: "/espace/programmes" });
+            void navigate({
+              to: canAccessPlatformAdministration
+                ? "/espace/plateforme/programmes"
+                : "/espace/programmes",
+            });
             return;
           }
           setActiveProgramId(value as ProgramId);

@@ -90,7 +90,7 @@ export function PassportView() {
   return (
     <div className="space-y-10">
       <SectionHeading
-        title="Mon passeport"
+        title="Mon Passeport Éducatif"
         level={1}
         description="Ma progression dans le temps : connaissances théoriques et compétences"
       />

@@ -15,12 +15,15 @@ import { Route as EspaceIndexRouteImport } from './routes/espace.index'
 import { Route as EspaceAdministrationRouteImport } from './routes/espace.administration'
 import { Route as EspaceArchitectureRouteImport } from './routes/espace.architecture'
 import { Route as EspaceAuditsRouteImport } from './routes/espace.audits'
+import { Route as EspaceCompetencesRouteImport } from './routes/espace.competences'
 import { Route as EspaceDpcRouteImport } from './routes/espace.dpc'
 import { Route as EspaceEncadrementRouteImport } from './routes/espace.encadrement'
+import { Route as EspaceMessagesRouteImport } from './routes/espace.messages'
 import { Route as EspacePasseportRouteImport } from './routes/espace.passeport'
 import { Route as EspacePlateformeRouteImport } from './routes/espace.plateforme'
 import { Route as EspaceProfilRouteImport } from './routes/espace.profil'
 import { Route as EspaceProgrammesRouteImport } from './routes/espace.programmes'
+import { Route as EspaceProgressionRouteImport } from './routes/espace.progression'
 import { Route as EspaceRessourcesRouteImport } from './routes/espace.ressources'
 import { Route as EspaceStageRouteImport } from './routes/espace.stage'
 import { Route as EspaceStatistiquesRouteImport } from './routes/espace.statistiques'
@@ -52,6 +55,10 @@ import { Route as EspaceEncadrementCompetencesRouteImport } from './routes/espac
 import { Route as EspaceEncadrementEtudiantsRouteImport } from './routes/espace.encadrement.etudiants'
 import { Route as EspaceEncadrementMessagesRouteImport } from './routes/espace.encadrement.messages'
 import { Route as EspaceEncadrementProfilRouteImport } from './routes/espace.encadrement.profil'
+import { Route as EspacePlateformeIndexRouteImport } from './routes/espace.plateforme.index'
+import { Route as EspacePlateformePilotageRouteImport } from './routes/espace.plateforme.pilotage'
+import { Route as EspacePlateformeProgrammesRouteImport } from './routes/espace.plateforme.programmes'
+import { Route as EspacePlateformeStatistiquesRouteImport } from './routes/espace.plateforme.statistiques'
 import { Route as EspaceRessourcesIndexRouteImport } from './routes/espace.ressources.index'
 import { Route as EspaceRessourcesResourceIdLectureRouteImport } from './routes/espace.ressources.$resourceId.lecture'
 
@@ -85,6 +92,11 @@ const EspaceAuditsRoute = EspaceAuditsRouteImport.update({
   path: '/audits',
   getParentRoute: () => EspaceRoute,
 } as any)
+const EspaceCompetencesRoute = EspaceCompetencesRouteImport.update({
+  id: '/competences',
+  path: '/competences',
+  getParentRoute: () => EspaceRoute,
+} as any)
 const EspaceDpcRoute = EspaceDpcRouteImport.update({
   id: '/dpc',
   path: '/dpc',
@@ -93,6 +105,11 @@ const EspaceDpcRoute = EspaceDpcRouteImport.update({
 const EspaceEncadrementRoute = EspaceEncadrementRouteImport.update({
   id: '/encadrement',
   path: '/encadrement',
+  getParentRoute: () => EspaceRoute,
+} as any)
+const EspaceMessagesRoute = EspaceMessagesRouteImport.update({
+  id: '/messages',
+  path: '/messages',
   getParentRoute: () => EspaceRoute,
 } as any)
 const EspacePasseportRoute = EspacePasseportRouteImport.update({
@@ -113,6 +130,11 @@ const EspaceProfilRoute = EspaceProfilRouteImport.update({
 const EspaceProgrammesRoute = EspaceProgrammesRouteImport.update({
   id: '/programmes',
   path: '/programmes',
+  getParentRoute: () => EspaceRoute,
+} as any)
+const EspaceProgressionRoute = EspaceProgressionRouteImport.update({
+  id: '/progression',
+  path: '/progression',
   getParentRoute: () => EspaceRoute,
 } as any)
 const EspaceRessourcesRoute = EspaceRessourcesRouteImport.update({
@@ -293,6 +315,29 @@ const EspaceEncadrementProfilRoute = EspaceEncadrementProfilRouteImport.update({
   path: '/profil',
   getParentRoute: () => EspaceEncadrementRoute,
 } as any)
+const EspacePlateformeIndexRoute = EspacePlateformeIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => EspacePlateformeRoute,
+} as any)
+const EspacePlateformePilotageRoute =
+  EspacePlateformePilotageRouteImport.update({
+    id: '/pilotage',
+    path: '/pilotage',
+    getParentRoute: () => EspacePlateformeRoute,
+  } as any)
+const EspacePlateformeProgrammesRoute =
+  EspacePlateformeProgrammesRouteImport.update({
+    id: '/programmes',
+    path: '/programmes',
+    getParentRoute: () => EspacePlateformeRoute,
+  } as any)
+const EspacePlateformeStatistiquesRoute =
+  EspacePlateformeStatistiquesRouteImport.update({
+    id: '/statistiques',
+    path: '/statistiques',
+    getParentRoute: () => EspacePlateformeRoute,
+  } as any)
 const EspaceRessourcesIndexRoute = EspaceRessourcesIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -311,12 +356,15 @@ export interface FileRoutesByFullPath {
   '/espace/administration': typeof EspaceAdministrationRouteWithChildren
   '/espace/architecture': typeof EspaceArchitectureRoute
   '/espace/audits': typeof EspaceAuditsRoute
+  '/espace/competences': typeof EspaceCompetencesRoute
   '/espace/dpc': typeof EspaceDpcRoute
   '/espace/encadrement': typeof EspaceEncadrementRouteWithChildren
+  '/espace/messages': typeof EspaceMessagesRoute
   '/espace/passeport': typeof EspacePasseportRoute
-  '/espace/plateforme': typeof EspacePlateformeRoute
+  '/espace/plateforme': typeof EspacePlateformeRouteWithChildren
   '/espace/profil': typeof EspaceProfilRoute
   '/espace/programmes': typeof EspaceProgrammesRoute
+  '/espace/progression': typeof EspaceProgressionRoute
   '/espace/ressources': typeof EspaceRessourcesRouteWithChildren
   '/espace/stage': typeof EspaceStageRoute
   '/espace/statistiques': typeof EspaceStatistiquesRoute
@@ -347,8 +395,12 @@ export interface FileRoutesByFullPath {
   '/espace/encadrement/etudiants': typeof EspaceEncadrementEtudiantsRoute
   '/espace/encadrement/messages': typeof EspaceEncadrementMessagesRoute
   '/espace/encadrement/profil': typeof EspaceEncadrementProfilRoute
+  '/espace/plateforme/pilotage': typeof EspacePlateformePilotageRoute
+  '/espace/plateforme/programmes': typeof EspacePlateformeProgrammesRoute
+  '/espace/plateforme/statistiques': typeof EspacePlateformeStatistiquesRoute
   '/espace/administration/': typeof EspaceAdministrationIndexRoute
   '/espace/encadrement/': typeof EspaceEncadrementIndexRoute
+  '/espace/plateforme/': typeof EspacePlateformeIndexRoute
   '/espace/ressources/': typeof EspaceRessourcesIndexRoute
   '/espace/ressources/$resourceId/lecture': typeof EspaceRessourcesResourceIdLectureRoute
 }
@@ -356,11 +408,13 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/espace/architecture': typeof EspaceArchitectureRoute
   '/espace/audits': typeof EspaceAuditsRoute
+  '/espace/competences': typeof EspaceCompetencesRoute
   '/espace/dpc': typeof EspaceDpcRoute
+  '/espace/messages': typeof EspaceMessagesRoute
   '/espace/passeport': typeof EspacePasseportRoute
-  '/espace/plateforme': typeof EspacePlateformeRoute
   '/espace/profil': typeof EspaceProfilRoute
   '/espace/programmes': typeof EspaceProgrammesRoute
+  '/espace/progression': typeof EspaceProgressionRoute
   '/espace/stage': typeof EspaceStageRoute
   '/espace/statistiques': typeof EspaceStatistiquesRoute
   '/espace': typeof EspaceIndexRoute
@@ -390,8 +444,12 @@ export interface FileRoutesByTo {
   '/espace/encadrement/etudiants': typeof EspaceEncadrementEtudiantsRoute
   '/espace/encadrement/messages': typeof EspaceEncadrementMessagesRoute
   '/espace/encadrement/profil': typeof EspaceEncadrementProfilRoute
+  '/espace/plateforme/pilotage': typeof EspacePlateformePilotageRoute
+  '/espace/plateforme/programmes': typeof EspacePlateformeProgrammesRoute
+  '/espace/plateforme/statistiques': typeof EspacePlateformeStatistiquesRoute
   '/espace/administration': typeof EspaceAdministrationIndexRoute
   '/espace/encadrement': typeof EspaceEncadrementIndexRoute
+  '/espace/plateforme': typeof EspacePlateformeIndexRoute
   '/espace/ressources': typeof EspaceRessourcesIndexRoute
   '/espace/ressources/$resourceId/lecture': typeof EspaceRessourcesResourceIdLectureRoute
 }
@@ -402,12 +460,15 @@ export interface FileRoutesById {
   '/espace/administration': typeof EspaceAdministrationRouteWithChildren
   '/espace/architecture': typeof EspaceArchitectureRoute
   '/espace/audits': typeof EspaceAuditsRoute
+  '/espace/competences': typeof EspaceCompetencesRoute
   '/espace/dpc': typeof EspaceDpcRoute
   '/espace/encadrement': typeof EspaceEncadrementRouteWithChildren
+  '/espace/messages': typeof EspaceMessagesRoute
   '/espace/passeport': typeof EspacePasseportRoute
-  '/espace/plateforme': typeof EspacePlateformeRoute
+  '/espace/plateforme': typeof EspacePlateformeRouteWithChildren
   '/espace/profil': typeof EspaceProfilRoute
   '/espace/programmes': typeof EspaceProgrammesRoute
+  '/espace/progression': typeof EspaceProgressionRoute
   '/espace/ressources': typeof EspaceRessourcesRouteWithChildren
   '/espace/stage': typeof EspaceStageRoute
   '/espace/statistiques': typeof EspaceStatistiquesRoute
@@ -438,8 +499,12 @@ export interface FileRoutesById {
   '/espace/encadrement/etudiants': typeof EspaceEncadrementEtudiantsRoute
   '/espace/encadrement/messages': typeof EspaceEncadrementMessagesRoute
   '/espace/encadrement/profil': typeof EspaceEncadrementProfilRoute
+  '/espace/plateforme/pilotage': typeof EspacePlateformePilotageRoute
+  '/espace/plateforme/programmes': typeof EspacePlateformeProgrammesRoute
+  '/espace/plateforme/statistiques': typeof EspacePlateformeStatistiquesRoute
   '/espace/administration/': typeof EspaceAdministrationIndexRoute
   '/espace/encadrement/': typeof EspaceEncadrementIndexRoute
+  '/espace/plateforme/': typeof EspacePlateformeIndexRoute
   '/espace/ressources/': typeof EspaceRessourcesIndexRoute
   '/espace/ressources/$resourceId/lecture': typeof EspaceRessourcesResourceIdLectureRoute
 }
@@ -451,12 +516,15 @@ export interface FileRouteTypes {
     | '/espace/administration'
     | '/espace/architecture'
     | '/espace/audits'
+    | '/espace/competences'
     | '/espace/dpc'
     | '/espace/encadrement'
+    | '/espace/messages'
     | '/espace/passeport'
     | '/espace/plateforme'
     | '/espace/profil'
     | '/espace/programmes'
+    | '/espace/progression'
     | '/espace/ressources'
     | '/espace/stage'
     | '/espace/statistiques'
@@ -487,8 +555,12 @@ export interface FileRouteTypes {
     | '/espace/encadrement/etudiants'
     | '/espace/encadrement/messages'
     | '/espace/encadrement/profil'
+    | '/espace/plateforme/pilotage'
+    | '/espace/plateforme/programmes'
+    | '/espace/plateforme/statistiques'
     | '/espace/administration/'
     | '/espace/encadrement/'
+    | '/espace/plateforme/'
     | '/espace/ressources/'
     | '/espace/ressources/$resourceId/lecture'
   fileRoutesByTo: FileRoutesByTo
@@ -496,11 +568,13 @@ export interface FileRouteTypes {
     | '/'
     | '/espace/architecture'
     | '/espace/audits'
+    | '/espace/competences'
     | '/espace/dpc'
+    | '/espace/messages'
     | '/espace/passeport'
-    | '/espace/plateforme'
     | '/espace/profil'
     | '/espace/programmes'
+    | '/espace/progression'
     | '/espace/stage'
     | '/espace/statistiques'
     | '/espace'
@@ -530,8 +604,12 @@ export interface FileRouteTypes {
     | '/espace/encadrement/etudiants'
     | '/espace/encadrement/messages'
     | '/espace/encadrement/profil'
+    | '/espace/plateforme/pilotage'
+    | '/espace/plateforme/programmes'
+    | '/espace/plateforme/statistiques'
     | '/espace/administration'
     | '/espace/encadrement'
+    | '/espace/plateforme'
     | '/espace/ressources'
     | '/espace/ressources/$resourceId/lecture'
   id:
@@ -541,12 +619,15 @@ export interface FileRouteTypes {
     | '/espace/administration'
     | '/espace/architecture'
     | '/espace/audits'
+    | '/espace/competences'
     | '/espace/dpc'
     | '/espace/encadrement'
+    | '/espace/messages'
     | '/espace/passeport'
     | '/espace/plateforme'
     | '/espace/profil'
     | '/espace/programmes'
+    | '/espace/progression'
     | '/espace/ressources'
     | '/espace/stage'
     | '/espace/statistiques'
@@ -577,8 +658,12 @@ export interface FileRouteTypes {
     | '/espace/encadrement/etudiants'
     | '/espace/encadrement/messages'
     | '/espace/encadrement/profil'
+    | '/espace/plateforme/pilotage'
+    | '/espace/plateforme/programmes'
+    | '/espace/plateforme/statistiques'
     | '/espace/administration/'
     | '/espace/encadrement/'
+    | '/espace/plateforme/'
     | '/espace/ressources/'
     | '/espace/ressources/$resourceId/lecture'
   fileRoutesById: FileRoutesById
@@ -632,6 +717,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EspaceAuditsRouteImport
       parentRoute: typeof EspaceRoute
     }
+    '/espace/competences': {
+      id: '/espace/competences'
+      path: '/competences'
+      fullPath: '/espace/competences'
+      preLoaderRoute: typeof EspaceCompetencesRouteImport
+      parentRoute: typeof EspaceRoute
+    }
     '/espace/dpc': {
       id: '/espace/dpc'
       path: '/dpc'
@@ -644,6 +736,13 @@ declare module '@tanstack/react-router' {
       path: '/encadrement'
       fullPath: '/espace/encadrement'
       preLoaderRoute: typeof EspaceEncadrementRouteImport
+      parentRoute: typeof EspaceRoute
+    }
+    '/espace/messages': {
+      id: '/espace/messages'
+      path: '/messages'
+      fullPath: '/espace/messages'
+      preLoaderRoute: typeof EspaceMessagesRouteImport
       parentRoute: typeof EspaceRoute
     }
     '/espace/passeport': {
@@ -672,6 +771,13 @@ declare module '@tanstack/react-router' {
       path: '/programmes'
       fullPath: '/espace/programmes'
       preLoaderRoute: typeof EspaceProgrammesRouteImport
+      parentRoute: typeof EspaceRoute
+    }
+    '/espace/progression': {
+      id: '/espace/progression'
+      path: '/progression'
+      fullPath: '/espace/progression'
+      preLoaderRoute: typeof EspaceProgressionRouteImport
       parentRoute: typeof EspaceRoute
     }
     '/espace/ressources': {
@@ -891,6 +997,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EspaceEncadrementProfilRouteImport
       parentRoute: typeof EspaceEncadrementRoute
     }
+    '/espace/plateforme/': {
+      id: '/espace/plateforme/'
+      path: '/'
+      fullPath: '/espace/plateforme/'
+      preLoaderRoute: typeof EspacePlateformeIndexRouteImport
+      parentRoute: typeof EspacePlateformeRoute
+    }
+    '/espace/plateforme/pilotage': {
+      id: '/espace/plateforme/pilotage'
+      path: '/pilotage'
+      fullPath: '/espace/plateforme/pilotage'
+      preLoaderRoute: typeof EspacePlateformePilotageRouteImport
+      parentRoute: typeof EspacePlateformeRoute
+    }
+    '/espace/plateforme/programmes': {
+      id: '/espace/plateforme/programmes'
+      path: '/programmes'
+      fullPath: '/espace/plateforme/programmes'
+      preLoaderRoute: typeof EspacePlateformeProgrammesRouteImport
+      parentRoute: typeof EspacePlateformeRoute
+    }
+    '/espace/plateforme/statistiques': {
+      id: '/espace/plateforme/statistiques'
+      path: '/statistiques'
+      fullPath: '/espace/plateforme/statistiques'
+      preLoaderRoute: typeof EspacePlateformeStatistiquesRouteImport
+      parentRoute: typeof EspacePlateformeRoute
+    }
     '/espace/ressources/': {
       id: '/espace/ressources/'
       path: '/'
@@ -984,6 +1118,23 @@ const EspaceEncadrementRouteChildren: EspaceEncadrementRouteChildren = {
 const EspaceEncadrementRouteWithChildren =
   EspaceEncadrementRoute._addFileChildren(EspaceEncadrementRouteChildren)
 
+interface EspacePlateformeRouteChildren {
+  EspacePlateformePilotageRoute: typeof EspacePlateformePilotageRoute
+  EspacePlateformeProgrammesRoute: typeof EspacePlateformeProgrammesRoute
+  EspacePlateformeStatistiquesRoute: typeof EspacePlateformeStatistiquesRoute
+  EspacePlateformeIndexRoute: typeof EspacePlateformeIndexRoute
+}
+
+const EspacePlateformeRouteChildren: EspacePlateformeRouteChildren = {
+  EspacePlateformePilotageRoute: EspacePlateformePilotageRoute,
+  EspacePlateformeProgrammesRoute: EspacePlateformeProgrammesRoute,
+  EspacePlateformeStatistiquesRoute: EspacePlateformeStatistiquesRoute,
+  EspacePlateformeIndexRoute: EspacePlateformeIndexRoute,
+}
+
+const EspacePlateformeRouteWithChildren =
+  EspacePlateformeRoute._addFileChildren(EspacePlateformeRouteChildren)
+
 interface EspaceRessourcesRouteChildren {
   EspaceRessourcesIndexRoute: typeof EspaceRessourcesIndexRoute
   EspaceRessourcesResourceIdLectureRoute: typeof EspaceRessourcesResourceIdLectureRoute
@@ -1002,12 +1153,15 @@ interface EspaceRouteChildren {
   EspaceAdministrationRoute: typeof EspaceAdministrationRouteWithChildren
   EspaceArchitectureRoute: typeof EspaceArchitectureRoute
   EspaceAuditsRoute: typeof EspaceAuditsRoute
+  EspaceCompetencesRoute: typeof EspaceCompetencesRoute
   EspaceDpcRoute: typeof EspaceDpcRoute
   EspaceEncadrementRoute: typeof EspaceEncadrementRouteWithChildren
+  EspaceMessagesRoute: typeof EspaceMessagesRoute
   EspacePasseportRoute: typeof EspacePasseportRoute
-  EspacePlateformeRoute: typeof EspacePlateformeRoute
+  EspacePlateformeRoute: typeof EspacePlateformeRouteWithChildren
   EspaceProfilRoute: typeof EspaceProfilRoute
   EspaceProgrammesRoute: typeof EspaceProgrammesRoute
+  EspaceProgressionRoute: typeof EspaceProgressionRoute
   EspaceRessourcesRoute: typeof EspaceRessourcesRouteWithChildren
   EspaceStageRoute: typeof EspaceStageRoute
   EspaceStatistiquesRoute: typeof EspaceStatistiquesRoute
@@ -1018,12 +1172,15 @@ const EspaceRouteChildren: EspaceRouteChildren = {
   EspaceAdministrationRoute: EspaceAdministrationRouteWithChildren,
   EspaceArchitectureRoute: EspaceArchitectureRoute,
   EspaceAuditsRoute: EspaceAuditsRoute,
+  EspaceCompetencesRoute: EspaceCompetencesRoute,
   EspaceDpcRoute: EspaceDpcRoute,
   EspaceEncadrementRoute: EspaceEncadrementRouteWithChildren,
+  EspaceMessagesRoute: EspaceMessagesRoute,
   EspacePasseportRoute: EspacePasseportRoute,
-  EspacePlateformeRoute: EspacePlateformeRoute,
+  EspacePlateformeRoute: EspacePlateformeRouteWithChildren,
   EspaceProfilRoute: EspaceProfilRoute,
   EspaceProgrammesRoute: EspaceProgrammesRoute,
+  EspaceProgressionRoute: EspaceProgressionRoute,
   EspaceRessourcesRoute: EspaceRessourcesRouteWithChildren,
   EspaceStageRoute: EspaceStageRoute,
   EspaceStatistiquesRoute: EspaceStatistiquesRoute,

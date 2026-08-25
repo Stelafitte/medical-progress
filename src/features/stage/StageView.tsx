@@ -32,9 +32,9 @@ export function StageView() {
     return (
       <div className="space-y-4">
         <SectionHeading
-          title="Mes compétences"
+          title="Mon carnet de stage"
           level={1}
-          description="Ce programme ne comporte pas de compétence en situation clinique configurée."
+          description="Ce programme ne comporte aucun stage configuré."
         />
         <Card>
           <CardHeader>
@@ -42,8 +42,8 @@ export function StageView() {
               Non applicable
             </Badge>
             <CardDescription>
-              Les stages sont désactivés pour {activeProgram.name}. Le module reste disponible pour
-              les programmes qui l'activent.
+              Les stages sont désactivés pour {activeProgram.name}. Vos compétences restent
+              accessibles dans « Mes compétences » : elles ne dépendent pas du module stages.
             </CardDescription>
           </CardHeader>
         </Card>
@@ -54,15 +54,16 @@ export function StageView() {
   return (
     <div className="space-y-8">
       <SectionHeading
-        title="Mes compétences"
+        title="Mon carnet de stage"
         level={1}
         action={
           <Badge variant="outline" className="font-normal">
             Simulé
           </Badge>
         }
-        description="Compétences travaillées en simulation ou en stage, preuves et validations."
+        description="Affectations de stage, gestes enregistrés et contre-signatures de l'encadrant."
       />
+
 
       <ul className="grid gap-4">
         {assignments.map((assignment) => {
