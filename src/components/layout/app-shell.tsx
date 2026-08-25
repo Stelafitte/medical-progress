@@ -130,6 +130,16 @@ export function AppShell() {
                 </p>
                 <ProgramSwitcher variant="full" />
               </div>
+              {canReturnToPlatform ? (
+                <div className="mt-4">
+                  <Button asChild variant="outline" size="sm" className="w-full justify-start">
+                    <Link to="/espace/plateforme" onClick={() => setMobileOpen(false)}>
+                      <ArrowLeft className="size-4" aria-hidden />
+                      Revenir à la direction plateforme
+                    </Link>
+                  </Button>
+                </div>
+              ) : null}
               <nav aria-label="Navigation mobile" className="mt-4 flex flex-col gap-4">
                 {spaces.map((space) => (
                   <div key={space.key} className="flex flex-col gap-1">
