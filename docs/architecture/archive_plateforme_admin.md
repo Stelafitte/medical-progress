@@ -342,7 +342,33 @@ journalisation). Tout est **simulé** et étiqueté comme tel.
 Assistant d'implémentation, comparaison d'audits T0/T1, section audit clinique, migration ECOS.
 Conservé mais non prioritaire.
 
----
+### 4.18 Direction plateforme (profil administrateur de plateforme)
+Espace **transversal**, strictement distinct de l'administration d'un programme : aucun dossier
+pédagogique nominatif n'y est ouvrable (`platformAdminCanOpenLearnerFile()` reste faux). Garde
+d'accès `canAccessPlatformAdministration` sur la route parente `/espace/plateforme`.
+
+Bandeau à 4 onglets (`PLATFORM_ADMIN_NAV`) :
+
+1. **Vue d'ensemble** (`PlatformOverview`, page d'atterrissage) : compteurs programmes, apprenants
+   tous programmes, promotions ouvertes, supports pédagogiques, intervenants (hors apprenants),
+   conservation « à définir » ; panneaux « Programmes en cours et états », « Classes en cours et
+   avancement », « Intervenants et interventions », « Consommation stockage et IA », « Aller plus
+   loin ».
+2. **Programmes agrégés** (`PlatformProgramsView`) : un bloc détaillé par programme (promotions et
+   phases, avancement calendaire, supports, terrains de stage, crédits IA, administrateurs
+   autorisés, historique pluriannuel et historique d'utilisation). Message explicite : pour ouvrir
+   un programme complet, cliquer sur son bloc ou passer par le menu déroulant.
+3. **Statistiques** (`espace.plateforme.statistiques`) : agrégats pluriannuels simulés, sans donnée
+   nominative.
+4. **Pilotage et paramétrage** (`PlatformPilotageView`) : utilisateurs par groupe de rôle (admin
+   plateforme, admin programme, responsable de stage, enseignant, apprenant) avec fiche consultable
+   et modifiable par l'admin plateforme, paramètres généraux de la plateforme, paramètres par
+   programme, notifications et sollicitations, et outil de **courriel aux intervenants (hors
+   apprenants)**. Domaines `platformGovernance.ts`, `platformSettings.ts`, `platformDirectory.ts` ;
+   store `platformSettingsStore`. Aucun envoi réel, tout est étiqueté simulé.
+
+`PlatformAdminView` reste la vue de supervision historique (programmes, administrateurs autorisés,
+quotas, audit global simulé).
 
 ## 5. Historique des changements (chronologie des lots livrés)
 
