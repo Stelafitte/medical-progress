@@ -1,9 +1,18 @@
-import { BookOpen, Globe, PlayCircle } from "lucide-react";
+import { useState } from "react";
+import { BookOpen, Globe, PlayCircle, Search } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { SectionHeading } from "@/components/section-heading";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatPlayerDuration } from "@/domain/mediaLibrary";
 import { useLearnerPassport } from "@/features/dashboard/useLearnerPassport";
@@ -15,6 +24,11 @@ import {
   WEB_REFERENCE_CTA_FR,
 } from "@/domain/contentAi";
 import { MEDIA_KIND_LABELS_FR } from "@/domain/mediaLibrary";
+import {
+  filterLearnerResources,
+  learnerResourceFormats,
+  searchResources,
+} from "@/domain/learnerLibrary";
 
 const FORMAT_FR: Record<string, string> = {
   course: "Cours",
@@ -26,10 +40,18 @@ const FORMAT_FR: Record<string, string> = {
 
 export function ResourcesView() {
   const { data, isPending } = useLearnerPassport();
+  const [search, setSearch] = useState("");
+  const [format, setFormat] = useState<string>("all");
+  const [outcomeId, setOutcomeId] = useState<string>("all");
 
   if (isPending || !data) return <Skeleton className="h-64 w-full" />;
 
-  const { resources, outcomes, narratedDecks, aiResources } = data;
+  const { outcomes } = data;
+  const formats = learnerResourceFormats(data.resources);
+  const resources = filterLearnerResources(data.resources, { search, format, outcomeId });
+  const narratedDecks = searchResources(data.narratedDecks, search);
+  const aiResources = searchResources(data.aiResources, search);
+
 
   return (
     <div className="space-y-8">
