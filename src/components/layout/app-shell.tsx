@@ -315,6 +315,14 @@ export function AppShell() {
           className="mx-auto hidden max-w-6xl px-4 sm:px-6 md:block"
         >
           <ul className="flex flex-wrap items-center gap-1 pb-2">
+            {canReturnToPlatform ? (
+              <li className="lg:hidden">
+                <Link to="/espace/plateforme" className={linkClass}>
+                  <ArrowLeft className="size-4" aria-hidden />
+                  Direction plateforme
+                </Link>
+              </li>
+            ) : null}
             {spaces.map((space) => (
               <li key={space.key} className="flex flex-wrap items-center gap-1">
                 <span className="sr-only">{space.label}</span>
