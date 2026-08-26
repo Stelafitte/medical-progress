@@ -1,5 +1,5 @@
 import type { SupabaseClient, User } from "@supabase/supabase-js";
-import type { DataAccess } from "@/application/ports/repositories";
+import type { DataAccess, GrantRoleAssignmentInput } from "@/application/ports/repositories";
 import type {
   Enrollment,
   Person,
@@ -298,6 +298,57 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
         }
         const payload = data as { results?: SendInvitationOutcome[] } | null;
         return payload?.results ?? personIds.map((personId) => ({ personId, ok: false }));
+      },
+    },
+    administration: {
+      ...mockDataAccess.administration,
+      /**
+       * `profiles` n'expose pas d'adresse e-mail (colonne absente, RLS ne la
+       * donne qu'au titulaire via `auth.getUser()`) : seul le nom est
+       * disponible ici pour les AUTRES comptes. Suffisant pour le
+       * sélecteur « Accorder un droit », qui n'affiche jamais l'e-mail.
+       * La visibilité des lignes est déjà bornée par la policy RLS
+       * `profiles_select_scoped` (auto/lié par un programme administré).
+       */
+      async listPeople() {
+        const { data, error } = await client
+          .from("profiles")
+          .select("id,full_name,created_at,updated_at")
+          .order("full_name");
+        assertNoSupabaseError(error);
+        return ((data ?? []) as ProfileRow[]).map((row) => ({
+          id: row.id,
+          fullName: row.full_name,
+          email: "",
+          createdAt: row.created_at,
+          updatedAt: row.updated_at,
+          provenance: nativeProvenance,
+        }));
+      },
+      async listAllRoleAssignments() {
+        const { data, error } = await client
+          .from("role_assignments")
+          .select("person_id,role,scope_kind,scope_id,program_id,granted_at")
+          .is("revoked_at", null);
+        assertNoSupabaseError(error);
+        return ((data ?? []) as RoleAssignmentRow[]).map(mapRoleAssignment);
+      },
+      /**
+       * RPC `SECURITY DEFINER` : écrit atomiquement dans `role_assignments`
+       * ET `audit_events` (motif obligatoire). Anti-escalade et vérification
+       * des droits déjà appliquées côté serveur (voir la fonction SQL).
+       */
+      async grantRoleAssignment(input: GrantRoleAssignmentInput) {
+        const { data, error } = await client.rpc("grant_role_assignment", {
+          p_person_id: input.personId,
+          p_role: input.role,
+          p_scope_kind: input.scopeKind,
+          p_scope_id: input.scopeId,
+          p_program_id: input.programId,
+          p_justification: input.justification,
+        });
+        assertNoSupabaseError(error);
+        return mapRoleAssignment(data as RoleAssignmentRow);
       },
     },
   };

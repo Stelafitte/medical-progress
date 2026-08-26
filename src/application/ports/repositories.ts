@@ -66,6 +66,7 @@ import type {
   ProgramId,
   RoleAssignment,
 } from "@/domain/types";
+import type { GrantableRole, GrantScopeKind } from "@/domain/accessGrant";
 import type {
   CreatePendingPersonInput,
   PendingPerson,
@@ -132,6 +133,18 @@ export interface SupervisionRepository {
   listPeopleByIds(ids: readonly PersonId[]): Promise<readonly Person[]>;
 }
 
+/** Saisie du port `grantRoleAssignment` : champs plats, prêts pour le RPC serveur. */
+export interface GrantRoleAssignmentInput {
+  readonly personId: PersonId;
+  readonly role: GrantableRole;
+  readonly scopeKind: GrantScopeKind;
+  /** Programme pour une portée « program », promotion ou terrain sinon. */
+  readonly scopeId: string;
+  readonly programId: ProgramId;
+  /** Motif obligatoire : journalisé côté serveur (audit trail atomique). */
+  readonly justification: string;
+}
+
 /** Lecture administrative, cloisonnée par programme. */
 export interface AdministrationRepository {
   listDocuments(programId: ProgramId): Promise<readonly AdminDocument[]>;
@@ -144,6 +157,8 @@ export interface AdministrationRepository {
   listAllEnrollments(programId: ProgramId): Promise<readonly Enrollment[]>;
   /** Supervision plateforme : compteurs et paramètres, jamais de dossier pédagogique. */
   listPlatformSupervision(): Promise<readonly PlatformSupervisionRow[]>;
+  /** Attribue un rôle contextualisé à une personne (motif obligatoire, tracé côté serveur). */
+  grantRoleAssignment(input: GrantRoleAssignmentInput): Promise<RoleAssignment>;
 }
 
 export interface LearningResourceRepository {

@@ -7,10 +7,9 @@ import { ShieldCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Link } from "@tanstack/react-router";
-import { EmptyState, MockBadge, PanelCard, ScopeNotice } from "@/features/professional/mock-ui";
+import { EmptyState, PanelCard, ScopeNotice } from "@/features/professional/mock-ui";
 import { AccessGrantCreationForm } from "@/features/administration/AccessGrantCreationForm";
 import { formatFrDate } from "@/features/administration/adminProgramViewModel";
-import { useLocalAccessGrants } from "@/application/accessGrantStore";
 import { grantsForProgram } from "@/domain/accessGrant";
 import { ROLE_LABELS_FR } from "@/domain/roles";
 import { EXPORT_NO_PATIENT_DATA_FR, RETENTION_TBD_FR } from "@/domain/administration";
@@ -50,6 +49,7 @@ export function AccessGrantSection({
   placements,
   roleAssignments,
   auditEvents,
+  onGrantCreated,
 }: {
   readonly programId: ProgramId;
   readonly people: readonly Person[];
@@ -57,12 +57,10 @@ export function AccessGrantSection({
   readonly placements: readonly Placement[];
   readonly roleAssignments: readonly RoleAssignment[];
   readonly auditEvents: readonly AuditEvent[];
+  readonly onGrantCreated?: (() => void) | undefined;
 }) {
-  const local = useLocalAccessGrants(programId);
-  const repositoryGrants = grantsForProgram(roleAssignments, programId);
-  const allGrants: readonly RoleAssignment[] = [...repositoryGrants, ...local];
-  const nameOf = (personId: string) =>
-    people.find((p) => p.id === personId)?.fullName ?? personId;
+  const allGrants = grantsForProgram(roleAssignments, programId);
+  const nameOf = (personId: string) => people.find((p) => p.id === personId)?.fullName ?? personId;
 
   return (
     <div className="space-y-8">
@@ -74,7 +72,6 @@ export function AccessGrantSection({
       <PanelCard
         title="Droits en place dans ce programme"
         description="Une personne, un rôle, une portée. Les droits accordés ici ne sortent jamais du programme."
-        action={<MockBadge />}
       >
         {allGrants.length === 0 ? (
           <EmptyState>Aucun droit accordé dans ce programme.</EmptyState>
@@ -112,6 +109,7 @@ export function AccessGrantSection({
           cohorts={cohorts}
           placements={placements}
           existing={allGrants}
+          onCreated={onGrantCreated}
         />
       </PanelCard>
 
@@ -141,19 +139,13 @@ export function AccessGrantSection({
       </PanelCard>
 
       <PanelCard
-        title="Journal d'audit simulé"
-        description="Traçabilité prévue de chaque décision : attribution de droit, validation, export."
+        title="Journal d'audit"
+        description="Traçabilité de chaque décision : attribution de droit, validation, export. Chaque attribution de droit est désormais tracée en base (table audit_events), mais sa lecture est réservée au backend — aucun aperçu client par design."
       >
-        {auditEvents.length === 0 && local.length === 0 ? (
+        {auditEvents.length === 0 ? (
           <EmptyState>Aucun événement.</EmptyState>
         ) : (
           <ul className="space-y-1 text-sm text-muted-foreground">
-            {local.map((grant, index) => (
-              <li key={`local-${index}`}>
-                {formatFrDate(grant.grantedAt)} — droit « {ROLE_LABELS_FR[grant.role]} » accordé à{" "}
-                {nameOf(grant.personId)} ({grant.justification})
-              </li>
-            ))}
             {auditEvents.map((event) => (
               <li key={event.id}>
                 {formatFrDate(event.createdAt)} — {event.action}
