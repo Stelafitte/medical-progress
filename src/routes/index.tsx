@@ -94,7 +94,7 @@ function HomePage() {
         </div>
       </header>
 
-      <section className="mx-auto -mt-16 max-w-7xl px-6 pb-20">
+      <section className="relative z-10 mx-auto -mt-24 max-w-7xl px-6 pb-20">
         <h2 className="sr-only">Principes du socle</h2>
         <div className="grid gap-8 md:grid-cols-3">
           {PRINCIPLES.map(({ icon: Icon, title, text }) => (
