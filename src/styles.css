@@ -69,9 +69,18 @@
   --color-sidebar-ring: var(--sidebar-ring);
   --font-display: "Newsreader", Georgia, serif;
   --font-sans: "Public Sans", system-ui, sans-serif;
+  /* Typographie de la page d'accueil publique (Sora / Manrope). */
+  --font-heading: "Sora", system-ui, sans-serif;
+  --font-body: "Manrope", system-ui, sans-serif;
+  /* Palette navy institutionnelle de la page d'accueil publique. */
+  --color-campus-navy: oklch(0.2 0.062 264);
+  --color-campus-navy-mid: oklch(0.33 0.062 258);
+  --color-campus-blue: oklch(0.53 0.088 249);
+  --color-campus-mist: oklch(0.94 0.009 250);
   --shadow-card: 0 1px 2px oklch(0.28 0.09 255 / 6%), 0 12px 28px -18px oklch(0.28 0.09 255 / 22%);
   --shadow-raised: 0 20px 45px -28px oklch(0.28 0.09 255 / 35%);
 }
+
 
 :root {
   --radius: 0.5rem;
