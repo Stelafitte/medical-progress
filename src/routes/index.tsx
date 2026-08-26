@@ -58,7 +58,7 @@ const PROGRAMS = [
 function HomePage() {
   return (
     <div className="min-h-screen w-full bg-campus-mist font-body text-campus-navy antialiased">
-      <header className="relative overflow-hidden bg-campus-navy py-24 text-campus-mist">
+      <header className="relative overflow-hidden bg-campus-navy pt-24 pb-40 text-campus-mist">
         <div className="absolute inset-0 opacity-10" aria-hidden>
           <svg className="h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none">
             <defs>
