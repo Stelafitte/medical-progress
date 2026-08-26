@@ -89,6 +89,35 @@ export function buildScopeFromInput(
   }
 }
 
+/**
+ * Identifiant de portée (uuid) attendu par le port `grantRoleAssignment` :
+ * l'identifiant de programme pour une portée « program », sinon celui de la
+ * promotion ou du terrain. Jamais appelé sur une portée plateforme (exclue
+ * de `GrantScopeKind`).
+ */
+export function scopeIdFromScope(scope: RoleAssignment["scope"]): string {
+  if (scope.kind === "cohort") return scope.cohortId;
+  if (scope.kind === "placement") return scope.placementId;
+  if (scope.kind === "program") return scope.programId;
+  throw new Error("La portée plateforme ne peut pas être accordée depuis un programme.");
+}
+
+/** Reconstruit une portée depuis les champs plats renvoyés par le port `grantRoleAssignment`. */
+export function scopeFromGrantFields(
+  scopeKind: GrantScopeKind,
+  scopeId: string,
+  programId: ProgramId,
+): RoleAssignment["scope"] {
+  switch (scopeKind) {
+    case "cohort":
+      return { kind: "cohort", programId, cohortId: scopeId as CohortId };
+    case "placement":
+      return { kind: "placement", programId, placementId: scopeId as PlacementId };
+    default:
+      return { kind: "program", programId };
+  }
+}
+
 export function validateNewAccessGrant(
   input: NewAccessGrantInput,
   ctx: ValidateAccessGrantContext,
@@ -129,30 +158,6 @@ export function sameScope(a: RoleAssignment["scope"], b: RoleAssignment["scope"]
   if (a.kind === "placement" && b.kind === "placement") return a.placementId === b.placementId;
   if (a.kind === "program" && b.kind === "program") return a.programId === b.programId;
   return false;
-}
-
-export interface BuildAccessGrantContext {
-  readonly programId: ProgramId;
-  readonly now: string;
-}
-
-/** Droit accordé localement (maquette) : jamais un rôle global. */
-export interface LocalAccessGrant extends RoleAssignment {
-  readonly justification: string;
-}
-
-export function buildAccessGrantFromInput(
-  input: NewAccessGrantInput,
-  ctx: BuildAccessGrantContext,
-): LocalAccessGrant {
-  return {
-    personId: input.personId as RoleAssignment["personId"],
-    role: input.role,
-    scope: buildScopeFromInput(input, ctx.programId),
-    grantedAt: ctx.now,
-    provenance: { sourceSystem: "native" },
-    justification: input.justification.trim(),
-  };
 }
 
 /** Ne conserve que les droits qui touchent le programme observé. */

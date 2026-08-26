@@ -4,6 +4,8 @@
  */
 import type { DataAccess } from "@/application/ports/repositories";
 import type { PendingPerson } from "@/domain/peopleStaging";
+import type { RoleAssignment } from "@/domain/types";
+import { scopeFromGrantFields } from "@/domain/accessGrant";
 import * as fx from "./fixtures";
 import * as pfx from "./professionalFixtures";
 import * as slfx from "./stageLogFixtures";
@@ -123,18 +125,38 @@ export const mockDataAccess: DataAccess = {
     listEnrollmentsByIds: (ids) => ok(fx.enrollments.filter((e) => ids.includes(e.id))),
     listPeopleByIds: (ids) => ok(fx.people.filter((p) => ids.includes(p.id))),
   },
-  administration: {
-    listDocuments: (programId) => ok(pfx.adminDocuments.filter((d) => d.programId === programId)),
-    listCertificates: (programId) =>
-      ok(pfx.completionCertificates.filter((c) => c.programId === programId)),
-    listTasks: (programId) => ok(pfx.adminTasks.filter((t) => t.programId === programId)),
-    listMessageTemplates: () => ok(pfx.messageTemplates),
-    listSendHistory: (programId) => ok(pfx.sendHistory.filter((s) => s.programId === programId)),
-    listPeople: () => ok(fx.people),
-    listAllRoleAssignments: () => ok(fx.roleAssignments),
-    listAllEnrollments: (programId) => ok(fx.enrollments.filter((e) => e.programId === programId)),
-    listPlatformSupervision: () => ok(pfx.platformSupervision),
-  },
+  /**
+   * `roleAssignments` est mutable ici : `grantRoleAssignment` doit pouvoir
+   * ajouter un droit et le voir immédiatement dans `listAllRoleAssignments`,
+   * même pattern que `peopleStaging` ci-dessus.
+   */
+  administration: (() => {
+    let roleAssignments: RoleAssignment[] = [...fx.roleAssignments];
+    return {
+      listDocuments: (programId) => ok(pfx.adminDocuments.filter((d) => d.programId === programId)),
+      listCertificates: (programId) =>
+        ok(pfx.completionCertificates.filter((c) => c.programId === programId)),
+      listTasks: (programId) => ok(pfx.adminTasks.filter((t) => t.programId === programId)),
+      listMessageTemplates: () => ok(pfx.messageTemplates),
+      listSendHistory: (programId) => ok(pfx.sendHistory.filter((s) => s.programId === programId)),
+      listPeople: () => ok(fx.people),
+      listAllRoleAssignments: () => ok(roleAssignments),
+      listAllEnrollments: (programId) =>
+        ok(fx.enrollments.filter((e) => e.programId === programId)),
+      listPlatformSupervision: () => ok(pfx.platformSupervision),
+      grantRoleAssignment: (input) => {
+        const created: RoleAssignment = {
+          personId: input.personId,
+          role: input.role,
+          scope: scopeFromGrantFields(input.scopeKind, input.scopeId, input.programId),
+          grantedAt: new Date().toISOString(),
+          provenance: { sourceSystem: "native" },
+        };
+        roleAssignments = [...roleAssignments, created];
+        return ok(created);
+      },
+    };
+  })(),
   resources: {
     listResources: (programId) => ok(fx.learningResources.filter((r) => r.programId === programId)),
   },

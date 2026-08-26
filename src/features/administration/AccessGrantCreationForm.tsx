@@ -13,8 +13,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { createLocalAccessGrant } from "@/application/accessGrantStore";
+import { useDataAccess } from "@/application/session";
 import {
+  buildScopeFromInput,
+  scopeIdFromScope,
   EMPTY_NEW_ACCESS_GRANT_INPUT,
   GRANTABLE_ROLES,
   GRANT_SCOPE_LABELS_FR,
@@ -25,7 +27,14 @@ import {
   type NewAccessGrantInput,
 } from "@/domain/accessGrant";
 import { ROLE_LABELS_FR } from "@/domain/roles";
-import type { Cohort, Person, Placement, ProgramId, RoleAssignment } from "@/domain/types";
+import type {
+  Cohort,
+  Person,
+  Placement,
+  PersonId,
+  ProgramId,
+  RoleAssignment,
+} from "@/domain/types";
 
 export function AccessGrantCreationForm({
   programId,
@@ -40,22 +49,40 @@ export function AccessGrantCreationForm({
   readonly cohorts: readonly Cohort[];
   readonly placements: readonly Placement[];
   readonly existing: readonly RoleAssignment[];
-  readonly onCreated?: () => void;
+  readonly onCreated?: (() => void) | undefined;
 }) {
+  const dataAccess = useDataAccess();
   const [input, setInput] = useState<NewAccessGrantInput>(EMPTY_NEW_ACCESS_GRANT_INPUT);
   const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const issues = validateNewAccessGrant(input, { programId, existing });
   const patch = (next: Partial<NewAccessGrantInput>) => setInput((prev) => ({ ...prev, ...next }));
 
-  function submit() {
+  async function submit() {
     setSubmitted(true);
     if (issues.length > 0) return;
-    const created = createLocalAccessGrant({ input, programId, existing });
-    if (!created) return;
-    setInput(EMPTY_NEW_ACCESS_GRANT_INPUT);
-    setSubmitted(false);
-    onCreated?.();
+    setSubmitError(null);
+    setIsSubmitting(true);
+    try {
+      const scope = buildScopeFromInput(input, programId);
+      await dataAccess.administration.grantRoleAssignment({
+        personId: input.personId as PersonId,
+        role: input.role,
+        scopeKind: input.scopeKind,
+        scopeId: scopeIdFromScope(scope),
+        programId,
+        justification: input.justification.trim(),
+      });
+      setInput(EMPTY_NEW_ACCESS_GRANT_INPUT);
+      setSubmitted(false);
+      onCreated?.();
+    } catch (reason) {
+      setSubmitError(reason instanceof Error ? reason.message : "Attribution du droit impossible.");
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -79,10 +106,7 @@ export function AccessGrantCreationForm({
 
         <div className="space-y-2">
           <Label>Rôle accordé</Label>
-          <Select
-            value={input.role}
-            onValueChange={(v) => patch({ role: v as GrantableRole })}
-          >
+          <Select value={input.role} onValueChange={(v) => patch({ role: v as GrantableRole })}>
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
@@ -162,7 +186,6 @@ export function AccessGrantCreationForm({
         />
       </div>
 
-
       {submitted && issues.length > 0 ? (
         <ul className="space-y-1 text-sm text-destructive">
           {issues.map((issue) => (
@@ -171,8 +194,10 @@ export function AccessGrantCreationForm({
         </ul>
       ) : null}
 
-      <Button size="sm" onClick={submit}>
-        Accorder ce droit
+      {submitError ? <p className="text-sm text-destructive">{submitError}</p> : null}
+
+      <Button size="sm" onClick={() => void submit()} disabled={isSubmitting}>
+        {isSubmitting ? "Attribution en cours…" : "Accorder ce droit"}
       </Button>
     </div>
   );

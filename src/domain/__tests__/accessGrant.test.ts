@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   EMPTY_NEW_ACCESS_GRANT_INPUT,
-  buildAccessGrantFromInput,
+  buildScopeFromInput,
   grantsForProgram,
   validateNewAccessGrant,
 } from "@/domain/accessGrant";
@@ -44,11 +44,16 @@ describe("accessGrant", () => {
     };
     expect(validateNewAccessGrant(input, { programId, existing: [] })).toEqual([]);
 
-    const granted = buildAccessGrantFromInput(input, {
-      programId,
-      now: "2026-01-01T00:00:00.000Z",
-    });
-    expect(granted.scope).toEqual({ kind: "cohort", programId, cohortId: "cohort-1" });
+    const scope = buildScopeFromInput(input, programId);
+    expect(scope).toEqual({ kind: "cohort", programId, cohortId: "cohort-1" });
+
+    const granted = {
+      personId: input.personId,
+      role: input.role,
+      scope,
+      grantedAt: "2026-01-01T00:00:00.000Z",
+      provenance: { sourceSystem: "native" },
+    } as unknown as RoleAssignment;
     expect(validateNewAccessGrant(input, { programId, existing: [granted] })).toContain(
       "duplicate-grant",
     );
