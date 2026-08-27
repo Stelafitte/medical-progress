@@ -284,6 +284,7 @@ export function AdminProgramPilot() {
           {data.program ? (
             <AssessmentModalitySection
               programId={data.program.id}
+              modalities={data.assessmentModalities}
               cohorts={data.cohorts}
               cohortId={selectedId}
               showCohortSelector={false}

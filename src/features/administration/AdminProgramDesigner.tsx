@@ -41,7 +41,6 @@ import { KnowledgeCreationForm } from "@/features/administration/KnowledgeCreati
 import { AssessmentModalityForm } from "@/features/administration/AssessmentModalityForm";
 import { useLocalDocumentRequirements } from "@/application/documentRequirementStore";
 import { useLocalKnowledge } from "@/application/knowledgeDraftStore";
-import { useLocalModalities } from "@/application/assessmentModalityStore";
 import { useLocalPlacements } from "@/application/placementDraftStore";
 import { useLocalCompetences } from "@/application/competenceDraftStore";
 
@@ -215,7 +214,6 @@ export function AdminProgramDesigner() {
   const localCompetences = useLocalCompetences(data?.program?.id);
   const localRequirements = useLocalDocumentRequirements(data?.program?.id);
   const localKnowledge = useLocalKnowledge(data?.program?.id);
-  const localModalities = useLocalModalities(data?.program?.id);
 
   const existingCounts = useMemo<Record<ResourceKind, number>>(
     () => ({
@@ -223,12 +221,12 @@ export function AdminProgramDesigner() {
       competences:
         (data?.outcomes.filter((o) => o.nature !== "knowledge").length ?? 0) +
         localCompetences.length,
-      assessments: localModalities.length,
+      assessments: data?.assessmentModalities.length ?? 0,
       stage:
         (data?.placements.length ?? 0) + (data?.templates.length ?? 0) + localPlacements.length,
       documents: localRequirements.length,
     }),
-    [data, localPlacements, localRequirements, localKnowledge, localModalities, localCompetences],
+    [data, localPlacements, localRequirements, localKnowledge, localCompetences],
   );
 
   if (isPending || !data) return <Skeleton className="h-80 w-full" />;
@@ -603,11 +601,14 @@ export function AdminProgramDesigner() {
                             idPrefix="designer-assessment"
                             submitLabel="Créer la modalité d'évaluation"
                             hint="Même outil et même liste que l'onglet « Évaluations » : la modalité y apparaît aussitôt, rattachée à ce programme."
-                            onCreated={() => patch("assessments", { implemented: true })}
+                            onCreated={() => {
+                              patch("assessments", { implemented: true });
+                              void refetch();
+                            }}
                           />
-                          {localModalities.length > 0 ? (
+                          {data.assessmentModalities.length > 0 ? (
                             <ul className="text-muted-foreground space-y-1 text-xs">
-                              {localModalities.map((modality) => (
+                              {data.assessmentModalities.map((modality) => (
                                 <li key={modality.id}>{modality.name}</li>
                               ))}
                             </ul>

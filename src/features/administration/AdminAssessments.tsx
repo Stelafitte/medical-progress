@@ -10,21 +10,17 @@ import { MockBadge, ScopeNotice, StatCard } from "@/features/professional/mock-u
 import { AssessmentModalitySection } from "@/features/administration/AssessmentModalitySection";
 import { useProgramAdmin } from "@/features/administration/useProgramAdmin";
 import { defaultPilotCohortId } from "@/features/administration/adminProgramViewModel";
-import { useLocalModalities } from "@/application/assessmentModalityStore";
-import { mergeModalities } from "@/domain/assessmentModality";
-import { modalityFixturesFor } from "@/infrastructure/mock/assessmentModalityFixtures";
 
 export function AdminAssessments() {
-  const { data, isPending } = useProgramAdmin();
+  const { data, isPending, refetch } = useProgramAdmin();
   const [cohortId, setCohortId] = useState<string | null>(null);
-  const local = useLocalModalities(data?.program?.id);
 
   if (isPending || !data || !data.program) return <Skeleton className="h-80 w-full" />;
 
   const program = data.program;
   const cohorts = data.cohorts;
   const selectedId = cohortId ?? defaultPilotCohortId(cohorts);
-  const modalities = mergeModalities(modalityFixturesFor(program.id), local);
+  const modalities = data.assessmentModalities;
 
   return (
     <div className="space-y-6">
@@ -37,8 +33,9 @@ export function AdminAssessments() {
 
       <ScopeNotice>
         Une évaluation peut se dérouler en présentiel ou en ligne. Les mêmes éléments sont
-        disponibles dans la partie Évaluation du pilotage de programme. Aucun résultat n'est
-        enregistré dans cette maquette.
+        disponibles dans la partie Évaluation du pilotage de programme. Le référentiel des modalités
+        est enregistré pour de vrai ; les sessions par cohorte et l'import de résultats restent une
+        maquette.
       </ScopeNotice>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -53,9 +50,11 @@ export function AdminAssessments() {
 
       <AssessmentModalitySection
         programId={program.id}
+        modalities={modalities}
         cohorts={cohorts}
         cohortId={selectedId}
         onCohortChange={setCohortId}
+        onModalityCreated={() => void refetch()}
       />
     </div>
   );
