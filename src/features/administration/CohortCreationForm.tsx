@@ -10,12 +10,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  academicYearFor,
   EMPTY_NEW_COHORT_INPUT,
   NEW_COHORT_ISSUE_LABELS_FR,
   type NewCohortInput,
   validateNewCohort,
 } from "@/domain/cohortDraft";
-import { createLocalCohort } from "@/application/cohortDraftStore";
+import { useDataAccess } from "@/application/session";
 import type { Cohort, CurriculumVersionId, ProgramId } from "@/domain/types";
 
 interface CohortCreationFormProps {
@@ -37,28 +38,48 @@ export function CohortCreationForm({
   onCreated,
   idPrefix = "cohort",
 }: CohortCreationFormProps) {
+  const dataAccess = useDataAccess();
   const [input, setInput] = useState<NewCohortInput>(EMPTY_NEW_COHORT_INPUT);
   const [showIssues, setShowIssues] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [created, setCreated] = useState<string | null>(null);
 
   const issues = validateNewCohort(input);
   const patch = (next: Partial<NewCohortInput>) => {
     setInput((prev) => ({ ...prev, ...next }));
     setCreated(null);
+    setSubmitError(null);
   };
 
-  const submit = () => {
+  async function submit() {
     if (issues.length > 0) {
       setShowIssues(true);
       return;
     }
-    const cohort = createLocalCohort({ input, programId, curriculumVersionId });
-    if (!cohort) return;
-    setInput(EMPTY_NEW_COHORT_INPUT);
-    setShowIssues(false);
-    setCreated(cohort.label);
-    onCreated?.(cohort);
-  };
+    setSubmitError(null);
+    setIsSubmitting(true);
+    try {
+      const cohort = await dataAccess.programs.createCohort({
+        programId,
+        curriculumVersionId,
+        label: input.label.trim(),
+        academicYear: input.academicYear.trim() || academicYearFor(input.startsOn),
+        startsOn: input.startsOn,
+        endsOn: input.endsOn,
+      });
+      setInput(EMPTY_NEW_COHORT_INPUT);
+      setShowIssues(false);
+      setCreated(cohort.label);
+      onCreated?.(cohort);
+    } catch (reason) {
+      setSubmitError(
+        reason instanceof Error ? reason.message : "Création de la classe impossible.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
 
   return (
     <div className="space-y-3">
@@ -70,17 +91,6 @@ export function CohortCreationForm({
             value={input.label}
             placeholder="Promotion 2026-2027"
             onChange={(e) => patch({ label: e.target.value })}
-            className="min-h-11"
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor={`${idPrefix}-learners`}>Effectif attendu</Label>
-          <Input
-            id={`${idPrefix}-learners`}
-            inputMode="numeric"
-            value={input.learners}
-            placeholder="40"
-            onChange={(e) => patch({ learners: e.target.value })}
             className="min-h-11"
           />
         </div>
@@ -114,14 +124,21 @@ export function CohortCreationForm({
         </ul>
       ) : null}
 
+      {submitError ? <p className="text-destructive text-sm">{submitError}</p> : null}
+
       <div className="flex flex-wrap items-center gap-2">
-        <Button type="button" className="min-h-11" onClick={submit}>
-          {submitLabel}
+        <Button
+          type="button"
+          className="min-h-11"
+          onClick={() => void submit()}
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? "Création en cours…" : submitLabel}
         </Button>
         {created ? (
           <span className="text-muted-foreground text-sm">
-            « {created} » est créée et visible dans le concepteur comme dans « Classes
-            d'apprenants ».
+            « {created} » est créée et visible dans le concepteur comme dans « Classes d'apprenants
+            ».
           </span>
         ) : null}
       </div>

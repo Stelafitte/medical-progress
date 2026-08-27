@@ -1,10 +1,15 @@
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import type {
   CreateAssessmentModalityInput,
+  CreateCohortInput,
   DataAccess,
   GrantRoleAssignmentInput,
 } from "@/application/ports/repositories";
 import type {
+  Cohort,
+  CohortId,
+  CurriculumVersion,
+  CurriculumVersionId,
   Enrollment,
   Person,
   Program,
@@ -98,6 +103,58 @@ export function mapProgram(row: ProgramRow): Program {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     provenance: nativeProvenance,
+  };
+}
+
+type CohortRow = {
+  id: string;
+  program_id: string;
+  curriculum_version_id: string;
+  label: string;
+  academic_year: string;
+  starts_on: string;
+  ends_on: string;
+  created_at: string;
+};
+
+/** `starts_on`/`ends_on` sont des colonnes `date` (pas d'heure) côté Postgres. */
+function normalizeIsoDate(value: string): string {
+  return value.includes("T") ? value : `${value}T00:00:00.000Z`;
+}
+
+type CurriculumVersionRow = {
+  id: string;
+  program_id: string;
+  label: string;
+  effective_from: string;
+  status: CurriculumVersion["status"];
+  created_at: string;
+};
+
+export function mapCurriculumVersion(row: CurriculumVersionRow): CurriculumVersion {
+  return {
+    id: row.id as CurriculumVersionId,
+    createdAt: row.created_at,
+    provenance: nativeProvenance,
+    programId: row.program_id as ProgramId,
+    label: row.label,
+    effectiveFrom: normalizeIsoDate(row.effective_from),
+    status: row.status,
+  };
+}
+
+export function mapCohort(row: CohortRow, learnerCount: number): Cohort {
+  return {
+    id: row.id as CohortId,
+    createdAt: row.created_at,
+    provenance: nativeProvenance,
+    programId: row.program_id as ProgramId,
+    curriculumVersionId: row.curriculum_version_id as CurriculumVersionId,
+    label: row.label,
+    academicYear: row.academic_year,
+    startsOn: normalizeIsoDate(row.starts_on),
+    endsOn: normalizeIsoDate(row.ends_on),
+    learnerCount,
   };
 }
 
@@ -255,6 +312,59 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
           .maybeSingle();
         assertNoSupabaseError(error);
         return data ? mapProgram(data as ProgramRow) : undefined;
+      },
+      async listCurriculumVersions(programId: ProgramId) {
+        const { data, error } = await client
+          .from("curriculum_versions")
+          .select("id,program_id,label,effective_from,status,created_at")
+          .eq("program_id", programId)
+          .order("effective_from");
+        assertNoSupabaseError(error);
+        return ((data ?? []) as CurriculumVersionRow[]).map(mapCurriculumVersion);
+      },
+      async listCohorts(programId?: ProgramId) {
+        let query = client
+          .from("cohorts")
+          .select(
+            "id,program_id,curriculum_version_id,label,academic_year,starts_on,ends_on,created_at,enrollments(count)",
+          )
+          .order("starts_on");
+        if (programId) query = query.eq("program_id", programId);
+        const { data, error } = await query;
+        assertNoSupabaseError(error);
+        return ((data ?? []) as (CohortRow & { enrollments: { count: number }[] })[]).map((row) =>
+          mapCohort(row, row.enrollments?.[0]?.count ?? 0),
+        );
+      },
+      async getCohort(id: CohortId) {
+        const { data, error } = await client
+          .from("cohorts")
+          .select(
+            "id,program_id,curriculum_version_id,label,academic_year,starts_on,ends_on,created_at,enrollments(count)",
+          )
+          .eq("id", id)
+          .maybeSingle();
+        assertNoSupabaseError(error);
+        if (!data) return undefined;
+        const row = data as CohortRow & { enrollments: { count: number }[] };
+        return mapCohort(row, row.enrollments?.[0]?.count ?? 0);
+      },
+      /**
+       * RPC `SECURITY DEFINER` : `authenticated` n'a qu'un droit de lecture
+       * sur `cohorts` (voir GRANT dans la migration RLS) — la création passe
+       * donc par une fonction serveur, même famille que `grant_role_assignment`.
+       */
+      async createCohort(input: CreateCohortInput) {
+        const { data, error } = await client.rpc("create_cohort", {
+          p_program_id: input.programId,
+          p_curriculum_version_id: input.curriculumVersionId,
+          p_label: input.label,
+          p_academic_year: input.academicYear,
+          p_starts_on: input.startsOn,
+          p_ends_on: input.endsOn,
+        });
+        assertNoSupabaseError(error);
+        return mapCohort(data as CohortRow, 0);
       },
     },
     people: {
