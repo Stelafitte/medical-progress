@@ -6,6 +6,9 @@ import type { DataAccess } from "@/application/ports/repositories";
 import type { PendingPerson } from "@/domain/peopleStaging";
 import type { RoleAssignment } from "@/domain/types";
 import { scopeFromGrantFields } from "@/domain/accessGrant";
+import type { AssessmentModality } from "@/domain/assessmentModality";
+import type { ProgramId } from "@/domain/types";
+import { modalityFixturesFor } from "./assessmentModalityFixtures";
 import * as fx from "./fixtures";
 import * as pfx from "./professionalFixtures";
 import * as slfx from "./stageLogFixtures";
@@ -153,6 +156,49 @@ export const mockDataAccess: DataAccess = {
           provenance: { sourceSystem: "native" },
         };
         roleAssignments = [...roleAssignments, created];
+        return ok(created);
+      },
+    };
+  })(),
+  /**
+   * Référentiel des modalités d'évaluation : seedé avec les fixtures
+   * déterministes du programme dès la première lecture, puis mutable, même
+   * pattern que `peopleStaging`/`administration` ci-dessus. Les sessions par
+   * cohorte restent hors périmètre (voir `assessmentModalityFixtures`).
+   */
+  assessments: (() => {
+    let modalities: AssessmentModality[] = [];
+    const seededPrograms = new Set<ProgramId>();
+    let counter = 0;
+
+    function ensureSeeded(programId: ProgramId): void {
+      if (seededPrograms.has(programId)) return;
+      seededPrograms.add(programId);
+      modalities = [...modalities, ...modalityFixturesFor(programId)];
+    }
+
+    return {
+      listAssessmentModalities: (programId) => {
+        ensureSeeded(programId);
+        return ok(modalities.filter((m) => m.programId === programId));
+      },
+      createAssessmentModality: (input) => {
+        ensureSeeded(input.programId);
+        counter += 1;
+        const now = new Date().toISOString();
+        const notes = input.notes.trim();
+        const created: AssessmentModality = {
+          id: `mock-modality-${counter}`,
+          programId: input.programId,
+          name: input.name.trim(),
+          createdAt: now,
+          updatedAt: now,
+          mode: input.mode,
+          subtype: input.subtype,
+          usage: input.usage,
+          ...(notes.length > 0 ? { notes } : {}),
+        };
+        modalities = [...modalities, created];
         return ok(created);
       },
     };

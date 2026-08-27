@@ -1,5 +1,9 @@
 import type { SupabaseClient, User } from "@supabase/supabase-js";
-import type { DataAccess, GrantRoleAssignmentInput } from "@/application/ports/repositories";
+import type {
+  CreateAssessmentModalityInput,
+  DataAccess,
+  GrantRoleAssignmentInput,
+} from "@/application/ports/repositories";
 import type {
   Enrollment,
   Person,
@@ -8,6 +12,7 @@ import type {
   RoleAssignment,
   RoleScope,
 } from "@/domain/types";
+import type { AssessmentModality } from "@/domain/assessmentModality";
 import type {
   CreatePendingPersonInput,
   PendingPerson,
@@ -156,6 +161,32 @@ export function mapRoleAssignment(row: RoleAssignmentRow): RoleAssignment {
   };
 }
 
+type AssessmentModalityRow = {
+  id: string;
+  program_id: string;
+  name: string;
+  mode: AssessmentModality["mode"];
+  subtype: AssessmentModality["subtype"];
+  usage: AssessmentModality["usage"];
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export function mapAssessmentModality(row: AssessmentModalityRow): AssessmentModality {
+  return {
+    id: row.id,
+    programId: row.program_id,
+    name: row.name,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    mode: row.mode,
+    subtype: row.subtype,
+    usage: row.usage,
+    ...(row.notes ? { notes: row.notes } : {}),
+  };
+}
+
 type PendingPersonRow = {
   id: string;
   program_id: string;
@@ -197,6 +228,9 @@ const pendingPersonColumns =
 
 const programColumns =
   "id,code,name,kind,institution,annual_learner_estimate,placements_enabled,simulation_enabled,audits_enabled,pre_post_tests_enabled,sessions_enabled,dpc_enabled,target_mastery,locale,created_at,updated_at";
+
+const assessmentModalityColumns =
+  "id,program_id,name,mode,subtype,usage,notes,created_at,updated_at";
 
 /**
  * Première tranche Supabase. Les repositories non encore migrés restent
@@ -349,6 +383,33 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
         });
         assertNoSupabaseError(error);
         return mapRoleAssignment(data as RoleAssignmentRow);
+      },
+    },
+    assessments: {
+      async listAssessmentModalities(programId: ProgramId) {
+        const { data, error } = await client
+          .from("assessment_modalities")
+          .select(assessmentModalityColumns)
+          .eq("program_id", programId)
+          .order("created_at");
+        assertNoSupabaseError(error);
+        return ((data ?? []) as AssessmentModalityRow[]).map(mapAssessmentModality);
+      },
+      /**
+       * RPC `SECURITY DEFINER` : vérifie les droits (can_administer_program)
+       * puis insère la modalité. Voir supabase/migrations/20260827093000_assessment_modalities.sql.
+       */
+      async createAssessmentModality(input: CreateAssessmentModalityInput) {
+        const { data, error } = await client.rpc("create_assessment_modality", {
+          p_program_id: input.programId,
+          p_name: input.name,
+          p_mode: input.mode,
+          p_subtype: input.subtype,
+          p_usage: input.usage,
+          p_notes: input.notes.trim().length > 0 ? input.notes.trim() : null,
+        });
+        assertNoSupabaseError(error);
+        return mapAssessmentModality(data as AssessmentModalityRow);
       },
     },
   };

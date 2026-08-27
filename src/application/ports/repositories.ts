@@ -6,6 +6,12 @@
  * modifier l'UI ni la logique métier.
  */
 import type { PlanScheduleEntry } from "@/domain/acquisitionPlan";
+import type {
+  AssessmentMode,
+  AssessmentModality,
+  AssessmentSubtype,
+  AssessmentUsage,
+} from "@/domain/assessmentModality";
 import type { LearnerNarratedDeck, MediaResource } from "@/domain/mediaLibrary";
 import type { ContentAiProfile, LearnerAiResource, ProgramAiPolicy } from "@/domain/contentAi";
 import type { AiCreditBudget, AiCreditEntry } from "@/domain/aiCredits";
@@ -107,6 +113,26 @@ export interface OutcomeRepository {
 
 export interface EvidenceRepository {
   listEvidenceForEnrollment(enrollmentId: EnrollmentId): Promise<readonly Evidence[]>;
+}
+
+/** Saisie du port `createAssessmentModality` : champs plats, prêts pour le RPC serveur. */
+export interface CreateAssessmentModalityInput {
+  readonly programId: ProgramId;
+  readonly name: string;
+  readonly mode: AssessmentMode;
+  readonly subtype: AssessmentSubtype;
+  readonly usage: AssessmentUsage;
+  readonly notes: string;
+}
+
+/**
+ * Référentiel des modalités d'évaluation d'un programme : liste + création
+ * uniquement. Les sessions par cohorte et l'import de résultats restent hors
+ * périmètre (chantier séparé).
+ */
+export interface AssessmentRepository {
+  listAssessmentModalities(programId: ProgramId): Promise<readonly AssessmentModality[]>;
+  createAssessmentModality(input: CreateAssessmentModalityInput): Promise<AssessmentModality>;
 }
 
 export interface PlacementRepository {
@@ -279,6 +305,7 @@ export interface DataAccess {
   readonly peopleStaging: PeopleStagingRepository;
   readonly outcomes: OutcomeRepository;
   readonly evidence: EvidenceRepository;
+  readonly assessments: AssessmentRepository;
   readonly placements: PlacementRepository;
   readonly resources: LearningResourceRepository;
   readonly media: MediaLibraryRepository;
