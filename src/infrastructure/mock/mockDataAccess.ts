@@ -4,7 +4,7 @@
  */
 import type { DataAccess } from "@/application/ports/repositories";
 import type { PendingPerson } from "@/domain/peopleStaging";
-import type { RoleAssignment } from "@/domain/types";
+import type { Cohort, RoleAssignment } from "@/domain/types";
 import { scopeFromGrantFields } from "@/domain/accessGrant";
 import * as fx from "./fixtures";
 import * as pfx from "./professionalFixtures";
@@ -24,15 +24,41 @@ const ok = <T>(value: T): Promise<T> => Promise.resolve(clone(value));
 
 export const mockDataAccess: DataAccess = {
   isMock: true,
-  programs: {
-    listPrograms: () => ok(fx.programs),
-    getProgram: (id) => ok(fx.programs.find((p) => p.id === id)),
-    listCurriculumVersions: (programId) =>
-      ok(fx.curriculumVersions.filter((c) => c.programId === programId)),
-    listCohorts: (programId) =>
-      ok(programId ? fx.cohorts.filter((c) => c.programId === programId) : fx.cohorts),
-    getCohort: (id) => ok(fx.cohorts.find((c) => c.id === id)),
-  },
+  /**
+   * `cohorts` est mutable ici : `createCohort` doit pouvoir ajouter une
+   * classe et la voir immédiatement dans `listCohorts`, même pattern que
+   * `peopleStaging`/`administration` ci-dessous.
+   */
+  programs: (() => {
+    let cohorts: Cohort[] = [...fx.cohorts];
+    let counter = 0;
+    return {
+      listPrograms: () => ok(fx.programs),
+      getProgram: (id) => ok(fx.programs.find((p) => p.id === id)),
+      listCurriculumVersions: (programId) =>
+        ok(fx.curriculumVersions.filter((c) => c.programId === programId)),
+      listCohorts: (programId) =>
+        ok(programId ? cohorts.filter((c) => c.programId === programId) : cohorts),
+      getCohort: (id) => ok(cohorts.find((c) => c.id === id)),
+      createCohort: (input) => {
+        counter += 1;
+        const created: Cohort = {
+          id: `mock-cohort-${counter}` as Cohort["id"],
+          createdAt: new Date().toISOString(),
+          provenance: { sourceSystem: "native" },
+          programId: input.programId,
+          curriculumVersionId: input.curriculumVersionId,
+          label: input.label,
+          academicYear: input.academicYear,
+          startsOn: input.startsOn,
+          endsOn: input.endsOn,
+          learnerCount: 0,
+        };
+        cohorts = [...cohorts, created];
+        return ok(created);
+      },
+    };
+  })(),
   people: {
     getPerson: (id) => ok(fx.people.find((p) => p.id === id)),
     listEnrollments: (personId) => ok(fx.enrollments.filter((e) => e.personId === personId)),

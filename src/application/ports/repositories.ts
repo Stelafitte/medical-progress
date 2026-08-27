@@ -52,6 +52,7 @@ import type {
   Cohort,
   CohortId,
   CurriculumVersion,
+  CurriculumVersionId,
   Enrollment,
   EnrollmentId,
   Evidence,
@@ -74,12 +75,24 @@ import type {
   SendInvitationOutcome,
 } from "@/domain/peopleStaging";
 
+/** Saisie du port `createCohort` : champs plats, prêts pour le RPC serveur. */
+export interface CreateCohortInput {
+  readonly programId: ProgramId;
+  readonly curriculumVersionId: CurriculumVersionId;
+  readonly label: string;
+  readonly academicYear: string;
+  readonly startsOn: string;
+  readonly endsOn: string;
+}
+
 export interface ProgramRepository {
   listPrograms(): Promise<readonly Program[]>;
   getProgram(id: ProgramId): Promise<Program | undefined>;
   listCurriculumVersions(programId: ProgramId): Promise<readonly CurriculumVersion[]>;
   listCohorts(programId?: ProgramId): Promise<readonly Cohort[]>;
   getCohort(id: CohortId): Promise<Cohort | undefined>;
+  /** Crée une classe (promotion). Autorisation et unicité vérifiées côté serveur. */
+  createCohort(input: CreateCohortInput): Promise<Cohort>;
 }
 
 export interface PeopleRepository {
