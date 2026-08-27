@@ -42,10 +42,8 @@ import { AssessmentModalityForm } from "@/features/administration/AssessmentModa
 import { useLocalDocumentRequirements } from "@/application/documentRequirementStore";
 import { useLocalKnowledge } from "@/application/knowledgeDraftStore";
 import { useLocalModalities } from "@/application/assessmentModalityStore";
-import { useLocalCohorts } from "@/application/cohortDraftStore";
 import { useLocalPlacements } from "@/application/placementDraftStore";
 import { useLocalCompetences } from "@/application/competenceDraftStore";
-import { mergeCohorts } from "@/domain/cohortDraft";
 
 import type { CohortId, CurriculumVersionId, ProgramId } from "@/domain/types";
 import { formatFrDate } from "@/features/administration/adminProgramViewModel";
@@ -178,7 +176,6 @@ const SCHEDULE_TEMPLATE: Record<ResourceKind, readonly { id: string; label: stri
   ],
 };
 
-
 /** Analyse (maquette déterministe) des objectifs pédagogiques saisis. */
 function analyseObjectives(text: string): readonly ResourceKind[] {
   const haystack = text.toLowerCase();
@@ -193,7 +190,7 @@ function analyseObjectives(text: string): readonly ResourceKind[] {
 /* ------------------------------------------------------------------ */
 
 export function AdminProgramDesigner() {
-  const { data, isPending } = useProgramAdmin();
+  const { data, isPending, refetch } = useProgramAdmin();
 
   const [modelId, setModelId] = useState<string | null>(null);
   const [modelName, setModelName] = useState("");
@@ -214,7 +211,6 @@ export function AdminProgramDesigner() {
   const [programStartsOn, setProgramStartsOn] = useState("");
   const [programEndsOn, setProgramEndsOn] = useState("");
   const [schedule, setSchedule] = useState<Record<string, ScheduleEntry>>({});
-  const localCohorts = useLocalCohorts(data?.program?.id);
   const localPlacements = useLocalPlacements(data?.program?.id);
   const localCompetences = useLocalCompetences(data?.program?.id);
   const localRequirements = useLocalDocumentRequirements(data?.program?.id);
@@ -232,24 +228,21 @@ export function AdminProgramDesigner() {
         (data?.placements.length ?? 0) + (data?.templates.length ?? 0) + localPlacements.length,
       documents: localRequirements.length,
     }),
-    [
-      data,
-      localPlacements,
-      localRequirements,
-      localKnowledge,
-      localModalities,
-      localCompetences,
-    ],
+    [data, localPlacements, localRequirements, localKnowledge, localModalities, localCompetences],
   );
-
 
   if (isPending || !data) return <Skeleton className="h-80 w-full" />;
 
-  /** Liste UNIQUE des classes : celles du dépôt et celles créées dans la session. */
-  const cohorts = mergeCohorts(data.cohorts, localCohorts);
+  const cohorts = data.cohorts;
   const activeProgramId = (data.program?.id ?? "program-unknown") as ProgramId;
+  /**
+   * Sous-outils encore mock (compétences, connaissances) : un identifiant de
+   * secours suffit, rien n'est jamais envoyé au serveur avec cette valeur.
+   */
   const curriculumVersionId = (data.versions[0]?.id ??
     `cv-${activeProgramId}`) as CurriculumVersionId;
+  /** Création de classe réelle : exige une vraie version de curriculum. */
+  const realCurriculumVersionId = data.versions[0]?.id;
 
   const modelReady = modelId !== null || modelName.trim().length > 0;
   const chosenResources = RESOURCES.filter((r) => resources[r.id].selected);
@@ -257,7 +250,6 @@ export function AdminProgramDesigner() {
     (r) => resources[r.id].mode === "now" && !resources[r.id].implemented,
   );
   const designReady = modelReady && chosenResources.length > 0 && pendingResources.length === 0;
-  
 
   /** Échéances à programmer : dérivées des ressources retenues à l'étape 1. */
   const scheduleItems = chosenResources.flatMap((resource) =>
@@ -287,8 +279,6 @@ export function AdminProgramDesigner() {
 
   const patch = (id: ResourceKind, next: Partial<ResourceState>) =>
     setResources((prev) => ({ ...prev, [id]: { ...prev[id], ...next } }));
-
-
 
   const runAnalysis = () => {
     const detected = analyseObjectives(`${objectives} ${importedFile ?? ""}`);
@@ -366,7 +356,9 @@ export function AdminProgramDesigner() {
                       <span className="text-muted-foreground text-xs">
                         depuis {formatFrDate(version.effectiveFrom)}
                       </span>
-                      {active ? <Check className="text-primary ms-auto size-4" aria-hidden /> : null}
+                      {active ? (
+                        <Check className="text-primary ms-auto size-4" aria-hidden />
+                      ) : null}
                     </button>
                   </li>
                 );
@@ -629,8 +621,6 @@ export function AdminProgramDesigner() {
                       resource.id !== "documents" &&
                       resource.id !== "knowledge" &&
                       resource.id !== "assessments" ? (
-
-
                         <div className="space-y-2">
                           <Label htmlFor={`draft-${resource.id}`}>{resource.draftLabel}</Label>
                           <Textarea
@@ -747,21 +737,26 @@ export function AdminProgramDesigner() {
               })}
             </ul>
           )
-        ) : (
+        ) : realCurriculumVersionId ? (
           <CohortCreationForm
             idPrefix="designer-cohort"
             programId={activeProgramId}
-            curriculumVersionId={curriculumVersionId}
+            curriculumVersionId={realCurriculumVersionId}
             submitLabel="Créer la classe et l'associer"
             hint="La classe créée ici est automatiquement rattachée au programme en conception et apparaît dans l'onglet « Classes d'apprenants »."
             onCreated={(cohort) => {
+              void refetch();
               setSelectedCohortId(cohort.id);
               setCohortMode("existing");
               setAssociated(cohort.label);
             }}
           />
+        ) : (
+          <EmptyState>
+            Aucune version de curriculum pour ce programme : une classe ne peut pas encore être
+            créée.
+          </EmptyState>
         )}
-
 
         <div className="flex flex-wrap items-center gap-2">
           <Button
@@ -827,9 +822,7 @@ export function AdminProgramDesigner() {
         </fieldset>
 
         <fieldset className="border-border space-y-3 rounded-md border p-4">
-          <legend className="px-1 text-sm font-medium">
-            Échéances des éléments du programme
-          </legend>
+          <legend className="px-1 text-sm font-medium">Échéances des éléments du programme</legend>
           {scheduleItems.length === 0 ? (
             <EmptyState>
               Sélectionnez d'abord des ressources à l'étape 1 : leurs échéances apparaîtront ici.
@@ -879,9 +872,7 @@ export function AdminProgramDesigner() {
                           id={`sched-${item.id}-date`}
                           type="date"
                           value={entry.from}
-                          onChange={(event) =>
-                            patchSchedule(item.id, { from: event.target.value })
-                          }
+                          onChange={(event) => patchSchedule(item.id, { from: event.target.value })}
                         />
                       </div>
                     ) : null}
@@ -955,7 +946,6 @@ export function AdminProgramDesigner() {
           )}
         </Button>
       </section>
-
     </div>
   );
 }

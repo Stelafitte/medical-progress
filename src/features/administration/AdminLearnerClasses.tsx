@@ -29,17 +29,13 @@ import {
   sortCohortsForPilot,
 } from "@/features/administration/adminProgramViewModel";
 import { CohortCreationForm } from "@/features/administration/CohortCreationForm";
-import { useLocalCohorts } from "@/application/cohortDraftStore";
-import { mergeCohorts } from "@/domain/cohortDraft";
-import type { CurriculumVersionId } from "@/domain/types";
 
 export function AdminLearnerClasses() {
-  const { data, isPending } = useProgramAdmin();
-  const localCohorts = useLocalCohorts(data?.program?.id);
+  const { data, isPending, refetch } = useProgramAdmin();
 
   if (isPending || !data) return <Skeleton className="h-80 w-full" />;
 
-  const cohorts = sortCohortsForPilot(mergeCohorts(data.cohorts, localCohorts));
+  const cohorts = sortCohortsForPilot(data.cohorts);
   const running = cohorts.filter((c) => cohortPhase(c) === "running").length;
   const planned = cohorts.filter((c) => cohortPhase(c) === "planned").length;
 
@@ -93,10 +89,7 @@ export function AdminLearnerClasses() {
                   <div className="flex flex-wrap gap-2">
                     {/* Lien croisé : le suivi s'ouvre directement sur cette promotion. */}
                     <Button asChild size="sm" variant="outline" className="min-h-11">
-                      <Link
-                        to="/espace/administration/pilotage"
-                        search={{ promotion: cohort.id }}
-                      >
+                      <Link to="/espace/administration/pilotage" search={{ promotion: cohort.id }}>
                         Suivre cette promotion
                       </Link>
                     </Button>
@@ -114,7 +107,6 @@ export function AdminLearnerClasses() {
       <PanelCard
         title="Créer une classe"
         description="Deux façons de créer une classe : la saisie manuelle, ou l'import d'une liste d'étudiants. Une classe créée ici est immédiatement disponible dans le « Concepteur de programme »."
-        action={<MockBadge />}
       >
         {data.program ? (
           <div className="space-y-6">
@@ -122,18 +114,24 @@ export function AdminLearnerClasses() {
               <div className="space-y-1">
                 <h3 className="text-sm font-medium">Saisie manuelle</h3>
                 <p className="text-muted-foreground text-xs">
-                  Renseignez le nom de la classe, sa période et son effectif attendu.
+                  Renseignez le nom de la classe et sa période.
                 </p>
               </div>
-              <CohortCreationForm
-                idPrefix="classes-cohort"
-                programId={data.program.id}
-                curriculumVersionId={
-                  data.versions[0]?.id ?? (`cv-${data.program.id}` as CurriculumVersionId)
-                }
-                submitLabel="Créer la classe"
-                hint="Classe créée indépendamment d'une conception en cours : elle sera proposée dans le concepteur au moment d'associer une promotion."
-              />
+              {data.versions[0] ? (
+                <CohortCreationForm
+                  idPrefix="classes-cohort"
+                  programId={data.program.id}
+                  curriculumVersionId={data.versions[0].id}
+                  submitLabel="Créer la classe"
+                  hint="Classe créée indépendamment d'une conception en cours : elle sera proposée dans le concepteur au moment d'associer une promotion."
+                  onCreated={() => void refetch()}
+                />
+              ) : (
+                <EmptyState>
+                  Aucune version de curriculum pour ce programme : une classe ne peut pas encore
+                  être créée.
+                </EmptyState>
+              )}
             </div>
 
             <div className="border-border border-t pt-6">
