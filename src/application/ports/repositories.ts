@@ -63,7 +63,9 @@ import type {
   EnrollmentId,
   Evidence,
   LearningResource,
+  MasteryLevel,
   Outcome,
+  OutcomeNature,
   OutcomeRelation,
   Person,
   PersonId,
@@ -119,9 +121,29 @@ export interface PeopleStagingRepository {
   sendInvitations(personIds: readonly PendingPersonId[]): Promise<readonly SendInvitationOutcome[]>;
 }
 
+/** Saisie du port `createOutcome` : champs plats, prêts pour le RPC serveur. */
+export interface CreateOutcomeInput {
+  readonly programId: ProgramId;
+  readonly curriculumVersionId: CurriculumVersionId;
+  readonly code: string;
+  readonly label: string;
+  readonly description: string;
+  readonly nature: OutcomeNature;
+  readonly domain: string;
+  readonly targetMastery: MasteryLevel;
+}
+
+/**
+ * Référentiel des compétences et connaissances : un seul objet `Outcome`,
+ * distingué par `nature`. Liste + création uniquement — le suivi
+ * d'acquisition (Evidence) et les relations entre outcomes restent hors
+ * périmètre de ce port (chantier séparé).
+ */
 export interface OutcomeRepository {
   listOutcomes(programId: ProgramId): Promise<readonly Outcome[]>;
   listOutcomeRelations(programId: ProgramId): Promise<readonly OutcomeRelation[]>;
+  /** Crée une compétence ou une connaissance. Autorisation vérifiée côté serveur. */
+  createOutcome(input: CreateOutcomeInput): Promise<Outcome>;
 }
 
 export interface EvidenceRepository {

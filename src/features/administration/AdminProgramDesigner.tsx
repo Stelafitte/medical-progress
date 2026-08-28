@@ -40,11 +40,9 @@ import { DocumentRequirementForm } from "@/features/administration/DocumentRequi
 import { KnowledgeCreationForm } from "@/features/administration/KnowledgeCreationForm";
 import { AssessmentModalityForm } from "@/features/administration/AssessmentModalityForm";
 import { useLocalDocumentRequirements } from "@/application/documentRequirementStore";
-import { useLocalKnowledge } from "@/application/knowledgeDraftStore";
 import { useLocalPlacements } from "@/application/placementDraftStore";
-import { useLocalCompetences } from "@/application/competenceDraftStore";
 
-import type { CohortId, CurriculumVersionId, ProgramId } from "@/domain/types";
+import type { CohortId, ProgramId } from "@/domain/types";
 import { formatFrDate } from "@/features/administration/adminProgramViewModel";
 
 /* ------------------------------------------------------------------ */
@@ -211,35 +209,27 @@ export function AdminProgramDesigner() {
   const [programEndsOn, setProgramEndsOn] = useState("");
   const [schedule, setSchedule] = useState<Record<string, ScheduleEntry>>({});
   const localPlacements = useLocalPlacements(data?.program?.id);
-  const localCompetences = useLocalCompetences(data?.program?.id);
   const localRequirements = useLocalDocumentRequirements(data?.program?.id);
-  const localKnowledge = useLocalKnowledge(data?.program?.id);
 
   const existingCounts = useMemo<Record<ResourceKind, number>>(
     () => ({
-      knowledge: (data?.resources.length ?? 0) + localKnowledge.length,
-      competences:
-        (data?.outcomes.filter((o) => o.nature !== "knowledge").length ?? 0) +
-        localCompetences.length,
+      knowledge:
+        (data?.resources.length ?? 0) +
+        (data?.outcomes.filter((o) => o.nature === "knowledge").length ?? 0),
+      competences: data?.outcomes.filter((o) => o.nature !== "knowledge").length ?? 0,
       assessments: data?.assessmentModalities.length ?? 0,
       stage:
         (data?.placements.length ?? 0) + (data?.templates.length ?? 0) + localPlacements.length,
       documents: localRequirements.length,
     }),
-    [data, localPlacements, localRequirements, localKnowledge, localCompetences],
+    [data, localPlacements, localRequirements],
   );
 
   if (isPending || !data) return <Skeleton className="h-80 w-full" />;
 
   const cohorts = data.cohorts;
   const activeProgramId = (data.program?.id ?? "program-unknown") as ProgramId;
-  /**
-   * Sous-outils encore mock (compétences, connaissances) : un identifiant de
-   * secours suffit, rien n'est jamais envoyé au serveur avec cette valeur.
-   */
-  const curriculumVersionId = (data.versions[0]?.id ??
-    `cv-${activeProgramId}`) as CurriculumVersionId;
-  /** Création de classe réelle : exige une vraie version de curriculum. */
+  /** Création réelle (classe, compétence, connaissance) : exige une vraie version de curriculum. */
   const realCurriculumVersionId = data.versions[0]?.id;
 
   const modelReady = modelId !== null || modelName.trim().length > 0;
@@ -528,23 +518,37 @@ export function AdminProgramDesigner() {
                       {state.mode === "now" && resource.id === "competences" ? (
                         <div className="space-y-2">
                           <p className="text-sm font-medium">Créer une compétence</p>
-                          <CompetenceCreationForm
-                            programId={activeProgramId}
-                            curriculumVersionId={curriculumVersionId}
-                            idPrefix="designer-competence"
-                            submitLabel="Créer la compétence"
-                            hint="Même outil et même liste que l'onglet « Compétences » : elle y apparaît aussitôt, rattachée à ce programme."
-                            onCreated={() => patch("competences", { implemented: true })}
-                          />
-                          {localCompetences.length > 0 ? (
-                            <ul className="text-muted-foreground space-y-1 text-xs">
-                              {localCompetences.map((outcome) => (
-                                <li key={outcome.id}>
-                                  {outcome.code} — {outcome.label}
-                                </li>
-                              ))}
-                            </ul>
-                          ) : null}
+                          {realCurriculumVersionId ? (
+                            <>
+                              <CompetenceCreationForm
+                                programId={activeProgramId}
+                                curriculumVersionId={realCurriculumVersionId}
+                                idPrefix="designer-competence"
+                                submitLabel="Créer la compétence"
+                                hint="Même outil et même liste que l'onglet « Compétences » : elle y apparaît aussitôt, rattachée à ce programme."
+                                onCreated={() => {
+                                  patch("competences", { implemented: true });
+                                  void refetch();
+                                }}
+                              />
+                              {data.outcomes.filter((o) => o.nature !== "knowledge").length > 0 ? (
+                                <ul className="text-muted-foreground space-y-1 text-xs">
+                                  {data.outcomes
+                                    .filter((o) => o.nature !== "knowledge")
+                                    .map((outcome) => (
+                                      <li key={outcome.id}>
+                                        {outcome.code} — {outcome.label}
+                                      </li>
+                                    ))}
+                                </ul>
+                              ) : null}
+                            </>
+                          ) : (
+                            <EmptyState>
+                              Aucune version de curriculum pour ce programme : une compétence ne
+                              peut pas encore être créée.
+                            </EmptyState>
+                          )}
                         </div>
                       ) : null}
 
@@ -573,23 +577,37 @@ export function AdminProgramDesigner() {
                       {state.mode === "now" && resource.id === "knowledge" ? (
                         <div className="space-y-2">
                           <p className="text-sm font-medium">Créer une base de connaissance</p>
-                          <KnowledgeCreationForm
-                            programId={activeProgramId}
-                            curriculumVersionId={curriculumVersionId}
-                            idPrefix="designer-knowledge"
-                            submitLabel="Créer la connaissance"
-                            hint="Même outil et même liste que l'onglet « Connaissances » : elle y apparaît aussitôt, rattachée à ce programme."
-                            onCreated={() => patch("knowledge", { implemented: true })}
-                          />
-                          {localKnowledge.length > 0 ? (
-                            <ul className="text-muted-foreground space-y-1 text-xs">
-                              {localKnowledge.map((outcome) => (
-                                <li key={outcome.id}>
-                                  {outcome.code} — {outcome.label}
-                                </li>
-                              ))}
-                            </ul>
-                          ) : null}
+                          {realCurriculumVersionId ? (
+                            <>
+                              <KnowledgeCreationForm
+                                programId={activeProgramId}
+                                curriculumVersionId={realCurriculumVersionId}
+                                idPrefix="designer-knowledge"
+                                submitLabel="Créer la connaissance"
+                                hint="Même outil et même liste que l'onglet « Connaissances » : elle y apparaît aussitôt, rattachée à ce programme."
+                                onCreated={() => {
+                                  patch("knowledge", { implemented: true });
+                                  void refetch();
+                                }}
+                              />
+                              {data.outcomes.filter((o) => o.nature === "knowledge").length > 0 ? (
+                                <ul className="text-muted-foreground space-y-1 text-xs">
+                                  {data.outcomes
+                                    .filter((o) => o.nature === "knowledge")
+                                    .map((outcome) => (
+                                      <li key={outcome.id}>
+                                        {outcome.code} — {outcome.label}
+                                      </li>
+                                    ))}
+                                </ul>
+                              ) : null}
+                            </>
+                          ) : (
+                            <EmptyState>
+                              Aucune version de curriculum pour ce programme : une connaissance ne
+                              peut pas encore être créée.
+                            </EmptyState>
+                          )}
                         </div>
                       ) : null}
 

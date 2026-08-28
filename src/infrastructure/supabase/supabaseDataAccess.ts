@@ -2,6 +2,7 @@ import type { SupabaseClient, User } from "@supabase/supabase-js";
 import type {
   CreateAssessmentModalityInput,
   CreateCohortInput,
+  CreateOutcomeInput,
   DataAccess,
   GrantRoleAssignmentInput,
 } from "@/application/ports/repositories";
@@ -11,6 +12,7 @@ import type {
   CurriculumVersion,
   CurriculumVersionId,
   Enrollment,
+  Outcome,
   Person,
   Program,
   ProgramId,
@@ -244,6 +246,35 @@ export function mapAssessmentModality(row: AssessmentModalityRow): AssessmentMod
   };
 }
 
+type OutcomeRow = {
+  id: string;
+  program_id: string;
+  curriculum_version_id: string;
+  code: string;
+  label: string;
+  description: string;
+  nature: Outcome["nature"];
+  domain: string;
+  target_mastery: Outcome["targetMastery"];
+  created_at: string;
+};
+
+export function mapOutcome(row: OutcomeRow): Outcome {
+  return {
+    id: row.id as Outcome["id"],
+    createdAt: row.created_at,
+    provenance: nativeProvenance,
+    programId: row.program_id as ProgramId,
+    curriculumVersionId: row.curriculum_version_id as CurriculumVersionId,
+    code: row.code,
+    label: row.label,
+    description: row.description,
+    nature: row.nature,
+    domain: row.domain,
+    targetMastery: row.target_mastery,
+  };
+}
+
 type PendingPersonRow = {
   id: string;
   program_id: string;
@@ -288,6 +319,9 @@ const programColumns =
 
 const assessmentModalityColumns =
   "id,program_id,name,mode,subtype,usage,notes,created_at,updated_at";
+
+const outcomeColumns =
+  "id,program_id,curriculum_version_id,code,label,description,nature,domain,target_mastery,created_at";
 
 /**
  * Première tranche Supabase. Les repositories non encore migrés restent
@@ -520,6 +554,39 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
         });
         assertNoSupabaseError(error);
         return mapAssessmentModality(data as AssessmentModalityRow);
+      },
+    },
+    outcomes: {
+      ...mockDataAccess.outcomes,
+      async listOutcomes(programId: ProgramId) {
+        const { data, error } = await client
+          .from("outcomes")
+          .select(outcomeColumns)
+          .eq("program_id", programId)
+          .order("code");
+        assertNoSupabaseError(error);
+        return ((data ?? []) as OutcomeRow[]).map(mapOutcome);
+      },
+      // `listOutcomeRelations` reste délégué au mock : hors périmètre de ce
+      // chantier (voir chantier3_outcomes_28aout.md), aucune UI ne les édite.
+      /**
+       * RPC `SECURITY DEFINER` : vérifie les droits (can_administer_program)
+       * puis insère la compétence/connaissance. Voir
+       * supabase/migrations/20260828_outcomes.sql.
+       */
+      async createOutcome(input: CreateOutcomeInput) {
+        const { data, error } = await client.rpc("create_outcome", {
+          p_program_id: input.programId,
+          p_curriculum_version_id: input.curriculumVersionId,
+          p_code: input.code,
+          p_label: input.label,
+          p_description: input.description,
+          p_nature: input.nature,
+          p_domain: input.domain,
+          p_target_mastery: input.targetMastery,
+        });
+        assertNoSupabaseError(error);
+        return mapOutcome(data as OutcomeRow);
       },
     },
   };

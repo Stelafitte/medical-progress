@@ -19,7 +19,7 @@ import {
   type NewCompetenceInput,
   validateNewCompetence,
 } from "@/domain/competenceDraft";
-import { createLocalCompetence } from "@/application/competenceDraftStore";
+import { useDataAccess } from "@/application/session";
 import type { CurriculumVersionId, MasteryLevel, Outcome, ProgramId } from "@/domain/types";
 
 const TARGET_LEVELS: readonly MasteryLevel[] = [
@@ -48,9 +48,12 @@ export function CompetenceCreationForm({
   onCreated,
   idPrefix = "competence",
 }: CompetenceCreationFormProps) {
+  const dataAccess = useDataAccess();
   const [input, setInput] = useState<NewCompetenceInput>(EMPTY_NEW_COMPETENCE_INPUT);
   const [showIssues, setShowIssues] = useState(false);
   const [created, setCreated] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const issues = validateNewCompetence(input);
   const patch = (next: Partial<NewCompetenceInput>) => {
@@ -58,18 +61,36 @@ export function CompetenceCreationForm({
     setCreated(null);
   };
 
-  const submit = () => {
+  async function submit() {
     if (issues.length > 0) {
       setShowIssues(true);
       return;
     }
-    const outcome = createLocalCompetence({ input, programId, curriculumVersionId });
-    if (!outcome) return;
-    setInput(EMPTY_NEW_COMPETENCE_INPUT);
-    setShowIssues(false);
-    setCreated(outcome.label);
-    onCreated?.(outcome);
-  };
+    setSubmitError(null);
+    setIsSubmitting(true);
+    try {
+      const outcome = await dataAccess.outcomes.createOutcome({
+        programId,
+        curriculumVersionId,
+        code: input.code.trim().toUpperCase(),
+        label: input.label.trim(),
+        description: input.description.trim(),
+        nature: input.nature,
+        domain: input.domain.trim().length > 0 ? input.domain.trim() : "Non classé",
+        targetMastery: input.targetMastery,
+      });
+      setInput(EMPTY_NEW_COMPETENCE_INPUT);
+      setShowIssues(false);
+      setCreated(outcome.label);
+      onCreated?.(outcome);
+    } catch (reason) {
+      setSubmitError(
+        reason instanceof Error ? reason.message : "Création de la compétence impossible.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
 
   return (
     <div className="space-y-3">
@@ -154,14 +175,21 @@ export function CompetenceCreationForm({
         </ul>
       ) : null}
 
+      {submitError ? <p className="text-destructive text-sm">{submitError}</p> : null}
+
       <div className="flex flex-wrap items-center gap-2">
-        <Button type="button" className="min-h-11" onClick={submit}>
-          {submitLabel}
+        <Button
+          type="button"
+          className="min-h-11"
+          onClick={() => void submit()}
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? "Création en cours…" : submitLabel}
         </Button>
         {created ? (
           <span className="text-muted-foreground text-sm">
-            « {created} » est créée et visible dans le concepteur comme dans l'onglet
-            « Compétences ».
+            « {created} » est créée et visible dans le concepteur comme dans l'onglet « Compétences
+            ».
           </span>
         ) : null}
       </div>
