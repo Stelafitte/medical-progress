@@ -4,7 +4,7 @@
  */
 import type { DataAccess } from "@/application/ports/repositories";
 import type { PendingPerson } from "@/domain/peopleStaging";
-import type { Cohort, RoleAssignment } from "@/domain/types";
+import type { Cohort, Outcome, RoleAssignment } from "@/domain/types";
 import { scopeFromGrantFields } from "@/domain/accessGrant";
 import type { AssessmentModality } from "@/domain/assessmentModality";
 import type { ProgramId } from "@/domain/types";
@@ -107,15 +107,42 @@ export const mockDataAccess: DataAccess = {
       },
     };
   })(),
-  outcomes: {
-    listOutcomes: (programId) => ok(fx.outcomes.filter((o) => o.programId === programId)),
-    listOutcomeRelations: (programId) => {
-      const ids = new Set(fx.outcomes.filter((o) => o.programId === programId).map((o) => o.id));
-      return ok(
-        fx.outcomeRelations.filter((r) => ids.has(r.fromOutcomeId) && ids.has(r.toOutcomeId)),
-      );
-    },
-  },
+  /**
+   * `outcomes` est mutable ici : `createOutcome` doit pouvoir ajouter une
+   * compétence ou une connaissance et la voir immédiatement dans
+   * `listOutcomes`, même pattern que `programs`/`assessments` ci-dessus.
+   */
+  outcomes: (() => {
+    let outcomes: Outcome[] = [...fx.outcomes];
+    let counter = 0;
+    return {
+      listOutcomes: (programId) => ok(outcomes.filter((o) => o.programId === programId)),
+      listOutcomeRelations: (programId) => {
+        const ids = new Set(outcomes.filter((o) => o.programId === programId).map((o) => o.id));
+        return ok(
+          fx.outcomeRelations.filter((r) => ids.has(r.fromOutcomeId) && ids.has(r.toOutcomeId)),
+        );
+      },
+      createOutcome: (input) => {
+        counter += 1;
+        const created: Outcome = {
+          id: `mock-outcome-${counter}` as Outcome["id"],
+          createdAt: new Date().toISOString(),
+          provenance: { sourceSystem: "native" },
+          programId: input.programId,
+          curriculumVersionId: input.curriculumVersionId,
+          code: input.code,
+          label: input.label,
+          description: input.description,
+          nature: input.nature,
+          domain: input.domain,
+          targetMastery: input.targetMastery,
+        };
+        outcomes = [...outcomes, created];
+        return ok(created);
+      },
+    };
+  })(),
   evidence: {
     listEvidenceForEnrollment: (enrollmentId) =>
       ok(fx.evidence.filter((e) => e.enrollmentId === enrollmentId)),
