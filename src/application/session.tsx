@@ -265,8 +265,7 @@ function SupabaseSessionProvider({ children }: { children: ReactNode }) {
      * sur l'union de tous ses rôles — cohérence avec la règle "aucun rôle
      * global implicite".
      */
-    const activeRole =
-      state.roles.find((r) => roleAssignmentKey(r) === activeRoleKey) ?? state.roles[0] ?? null;
+    const activeRole = activeRoleKey ? (state.roles.find((r) => roleAssignmentKey(r) === activeRoleKey) ?? null) : null;
     const rolesForAccess = activeRole ? [activeRole] : state.roles;
     const rolesInActiveProgram = rolesInContext(rolesForAccess, { programId: activeProgram.id });
     return {
