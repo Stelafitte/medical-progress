@@ -1,13 +1,25 @@
 import type { SupabaseClient, User } from "@supabase/supabase-js";
-import type { DataAccess } from "@/application/ports/repositories";
 import type {
+  CreateAssessmentModalityInput,
+  CreateCohortInput,
+  CreateOutcomeInput,
+  DataAccess,
+  GrantRoleAssignmentInput,
+} from "@/application/ports/repositories";
+import type {
+  Cohort,
+  CohortId,
+  CurriculumVersion,
+  CurriculumVersionId,
   Enrollment,
+  Outcome,
   Person,
   Program,
   ProgramId,
   RoleAssignment,
   RoleScope,
 } from "@/domain/types";
+import type { AssessmentModality } from "@/domain/assessmentModality";
 import type {
   CreatePendingPersonInput,
   PendingPerson,
@@ -96,6 +108,58 @@ export function mapProgram(row: ProgramRow): Program {
   };
 }
 
+type CohortRow = {
+  id: string;
+  program_id: string;
+  curriculum_version_id: string;
+  label: string;
+  academic_year: string;
+  starts_on: string;
+  ends_on: string;
+  created_at: string;
+};
+
+/** `starts_on`/`ends_on` sont des colonnes `date` (pas d'heure) côté Postgres. */
+function normalizeIsoDate(value: string): string {
+  return value.includes("T") ? value : `${value}T00:00:00.000Z`;
+}
+
+type CurriculumVersionRow = {
+  id: string;
+  program_id: string;
+  label: string;
+  effective_from: string;
+  status: CurriculumVersion["status"];
+  created_at: string;
+};
+
+export function mapCurriculumVersion(row: CurriculumVersionRow): CurriculumVersion {
+  return {
+    id: row.id as CurriculumVersionId,
+    createdAt: row.created_at,
+    provenance: nativeProvenance,
+    programId: row.program_id as ProgramId,
+    label: row.label,
+    effectiveFrom: normalizeIsoDate(row.effective_from),
+    status: row.status,
+  };
+}
+
+export function mapCohort(row: CohortRow, learnerCount: number): Cohort {
+  return {
+    id: row.id as CohortId,
+    createdAt: row.created_at,
+    provenance: nativeProvenance,
+    programId: row.program_id as ProgramId,
+    curriculumVersionId: row.curriculum_version_id as CurriculumVersionId,
+    label: row.label,
+    academicYear: row.academic_year,
+    startsOn: normalizeIsoDate(row.starts_on),
+    endsOn: normalizeIsoDate(row.ends_on),
+    learnerCount,
+  };
+}
+
 export function mapPerson(row: ProfileRow, user: User): Person {
   const email = user.email;
   if (!email) throw new Error("Le compte Supabase authentifié ne possède pas d’adresse e-mail.");
@@ -156,6 +220,61 @@ export function mapRoleAssignment(row: RoleAssignmentRow): RoleAssignment {
   };
 }
 
+type AssessmentModalityRow = {
+  id: string;
+  program_id: string;
+  name: string;
+  mode: AssessmentModality["mode"];
+  subtype: AssessmentModality["subtype"];
+  usage: AssessmentModality["usage"];
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export function mapAssessmentModality(row: AssessmentModalityRow): AssessmentModality {
+  return {
+    id: row.id,
+    programId: row.program_id,
+    name: row.name,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    mode: row.mode,
+    subtype: row.subtype,
+    usage: row.usage,
+    ...(row.notes ? { notes: row.notes } : {}),
+  };
+}
+
+type OutcomeRow = {
+  id: string;
+  program_id: string;
+  curriculum_version_id: string;
+  code: string;
+  label: string;
+  description: string;
+  nature: Outcome["nature"];
+  domain: string;
+  target_mastery: Outcome["targetMastery"];
+  created_at: string;
+};
+
+export function mapOutcome(row: OutcomeRow): Outcome {
+  return {
+    id: row.id as Outcome["id"],
+    createdAt: row.created_at,
+    provenance: nativeProvenance,
+    programId: row.program_id as ProgramId,
+    curriculumVersionId: row.curriculum_version_id as CurriculumVersionId,
+    code: row.code,
+    label: row.label,
+    description: row.description,
+    nature: row.nature,
+    domain: row.domain,
+    targetMastery: row.target_mastery,
+  };
+}
+
 type PendingPersonRow = {
   id: string;
   program_id: string;
@@ -198,6 +317,12 @@ const pendingPersonColumns =
 const programColumns =
   "id,code,name,kind,institution,annual_learner_estimate,placements_enabled,simulation_enabled,audits_enabled,pre_post_tests_enabled,sessions_enabled,dpc_enabled,target_mastery,locale,created_at,updated_at";
 
+const assessmentModalityColumns =
+  "id,program_id,name,mode,subtype,usage,notes,created_at,updated_at";
+
+const outcomeColumns =
+  "id,program_id,curriculum_version_id,code,label,description,nature,domain,target_mastery,created_at";
+
 /**
  * Première tranche Supabase. Les repositories non encore migrés restent
  * explicitement délégués au mock afin de préserver les écrans existants.
@@ -221,6 +346,59 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
           .maybeSingle();
         assertNoSupabaseError(error);
         return data ? mapProgram(data as ProgramRow) : undefined;
+      },
+      async listCurriculumVersions(programId: ProgramId) {
+        const { data, error } = await client
+          .from("curriculum_versions")
+          .select("id,program_id,label,effective_from,status,created_at")
+          .eq("program_id", programId)
+          .order("effective_from");
+        assertNoSupabaseError(error);
+        return ((data ?? []) as CurriculumVersionRow[]).map(mapCurriculumVersion);
+      },
+      async listCohorts(programId?: ProgramId) {
+        let query = client
+          .from("cohorts")
+          .select(
+            "id,program_id,curriculum_version_id,label,academic_year,starts_on,ends_on,created_at,enrollments(count)",
+          )
+          .order("starts_on");
+        if (programId) query = query.eq("program_id", programId);
+        const { data, error } = await query;
+        assertNoSupabaseError(error);
+        return ((data ?? []) as (CohortRow & { enrollments: { count: number }[] })[]).map((row) =>
+          mapCohort(row, row.enrollments?.[0]?.count ?? 0),
+        );
+      },
+      async getCohort(id: CohortId) {
+        const { data, error } = await client
+          .from("cohorts")
+          .select(
+            "id,program_id,curriculum_version_id,label,academic_year,starts_on,ends_on,created_at,enrollments(count)",
+          )
+          .eq("id", id)
+          .maybeSingle();
+        assertNoSupabaseError(error);
+        if (!data) return undefined;
+        const row = data as CohortRow & { enrollments: { count: number }[] };
+        return mapCohort(row, row.enrollments?.[0]?.count ?? 0);
+      },
+      /**
+       * RPC `SECURITY DEFINER` : `authenticated` n'a qu'un droit de lecture
+       * sur `cohorts` (voir GRANT dans la migration RLS) — la création passe
+       * donc par une fonction serveur, même famille que `grant_role_assignment`.
+       */
+      async createCohort(input: CreateCohortInput) {
+        const { data, error } = await client.rpc("create_cohort", {
+          p_program_id: input.programId,
+          p_curriculum_version_id: input.curriculumVersionId,
+          p_label: input.label,
+          p_academic_year: input.academicYear,
+          p_starts_on: input.startsOn,
+          p_ends_on: input.endsOn,
+        });
+        assertNoSupabaseError(error);
+        return mapCohort(data as CohortRow, 0);
       },
     },
     people: {
@@ -298,6 +476,117 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
         }
         const payload = data as { results?: SendInvitationOutcome[] } | null;
         return payload?.results ?? personIds.map((personId) => ({ personId, ok: false }));
+      },
+    },
+    administration: {
+      ...mockDataAccess.administration,
+      /**
+       * `profiles` n'expose pas d'adresse e-mail (colonne absente, RLS ne la
+       * donne qu'au titulaire via `auth.getUser()`) : seul le nom est
+       * disponible ici pour les AUTRES comptes. Suffisant pour le
+       * sélecteur « Accorder un droit », qui n'affiche jamais l'e-mail.
+       * La visibilité des lignes est déjà bornée par la policy RLS
+       * `profiles_select_scoped` (auto/lié par un programme administré).
+       */
+      async listPeople() {
+        const { data, error } = await client
+          .from("profiles")
+          .select("id,full_name,created_at,updated_at")
+          .order("full_name");
+        assertNoSupabaseError(error);
+        return ((data ?? []) as ProfileRow[]).map((row) => ({
+          id: row.id,
+          fullName: row.full_name,
+          email: "",
+          createdAt: row.created_at,
+          updatedAt: row.updated_at,
+          provenance: nativeProvenance,
+        }));
+      },
+      async listAllRoleAssignments() {
+        const { data, error } = await client
+          .from("role_assignments")
+          .select("person_id,role,scope_kind,scope_id,program_id,granted_at")
+          .is("revoked_at", null);
+        assertNoSupabaseError(error);
+        return ((data ?? []) as RoleAssignmentRow[]).map(mapRoleAssignment);
+      },
+      /**
+       * RPC `SECURITY DEFINER` : écrit atomiquement dans `role_assignments`
+       * ET `audit_events` (motif obligatoire). Anti-escalade et vérification
+       * des droits déjà appliquées côté serveur (voir la fonction SQL).
+       */
+      async grantRoleAssignment(input: GrantRoleAssignmentInput) {
+        const { data, error } = await client.rpc("grant_role_assignment", {
+          p_person_id: input.personId,
+          p_role: input.role,
+          p_scope_kind: input.scopeKind,
+          p_scope_id: input.scopeId,
+          p_program_id: input.programId,
+          p_justification: input.justification,
+        });
+        assertNoSupabaseError(error);
+        return mapRoleAssignment(data as RoleAssignmentRow);
+      },
+    },
+    assessments: {
+      async listAssessmentModalities(programId: ProgramId) {
+        const { data, error } = await client
+          .from("assessment_modalities")
+          .select(assessmentModalityColumns)
+          .eq("program_id", programId)
+          .order("created_at");
+        assertNoSupabaseError(error);
+        return ((data ?? []) as AssessmentModalityRow[]).map(mapAssessmentModality);
+      },
+      /**
+       * RPC `SECURITY DEFINER` : vérifie les droits (can_administer_program)
+       * puis insère la modalité. Voir supabase/migrations/20260827093000_assessment_modalities.sql.
+       */
+      async createAssessmentModality(input: CreateAssessmentModalityInput) {
+        const { data, error } = await client.rpc("create_assessment_modality", {
+          p_program_id: input.programId,
+          p_name: input.name,
+          p_mode: input.mode,
+          p_subtype: input.subtype,
+          p_usage: input.usage,
+          p_notes: input.notes.trim().length > 0 ? input.notes.trim() : null,
+        });
+        assertNoSupabaseError(error);
+        return mapAssessmentModality(data as AssessmentModalityRow);
+      },
+    },
+    outcomes: {
+      ...mockDataAccess.outcomes,
+      async listOutcomes(programId: ProgramId) {
+        const { data, error } = await client
+          .from("outcomes")
+          .select(outcomeColumns)
+          .eq("program_id", programId)
+          .order("code");
+        assertNoSupabaseError(error);
+        return ((data ?? []) as OutcomeRow[]).map(mapOutcome);
+      },
+      // `listOutcomeRelations` reste délégué au mock : hors périmètre de ce
+      // chantier (voir chantier3_outcomes_28aout.md), aucune UI ne les édite.
+      /**
+       * RPC `SECURITY DEFINER` : vérifie les droits (can_administer_program)
+       * puis insère la compétence/connaissance. Voir
+       * supabase/migrations/20260828_outcomes.sql.
+       */
+      async createOutcome(input: CreateOutcomeInput) {
+        const { data, error } = await client.rpc("create_outcome", {
+          p_program_id: input.programId,
+          p_curriculum_version_id: input.curriculumVersionId,
+          p_code: input.code,
+          p_label: input.label,
+          p_description: input.description,
+          p_nature: input.nature,
+          p_domain: input.domain,
+          p_target_mastery: input.targetMastery,
+        });
+        assertNoSupabaseError(error);
+        return mapOutcome(data as OutcomeRow);
       },
     },
   };

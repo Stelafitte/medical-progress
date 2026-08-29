@@ -15,7 +15,7 @@ import {
   validateNewKnowledge,
   type NewKnowledgeInput,
 } from "@/domain/knowledgeDraft";
-import { createLocalKnowledge } from "@/application/knowledgeDraftStore";
+import { useDataAccess } from "@/application/session";
 import type { CurriculumVersionId, MasteryLevel, Outcome, ProgramId } from "@/domain/types";
 
 const TARGET_LEVELS: readonly MasteryLevel[] = [
@@ -40,9 +40,12 @@ export function KnowledgeCreationForm({
   onCreated?: (created: Outcome) => void;
   idPrefix?: string;
 }) {
+  const dataAccess = useDataAccess();
   const [input, setInput] = useState<NewKnowledgeInput>(EMPTY_NEW_KNOWLEDGE_INPUT);
   const [showIssues, setShowIssues] = useState(false);
   const [created, setCreated] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const issues = validateNewKnowledge(input);
   const patch = (next: Partial<NewKnowledgeInput>) => {
@@ -50,18 +53,36 @@ export function KnowledgeCreationForm({
     setCreated(null);
   };
 
-  const submit = () => {
+  async function submit() {
     if (issues.length > 0) {
       setShowIssues(true);
       return;
     }
-    const outcome = createLocalKnowledge({ input, programId, curriculumVersionId });
-    if (!outcome) return;
-    setInput(EMPTY_NEW_KNOWLEDGE_INPUT);
-    setShowIssues(false);
-    setCreated(outcome.label);
-    onCreated?.(outcome);
-  };
+    setSubmitError(null);
+    setIsSubmitting(true);
+    try {
+      const outcome = await dataAccess.outcomes.createOutcome({
+        programId,
+        curriculumVersionId,
+        code: input.code.trim().toUpperCase(),
+        label: input.label.trim(),
+        description: input.description.trim(),
+        nature: "knowledge",
+        domain: input.domain.trim().length > 0 ? input.domain.trim() : "Non classé",
+        targetMastery: input.targetMastery,
+      });
+      setInput(EMPTY_NEW_KNOWLEDGE_INPUT);
+      setShowIssues(false);
+      setCreated(outcome.label);
+      onCreated?.(outcome);
+    } catch (reason) {
+      setSubmitError(
+        reason instanceof Error ? reason.message : "Création de la connaissance impossible.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
 
   return (
     <div className="space-y-3">
@@ -131,9 +152,16 @@ export function KnowledgeCreationForm({
         </ul>
       ) : null}
 
+      {submitError ? <p className="text-destructive text-sm">{submitError}</p> : null}
+
       <div className="flex flex-wrap items-center gap-2">
-        <Button type="button" className="min-h-11" onClick={submit}>
-          {submitLabel}
+        <Button
+          type="button"
+          className="min-h-11"
+          onClick={() => void submit()}
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? "Création en cours…" : submitLabel}
         </Button>
         {created ? (
           <span className="text-muted-foreground text-sm">

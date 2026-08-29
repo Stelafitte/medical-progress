@@ -35,25 +35,22 @@ import {
 } from "@/features/administration/learnerTrackingViewModel";
 import { assessmentFixturesFor } from "@/infrastructure/mock/assessmentFixtures";
 import { NATURE_LABELS_FR } from "@/domain/mastery";
-import { COMPETENCE_MASTERY_LABELS_FR, mergeOutcomes } from "@/domain/competenceDraft";
-import { EMPTY_NEW_KNOWLEDGE_INPUT } from "@/domain/knowledgeDraft";
-import { createLocalKnowledge, useLocalKnowledge } from "@/application/knowledgeDraftStore";
-import type { CurriculumVersionId, ProgramId } from "@/domain/types";
+import { COMPETENCE_MASTERY_LABELS_FR } from "@/domain/competenceDraft";
+import { useDataAccess } from "@/application/session";
+import type { ProgramId } from "@/domain/types";
 
 export function AdminKnowledgeBase() {
-  const { data, isPending } = useProgramAdmin();
+  const { data, isPending, refetch } = useProgramAdmin();
+  const dataAccess = useDataAccess();
   const [cohortId, setCohortId] = useState<string | null>(null);
   const [importText, setImportText] = useState("");
   const [imported, setImported] = useState<number | null>(null);
-  const localKnowledge = useLocalKnowledge(data?.program?.id);
+  const [isImporting, setIsImporting] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
 
   const cohorts = data?.cohorts ?? [];
   const selectedId = cohortId ?? defaultPilotCohortId(cohorts);
-  /** Liste UNIQUE : objectifs du dépôt et connaissances créées dans la session. */
-  const outcomes = useMemo(
-    () => mergeOutcomes(data?.outcomes ?? [], localKnowledge),
-    [data?.outcomes, localKnowledge],
-  );
+  const outcomes = useMemo(() => data?.outcomes ?? [], [data?.outcomes]);
 
   /** Import : ici seules les lignes de nature « connaissance » (ou non précisée) comptent. */
   const candidates = useMemo(() => {
@@ -70,7 +67,7 @@ export function AdminKnowledgeBase() {
   const published = data.media.filter((m) => m.status === "published").length;
   const narrated = data.media.filter((m) => m.kind === "slides_audio").length;
   const programId = (data.program?.id ?? "program-unknown") as ProgramId;
-  const curriculumVersionId = (data.versions[0]?.id ?? "cv-unknown") as CurriculumVersionId;
+  const realCurriculumVersionId = data.versions[0]?.id;
 
   const enrollments = data.enrollments.filter((e) => e.cohortId === selectedId);
   const trackingRows = buildLearnerTrackingRows({
@@ -135,11 +132,6 @@ export function AdminKnowledgeBase() {
                 <span className="text-muted-foreground text-xs">
                   {data.media.filter((m) => m.outcomeIds.includes(outcome.id)).length} support(s)
                 </span>
-                {localKnowledge.some((local) => local.id === outcome.id) ? (
-                  <Badge variant="outline" className="font-normal">
-                    créée dans cette session
-                  </Badge>
-                ) : null}
               </li>
             ))}
           </ul>
@@ -153,95 +145,128 @@ export function AdminKnowledgeBase() {
         description="Deux voies pour alimenter la même liste : coller un plan de cours existant, ou saisir une connaissance à la main."
       />
 
-      <PanelCard
-        title="Voie rapide — coller un référentiel"
-        description="Un tableau CSV/TSV : code, intitulé, nature (connaissance). Analyse locale uniquement, rien n'est envoyé."
-        action={<MockBadge />}
-      >
-        <Textarea
-          value={importText}
-          onChange={(event) => setImportText(event.target.value)}
-          rows={6}
-          placeholder={
-            "K-08;Physique des ultrasons;connaissance\nK-09;Hémodynamique valvulaire;connaissance"
-          }
-          aria-label="Connaissances à importer"
-        />
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <Badge variant="secondary">{candidates.length} ligne(s) reconnue(s)</Badge>
-          <Badge variant="outline">{newCount} nouvelle(s)</Badge>
-          <Badge variant="outline">{candidates.length - newCount} déjà présente(s)</Badge>
-        </div>
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <Button
-            size="sm"
-            className="min-h-11"
-            disabled={newCount === 0}
-            onClick={() => {
-              let added = 0;
-              for (const row of candidates) {
-                if (!row.isNew) continue;
-                const outcome = createLocalKnowledge({
-                  input: {
-                    ...EMPTY_NEW_KNOWLEDGE_INPUT,
-                    code: row.code,
-                    label: row.label,
-                  },
-                  programId,
-                  curriculumVersionId,
-                });
-                if (outcome) added += 1;
-              }
-              setImported(added);
-              setImportText("");
-            }}
+      {realCurriculumVersionId ? (
+        <>
+          <PanelCard
+            title="Voie rapide — coller un référentiel"
+            description="Un tableau CSV/TSV : code, intitulé, nature (connaissance). Seules les lignes nouvelles sont créées, une par une, dans le référentiel réel du programme."
           >
-            Ajouter les {newCount} nouvelle(s) connaissance(s)
-          </Button>
-          <Button size="sm" variant="ghost" className="min-h-11" onClick={() => setImportText("")}>
-            Effacer
-          </Button>
-          {imported !== null ? (
-            <span className="text-muted-foreground text-sm">
-              {imported} connaissance(s) ajoutée(s) au référentiel de cette session.
-            </span>
-          ) : null}
-        </div>
-        <p className="text-muted-foreground mt-2 text-xs">
-          Un code déjà présent n'écrase jamais le référentiel en place. Les lignes de nature
-          « simulation » ou « réelle » relèvent de l'onglet « Compétences ». Rattachement à la
-          version active ({curriculumVersionId}).
-        </p>
-        {candidates.length > 0 ? (
-          <ul className="mt-4 space-y-1 text-sm">
-            {candidates.slice(0, 20).map((row, index) => (
-              <li key={`${row.code}-${index}`} className="flex flex-wrap items-center gap-2">
-                <Badge variant="outline" className="font-mono text-[10px]">
-                  {row.code}
-                </Badge>
-                <span>{row.label}</span>
-                <Badge variant={row.isNew ? "secondary" : "outline"} className="font-normal">
-                  {row.isNew ? "nouvelle" : "code déjà présent"}
-                </Badge>
-              </li>
-            ))}
-          </ul>
-        ) : null}
-      </PanelCard>
+            <Textarea
+              value={importText}
+              onChange={(event) => setImportText(event.target.value)}
+              rows={6}
+              placeholder={
+                "K-08;Physique des ultrasons;connaissance\nK-09;Hémodynamique valvulaire;connaissance"
+              }
+              aria-label="Connaissances à importer"
+            />
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <Badge variant="secondary">{candidates.length} ligne(s) reconnue(s)</Badge>
+              <Badge variant="outline">{newCount} nouvelle(s)</Badge>
+              <Badge variant="outline">{candidates.length - newCount} déjà présente(s)</Badge>
+            </div>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <Button
+                size="sm"
+                className="min-h-11"
+                disabled={newCount === 0 || isImporting}
+                onClick={() => {
+                  const curriculumVersionId = realCurriculumVersionId;
+                  void (async () => {
+                    setImportError(null);
+                    setIsImporting(true);
+                    let added = 0;
+                    try {
+                      for (const row of candidates) {
+                        if (!row.isNew) continue;
+                        await dataAccess.outcomes.createOutcome({
+                          programId,
+                          curriculumVersionId,
+                          code: row.code,
+                          label: row.label,
+                          description: "",
+                          nature: "knowledge",
+                          domain: "Non classé",
+                          targetMastery: "proficient",
+                        });
+                        added += 1;
+                      }
+                      setImported(added);
+                      setImportText("");
+                      await refetch();
+                    } catch (reason) {
+                      setImportError(
+                        reason instanceof Error
+                          ? reason.message
+                          : "Import du référentiel impossible.",
+                      );
+                    } finally {
+                      setIsImporting(false);
+                    }
+                  })();
+                }}
+              >
+                {isImporting
+                  ? "Import en cours…"
+                  : `Ajouter les ${newCount} nouvelle(s) connaissance(s)`}
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="min-h-11"
+                onClick={() => setImportText("")}
+              >
+                Effacer
+              </Button>
+              {imported !== null ? (
+                <span className="text-muted-foreground text-sm">
+                  {imported} connaissance(s) ajoutée(s) au référentiel.
+                </span>
+              ) : null}
+            </div>
+            {importError ? <p className="text-destructive mt-2 text-sm">{importError}</p> : null}
+            <p className="text-muted-foreground mt-2 text-xs">
+              Un code déjà présent n'écrase jamais le référentiel en place. Les lignes de nature «
+              simulation » ou « réelle » relèvent de l'onglet « Compétences ». Rattachement à la
+              version active ({realCurriculumVersionId}).
+            </p>
+            {candidates.length > 0 ? (
+              <ul className="mt-4 space-y-1 text-sm">
+                {candidates.slice(0, 20).map((row, index) => (
+                  <li key={`${row.code}-${index}`} className="flex flex-wrap items-center gap-2">
+                    <Badge variant="outline" className="font-mono text-[10px]">
+                      {row.code}
+                    </Badge>
+                    <span>{row.label}</span>
+                    <Badge variant={row.isNew ? "secondary" : "outline"} className="font-normal">
+                      {row.isNew ? "nouvelle" : "code déjà présent"}
+                    </Badge>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </PanelCard>
 
-      <PanelCard
-        title="Voie manuelle — créer une connaissance"
-        description="Le même outil de création est disponible ici et dans le « Concepteur de programme » : la liste est unique."
-        action={<MockBadge />}
-      >
-        <KnowledgeCreationForm
-          programId={programId}
-          curriculumVersionId={curriculumVersionId}
-          idPrefix="connaissances-tab"
-          submitLabel="Créer la connaissance"
-          hint="La connaissance rejoint la liste unique des objectifs : elle est aussitôt disponible pour rattacher un support."
-        />
-      </PanelCard>
+          <PanelCard
+            title="Voie manuelle — créer une connaissance"
+            description="Le même outil de création est disponible ici et dans le « Concepteur de programme » : la liste est unique."
+          >
+            <KnowledgeCreationForm
+              programId={programId}
+              curriculumVersionId={realCurriculumVersionId}
+              idPrefix="connaissances-tab"
+              submitLabel="Créer la connaissance"
+              hint="La connaissance rejoint la liste unique des objectifs : elle est aussitôt disponible pour rattacher un support."
+              onCreated={() => void refetch()}
+            />
+          </PanelCard>
+        </>
+      ) : (
+        <EmptyState>
+          Aucune version de curriculum pour ce programme : le référentiel de connaissances ne peut
+          pas encore être alimenté.
+        </EmptyState>
+      )}
 
       {/* 3. Les supports qui portent ces connaissances */}
       <SectionHeading
@@ -249,7 +274,6 @@ export function AdminKnowledgeBase() {
         level={2}
         description="Dépôt et catalogue des supports, conversion HTML5 des diaporamas sonorisés, puis Exploitation IA des contenus publiés."
       />
-
 
       <MediaLibrarySection
         programName={data.program?.name ?? "ce programme"}
@@ -292,7 +316,12 @@ export function AdminKnowledgeBase() {
         description="Le suivi n'appartient pas à la conception : il se lit toujours pour une classe donnée et ses apprenants. Mêmes chiffres que dans « Classes d'apprenants » et « Pilotage de programme »."
       />
 
-      <CohortSelector cohorts={cohorts} value={selectedId} onChange={setCohortId} label="Classe suivie" />
+      <CohortSelector
+        cohorts={cohorts}
+        value={selectedId}
+        onChange={setCohortId}
+        label="Classe suivie"
+      />
 
       <PanelCard
         title={

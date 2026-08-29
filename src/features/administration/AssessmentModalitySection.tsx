@@ -4,6 +4,11 @@
  * Même contenu dans l'onglet « Évaluations » et dans la partie Évaluation du
  * pilotage de programme : modalités existantes, création d'une modalité,
  * import de résultats externes, puis résultats par cohorte (passés et à venir).
+ *
+ * Les modalités (liste + création) sont rebranchées sur Supabase (table
+ * `assessment_modalities`). Les sessions par cohorte et l'import de résultats
+ * restent en maquette (chantier séparé, aucune UI de création de session
+ * n'existe encore) : `MockBadge` y reste affiché.
  */
 import { useState } from "react";
 import { CalendarClock, FileUp } from "lucide-react";
@@ -18,17 +23,12 @@ import {
   ASSESSMENT_RESULT_IMPORT_COLUMNS,
   ASSESSMENT_SUBTYPE_LABELS_FR,
   ASSESSMENT_USAGE_LABELS_FR,
-  mergeModalities,
   splitSessions,
   type AssessmentModality,
   type AssessmentSession,
 } from "@/domain/assessmentModality";
-import { useLocalModalities } from "@/application/assessmentModalityStore";
 import { AssessmentModalityForm } from "@/features/administration/AssessmentModalityForm";
-import {
-  modalityFixturesFor,
-  sessionFixturesFor,
-} from "@/infrastructure/mock/assessmentModalityFixtures";
+import { sessionFixturesFor } from "@/infrastructure/mock/assessmentModalityFixtures";
 import type { Cohort, ProgramId } from "@/domain/types";
 
 function ModalityCard({ modality }: { modality: AssessmentModality }) {
@@ -98,23 +98,27 @@ function SessionRow({
 
 export function AssessmentModalitySection({
   programId,
+  modalities,
   cohorts,
   cohortId,
   onCohortChange,
+  onModalityCreated,
   showCohortSelector = true,
   showCreation = true,
 }: {
   readonly programId: ProgramId;
+  /** Modalités du programme, lues depuis `dataAccess.assessments.listAssessmentModalities`. */
+  readonly modalities: readonly AssessmentModality[];
   readonly cohorts: readonly Cohort[];
   readonly cohortId: string | undefined;
   readonly onCohortChange?: (cohortId: string) => void;
+  /** Rafraîchit la liste après la création d'une modalité (voir `showCreation`). */
+  readonly onModalityCreated?: () => void;
   readonly showCohortSelector?: boolean;
   /** `false` dans le pilotage : les modalités se créent dans « Évaluations ». */
   readonly showCreation?: boolean;
 }) {
   const [importText, setImportText] = useState("");
-  const local = useLocalModalities(programId);
-  const modalities = mergeModalities(modalityFixturesFor(programId), local);
 
   const sessions = cohortId ? sessionFixturesFor(programId, cohortId) : [];
   const { completed, upcoming } = splitSessions(sessions, new Date());
@@ -130,7 +134,6 @@ export function AssessmentModalitySection({
       <PanelCard
         title="Modalités d'évaluation du programme"
         description="Ce qui existe déjà pour ce programme : type, sous-type, usage prévu et dates."
-        action={<MockBadge />}
       >
         {modalities.length === 0 ? (
           <EmptyState>Aucune modalité d'évaluation définie pour ce programme.</EmptyState>
@@ -144,16 +147,16 @@ export function AssessmentModalitySection({
       </PanelCard>
 
       {showCreation ? (
-      <PanelCard
-        title="Créer une modalité d'évaluation"
-        description="Nom, type (présentiel ou en ligne), sous-type et usage prévu."
-        action={<MockBadge />}
-      >
-        <AssessmentModalityForm
-          programId={programId}
-          hint="La modalité créée apparaît immédiatement ci-dessus et dans la partie Évaluation du pilotage de programme."
-        />
-      </PanelCard>
+        <PanelCard
+          title="Créer une modalité d'évaluation"
+          description="Nom, type (présentiel ou en ligne), sous-type et usage prévu."
+        >
+          <AssessmentModalityForm
+            programId={programId}
+            hint="La modalité créée apparaît immédiatement ci-dessus et dans la partie Évaluation du pilotage de programme."
+            onCreated={() => onModalityCreated?.()}
+          />
+        </PanelCard>
       ) : null}
 
       <PanelCard
@@ -205,12 +208,7 @@ export function AssessmentModalitySection({
         ) : (
           <ul className="space-y-2">
             {completed.map((session) => (
-              <SessionRow
-                key={session.id}
-                session={session}
-                modalities={modalities}
-                completed
-              />
+              <SessionRow key={session.id} session={session} modalities={modalities} completed />
             ))}
           </ul>
         )}

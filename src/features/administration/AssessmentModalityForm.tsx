@@ -21,11 +21,10 @@ import {
   type AssessmentUsage,
   type NewAssessmentModalityInput,
 } from "@/domain/assessmentModality";
-import { createLocalModality } from "@/application/assessmentModalityStore";
+import { useDataAccess } from "@/application/session";
 import type { ProgramId } from "@/domain/types";
 
-const SELECT_CLASS =
-  "border-input bg-background min-h-11 w-full rounded-md border px-3 text-sm";
+const SELECT_CLASS = "border-input bg-background min-h-11 w-full rounded-md border px-3 text-sm";
 
 export function AssessmentModalityForm({
   programId,
@@ -40,9 +39,12 @@ export function AssessmentModalityForm({
   readonly onCreated?: (created: AssessmentModality) => void;
   readonly idPrefix?: string;
 }) {
+  const dataAccess = useDataAccess();
   const [input, setInput] = useState<NewAssessmentModalityInput>(EMPTY_NEW_MODALITY_INPUT);
   const [showIssues, setShowIssues] = useState(false);
   const [created, setCreated] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const issues = validateNewModality(input);
   const patch = (next: Partial<NewAssessmentModalityInput>) => {
@@ -55,18 +57,36 @@ export function AssessmentModalityForm({
     patch({ mode, subtype: first });
   };
 
-  const submit = () => {
+  async function submit() {
     if (issues.length > 0) {
       setShowIssues(true);
       return;
     }
-    const modality = createLocalModality({ input, programId });
-    if (!modality) return;
-    setInput(EMPTY_NEW_MODALITY_INPUT);
-    setShowIssues(false);
-    setCreated(modality.name);
-    onCreated?.(modality);
-  };
+    setSubmitError(null);
+    setIsSubmitting(true);
+    try {
+      const modality = await dataAccess.assessments.createAssessmentModality({
+        programId,
+        name: input.name,
+        mode: input.mode,
+        subtype: input.subtype,
+        usage: input.usage,
+        notes: input.notes,
+      });
+      setInput(EMPTY_NEW_MODALITY_INPUT);
+      setShowIssues(false);
+      setCreated(modality.name);
+      onCreated?.(modality);
+    } catch (reason) {
+      setSubmitError(
+        reason instanceof Error
+          ? reason.message
+          : "Création de la modalité d'évaluation impossible.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
 
   return (
     <div className="space-y-3">
@@ -152,9 +172,16 @@ export function AssessmentModalityForm({
         </ul>
       ) : null}
 
+      {submitError ? <p className="text-destructive text-sm">{submitError}</p> : null}
+
       <div className="flex flex-wrap items-center gap-2">
-        <Button type="button" className="min-h-11" onClick={submit}>
-          {submitLabel}
+        <Button
+          type="button"
+          className="min-h-11"
+          onClick={() => void submit()}
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? "Création en cours…" : submitLabel}
         </Button>
         {created ? (
           <span className="text-muted-foreground text-sm">

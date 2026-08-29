@@ -6,6 +6,12 @@
  * modifier l'UI ni la logique métier.
  */
 import type { PlanScheduleEntry } from "@/domain/acquisitionPlan";
+import type {
+  AssessmentMode,
+  AssessmentModality,
+  AssessmentSubtype,
+  AssessmentUsage,
+} from "@/domain/assessmentModality";
 import type { LearnerNarratedDeck, MediaResource } from "@/domain/mediaLibrary";
 import type { ContentAiProfile, LearnerAiResource, ProgramAiPolicy } from "@/domain/contentAi";
 import type { AiCreditBudget, AiCreditEntry } from "@/domain/aiCredits";
@@ -52,11 +58,14 @@ import type {
   Cohort,
   CohortId,
   CurriculumVersion,
+  CurriculumVersionId,
   Enrollment,
   EnrollmentId,
   Evidence,
   LearningResource,
+  MasteryLevel,
   Outcome,
+  OutcomeNature,
   OutcomeRelation,
   Person,
   PersonId,
@@ -66,6 +75,7 @@ import type {
   ProgramId,
   RoleAssignment,
 } from "@/domain/types";
+import type { GrantableRole, GrantScopeKind } from "@/domain/accessGrant";
 import type {
   CreatePendingPersonInput,
   PendingPerson,
@@ -73,12 +83,24 @@ import type {
   SendInvitationOutcome,
 } from "@/domain/peopleStaging";
 
+/** Saisie du port `createCohort` : champs plats, prêts pour le RPC serveur. */
+export interface CreateCohortInput {
+  readonly programId: ProgramId;
+  readonly curriculumVersionId: CurriculumVersionId;
+  readonly label: string;
+  readonly academicYear: string;
+  readonly startsOn: string;
+  readonly endsOn: string;
+}
+
 export interface ProgramRepository {
   listPrograms(): Promise<readonly Program[]>;
   getProgram(id: ProgramId): Promise<Program | undefined>;
   listCurriculumVersions(programId: ProgramId): Promise<readonly CurriculumVersion[]>;
   listCohorts(programId?: ProgramId): Promise<readonly Cohort[]>;
   getCohort(id: CohortId): Promise<Cohort | undefined>;
+  /** Crée une classe (promotion). Autorisation et unicité vérifiées côté serveur. */
+  createCohort(input: CreateCohortInput): Promise<Cohort>;
 }
 
 export interface PeopleRepository {
@@ -99,13 +121,53 @@ export interface PeopleStagingRepository {
   sendInvitations(personIds: readonly PendingPersonId[]): Promise<readonly SendInvitationOutcome[]>;
 }
 
+/** Saisie du port `createOutcome` : champs plats, prêts pour le RPC serveur. */
+export interface CreateOutcomeInput {
+  readonly programId: ProgramId;
+  readonly curriculumVersionId: CurriculumVersionId;
+  readonly code: string;
+  readonly label: string;
+  readonly description: string;
+  readonly nature: OutcomeNature;
+  readonly domain: string;
+  readonly targetMastery: MasteryLevel;
+}
+
+/**
+ * Référentiel des compétences et connaissances : un seul objet `Outcome`,
+ * distingué par `nature`. Liste + création uniquement — le suivi
+ * d'acquisition (Evidence) et les relations entre outcomes restent hors
+ * périmètre de ce port (chantier séparé).
+ */
 export interface OutcomeRepository {
   listOutcomes(programId: ProgramId): Promise<readonly Outcome[]>;
   listOutcomeRelations(programId: ProgramId): Promise<readonly OutcomeRelation[]>;
+  /** Crée une compétence ou une connaissance. Autorisation vérifiée côté serveur. */
+  createOutcome(input: CreateOutcomeInput): Promise<Outcome>;
 }
 
 export interface EvidenceRepository {
   listEvidenceForEnrollment(enrollmentId: EnrollmentId): Promise<readonly Evidence[]>;
+}
+
+/** Saisie du port `createAssessmentModality` : champs plats, prêts pour le RPC serveur. */
+export interface CreateAssessmentModalityInput {
+  readonly programId: ProgramId;
+  readonly name: string;
+  readonly mode: AssessmentMode;
+  readonly subtype: AssessmentSubtype;
+  readonly usage: AssessmentUsage;
+  readonly notes: string;
+}
+
+/**
+ * Référentiel des modalités d'évaluation d'un programme : liste + création
+ * uniquement. Les sessions par cohorte et l'import de résultats restent hors
+ * périmètre (chantier séparé).
+ */
+export interface AssessmentRepository {
+  listAssessmentModalities(programId: ProgramId): Promise<readonly AssessmentModality[]>;
+  createAssessmentModality(input: CreateAssessmentModalityInput): Promise<AssessmentModality>;
 }
 
 export interface PlacementRepository {
@@ -132,6 +194,18 @@ export interface SupervisionRepository {
   listPeopleByIds(ids: readonly PersonId[]): Promise<readonly Person[]>;
 }
 
+/** Saisie du port `grantRoleAssignment` : champs plats, prêts pour le RPC serveur. */
+export interface GrantRoleAssignmentInput {
+  readonly personId: PersonId;
+  readonly role: GrantableRole;
+  readonly scopeKind: GrantScopeKind;
+  /** Programme pour une portée « program », promotion ou terrain sinon. */
+  readonly scopeId: string;
+  readonly programId: ProgramId;
+  /** Motif obligatoire : journalisé côté serveur (audit trail atomique). */
+  readonly justification: string;
+}
+
 /** Lecture administrative, cloisonnée par programme. */
 export interface AdministrationRepository {
   listDocuments(programId: ProgramId): Promise<readonly AdminDocument[]>;
@@ -144,6 +218,8 @@ export interface AdministrationRepository {
   listAllEnrollments(programId: ProgramId): Promise<readonly Enrollment[]>;
   /** Supervision plateforme : compteurs et paramètres, jamais de dossier pédagogique. */
   listPlatformSupervision(): Promise<readonly PlatformSupervisionRow[]>;
+  /** Attribue un rôle contextualisé à une personne (motif obligatoire, tracé côté serveur). */
+  grantRoleAssignment(input: GrantRoleAssignmentInput): Promise<RoleAssignment>;
 }
 
 export interface LearningResourceRepository {
@@ -264,6 +340,7 @@ export interface DataAccess {
   readonly peopleStaging: PeopleStagingRepository;
   readonly outcomes: OutcomeRepository;
   readonly evidence: EvidenceRepository;
+  readonly assessments: AssessmentRepository;
   readonly placements: PlacementRepository;
   readonly resources: LearningResourceRepository;
   readonly media: MediaLibraryRepository;

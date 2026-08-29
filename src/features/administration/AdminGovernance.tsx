@@ -7,7 +7,7 @@ import { useSession } from "@/application/session";
 
 export function AdminGovernance() {
   const { activeProgram } = useSession();
-  const { data, isPending } = useProgramAdmin();
+  const { data, isPending, refetch } = useProgramAdmin();
 
   if (isPending || !data) return <Skeleton className="h-80 w-full" />;
 
@@ -27,6 +27,7 @@ export function AdminGovernance() {
         placements={data.placements}
         roleAssignments={data.roleAssignments}
         auditEvents={data.auditEvents}
+        onGrantCreated={() => void refetch()}
       />
     </div>
   );

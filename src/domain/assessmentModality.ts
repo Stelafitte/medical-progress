@@ -97,46 +97,6 @@ export function validateNewModality(
   return issues;
 }
 
-export interface BuildModalityContext {
-  readonly programId: ProgramId;
-  readonly now: IsoDateTime;
-  readonly sequence: number;
-}
-
-/** Construit la modalité à partir d'une saisie valide. Déterministe. */
-export function buildModalityFromInput(
-  input: NewAssessmentModalityInput,
-  ctx: BuildModalityContext,
-): AssessmentModality {
-  const notes = input.notes.trim();
-  return {
-    id: `modality-local-${ctx.sequence}`,
-    programId: ctx.programId,
-    name: input.name.trim(),
-    createdAt: ctx.now,
-    updatedAt: ctx.now,
-    mode: input.mode,
-    subtype: input.subtype,
-    usage: input.usage,
-    ...(notes.length > 0 ? { notes } : {}),
-  };
-}
-
-/** Fusionne les modalités du dépôt et celles créées localement, sans doublon. */
-export function mergeModalities(
-  stored: readonly AssessmentModality[],
-  local: readonly AssessmentModality[],
-): readonly AssessmentModality[] {
-  const seen = new Set(stored.map((m) => m.id));
-  const names = new Set(stored.map((m) => m.name.trim().toLowerCase()));
-  return [
-    ...stored,
-    ...local.filter(
-      (m) => !seen.has(m.id) && !names.has(m.name.trim().toLowerCase()),
-    ),
-  ];
-}
-
 /* ------------------------------------------------------------------ */
 /* Sessions d'évaluation par cohorte                                   */
 /* ------------------------------------------------------------------ */
