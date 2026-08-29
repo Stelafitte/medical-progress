@@ -1,7 +1,11 @@
 /**
- * Ressources théoriques (MAQUETTE).
- * Uniquement des métadonnées : aucun fichier n'est lu, transmis ni stocké.
- * Toutes les actions sont simulées et journalisées à l'écran.
+ * Ressources théoriques (MAQUETTE pour le catalogue existant).
+ * Le catalogue affiché ici reste la maquette `MediaResource` : son refactor
+ * vers le modèle réel `LearningResource` est un chantier séparé (voir
+ * chantier_mediatheque_backend_29aout.md). Seules les deux actions de
+ * création ci-dessous (AddMediaDialog, PptxConverterDialog) sont réelles :
+ * elles créent effectivement un support dans le catalogue du programme,
+ * mais celui-ci n'apparaît pas encore dans la liste ci-dessous.
  */
 import { useMemo, useState } from "react";
 import {
@@ -58,7 +62,7 @@ import {
   type MediaResource,
   type MediaStatus,
 } from "@/domain/mediaLibrary";
-import type { Outcome, Person } from "@/domain/types";
+import type { CurriculumVersionId, Outcome, Person, ProgramId } from "@/domain/types";
 
 const KIND_ICONS: Record<MediaKind, typeof FileText> = {
   pdf: FileText,
@@ -78,11 +82,16 @@ const formatDate = (iso: string) => new Date(iso).toLocaleDateString("fr-FR");
 
 export function MediaLibrarySection({
   programName,
+  programId,
+  curriculumVersionId,
   media,
   outcomes,
   people,
 }: {
   programName: string;
+  programId: ProgramId;
+  /** `undefined` tant que le programme n'a aucune version de curriculum (cas rare, déjà géré ainsi ailleurs dans AdminKnowledgeBase) : la création reste alors indisponible. */
+  curriculumVersionId: CurriculumVersionId | undefined;
   media: readonly MediaResource[];
   outcomes: readonly Outcome[];
   people: readonly Person[];
@@ -131,17 +140,29 @@ export function MediaLibrarySection({
         action={
           <div className="flex flex-wrap items-center gap-2">
             <MockBadge />
-            <PptxConverterDialog onConverted={setLastAction} />
-            <AddMediaDialog
-              programName={programName}
-              modules={modules}
-              outcomes={outcomes}
-              onSaved={(title) =>
-                setLastAction(
-                  `Maquette enregistrée localement : « ${title} » (aucun fichier transmis).`,
-                )
-              }
-            />
+            {curriculumVersionId ? (
+              <>
+                <PptxConverterDialog
+                  programId={programId}
+                  curriculumVersionId={curriculumVersionId}
+                  outcomes={outcomes}
+                  onConverted={setLastAction}
+                />
+                <AddMediaDialog
+                  programName={programName}
+                  programId={programId}
+                  curriculumVersionId={curriculumVersionId}
+                  outcomes={outcomes}
+                  onSaved={(title) =>
+                    setLastAction(`Support créé : « ${title} » (visible dans le catalogue réel).`)
+                  }
+                />
+              </>
+            ) : (
+              <Badge variant="outline" className="font-normal">
+                Création indisponible : aucune version de curriculum
+              </Badge>
+            )}
           </div>
         }
       >
