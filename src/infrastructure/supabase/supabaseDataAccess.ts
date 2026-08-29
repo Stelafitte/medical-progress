@@ -2,9 +2,18 @@ import type { SupabaseClient, User } from "@supabase/supabase-js";
 import type {
   CreateAssessmentModalityInput,
   CreateCohortInput,
+  CreateLearningResourceInput,
   CreateOutcomeInput,
   DataAccess,
   GrantRoleAssignmentInput,
+  PublishNarratedDeckInput,
+  PublishedNarratedDeck,
+  RegisterResourceAssetInput,
+  RegisteredResourceAsset,
+  RequestUploadUrlInput,
+  ResourceAssetKind,
+  ResourceVisibility,
+  UploadUrlResult,
 } from "@/application/ports/repositories";
 import type {
   Cohort,
@@ -12,7 +21,10 @@ import type {
   CurriculumVersion,
   CurriculumVersionId,
   Enrollment,
+  LearningResource,
+  LearningResourceId,
   Outcome,
+  OutcomeId,
   Person,
   Program,
   ProgramId,
@@ -311,6 +323,42 @@ export function mapPendingPerson(row: PendingPersonRow): PendingPerson {
   };
 }
 
+/**
+ * `estimatedMinutes` n'existe pas encore côté base (colonne absente de
+ * `learning_resources`) : fixé à 0 pour les supports créés réellement, en
+ * attendant un chantier dédié à la durée estimée. `outcomeIds` n'est pas
+ * renvoyé par la RPC (table de liaison séparée) : repris directement de la
+ * saisie, puisqu'on vient de les insérer.
+ */
+type LearningResourceRow = {
+  id: string;
+  program_id: string;
+  title: string;
+  description: string;
+  format: LearningResource["format"];
+  visibility: ResourceVisibility;
+  is_published: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+function mapLearningResource(
+  row: LearningResourceRow,
+  outcomeIds: readonly OutcomeId[],
+): LearningResource {
+  return {
+    id: row.id as LearningResourceId,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    provenance: nativeProvenance,
+    programId: row.program_id as ProgramId,
+    title: row.title,
+    format: row.format,
+    outcomeIds,
+    estimatedMinutes: 0,
+  };
+}
+
 const pendingPersonColumns =
   "id,program_id,first_name,last_name,login_email,institutional_id,origin,intended_cohort_id,status,invited_at,cancelled_at,activated_profile_id,created_at,updated_at";
 
@@ -587,6 +635,117 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
         });
         assertNoSupabaseError(error);
         return mapOutcome(data as OutcomeRow);
+      },
+    },
+    /**
+     * Chantier Médiathèque (A) : seule la création réelle est câblée ici
+     * (création du support, upload signé, enregistrement d'asset,
+     * publication d'un diaporama sonorisé). `listResources` reste délégué
+     * au mock — le refactor de l'écran de catalogue est un chantier séparé
+     * (voir chantier_mediatheque_backend_29aout.md).
+     */
+    resources: {
+      ...mockDataAccess.resources,
+      async createResource(input: CreateLearningResourceInput) {
+        const { data, error } = await client.rpc("create_learning_resource", {
+          p_program_id: input.programId,
+          p_curriculum_version_id: input.curriculumVersionId,
+          p_title: input.title,
+          p_description: input.description,
+          p_format: input.format,
+          p_visibility: input.visibility,
+          p_external_url: input.externalUrl ?? null,
+          p_outcome_ids: input.outcomeIds.length > 0 ? input.outcomeIds : null,
+        });
+        assertNoSupabaseError(error);
+        return mapLearningResource(data as LearningResourceRow, input.outcomeIds);
+      },
+      /** Délègue la génération de l'URL signée à l'Edge Function (service_role côté serveur uniquement). */
+      async requestUploadUrl(input: RequestUploadUrlInput): Promise<UploadUrlResult> {
+        const { data, error } = await client.functions.invoke("create-resource-upload-url", {
+          body: { programId: input.programId, bucket: input.bucket, fileName: input.fileName },
+        });
+        if (error) {
+          const message =
+            error instanceof Error ? error.message : "URL d'upload impossible à obtenir.";
+          throw new Error(message);
+        }
+        const payload = data as
+          | { bucket?: string; objectPath?: string; signedUrl?: string; token?: string; error?: string }
+          | null;
+        if (!payload || !payload.signedUrl || !payload.objectPath || !payload.token) {
+          throw new Error(payload?.error ?? "Réponse invalide du service d'upload.");
+        }
+        return {
+          bucket: payload.bucket ?? input.bucket,
+          objectPath: payload.objectPath,
+          signedUrl: payload.signedUrl,
+          token: payload.token,
+        };
+      },
+      /** Téléversement réel vers le stockage privé, via le token de l'URL signée. */
+      async uploadResourceFile(upload: UploadUrlResult, file: File) {
+        const { error } = await client.storage
+          .from(upload.bucket)
+          .uploadToSignedUrl(upload.objectPath, upload.token, file);
+        assertNoSupabaseError(error);
+      },
+      async registerAsset(input: RegisterResourceAssetInput): Promise<RegisteredResourceAsset> {
++        const { data, error } = await client.rpc("register_learning_resource_asset", {
+          p_resource_id: input.resourceId,
+          p_kind: input.kind,
+          p_bucket_name: input.bucketName,
+          p_object_path: input.objectPath,
+          p_media_type: input.mediaType,
+          p_original_file_name: input.originalFileName,
+          p_byte_size: input.byteSize,
+        });
+        assertNoSupabaseError(error);
+        const row = data as {
+          id: string;
+          resource_id: string;
+          kind: ResourceAssetKind;
+          bucket_name: string;
+          object_path: string;
+        };
+        return {
+          id: row.id,
+          resourceId: row.resource_id as LearningResourceId,
+          kind: row.kind,
+          bucketName: row.bucket_name,
+          objectPath: row.object_path,
+        };
+      },
+      async publishNarratedDeck(input: PublishNarratedDeckInput): Promise<PublishedNarratedDeck> {
+        const { data, error } = await client.rpc("publish_narrated_deck", {
+          p_resource_id: input.resourceId,
+          p_source_asset_id: input.sourceAssetId,
+          p_slide_count: input.slideCount,
+          p_duration_ms: input.durationMs,
+          p_transcript_available: input.transcriptAvailable,
+          p_slides: input.slides.map((slide) => ({
+            slideIndex: slide.slideIndex,
+            title: slide.title,
+            durationMs: slide.durationMs,
+            imageAssetId: slide.imageAssetId ?? null,
+            audioAssetId: slide.audioAssetId ?? null,
+            transcript: slide.transcript ?? null,
+            transcriptLanguage: slide.transcriptLanguage ?? null,
+          })),
+          p_chapters: input.chapters.map((chapter) => ({
+            chapterIndex: chapter.chapterIndex,
+            title: chapter.title,
+            startsAtSlide: chapter.startsAtSlide,
+          })),
+        });
+        assertNoSupabaseError(error);
+        const row = data as { id: string; resource_id: string; version: number; status: string };
+        return {
+          id: row.id,
+          resourceId: row.resource_id as LearningResourceId,
+          version: row.version,
+          status: row.status,
+        };
       },
     },
   };
