@@ -30,12 +30,14 @@ import {
   searchResources,
 } from "@/domain/learnerLibrary";
 
+/** Aligné sur l'enum Postgres `resource_format` (voir domain/types.ts). */
 const FORMAT_FR: Record<string, string> = {
-  course: "Cours",
+  html: "Page web",
+  pdf: "Document PDF",
   video: "Vidéo",
-  quiz: "QCM",
-  checklist: "Grille",
-  reference: "Référence",
+  narrated_slides: "Diaporama commenté",
+  link: "Lien externe",
+  other: "Autre",
 };
 
 export function ResourcesView() {
@@ -51,7 +53,6 @@ export function ResourcesView() {
   const resources = filterLearnerResources(data.resources, { search, format, outcomeId });
   const narratedDecks = searchResources(data.narratedDecks, search);
   const aiResources = searchResources(data.aiResources, search);
-
 
   return (
     <div className="space-y-8">
@@ -112,8 +113,6 @@ export function ResourcesView() {
           </SelectContent>
         </Select>
       </div>
-
-
 
       {narratedDecks.length > 0 ? (
         <section className="space-y-4">
@@ -204,11 +203,11 @@ export function ResourcesView() {
                           asChild
                           variant="secondary"
                           className="min-h-11 w-full gap-2 sm:w-auto"
-                        >
-                          <a href={item.canonicalUrl} target="_blank" rel="noreferrer noopener">
-                            <Globe className="size-4" aria-hidden />
-                            {WEB_REFERENCE_CTA_FR}
-                          </a>
+                      >
+                        <a href={item.canonicalUrl} target="_blank" rel="noreferrer noopener">
+                          <Globe className="size-4" aria-hidden />
+                          {WEB_REFERENCE_CTA_FR}
+                        </a>
                         </Button>
                       ) : null}
                       {item.hasNarratedPlayer ? (
