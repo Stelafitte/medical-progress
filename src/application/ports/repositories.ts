@@ -63,8 +63,10 @@ import type {
   EnrollmentId,
   Evidence,
   LearningResource,
+  LearningResourceId,
   MasteryLevel,
   Outcome,
+  OutcomeId,
   OutcomeNature,
   OutcomeRelation,
   Person,
@@ -222,8 +224,120 @@ export interface AdministrationRepository {
   grantRoleAssignment(input: GrantRoleAssignmentInput): Promise<RoleAssignment>;
 }
 
+/** Visibilité d'un support, alignée sur l'enum Postgres `resource_visibility`. */
+export type ResourceVisibility = "staff_only" | "cohort" | "program";
+
+/**
+ * Saisie du port `createResource` : champs plats, prêts pour le RPC serveur
+ * `create_learning_resource`. Publication immédiate en v1 (pas de file
+ * d'attente de relecture pédagogique).
+ */
+export interface CreateLearningResourceInput {
+  readonly programId: ProgramId;
+  readonly curriculumVersionId: CurriculumVersionId;
+  readonly title: string;
+  readonly description: string;
+  readonly format: LearningResource["format"];
+  readonly visibility: ResourceVisibility;
+  /** Support par lien (kind « link », ou vidéo hébergée ailleurs). */
+  readonly externalUrl?: string;
+  readonly outcomeIds: readonly OutcomeId[];
+}
+
+/** Saisie du port `requestUploadUrl` : délègue à l'Edge Function `create-resource-upload-url`. */
+export interface RequestUploadUrlInput {
+  readonly programId: ProgramId;
+  readonly bucket: "course-sources" | "pptx-sources" | "course-artifacts";
+  readonly fileName: string;
+}
+
+export interface UploadUrlResult {
+  readonly bucket: string;
+  readonly objectPath: string;
+  readonly signedUrl: string;
+  readonly token: string;
+}
+
+/** Aligné sur l'enum Postgres `asset_kind`. */
+export type ResourceAssetKind =
+  | "source"
+  | "slide_image"
+  | "slide_audio"
+  | "transcript"
+  | "manifest"
+  | "thumbnail"
+  | "fallback_video";
+
+/** Saisie du port `registerAsset` : enregistre en base un fichier déjà téléversé via une URL signée. */
+export interface RegisterResourceAssetInput {
+  readonly resourceId: LearningResourceId;
+  readonly kind: ResourceAssetKind;
+  readonly bucketName: string;
+  readonly objectPath: string;
+  readonly mediaType: string;
+  readonly originalFileName: string;
+  readonly byteSize: number;
+}
+
+export interface RegisteredResourceAsset {
+  readonly id: string;
+  readonly resourceId: LearningResourceId;
+  readonly kind: ResourceAssetKind;
+  readonly bucketName: string;
+  readonly objectPath: string;
+}
+
+export interface NarratedDeckSlideInput {
+  readonly slideIndex: number;
+  readonly title: string;
+  readonly durationMs: number;
+  /** Diapositive texte seul possible : aucune image intégrée dans le PPTX source. */
+  readonly imageAssetId?: string;
+  readonly audioAssetId?: string;
+  readonly transcript?: string;
+  readonly transcriptLanguage?: string;
+}
+
+export interface NarratedDeckChapterInput {
+  readonly chapterIndex: number;
+  readonly title: string;
+  readonly startsAtSlide: number;
+}
+
+/**
+ * Saisie du port `publishNarratedDeck` : publication complète d'un
+ * diaporama sonorisé (diapositives + chapitres), à partir du fichier
+ * source déjà enregistré via `registerAsset`.
+ */
+export interface PublishNarratedDeckInput {
+  readonly resourceId: LearningResourceId;
+  readonly sourceAssetId: string;
+  readonly slideCount: number;
+  readonly durationMs: number;
+  readonly transcriptAvailable: boolean;
+  readonly slides: readonly NarratedDeckSlideInput[];
+  readonly chapters: readonly NarratedDeckChapterInput[];
+}
+
+export interface PublishedNarratedDeck {
+  readonly id: string;
+  readonly resourceId: LearningResourceId;
+  readonly version: number;
+  readonly status: string;
+}
+
 export interface LearningResourceRepository {
   listResources(programId: ProgramId): Promise<readonly LearningResource[]>;
+  /** Crée un support (publication immédiate en v1). Autorisation vérifiée côté serveur. */
+  createResource(input: CreateLearningResourceInput): Promise<LearningResource>;
+  /** Demande une URL d'upload signée pour un fichier source (Edge Function `create-resource-upload-url`). */
+  requestUploadUrl(input: RequestUploadUrlInput): Promise<UploadUrlResult>;
+  /** Téléverse réellement un fichier vers l'URL signée obtenue via `requestUploadUrl`. */
+  uploadResourceFile(upload: UploadUrlResult, file: File): Promise<void>;
+  /** Enregistre en base un fichier déjà téléversé via une URL signée. */
+  registerAsset(input: RegisterResourceAssetInput): Promise<RegisteredResourceAsset>;
+  /** Publie un diaporama sonorisé complet (diapositives + chapitres). */
+  publishNarratedDeck(input: PublishNarratedDeckInput): Promise<PublishedNarratedDeck>;
 }
 
 /**
