@@ -4,7 +4,7 @@
  */
 import type { DataAccess } from "@/application/ports/repositories";
 import type { PendingPerson } from "@/domain/peopleStaging";
-import type { Cohort, Outcome, RoleAssignment } from "@/domain/types";
+import type { Cohort, LearningResource, Outcome, RoleAssignment } from "@/domain/types";
 import { scopeFromGrantFields } from "@/domain/accessGrant";
 import type { AssessmentModality } from "@/domain/assessmentModality";
 import type { ProgramId } from "@/domain/types";
@@ -256,9 +256,64 @@ export const mockDataAccess: DataAccess = {
       },
     };
   })(),
-  resources: {
-    listResources: (programId) => ok(fx.learningResources.filter((r) => r.programId === programId)),
-  },
+  /**
+   * `resources` est mutable ici : `createResource` (et le reste du flux de
+   * création réelle — upload, enregistrement d'asset, publication d'un
+   * diaporama sonorisé) doit se refléter immédiatement dans `listResources`,
+   * même pattern que `outcomes`/`peopleStaging` ci-dessus. Aucun octet n'est
+   * réellement transmis en mode mock : `uploadResourceFile` est un no-op.
+   */
+  resources: (() => {
+    let resources: LearningResource[] = [...fx.learningResources];
+    let counter = 0;
+    return {
+      listResources: (programId) => ok(resources.filter((r) => r.programId === programId)),
+      createResource: (input) => {
+        counter += 1;
+        const created: LearningResource = {
+          id: `mock-resource-${counter}` as LearningResource["id"],
+          createdAt: new Date().toISOString(),
+          provenance: { sourceSystem: "native" },
+          programId: input.programId,
+          title: input.title,
+          format: input.format,
+          outcomeIds: input.outcomeIds,
+          estimatedMinutes: 0,
+        };
+        resources = [...resources, created];
+        return ok(created);
+      },
+      requestUploadUrl: (input) => {
+        counter += 1;
+        return ok({
+          bucket: input.bucket,
+          objectPath: `mock/${input.programId}/${counter}-${input.fileName}`,
+          signedUrl: `mock://upload/${counter}`,
+          token: `mock-token-${counter}`,
+        });
+      },
+      uploadResourceFile: () => ok(undefined),
+      registerAsset: (input) => {
+        counter += 1;
+        return ok({
+          id: `mock-asset-${counter}`,
+          resourceId: input.resourceId,
+          kind: input.kind,
+          bucketName: input.bucketName,
+          objectPath: input.objectPath,
+        });
+      },
+      publishNarratedDeck: (input) => {
+        counter += 1;
+        return ok({
+          id: `mock-deck-${counter}`,
+          resourceId: input.resourceId,
+          version: 1,
+          status: "published",
+        });
+      },
+    };
+  })(),
   media: {
     listMedia: (programId) => ok(mfx.mediaResources.filter((m) => m.programId === programId)),
     getMedia: (id) => ok(mfx.mediaResources.find((m) => m.id === id)),
