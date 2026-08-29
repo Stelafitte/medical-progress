@@ -277,6 +277,8 @@ export function AdminKnowledgeBase() {
 
       <MediaLibrarySection
         programName={data.program?.name ?? "ce programme"}
+        programId={programId}
+        curriculumVersionId={realCurriculumVersionId}
         media={data.media}
         outcomes={outcomes}
         people={data.people}
