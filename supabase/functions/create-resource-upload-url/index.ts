@@ -1,13 +1,14 @@
 // supabase/functions/create-resource-upload-url/index.ts
 //
-// Génère une URL signée d'upload pour un fichier source de support
-// pédagogique (Médiathèque). Voir le pattern de sécurité dans
+// Génère une URL signée d'upload pour un fichier de support pédagogique
+// (Médiathèque) : fichier source (PDF/vidéo/PPTX) ou média extrait d'une
+// diapositive (image, audio). Voir le pattern de sécurité dans
 // invite-person/index.ts : client scopé JWT pour l'autorisation (aucune
 // logique de droits réimplémentée ici, on réutilise is_program_staff via
 // RPC), client service_role uniquement pour l'opération de stockage
 // privilégiée (storage.createSignedUploadUrl).
 //
-// Entrée  : POST { programId: string, bucket: "course-sources" | "pptx-sources", fileName: string }
+// Entrée  : POST { programId: string, bucket: "course-sources" | "pptx-sources" | "course-artifacts", fileName: string }
 // Sortie  : { bucket, objectPath, signedUrl, token }
 //
 // Le client upload ensuite directement vers signedUrl (ou via
@@ -27,7 +28,9 @@ const CORS_HEADERS = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const ALLOWED_BUCKETS = new Set(["course-sources", "pptx-sources"]);
+// "course-artifacts" : médias dérivés d'une diapositive (image, audio) pour
+// un diaporama sonorisé publié via publish_narrated_deck.
+const ALLOWED_BUCKETS = new Set(["course-sources", "pptx-sources", "course-artifacts"]);
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
