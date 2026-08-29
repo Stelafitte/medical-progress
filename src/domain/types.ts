@@ -44,7 +44,7 @@ export interface Entity<TId extends string> {
 }
 
 /* ------------------------------------------------------------------ */
-/* Programmes et curricula                                             */
+/* Programmes et curricula */
 /* ------------------------------------------------------------------ */
 
 export type ProgramKind = "diu" | "dfasm" | "dpc" | "other";
@@ -103,7 +103,7 @@ export interface Cohort extends Entity<CohortId> {
 }
 
 /* ------------------------------------------------------------------ */
-/* Personnes, inscriptions, rôles contextualisés                       */
+/* Personnes, inscriptions, rôles contextualisés */
 /* ------------------------------------------------------------------ */
 
 export interface Person extends Entity<PersonId> {
@@ -143,7 +143,7 @@ export interface RoleAssignment {
 }
 
 /* ------------------------------------------------------------------ */
-/* Acquis d'apprentissage (compétences / connaissances)                */
+/* Acquis d'apprentissage (compétences / connaissances) */
 /* ------------------------------------------------------------------ */
 
 /** Distinction structurante du socle. */
@@ -187,7 +187,7 @@ export interface OutcomeRelation {
 }
 
 /* ------------------------------------------------------------------ */
-/* Stages                                                             */
+/* Stages */
 /* ------------------------------------------------------------------ */
 
 export interface Placement extends Entity<PlacementId> {
@@ -208,7 +208,7 @@ export interface PlacementAssignment extends Entity<PlacementAssignmentId> {
 }
 
 /* ------------------------------------------------------------------ */
-/* Preuves d'acquisition                                              */
+/* Preuves d'acquisition */
 /* ------------------------------------------------------------------ */
 
 export type EvidenceKind =
@@ -246,13 +246,18 @@ export interface EvidenceValidation {
 }
 
 /* ------------------------------------------------------------------ */
-/* Ressources et audit                                                */
+/* Ressources et audit */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Format d'un support pédagogique, aligné sur l'enum Postgres `resource_format`
+ * (supabase/migrations/20260829090000_mediatheque_external_url_and_links.sql
+ * et la table `learning_resources` pré-existante).
+ */
 export interface LearningResource extends Entity<LearningResourceId> {
   readonly programId: ProgramId;
   readonly title: string;
-  readonly format: "course" | "video" | "quiz" | "checklist" | "reference";
+  readonly format: "html" | "pdf" | "video" | "narrated_slides" | "link" | "other";
   readonly outcomeIds: readonly OutcomeId[];
   readonly estimatedMinutes: number;
 }
