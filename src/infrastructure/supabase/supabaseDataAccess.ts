@@ -691,7 +691,7 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
         assertNoSupabaseError(error);
       },
       async registerAsset(input: RegisterResourceAssetInput): Promise<RegisteredResourceAsset> {
-+        const { data, error } = await client.rpc("register_learning_resource_asset", {
+        const { data, error } = await client.rpc("register_learning_resource_asset", {
           p_resource_id: input.resourceId,
           p_kind: input.kind,
           p_bucket_name: input.bucketName,
