@@ -68,6 +68,8 @@ def main() -> int:
     parser.add_argument("--video", type=Path, required=True)
     parser.add_argument("--out-dir", type=Path, required=True)
     parser.add_argument("--crf", type=int, default=23)
+    parser.add_argument("--resume", action="store_true",
+                        help="Repasser sur un decoupage interrompu sans refaire les clips deja corrects")
     args = parser.parse_args()
 
     durations = slide_advance_seconds(args.pptx)
@@ -96,6 +98,18 @@ def main() -> int:
         scaled_duration = duration * scale
         clip = clips_dir / f"slide-{index:03d}.mp4"
         poster = posters_dir / f"slide-{index:03d}.png"
+
+        # Reprise : un clip n'est reutilise que si sa duree correspond a ce
+        # qu'on attend. Un fichier laisse a moitie ecrit par une interruption
+        # est donc refait, jamais garde.
+        if args.resume and clip.exists() and poster.exists():
+            try:
+                if abs(probe_duration(clip) - scaled_duration) < 0.5:
+                    print(f"  diapo {index:>2} : deja fait, conserve")
+                    start += duration
+                    continue
+            except (subprocess.CalledProcessError, ValueError):
+                pass
 
         # -ss avant -i : PowerPoint produit des images cles frequentes, et la
         # precision au dixieme suffit pour une frontiere de diapositive.
