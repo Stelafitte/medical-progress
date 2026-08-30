@@ -12,11 +12,7 @@
 import type { Person, PersonId, ProgramId, RoleAssignment } from "./types";
 
 export type PlatformRoleGroup =
-  | "platform_admin"
-  | "program_admin"
-  | "placement_supervisor"
-  | "teacher"
-  | "learner";
+  "platform_admin" | "program_admin" | "placement_supervisor" | "teacher" | "learner";
 
 export const PLATFORM_ROLE_GROUP_LABELS_FR: Record<PlatformRoleGroup, string> = {
   platform_admin: "Administrateurs plateforme",

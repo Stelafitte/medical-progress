@@ -147,7 +147,10 @@ export interface DpcCriterionComparison {
   readonly parametersPending: boolean;
 }
 
-function classify(a1: DpcCriterionConformityStatus, a2: DpcCriterionConformityStatus): DpcComparisonStatus {
+function classify(
+  a1: DpcCriterionConformityStatus,
+  a2: DpcCriterionConformityStatus,
+): DpcComparisonStatus {
   if (a1 === "missing") return "missing_a1";
   if (a2 === "missing") return "missing_a2";
   if (a1 === "indeterminate" || a2 === "indeterminate") return "indeterminate";
@@ -232,13 +235,11 @@ export function compareAudits(
   params: DpcCriterionParamMap = {},
 ): DpcAuditComparison {
   const criteria = criterionIds.map((id) => compareCriterion(id, a1Records, a2Records, params));
-  const count = (status: DpcComparisonStatus) =>
-    criteria.filter((c) => c.status === status).length;
+  const count = (status: DpcComparisonStatus) => criteria.filter((c) => c.status === status).length;
   const fundamentals = criteria
     .filter((c) => c.fundamental)
     .map((c) => ({ criterionId: c.criterionId, a2Conformity: c.a2Conformity }));
-  const a2Incomplete =
-    a2Records.length === 0 || criteria.some((c) => c.a2.interpretable === 0);
+  const a2Incomplete = a2Records.length === 0 || criteria.some((c) => c.a2.interpretable === 0);
   return {
     criteria,
     summary: {

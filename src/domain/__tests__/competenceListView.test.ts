@@ -71,9 +71,9 @@ describe("filtres de la liste de compétences", () => {
         (i) => i.outcome.id,
       ),
     ).toEqual(["o2"]);
-    expect(filterCompetences(items, { status: "declared" }, journal).map((i) => i.outcome.id)).toEqual(
-      ["o1"],
-    );
+    expect(
+      filterCompetences(items, { status: "declared" }, journal).map((i) => i.outcome.id),
+    ).toEqual(["o1"]);
     expect(
       filterCompetences(items, { status: "in_progress" }, journal).map((i) => i.outcome.id),
     ).toEqual(["o2"]);
@@ -81,7 +81,10 @@ describe("filtres de la liste de compétences", () => {
 
   it("dérive le statut sans jamais faire primer la déclaration sur les preuves", () => {
     expect(
-      competenceStatus(progress(echo, { meetsTarget: true }), entry("o1", { selfDeclaredAcquired: true })),
+      competenceStatus(
+        progress(echo, { meetsTarget: true }),
+        entry("o1", { selfDeclaredAcquired: true }),
+      ),
     ).toBe("at_target");
     expect(competenceStatus(progress(echo), undefined)).toBe("not_started");
   });
@@ -119,7 +122,10 @@ describe("remontée vers le tuteur", () => {
 
   it("ignore les compétences hors périmètre du tuteur", () => {
     expect(
-      tutorNotifications([entry("o9", { selfDeclaredAcquired: true, declaredAt: "2026-01-01T00:00:00.000Z" })], [echo]),
+      tutorNotifications(
+        [entry("o9", { selfDeclaredAcquired: true, declaredAt: "2026-01-01T00:00:00.000Z" })],
+        [echo],
+      ),
     ).toHaveLength(0);
   });
 });
@@ -131,7 +137,9 @@ describe("export du journal", () => {
       learnerName: "Camille Rousseau",
       generatedAt: "2026-06-01T00:00:00.000Z",
       items: [progress(echo)],
-      journal: new Map([["o1" as OutcomeId, entry("o1", { experienceNote: "<script>x</script>" })]]),
+      journal: new Map([
+        ["o1" as OutcomeId, entry("o1", { experienceNote: "<script>x</script>" })],
+      ]),
     });
     expect(html).toContain("validation humaine tierce est requise");
     expect(html).toContain("&lt;script&gt;");

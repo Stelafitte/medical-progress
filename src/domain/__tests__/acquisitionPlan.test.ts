@@ -22,6 +22,7 @@ const outcome: Outcome = {
   nature: "real_competence",
   domain: "Test",
   targetMastery: "intermediate",
+  retainedAt: "2026-01-01T00:00:00Z",
 };
 
 const progress = (over: Partial<OutcomeProgress>): OutcomeProgress => ({

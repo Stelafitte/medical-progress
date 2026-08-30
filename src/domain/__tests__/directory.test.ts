@@ -48,10 +48,34 @@ function makeState(): DirectoryState {
       },
     ],
     cohorts: [
-      { id: "coh-dfasm", programId: "prog-dfasm", label: "DFASM2", academicYear: "2026-2027", lifecycle: "active" },
-      { id: "coh-diu", programId: "prog-diu", label: "DIU 2026", academicYear: "2026-2027", lifecycle: "active" },
-      { id: "coh-dpc", programId: "prog-dpc", label: "DPC HVG", academicYear: "2026", lifecycle: "active" },
-      { id: "coh-other", programId: "prog-other", label: "Programme test", academicYear: "2026", lifecycle: "active" },
+      {
+        id: "coh-dfasm",
+        programId: "prog-dfasm",
+        label: "DFASM2",
+        academicYear: "2026-2027",
+        lifecycle: "active",
+      },
+      {
+        id: "coh-diu",
+        programId: "prog-diu",
+        label: "DIU 2026",
+        academicYear: "2026-2027",
+        lifecycle: "active",
+      },
+      {
+        id: "coh-dpc",
+        programId: "prog-dpc",
+        label: "DPC HVG",
+        academicYear: "2026",
+        lifecycle: "active",
+      },
+      {
+        id: "coh-other",
+        programId: "prog-other",
+        label: "Programme test",
+        academicYear: "2026",
+        lifecycle: "active",
+      },
     ],
     enrollments: [
       {
@@ -136,7 +160,13 @@ describe("ajout individuel", () => {
   it("refuse les champs obligatoires vides et les e-mails invalides", () => {
     const state = makeState();
     expect(
-      addIndividual(state, { ...base, lastName: "", email: "x@y.org", programId: "prog-dfasm", cohortId: "coh-dfasm" }).ok,
+      addIndividual(state, {
+        ...base,
+        lastName: "",
+        email: "x@y.org",
+        programId: "prog-dfasm",
+        cohortId: "coh-dfasm",
+      }).ok,
     ).toBe(false);
     const invalid = addIndividual(state, {
       ...base,
@@ -302,7 +332,10 @@ describe("import groupé", () => {
 
   it("met à jour l'état local après confirmation, en rattachant les e-mails connus", () => {
     const state = makeState();
-    const { rows } = importableFrom(csv, state.accounts.map((a) => a.loginEmail));
+    const { rows } = importableFrom(
+      csv,
+      state.accounts.map((a) => a.loginEmail),
+    );
     const { state: next, report } = applyRosterImport(state, {
       programId: "prog-diu",
       cohortId: "coh-diu",
@@ -341,7 +374,10 @@ describe("import groupé", () => {
 
   it("ignore les e-mails connus quand la stratégie est « ignorer »", () => {
     const state = makeState();
-    const { rows } = importableFrom(csv, state.accounts.map((a) => a.loginEmail));
+    const { rows } = importableFrom(
+      csv,
+      state.accounts.map((a) => a.loginEmail),
+    );
     const { state: next, report } = applyRosterImport(state, {
       programId: "prog-diu",
       cohortId: "coh-diu",

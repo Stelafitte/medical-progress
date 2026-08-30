@@ -137,10 +137,7 @@ export function fullNameOf(person: DirectoryPerson): string {
 }
 
 /** Recherche d'un COMPTE par e-mail normalisé, sur TOUTE la plateforme. */
-export function findAccountByEmail(
-  state: DirectoryState,
-  email: string,
-): UserAccount | undefined {
+export function findAccountByEmail(state: DirectoryState, email: string): UserAccount | undefined {
   const key = normaliseEmail(email);
   return state.accounts.find((a) => a.loginEmail === key);
 }
@@ -162,10 +159,7 @@ export function accountForPerson(
   return state.accounts.find((a) => a.personId === personId);
 }
 
-export function personById(
-  state: DirectoryState,
-  personId: PersonId,
-): DirectoryPerson | undefined {
+export function personById(state: DirectoryState, personId: PersonId): DirectoryPerson | undefined {
   return state.people.find((p) => p.id === personId);
 }
 
@@ -251,8 +245,7 @@ export function rolesForPersonInProgram(
 ): readonly RoleName[] {
   const roles = state.roleAssignments
     .filter(
-      (r) =>
-        r.personId === personId && "programId" in r.scope && r.scope.programId === programId,
+      (r) => r.personId === personId && "programId" in r.scope && r.scope.programId === programId,
     )
     .map((r) => r.role);
   return [...new Set(roles)];
@@ -414,7 +407,8 @@ export function addIndividual(
         },
       ];
 
-  const enrollmentId = `enr-local-${slug(email)}-${input.programId}-${input.cohortId}` as EnrollmentId;
+  const enrollmentId =
+    `enr-local-${slug(email)}-${input.programId}-${input.cohortId}` as EnrollmentId;
   const enrollments = [
     ...state.enrollments,
     {
@@ -465,7 +459,10 @@ export function addIndividual(
 }
 
 function slug(value: string): string {
-  return value.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase();
+  return value
+    .replace(/[^a-z0-9]+/gi, "-")
+    .replace(/^-|-$/g, "")
+    .toLowerCase();
 }
 
 /**

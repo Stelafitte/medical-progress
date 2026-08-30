@@ -241,6 +241,7 @@ export const outcomes: readonly Outcome[] = [
     nature: "knowledge",
     domain: "Bases physiques et anatomiques",
     targetMastery: "proficient",
+    retainedAt: ts("2026-01-05T08:00:00Z"),
   },
   {
     ...base,
@@ -253,6 +254,7 @@ export const outcomes: readonly Outcome[] = [
     nature: "simulated_competence",
     domain: "Acquisition d'images",
     targetMastery: "proficient",
+    retainedAt: ts("2026-01-05T08:00:00Z"),
   },
   {
     ...base,
@@ -266,6 +268,7 @@ export const outcomes: readonly Outcome[] = [
     nature: "real_competence",
     domain: "Fonction ventriculaire gauche",
     targetMastery: "proficient",
+    retainedAt: ts("2026-01-05T08:00:00Z"),
   },
   {
     ...base,
@@ -278,6 +281,7 @@ export const outcomes: readonly Outcome[] = [
     nature: "real_competence",
     domain: "Valvulopathies",
     targetMastery: "intermediate",
+    retainedAt: ts("2026-01-05T08:00:00Z"),
   },
   {
     ...base,
@@ -290,6 +294,7 @@ export const outcomes: readonly Outcome[] = [
     nature: "knowledge",
     domain: "Sémiologie cardiovasculaire",
     targetMastery: "proficient",
+    retainedAt: ts("2026-01-05T08:00:00Z"),
   },
   {
     ...base,
@@ -302,6 +307,7 @@ export const outcomes: readonly Outcome[] = [
     nature: "simulated_competence",
     domain: "Raisonnement clinique",
     targetMastery: "intermediate",
+    retainedAt: ts("2026-01-05T08:00:00Z"),
   },
   {
     ...base,
@@ -314,6 +320,7 @@ export const outcomes: readonly Outcome[] = [
     nature: "real_competence",
     domain: "Pratique clinique",
     targetMastery: "intermediate",
+    retainedAt: ts("2026-01-05T08:00:00Z"),
   },
   ...dpc.dpcOutcomes,
   ...hvg.dpcHvgOutcomes,

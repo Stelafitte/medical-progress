@@ -17,7 +17,10 @@ import {
   unclassifiedDocuments,
 } from "@/domain/dpcProgramDraft";
 import type { DpcDraftDocument } from "@/domain/dpcProgramDraft";
-import { dpcHvgProgramDefinition, dpcHvgShape } from "@/infrastructure/mock/dpcHvgProgramDefinition";
+import {
+  dpcHvgProgramDefinition,
+  dpcHvgShape,
+} from "@/infrastructure/mock/dpcHvgProgramDefinition";
 import { dpcHvgQuestions } from "@/infrastructure/mock/dpcHvgFixtures";
 import {
   dpcDraftDemoStates,
@@ -92,7 +95,9 @@ describe("chargement du démonstrateur HVG depuis le modèle générique", () =>
     const shape = draftShape(draft);
     expect(shape.grids).toBe(1);
     expect(shape.rounds).toBe(dpcHvgShape.rounds);
-    expect(shape.recordsPerRound.every((r) => r.records === dpcHvgShape.recordsPerRound)).toBe(true);
+    expect(shape.recordsPerRound.every((r) => r.records === dpcHvgShape.recordsPerRound)).toBe(
+      true,
+    );
   });
 
   it("ne fabrique aucune validation médicale", () => {
@@ -197,7 +202,10 @@ describe("absence de données patients", () => {
         ...dpcReadyToPublishDraft.audit,
         grids: dpcReadyToPublishDraft.audit.grids.map((grid, index) =>
           index === 0
-            ? { ...grid, inclusionCriteria: [...grid.inclusionCriteria, "Saisir le nom du patient"] }
+            ? {
+                ...grid,
+                inclusionCriteria: [...grid.inclusionCriteria, "Saisir le nom du patient"],
+              }
             : grid,
         ),
       },

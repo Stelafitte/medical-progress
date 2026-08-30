@@ -20,6 +20,7 @@ const outcome = (nature: Outcome["nature"]): Outcome => ({
   nature,
   domain: "Test",
   targetMastery: "novice",
+  retainedAt: "2026-01-01T00:00:00Z",
 });
 
 const evidence = (patch: Partial<Evidence>): Evidence => ({

@@ -131,7 +131,6 @@ describe("interface participant", () => {
     expect(source).toMatch(/question\.revealed && question\.explanation/);
   });
 
-
   it("documente que l'expurgation devra être serveur dans le produit réel", () => {
     expect(source).toContain("côté serveur");
   });

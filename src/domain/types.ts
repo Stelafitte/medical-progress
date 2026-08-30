@@ -180,6 +180,13 @@ export interface Outcome extends Entity<OutcomeId> {
   readonly nature: OutcomeNature;
   readonly domain: string;
   readonly targetMastery: MasteryLevel;
+  /**
+   * Date a laquelle l'acquis a ete retenu pour le parcours du programme.
+   * `null` : il reste dans le referentiel du programme, visible et
+   * modifiable, mais n'est pas integre au parcours. A ne pas confondre avec
+   * l'archivage, qui le sort des listes actives.
+   */
+  readonly retainedAt: string | null;
 }
 
 export type OutcomeRelationKind = "prerequisite_of" | "part_of" | "aligned_with" | "migrated_from";

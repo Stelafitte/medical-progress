@@ -10,19 +10,9 @@ import type { IsoDateTime, ProgramId } from "./types";
 export type AssessmentMode = "in_person" | "online";
 
 export type AssessmentSubtype =
-  | "oral"
-  | "written"
-  | "practical"
-  | "qcm"
-  | "simulation"
-  | "ai_oral"
-  | "case_study";
+  "oral" | "written" | "practical" | "qcm" | "simulation" | "ai_oral" | "case_study";
 
-export type AssessmentUsage =
-  | "self_assessment"
-  | "formative"
-  | "validation_exam"
-  | "certification";
+export type AssessmentUsage = "self_assessment" | "formative" | "validation_exam" | "certification";
 
 export const ASSESSMENT_MODE_LABELS_FR: Record<AssessmentMode, string> = {
   in_person: "En présentiel",

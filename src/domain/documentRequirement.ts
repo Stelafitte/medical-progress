@@ -30,7 +30,8 @@ export const DOCUMENT_VALIDATOR_LABELS_FR: Record<DocumentValidator, string> = {
 };
 
 /** Moment attendu du dépôt, indépendant d'une promotion précise. */
-export type DocumentDueMoment = "enrollment" | "before_placement" | "end_of_placement" | "end_of_program";
+export type DocumentDueMoment =
+  "enrollment" | "before_placement" | "end_of_placement" | "end_of_program";
 
 export const DOCUMENT_DUE_LABELS_FR: Record<DocumentDueMoment, string> = {
   enrollment: "à l'inscription",
@@ -61,19 +62,15 @@ export const EMPTY_NEW_DOCUMENT_REQUIREMENT_INPUT: NewDocumentRequirementInput =
 };
 
 export type NewDocumentRequirementIssue =
-  | "code-required"
-  | "label-required"
-  | "supervisor-validates-supervisor-piece";
+  "code-required" | "label-required" | "supervisor-validates-supervisor-piece";
 
-export const NEW_DOCUMENT_REQUIREMENT_ISSUE_LABELS_FR: Record<
-  NewDocumentRequirementIssue,
-  string
-> = {
-  "code-required": "Le code de la pièce est obligatoire.",
-  "label-required": "L'intitulé de la pièce est obligatoire.",
-  "supervisor-validates-supervisor-piece":
-    "Une pièce fournie par le responsable de stage ne peut pas être validée par lui-même : la validation revient à l'administration.",
-};
+export const NEW_DOCUMENT_REQUIREMENT_ISSUE_LABELS_FR: Record<NewDocumentRequirementIssue, string> =
+  {
+    "code-required": "Le code de la pièce est obligatoire.",
+    "label-required": "L'intitulé de la pièce est obligatoire.",
+    "supervisor-validates-supervisor-piece":
+      "Une pièce fournie par le responsable de stage ne peut pas être validée par lui-même : la validation revient à l'administration.",
+  };
 
 export function validateNewDocumentRequirement(
   input: NewDocumentRequirementInput,

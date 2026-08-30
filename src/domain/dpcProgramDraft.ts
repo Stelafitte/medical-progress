@@ -145,9 +145,7 @@ export type DpcDocumentKindConflict =
 const NO_CONFLICT: DpcDocumentKindConflict = { conflict: false };
 
 /** Un document ne peut pas être à la fois grille d'audit et QCM. */
-export function documentKindConflict(
-  kinds: readonly DpcImportableKind[],
-): DpcDocumentKindConflict {
+export function documentKindConflict(kinds: readonly DpcImportableKind[]): DpcDocumentKindConflict {
   if (kinds.some(isAuditGridArtifact) && kinds.some(isKnowledgeQuizArtifact))
     return {
       conflict: true,
@@ -388,7 +386,8 @@ export function publicationChecklist(draft: DpcProgramDraft): readonly DpcCheckl
     );
 
   const roundsWithRule = rounds.filter((round) => {
-    const rule = round.completenessRule ?? grids.find((g) => g.gridId === round.gridId)?.completenessRule;
+    const rule =
+      round.completenessRule ?? grids.find((g) => g.gridId === round.gridId)?.completenessRule;
     const records = recordsExpectedForRound(draft.audit, round.roundId);
     return rule !== undefined && records !== undefined && records >= 1;
   });
@@ -415,7 +414,8 @@ export function publicationChecklist(draft: DpcProgramDraft): readonly DpcCheckl
       id: "documents_classified",
       label: "Documents classés",
       required: true,
-      satisfied: draft.documents.length > 0 && unclassified.length === 0 && conflicting.length === 0,
+      satisfied:
+        draft.documents.length > 0 && unclassified.length === 0 && conflicting.length === 0,
       detail:
         draft.documents.length === 0
           ? "Aucun document source déposé."
@@ -576,7 +576,9 @@ export function draftShape(draft: DpcProgramDraft): DpcDraftShape {
     scheduledSlots: draft.implementation.slots.filter(isSlotScheduled).length,
     recordsPerRound: orderedRounds(draft.audit).map((round) => {
       const records = recordsExpectedForRound(draft.audit, round.roundId);
-      return records === undefined ? { roundId: round.roundId } : { roundId: round.roundId, records };
+      return records === undefined
+        ? { roundId: round.roundId }
+        : { roundId: round.roundId, records };
     }),
   };
 }

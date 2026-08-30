@@ -69,5 +69,6 @@ export function buildKnowledgeFromInput(
     nature: "knowledge",
     domain: input.domain.trim().length > 0 ? input.domain.trim() : "Non classé",
     targetMastery: input.targetMastery,
+    retainedAt: ctx.now,
   };
 }

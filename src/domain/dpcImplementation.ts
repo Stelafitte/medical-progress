@@ -29,11 +29,7 @@ import type { IsoDateTime } from "./types";
 
 /** Nature d'un composant programmable. Aucun n'est obligatoire. */
 export type DpcComponentKind =
-  | "audit_round"
-  | "pre_test"
-  | "post_test"
-  | "training_session"
-  | "other_activity";
+  "audit_round" | "pre_test" | "post_test" | "training_session" | "other_activity";
 
 export const DPC_COMPONENT_KIND_LABELS_FR: Record<DpcComponentKind, string> = {
   audit_round: "Tour d'audit de pratiques",
@@ -138,9 +134,7 @@ export function hasComponent(plan: DpcImplementationPlan, kind: DpcComponentKind
 }
 
 /** Composants effectivement programmés, sans présupposer lesquels existent. */
-export function activeComponentKinds(
-  plan: DpcImplementationPlan,
-): readonly DpcComponentKind[] {
+export function activeComponentKinds(plan: DpcImplementationPlan): readonly DpcComponentKind[] {
   const order: readonly DpcComponentKind[] = [
     "audit_round",
     "pre_test",
@@ -169,9 +163,7 @@ export function isSlotScheduled(slot: DpcScheduledSlot): boolean {
  * Calendrier trié : d'abord les composants datés (par début, puis fin), puis
  * les composants non encore programmés, en conservant l'ordre déclaré.
  */
-export function implementationTimeline(
-  plan: DpcImplementationPlan,
-): readonly DpcScheduledSlot[] {
+export function implementationTimeline(plan: DpcImplementationPlan): readonly DpcScheduledSlot[] {
   const scheduled = plan.slots.filter(isSlotScheduled);
   const pending = plan.slots.filter((slot) => !isSlotScheduled(slot));
   const sorted = [...scheduled].sort((a, b) => {
@@ -217,11 +209,8 @@ const ms = (value: IsoDateTime) => Date.parse(value);
 
 function slotIssues(slot: DpcScheduledSlot): readonly DpcImplementationIssue[] {
   const issues: DpcImplementationIssue[] = [];
-  const push = (
-    code: DpcImplementationIssueCode,
-    severity: DpcIssueSeverity,
-    message: string,
-  ) => issues.push({ code, severity, message, slotId: slot.id });
+  const push = (code: DpcImplementationIssueCode, severity: DpcIssueSeverity, message: string) =>
+    issues.push({ code, severity, message, slotId: slot.id });
 
   if (slot.label.trim() === "")
     push("missing_label", "blocking", "Un composant programmé doit porter un libellé.");
@@ -370,9 +359,7 @@ export function validateImplementationPlan(
   return [...plan.slots.flatMap(slotIssues), ...chronologyIssues(plan)];
 }
 
-export function blockingIssues(
-  plan: DpcImplementationPlan,
-): readonly DpcImplementationIssue[] {
+export function blockingIssues(plan: DpcImplementationPlan): readonly DpcImplementationIssue[] {
   return validateImplementationPlan(plan).filter((issue) => issue.severity === "blocking");
 }
 
@@ -398,9 +385,7 @@ export interface DpcImplementationSummary {
   readonly warnings: number;
 }
 
-export function implementationSummary(
-  plan: DpcImplementationPlan,
-): DpcImplementationSummary {
+export function implementationSummary(plan: DpcImplementationPlan): DpcImplementationSummary {
   const issues = validateImplementationPlan(plan);
   const scheduled = plan.slots.filter(isSlotScheduled);
   const starts = scheduled.map((slot) => slotStart(slot)!).sort();

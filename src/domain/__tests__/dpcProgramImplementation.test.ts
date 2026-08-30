@@ -159,9 +159,7 @@ describe("modalités", () => {
     const impl: DpcProgramImplementation = {
       ...base,
       modules: training,
-      sequences: [
-        { id: "s1", label: "E-formation", modality: "e_learning", order: 1 },
-      ],
+      sequences: [{ id: "s1", label: "E-formation", modality: "e_learning", order: 1 }],
     };
     expect(codes(impl)).toContain("missing_window");
     expect(codes(impl)).toContain("missing_required_resources");
@@ -295,9 +293,9 @@ describe("chronologie", () => {
   });
 
   it("exige un fuseau horaire", () => {
-    expect(
-      codes({ ...base, timeZone: "", schedule: { timeZone: "", milestones: [] } }),
-    ).toContain("missing_time_zone");
+    expect(codes({ ...base, timeZone: "", schedule: { timeZone: "", milestones: [] } })).toContain(
+      "missing_time_zone",
+    );
   });
 
   it("refuse une clôture d'inscriptions antérieure à leur ouverture", () => {

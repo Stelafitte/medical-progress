@@ -29,7 +29,9 @@ import {
 
 const GEN = "2026-01-05T08:00:00.000Z";
 
-function step(partial: Partial<PlanCalendarStep> & Pick<PlanCalendarStep, "id" | "kind">): PlanCalendarStep {
+function step(
+  partial: Partial<PlanCalendarStep> & Pick<PlanCalendarStep, "id" | "kind">,
+): PlanCalendarStep {
   return {
     label: partial.label ?? partial.id,
     startsAt: partial.startsAt ?? "2026-03-02T08:00:00.000Z",
@@ -55,13 +57,54 @@ function calendar(overrides: Partial<PlanCalendar> = {}): PlanCalendar {
       completion: true,
     },
     steps: [
-      step({ id: "s-enr", kind: "enrollment", label: "Inscription", startsAt: "2026-01-10T08:00:00.000Z", endsAt: "2026-02-10T18:00:00.000Z" }),
-      step({ id: "s-a1", kind: "audit_a1", label: "Audit A1", startsAt: "2026-02-15T08:00:00.000Z", endsAt: "2026-03-01T18:00:00.000Z" }),
-      step({ id: "s-pre", kind: "pre_test", label: "Pré-test", startsAt: "2026-03-02T08:00:00.000Z", endsAt: "2026-03-05T18:00:00.000Z" }),
-      step({ id: "s-form", kind: "in_person", label: "Journée présentielle", startsAt: "2026-03-20T08:00:00.000Z", endsAt: "2026-03-20T17:00:00.000Z" }),
-      step({ id: "s-post", kind: "post_test", label: "Post-test", startsAt: "2026-03-21T08:00:00.000Z", endsAt: "2026-03-25T18:00:00.000Z" }),
-      step({ id: "s-a2", kind: "audit_a2", label: "Audit A2", startsAt: "2026-06-20T08:00:00.000Z", endsAt: "2026-07-05T18:00:00.000Z" }),
-      step({ id: "s-fin", kind: "completion", label: "Attestation", startsAt: "2026-07-15T08:00:00.000Z" }),
+      step({
+        id: "s-enr",
+        kind: "enrollment",
+        label: "Inscription",
+        startsAt: "2026-01-10T08:00:00.000Z",
+        endsAt: "2026-02-10T18:00:00.000Z",
+      }),
+      step({
+        id: "s-a1",
+        kind: "audit_a1",
+        label: "Audit A1",
+        startsAt: "2026-02-15T08:00:00.000Z",
+        endsAt: "2026-03-01T18:00:00.000Z",
+      }),
+      step({
+        id: "s-pre",
+        kind: "pre_test",
+        label: "Pré-test",
+        startsAt: "2026-03-02T08:00:00.000Z",
+        endsAt: "2026-03-05T18:00:00.000Z",
+      }),
+      step({
+        id: "s-form",
+        kind: "in_person",
+        label: "Journée présentielle",
+        startsAt: "2026-03-20T08:00:00.000Z",
+        endsAt: "2026-03-20T17:00:00.000Z",
+      }),
+      step({
+        id: "s-post",
+        kind: "post_test",
+        label: "Post-test",
+        startsAt: "2026-03-21T08:00:00.000Z",
+        endsAt: "2026-03-25T18:00:00.000Z",
+      }),
+      step({
+        id: "s-a2",
+        kind: "audit_a2",
+        label: "Audit A2",
+        startsAt: "2026-06-20T08:00:00.000Z",
+        endsAt: "2026-07-05T18:00:00.000Z",
+      }),
+      step({
+        id: "s-fin",
+        kind: "completion",
+        label: "Attestation",
+        startsAt: "2026-07-15T08:00:00.000Z",
+      }),
     ],
     ...overrides,
   };
@@ -76,7 +119,12 @@ describe("décalages", () => {
   });
 
   it("calcule le jour même, J+7 et le dépassement", () => {
-    const s = step({ id: "x", kind: "audit_a1", startsAt: "2026-03-01T08:00:00.000Z", endsAt: "2026-03-10T08:00:00.000Z" });
+    const s = step({
+      id: "x",
+      kind: "audit_a1",
+      startsAt: "2026-03-01T08:00:00.000Z",
+      endsAt: "2026-03-10T08:00:00.000Z",
+    });
     expect(applyOffset(s, "start", { kind: "same_day" })).toBe("2026-03-01T08:00:00.000Z");
     expect(applyOffset(s, "end", { kind: "days_after", days: 7 })).toBe("2026-03-17T08:00:00.000Z");
     expect(applyOffset(s, "end", { kind: "after_overdue", days: 3 })).toBe(
@@ -90,12 +138,19 @@ describe("décalages", () => {
   });
 
   it("ne calcule rien si l'ancre n'est pas datable", () => {
-    const s = { id: "x", kind: "completion", label: "x", startsAt: "pas-une-date" } as PlanCalendarStep;
+    const s = {
+      id: "x",
+      kind: "completion",
+      label: "x",
+      startsAt: "pas-une-date",
+    } as PlanCalendarStep;
     expect(applyOffset(s, "start", { kind: "same_day" })).toBeUndefined();
   });
 
   it("décrit le décalage en clair", () => {
-    expect(describeOffset({ kind: "days_before", days: 15 }, "start")).toContain("15 jour(s) avant");
+    expect(describeOffset({ kind: "days_before", days: 15 }, "start")).toContain(
+      "15 jour(s) avant",
+    );
     expect(describeOffset({ kind: "after_overdue", days: 7 }, "end")).toContain("dépassement");
   });
 
@@ -175,7 +230,12 @@ describe("génération", () => {
     const broken = calendar({
       modules: { completion: true },
       steps: [
-        { id: "s-fin", kind: "completion", label: "Fin", startsAt: "date-invalide" } as PlanCalendarStep,
+        {
+          id: "s-fin",
+          kind: "completion",
+          label: "Fin",
+          startsAt: "date-invalide",
+        } as PlanCalendarStep,
       ],
     });
     expect(generateProposals(broken).every((p) => p.scheduledAt === undefined)).toBe(true);
@@ -265,7 +325,9 @@ describe("recalcul après modification du calendrier", () => {
     expect(result.nextPlan.proposals.find((p) => p.id === id)!.scheduledAt).toBe(
       "2026-02-01T09:00:00.000Z",
     );
-    expect(result.differences.some((d) => d.kind === "preserved" && d.proposalId === id)).toBe(true);
+    expect(result.differences.some((d) => d.kind === "preserved" && d.proposalId === id)).toBe(
+      true,
+    );
   });
 
   it("conserve l'état désactivé après recalcul", () => {
@@ -377,7 +439,12 @@ describe("validation humaine obligatoire", () => {
       calendar({
         modules: { completion: true },
         steps: [
-          { id: "s-fin", kind: "completion", label: "Fin", startsAt: "invalide" } as PlanCalendarStep,
+          {
+            id: "s-fin",
+            kind: "completion",
+            label: "Fin",
+            startsAt: "invalide",
+          } as PlanCalendarStep,
         ],
       }),
       { generatedAt: GEN },

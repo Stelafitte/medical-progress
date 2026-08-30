@@ -98,6 +98,7 @@ export const dpcOutcomes: readonly Outcome[] = [
     nature: "knowledge",
     domain: "Décision thérapeutique",
     targetMastery: "proficient",
+    retainedAt: "2026-01-05T08:00:00Z",
   },
   {
     ...base,
@@ -110,6 +111,7 @@ export const dpcOutcomes: readonly Outcome[] = [
     nature: "knowledge",
     domain: "Décision thérapeutique",
     targetMastery: "proficient",
+    retainedAt: "2026-01-05T08:00:00Z",
   },
   {
     ...base,
@@ -123,6 +125,7 @@ export const dpcOutcomes: readonly Outcome[] = [
     nature: "real_competence",
     domain: "Amélioration des pratiques",
     targetMastery: "intermediate",
+    retainedAt: "2026-01-05T08:00:00Z",
   },
 ];
 

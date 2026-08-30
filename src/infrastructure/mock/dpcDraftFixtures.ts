@@ -310,7 +310,12 @@ export const dpcReadyToPublishDraft: DpcProgramDraft = {
       "Objectif de démonstration 2 : vérifier la séparation audits / QCM.",
     ],
     teachingModalities: [
-      { id: "demo-classe", label: "Classe virtuelle", kind: "virtual_classroom", durationMinutes: 90 },
+      {
+        id: "demo-classe",
+        label: "Classe virtuelle",
+        kind: "virtual_classroom",
+        durationMinutes: 90,
+      },
       { id: "demo-audit", label: "Audit de pratiques", kind: "audit" },
     ],
     faculty: [
@@ -322,9 +327,7 @@ export const dpcReadyToPublishDraft: DpcProgramDraft = {
       { key: "apres", window: "J+90", description: "Tour de suivi et test aval." },
     ],
     detectedModules: ["clinicalAudit", "knowledgeTests", "training", "certificate"],
-    resources: [
-      { id: "demo-res-1", label: "Support de démonstration", kind: "teaching_resource" },
-    ],
+    resources: [{ id: "demo-res-1", label: "Support de démonstration", kind: "teaching_resource" }],
     bibliography: [{ order: 1, citation: "Référence de démonstration (fictive)." }],
   },
   audit: genericAudit,

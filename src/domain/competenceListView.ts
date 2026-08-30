@@ -19,11 +19,7 @@ export function normalizeSearch(value: string): string {
 }
 
 export type CompetenceStatusFilter =
-  | "all"
-  | "at_target"
-  | "declared"
-  | "in_progress"
-  | "not_started";
+  "all" | "at_target" | "declared" | "in_progress" | "not_started";
 
 export const COMPETENCE_STATUS_LABELS_FR: Record<CompetenceStatusFilter, string> = {
   all: "Tous les statuts",
@@ -152,11 +148,7 @@ export interface JournalExportInput {
 }
 
 const escapeHtml = (value: string) =>
-  value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+  value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
 const DECLARATION_LABELS_FR = {
   none: "Non déclarée",

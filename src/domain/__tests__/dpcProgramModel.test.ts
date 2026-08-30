@@ -19,7 +19,10 @@ import {
   type DpcProgramDefinition,
   type DpcPublishedVersion,
 } from "@/domain/dpcProgram";
-import { dpcHvgProgramDefinition, dpcHvgShape } from "@/infrastructure/mock/dpcHvgProgramDefinition";
+import {
+  dpcHvgProgramDefinition,
+  dpcHvgShape,
+} from "@/infrastructure/mock/dpcHvgProgramDefinition";
 
 const completeness: DpcCompletenessRule = {
   allRecordsRequired: true,
@@ -131,12 +134,7 @@ describe("configuration générique des audits", () => {
   });
 
   it("le nombre de critères et de parties est un simple paramètre", () => {
-    const shapes = [
-      [1],
-      [3, 3],
-      [5, 5, 5, 5, 5],
-      [12, 1, 9],
-    ];
+    const shapes = [[1], [3, 3], [5, 5, 5, 5, 5], [12, 1, 9]];
     for (const sections of shapes) {
       const total = sections.reduce((a, b) => a + b, 0);
       expect(total).toBeGreaterThan(0);
@@ -245,9 +243,9 @@ describe("démonstrateur HVG comme instance du modèle générique", () => {
     expect(dpcHvgShape.rounds).toBe(2);
     const [first, second] = dpcHvgProgramDefinition.audit.rounds;
     expect(recordsExpectedForRound(dpcHvgProgramDefinition.audit, first!.roundId)).toBe(10);
-    expect(canCompareRounds(dpcHvgProgramDefinition.audit, first!.roundId, second!.roundId)).toEqual(
-      { comparable: true, reason: "comparable" },
-    );
+    expect(
+      canCompareRounds(dpcHvgProgramDefinition.audit, first!.roundId, second!.roundId),
+    ).toEqual({ comparable: true, reason: "comparable" });
   });
 
   it("distingue le document de programme de la grille d'audit importée", () => {

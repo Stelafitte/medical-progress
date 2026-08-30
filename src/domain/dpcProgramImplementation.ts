@@ -43,12 +43,7 @@ export const DPC_IMPLEMENTATION_VOCABULARY_FR = {
 /* ------------------------------------------------------------------ */
 
 export type DpcModuleKey =
-  | "practice_audit"
-  | "pre_test"
-  | "training"
-  | "post_test"
-  | "improvement_plan"
-  | "attestation";
+  "practice_audit" | "pre_test" | "training" | "post_test" | "improvement_plan" | "attestation";
 
 export const DPC_MODULE_LABELS_FR: Record<DpcModuleKey, string> = {
   practice_audit: "Audit de pratiques",
@@ -224,12 +219,8 @@ export interface DpcImplementationSchedule {
   readonly requiresBeforeAfterAudit?: boolean;
 }
 
-export function orderedMilestones(
-  schedule: DpcImplementationSchedule,
-): readonly DpcMilestone[] {
-  return [...schedule.milestones].sort(
-    (a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt),
-  );
+export function orderedMilestones(schedule: DpcImplementationSchedule): readonly DpcMilestone[] {
+  return [...schedule.milestones].sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt));
 }
 
 export function milestoneOf(
@@ -244,12 +235,7 @@ export function milestoneOf(
 /* ------------------------------------------------------------------ */
 
 export type DpcImplementationStatus =
-  | "draft"
-  | "scheduled"
-  | "open"
-  | "running"
-  | "completed"
-  | "archived";
+  "draft" | "scheduled" | "open" | "running" | "completed" | "archived";
 
 export const DPC_IMPLEMENTATION_STATUS_LABELS_FR: Record<DpcImplementationStatus, string> = {
   draft: "Brouillon",
@@ -336,11 +322,8 @@ function sequenceIssues(
 ): readonly DpcImplementationIssue[] {
   const issues: DpcImplementationIssue[] = [];
   for (const sequence of implementation.sequences) {
-    const push = (
-      code: DpcImplementationIssueCode,
-      severity: DpcIssueSeverity,
-      message: string,
-    ) => issues.push({ code, severity, message, ref: sequence.id });
+    const push = (code: DpcImplementationIssueCode, severity: DpcIssueSeverity, message: string) =>
+      issues.push({ code, severity, message, ref: sequence.id });
 
     if (!implementation.modules.training)
       push(
@@ -358,10 +341,7 @@ function sequenceIssues(
         );
       if (sequence.modality === "in_person" && (sequence.location ?? "").trim() === "")
         push("missing_location", "blocking", `Renseignez le lieu de « ${sequence.label} ».`);
-      if (
-        sequence.modality === "virtual_classroom" &&
-        (sequence.provider ?? "").trim() === ""
-      )
+      if (sequence.modality === "virtual_classroom" && (sequence.provider ?? "").trim() === "")
         push(
           "missing_provider",
           "blocking",
@@ -526,9 +506,7 @@ export function validateImplementation(
 export function implementationBlockingIssues(
   implementation: DpcProgramImplementation,
 ): readonly DpcImplementationIssue[] {
-  return validateImplementation(implementation).filter(
-    (issue) => issue.severity === "blocking",
-  );
+  return validateImplementation(implementation).filter((issue) => issue.severity === "blocking");
 }
 
 /**
@@ -539,9 +517,7 @@ export function canOpenImplementation(
   implementation: DpcProgramImplementation,
   referenceProgramPublished: boolean,
 ): boolean {
-  return (
-    referenceProgramPublished && implementationBlockingIssues(implementation).length === 0
-  );
+  return referenceProgramPublished && implementationBlockingIssues(implementation).length === 0;
 }
 
 /* ------------------------------------------------------------------ */
@@ -564,9 +540,7 @@ export function implementationOverview(
 ): DpcImplementationOverview {
   const issues = validateImplementation(implementation);
   const timeline = orderedMilestones(implementation.schedule);
-  const modalities = [
-    ...new Set(implementation.sequences.map((sequence) => sequence.modality)),
-  ];
+  const modalities = [...new Set(implementation.sequences.map((sequence) => sequence.modality))];
   const first = timeline[0];
   const last = timeline[timeline.length - 1];
   return {
@@ -586,9 +560,7 @@ export function implementationsOfProgram(
   implementations: readonly DpcProgramImplementation[],
   programDefinitionId: string,
 ): readonly DpcProgramImplementation[] {
-  return implementations.filter(
-    (item) => item.programDefinitionId === programDefinitionId,
-  );
+  return implementations.filter((item) => item.programDefinitionId === programDefinitionId);
 }
 
 /** Versions du programme de référence effectivement implémentées. */

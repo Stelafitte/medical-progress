@@ -56,7 +56,8 @@ const wordCount = (text: string) => (text.trim() ? text.trim().split(/\s+/).leng
 export function estimateSlideDuration(slide: PptxSlideSignal): number {
   if (slide.audioDurationSeconds && slide.audioDurationSeconds > 0)
     return Math.round(slide.audioDurationSeconds);
-  if (slide.audioBytes > 0) return Math.max(MIN_SLIDE_SECONDS, Math.round(slide.audioBytes / BYTES_PER_SECOND));
+  if (slide.audioBytes > 0)
+    return Math.max(MIN_SLIDE_SECONDS, Math.round(slide.audioBytes / BYTES_PER_SECOND));
   const words = wordCount(slide.notes);
   if (words > 0) return Math.max(MIN_SLIDE_SECONDS, Math.round((words / WORDS_PER_MINUTE) * 60));
   return MIN_SLIDE_SECONDS;
@@ -165,15 +166,30 @@ export function buildStepLog(
   at: string,
 ): readonly ConversionStepLogEntry[] {
   return [
-    { step: "upload", state: "done", at, note: `${input.fileName} lu localement, aucun envoi réseau` },
-    { step: "precheck", state: "done", at, note: `${input.slides.length} diapositive(s) inventoriée(s)` },
+    {
+      step: "upload",
+      state: "done",
+      at,
+      note: `${input.fileName} lu localement, aucun envoi réseau`,
+    },
+    {
+      step: "precheck",
+      state: "done",
+      at,
+      note: `${input.slides.length} diapositive(s) inventoriée(s)`,
+    },
     {
       step: "extract",
       state: "done",
       at,
       note: `${input.slides.reduce((n, s) => n + s.audioCount, 0)} piste(s) audio et ${input.slides.reduce((n, s) => n + s.imageCount, 0)} image(s) extraites`,
     },
-    { step: "render_slides", state: "done", at, note: "Diapositives rendues en HTML5 (texte + images extraites)" },
+    {
+      step: "render_slides",
+      state: "done",
+      at,
+      note: "Diapositives rendues en HTML5 (texte + images extraites)",
+    },
     {
       step: "audio",
       state: artifact.slides.some((s) => s.hasNarration) ? "done" : "blocked",
@@ -189,7 +205,12 @@ export function buildStepLog(
         : "Aucune note exploitable : transcription à saisir",
     },
     { step: "assemble_html5", state: "done", at, note: "Paquet lecteur web HTML5 assemblé" },
-    { step: "pedagogical_review", state: "pending", at, note: "Contrôle pédagogique humain obligatoire" },
+    {
+      step: "pedagogical_review",
+      state: "pending",
+      at,
+      note: "Contrôle pédagogique humain obligatoire",
+    },
     { step: "publication", state: "pending" },
   ];
 }
@@ -222,7 +243,11 @@ export function convertPptx(
   }
   const artifact = buildArtifact(input, options);
   const alerts = [...precheck.alerts];
-  if (options.generateTranscript && artifact.hasTranscript && !alerts.includes("transcript_to_review"))
+  if (
+    options.generateTranscript &&
+    artifact.hasTranscript &&
+    !alerts.includes("transcript_to_review")
+  )
     alerts.push("transcript_to_review");
   return {
     conversionStatus: "review_required",
@@ -241,4 +266,3 @@ export function convertPptx(
     artifact,
   };
 }
-

@@ -198,6 +198,7 @@ export const dpcHvgOutcomes: readonly Outcome[] = [
     nature: "knowledge",
     domain: "Imagerie et qualification",
     targetMastery: "proficient",
+    retainedAt: "2026-01-12T08:00:00Z",
   },
   {
     ...base,
@@ -211,6 +212,7 @@ export const dpcHvgOutcomes: readonly Outcome[] = [
     nature: "knowledge",
     domain: "Démarche étiologique",
     targetMastery: "proficient",
+    retainedAt: "2026-01-12T08:00:00Z",
   },
   {
     ...base,
@@ -224,6 +226,7 @@ export const dpcHvgOutcomes: readonly Outcome[] = [
     nature: "knowledge",
     domain: "Diagnostic de l'amylose",
     targetMastery: "proficient",
+    retainedAt: "2026-01-12T08:00:00Z",
   },
   {
     ...base,
@@ -237,6 +240,7 @@ export const dpcHvgOutcomes: readonly Outcome[] = [
     nature: "real_competence",
     domain: "Amélioration des pratiques",
     targetMastery: "intermediate",
+    retainedAt: "2026-01-12T08:00:00Z",
   },
 ];
 
@@ -281,7 +285,11 @@ const part1: readonly DpcCriterion[] = [
     "Des signes échocardiographiques associés pouvant orienter vers une cardiopathie infiltrative ont-ils été recherchés : épaississement valvulaire, dilatation bi-atriale, épaississement du septum interauriculaire, épanchement péricardique ou aspect myocardique évocateur ?",
     "out-dpc-hvg-qualification",
   ),
-  crit("Le strain longitudinal global a-t-il été obtenu ?", "out-dpc-hvg-qualification", "N/A si le strain n'est pas disponible sur l'appareil utilisé."),
+  crit(
+    "Le strain longitudinal global a-t-il été obtenu ?",
+    "out-dpc-hvg-qualification",
+    "N/A si le strain n'est pas disponible sur l'appareil utilisé.",
+  ),
   crit(
     "Un ECG a-t-il été réalisé ou analysé en parallèle de l'échocardiographie ?",
     "out-dpc-hvg-qualification",
@@ -400,14 +408,27 @@ export const dpcHvgGrid: DpcAuditGrid = {
   publishedAt: "2026-04-02T09:00:00Z",
   provenance: native,
   sections: [
-    { id: "hvg-p1", label: "Partie 1 — Qualification de l'HVG à l'échocardiographie", criteria: part1 },
-    { id: "hvg-p2", label: "Partie 2 — Recherche des causes fréquentes ou visibles d'HVG", criteria: part2 },
+    {
+      id: "hvg-p1",
+      label: "Partie 1 — Qualification de l'HVG à l'échocardiographie",
+      criteria: part1,
+    },
+    {
+      id: "hvg-p2",
+      label: "Partie 2 — Recherche des causes fréquentes ou visibles d'HVG",
+      criteria: part2,
+    },
     {
       id: "hvg-p3",
-      label: "Partie 3 — Démarche diagnostique complémentaire devant une HVG inexpliquée ou atypique",
+      label:
+        "Partie 3 — Démarche diagnostique complémentaire devant une HVG inexpliquée ou atypique",
       criteria: part3,
     },
-    { id: "hvg-p4", label: "Partie 4 — Orientation thérapeutique et suivi du patient", criteria: part4 },
+    {
+      id: "hvg-p4",
+      label: "Partie 4 — Orientation thérapeutique et suivi du patient",
+      criteria: part4,
+    },
   ],
 };
 
@@ -460,7 +481,11 @@ const allCriteria = [...part1, ...part2, ...part3, ...part4];
  * Construit un dossier audité : les numéros listés sont conformes (Oui),
  * les numéros `na` sont non applicables, le reste est Non.
  */
-const mkRecord = (ref: string, conform: readonly number[], na: readonly number[] = []): DpcAuditRecord => {
+const mkRecord = (
+  ref: string,
+  conform: readonly number[],
+  na: readonly number[] = [],
+): DpcAuditRecord => {
   const answers: Record<string, DpcAnswer> = {};
   for (const criterion of allCriteria) {
     answers[criterion.id] = na.includes(criterion.number)
@@ -665,14 +690,18 @@ export const dpcHvgQuestions: readonly DpcQuizQuestion[] = [
     id: "dpc-hvg-q1",
     number: 1,
     theme: "Quand faut-il suspecter une amylose cardiaque ?",
-    prompt: "Chez quel patient la suspicion d'amylose cardiaque doit-elle être particulièrement évoquée ?",
+    prompt:
+      "Chez quel patient la suspicion d'amylose cardiaque doit-elle être particulièrement évoquée ?",
     options: [
       {
         key: "A",
         label:
           "Homme de 78 ans avec insuffisance cardiaque à FEVG préservée, HVG, syndrome du canal carpien ancien et bas voltage à l'ECG.",
       },
-      { key: "B", label: "Femme de 45 ans présentant une HTA mal contrôlée avec HVG concentrique." },
+      {
+        key: "B",
+        label: "Femme de 45 ans présentant une HTA mal contrôlée avec HVG concentrique.",
+      },
       { key: "C", label: "Homme de 55 ans avec infarctus du myocarde ancien et FEVG à 30 %." },
       { key: "D", label: "Patient de 30 ans présentant une myocardite aiguë." },
     ],
@@ -732,7 +761,10 @@ export const dpcHvgQuestions: readonly DpcQuizQuestion[] = [
     options: [
       { key: "A", label: "Les bêtabloquants sont le traitement de référence." },
       { key: "B", label: "Les IEC améliorent la survie." },
-      { key: "C", label: "Le tafamidis ralentit la progression de la maladie et améliore le pronostic." },
+      {
+        key: "C",
+        label: "Le tafamidis ralentit la progression de la maladie et améliore le pronostic.",
+      },
       { key: "D", label: "Les diurétiques sont le seul traitement efficace." },
     ],
     correctKey: "C",
@@ -744,11 +776,15 @@ export const dpcHvgQuestions: readonly DpcQuizQuestion[] = [
     id: "dpc-hvg-q5",
     number: 5,
     theme: "Quel est le red flag échocardiographique le plus évocateur ?",
-    prompt: "Quel signe échocardiographique est particulièrement suggestif d'une amylose cardiaque ?",
+    prompt:
+      "Quel signe échocardiographique est particulièrement suggestif d'une amylose cardiaque ?",
     options: [
       { key: "A", label: "Dilatation isolée du ventricule gauche." },
       { key: "B", label: "Hypertrophie septale asymétrique." },
-      { key: "C", label: "Préservation relative du strain longitudinal apical (« apical sparing »)." },
+      {
+        key: "C",
+        label: "Préservation relative du strain longitudinal apical (« apical sparing »).",
+      },
       { key: "D", label: "Fraction d'éjection très diminuée (< 30 %)." },
     ],
     correctKey: "C",
@@ -853,7 +889,8 @@ export const dpcHvgSetup: DpcProgrammeSetup = {
     {
       key: "audit_t0",
       window: "J-30 à J0",
-      description: "Audit clinique 1 sur 10 dossiers, analysés rétrospectivement ou prospectivement.",
+      description:
+        "Audit clinique 1 sur 10 dossiers, analysés rétrospectivement ou prospectivement.",
       requirement: "10 dossiers complets transmis avant la formation.",
     },
     {

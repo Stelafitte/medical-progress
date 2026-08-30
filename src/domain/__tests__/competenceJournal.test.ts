@@ -31,7 +31,11 @@ describe("competenceJournal", () => {
     const empty = appendMessage(emptyJournalEntry(id), "learner", "   ", now, "m1");
     expect(empty.messages).toHaveLength(0);
     const sent = appendMessage(empty, "learner", " question ", now, "m1");
-    expect(sent.messages[0]).toMatchObject({ body: "question", author: "learner", simulated: true });
+    expect(sent.messages[0]).toMatchObject({
+      body: "question",
+      author: "learner",
+      simulated: true,
+    });
   });
 
   it("ne confirme jamais une compétence sur la seule déclaration de l'apprenant", () => {

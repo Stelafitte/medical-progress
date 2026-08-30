@@ -212,12 +212,7 @@ describe("resolveAudience", () => {
   });
 
   it("signale une audience vide", () => {
-    const r = resolveAudience(
-      { kind: "persons", personIds: [] },
-      snapshot(),
-      scope,
-      noPrefs,
-    );
+    const r = resolveAudience({ kind: "persons", personIds: [] }, snapshot(), scope, noPrefs);
     expect(r.recipientCount).toBe(0);
     expect(r.blocking).toBe(true);
     expect(r.warnings.some((w) => w.includes("Audience vide"))).toBe(true);
@@ -422,9 +417,9 @@ describe("canApproveCampaign", () => {
       status: "draft",
     };
     const campaign = campaignOf({ templateId: "tpl-1" });
-    expect(approvalOf(campaign, { kind: "immediate" }, { template: draftTemplate }).canApprove).toBe(
-      false,
-    );
+    expect(
+      approvalOf(campaign, { kind: "immediate" }, { template: draftTemplate }).canApprove,
+    ).toBe(false);
     expect(
       approvalOf(
         campaign,

@@ -282,6 +282,7 @@ type OutcomeRow = {
   nature: Outcome["nature"];
   domain: string;
   target_mastery: Outcome["targetMastery"];
+  retained_at: string | null;
   created_at: string;
 };
 
@@ -298,6 +299,7 @@ export function mapOutcome(row: OutcomeRow): Outcome {
     nature: row.nature,
     domain: row.domain,
     targetMastery: row.target_mastery,
+    retainedAt: row.retained_at,
   };
 }
 
@@ -506,7 +508,7 @@ const assessmentModalityColumns =
   "id,program_id,name,mode,subtype,usage,notes,created_at,updated_at";
 
 const outcomeColumns =
-  "id,program_id,curriculum_version_id,code,label,description,nature,domain,target_mastery,created_at";
+  "id,program_id,curriculum_version_id,code,label,description,nature,domain,target_mastery,retained_at,created_at";
 
 /**
  * Lien signé pour chaque fichier demandé, groupé par bucket. Un fichier dont
@@ -534,12 +536,10 @@ async function signAssetUrls(
 
   await Promise.all(
     [...byBucket.entries()].map(async ([bucket, bucketRows]) => {
-      const { data: urls, error: signError } = await client.storage
-        .from(bucket)
-        .createSignedUrls(
-          bucketRows.map((row) => row.object_path),
-          3600,
-        );
+      const { data: urls, error: signError } = await client.storage.from(bucket).createSignedUrls(
+        bucketRows.map((row) => row.object_path),
+        3600,
+      );
       if (signError) return;
       for (const [index, entry] of (urls ?? []).entries()) {
         const row = bucketRows[index];
@@ -869,6 +869,18 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
         const { error } = await client.rpc("archive_outcome", { p_outcome_id: outcomeId });
         assertNoSupabaseError(error);
       },
+      /**
+       * Bascule d'un lot en une seule requete : voir
+       * supabase/migrations/20260830110000_outcome_retained.sql.
+       */
+      async setOutcomesRetained(outcomeIds, retained) {
+        if (outcomeIds.length === 0) return;
+        const { error } = await client.rpc("set_outcomes_retained", {
+          p_outcome_ids: outcomeIds,
+          p_retained: retained,
+        });
+        assertNoSupabaseError(error);
+      },
     },
     /**
      * Chantier Médiathèque (A), câblage complet : lecture et écriture réelles.
@@ -915,9 +927,13 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
             error instanceof Error ? error.message : "URL d'upload impossible à obtenir.";
           throw new Error(message);
         }
-        const payload = data as
-          | { bucket?: string; objectPath?: string; signedUrl?: string; token?: string; error?: string }
-          | null;
+        const payload = data as {
+          bucket?: string;
+          objectPath?: string;
+          signedUrl?: string;
+          token?: string;
+          error?: string;
+        } | null;
         if (!payload || !payload.signedUrl || !payload.objectPath || !payload.token) {
           throw new Error(payload?.error ?? "Réponse invalide du service d'upload.");
         }
@@ -1038,7 +1054,9 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
         const assetIds = [
           ...new Set(
             slides.flatMap((slide) =>
-              [slide.image_asset_id, slide.video_asset_id].filter((id): id is string => Boolean(id)),
+              [slide.image_asset_id, slide.video_asset_id].filter((id): id is string =>
+                Boolean(id),
+              ),
             ),
           ),
         ];
@@ -1058,11 +1076,13 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
               : {}),
             ...(slide.transcript ? { transcript: slide.transcript } : {}),
           })),
-          chapters: ((chapterRows ?? []) as {
-            chapter_index: number;
-            title: string;
-            starts_at_slide: number;
-          }[]).map((chapter) => ({
+          chapters: (
+            (chapterRows ?? []) as {
+              chapter_index: number;
+              title: string;
+              starts_at_slide: number;
+            }[]
+          ).map((chapter) => ({
             chapterIndex: chapter.chapter_index,
             title: chapter.title,
             startsAtSlide: chapter.starts_at_slide,

@@ -8,10 +8,7 @@
  * réutilisation sans duplication de contenu. Tout est SIMULÉ : aucune
  * ouverture réelle, aucun lien de visioconférence réel, aucune notification.
  */
-import type {
-  DpcActiveModules,
-  DpcProgramImplementation,
-} from "@/domain/dpcProgramImplementation";
+import type { DpcActiveModules, DpcProgramImplementation } from "@/domain/dpcProgramImplementation";
 import { dpcHvgProgramDefinition } from "./dpcHvgProgramDefinition";
 import { DPC_HVG_COHORT_ID } from "./dpcHvgFixtures";
 
@@ -307,5 +304,4 @@ export const dpcHvgImplementations: readonly DpcProgramImplementation[] = [
 ];
 
 /** Le programme de référence est publié : condition distincte de l'ouverture. */
-export const dpcHvgReferencePublished =
-  dpcHvgProgramDefinition.version.status === "published";
+export const dpcHvgReferencePublished = dpcHvgProgramDefinition.version.status === "published";

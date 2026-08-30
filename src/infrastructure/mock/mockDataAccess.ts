@@ -151,12 +151,20 @@ export const mockDataAccess: DataAccess = {
           nature: input.nature,
           domain: input.domain,
           targetMastery: input.targetMastery,
+          retainedAt: new Date().toISOString(),
         };
         outcomes = [...outcomes, created];
         return ok(created);
       },
       archiveOutcome: (outcomeId) => {
         outcomes = outcomes.filter((o) => o.id !== outcomeId);
+        return ok(undefined);
+      },
+      setOutcomesRetained: (outcomeIds, retained) => {
+        const targets = new Set<string>(outcomeIds);
+        outcomes = outcomes.map((o) =>
+          targets.has(o.id) ? { ...o, retainedAt: retained ? new Date().toISOString() : null } : o,
+        );
         return ok(undefined);
       },
     };
@@ -337,8 +345,7 @@ export const mockDataAccess: DataAccess = {
       /** Aucun diaporama reellement stocke dans la maquette. */
       getNarratedDeckPlayback: () => ok(undefined),
       /** Aucune transcription hors ligne : la maquette annonce simplement qu'il n'y a rien a faire. */
-      transcribeNextSlide: () =>
-        ok({ slideIndex: null, characters: 0, remaining: 0, done: true }),
+      transcribeNextSlide: () => ok({ slideIndex: null, characters: 0, remaining: 0, done: true }),
     };
   })(),
   media: {

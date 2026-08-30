@@ -74,10 +74,10 @@ describe("pièces exigées — import", () => {
   });
 
   it("fusionne sans écraser un code déjà présent", () => {
-    const merged = mergeDocumentRequirements([build("DOC-01", "Assurance")], [
-      build("DOC-01", "Autre"),
-      build("DOC-02", "Convention"),
-    ]);
+    const merged = mergeDocumentRequirements(
+      [build("DOC-01", "Assurance")],
+      [build("DOC-01", "Autre"), build("DOC-02", "Convention")],
+    );
     expect(merged.map((item) => item.code)).toEqual(["DOC-01", "DOC-02"]);
     expect(merged[0]?.label).toBe("Assurance");
   });

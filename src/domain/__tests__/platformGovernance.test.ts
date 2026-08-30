@@ -54,7 +54,9 @@ describe("sécurité plateforme", () => {
   });
 
   it("refuse de désactiver le double facteur ou la journalisation", () => {
-    expect(validateSecurityPolicy({ ...SECURITY, mfaRequiredForAdmins: false })).not.toHaveLength(0);
+    expect(validateSecurityPolicy({ ...SECURITY, mfaRequiredForAdmins: false })).not.toHaveLength(
+      0,
+    );
     expect(validateSecurityPolicy({ ...SECURITY, logPersonFileAccess: false })).not.toHaveLength(0);
   });
 
@@ -97,9 +99,9 @@ describe("délégations de rôles", () => {
   });
 
   it("exige un motif et une échéance future", () => {
-    expect(validateRoleDelegation({ ...DELEGATION, reason: "court" }, "2026-08-25")).not.toHaveLength(
-      0,
-    );
+    expect(
+      validateRoleDelegation({ ...DELEGATION, reason: "court" }, "2026-08-25"),
+    ).not.toHaveLength(0);
     expect(
       validateRoleDelegation({ ...DELEGATION, expiresOn: "2026-08-01" }, "2026-08-25"),
     ).not.toHaveLength(0);

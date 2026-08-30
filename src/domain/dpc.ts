@@ -15,7 +15,15 @@
  *  - l'attestation atteste une participation et une progression mesurée, jamais
  *    l'acquisition automatique d'une compétence en situation réelle.
  */
-import type { CohortId, EnrollmentId, IsoDateTime, OutcomeId, PersonId, ProgramId, Provenance } from "./types";
+import type {
+  CohortId,
+  EnrollmentId,
+  IsoDateTime,
+  OutcomeId,
+  PersonId,
+  ProgramId,
+  Provenance,
+} from "./types";
 
 /* ------------------------------------------------------------------ */
 /* Grille d'audit                                                     */
@@ -200,13 +208,7 @@ export interface DpcReference {
 
 /** Étape du parcours DPC, exprimée en calendrier RELATIF. */
 export type DpcStepKey =
-  | "audit_t0"
-  | "pre_test"
-  | "training"
-  | "post_test"
-  | "audit_t1"
-  | "comparison"
-  | "certificate";
+  "audit_t0" | "pre_test" | "training" | "post_test" | "audit_t1" | "comparison" | "certificate";
 
 export const DPC_STEP_LABELS_FR: Record<DpcStepKey, string> = {
   audit_t0: "Audit clinique 1 (10 dossiers)",
@@ -317,7 +319,10 @@ export function recordConformity(grid: DpcAuditGrid, record: DpcAuditRecord): Dp
 }
 
 /** Conformité d'un tour d'audit pour un participant. */
-export function entryConformity(grid: DpcAuditGrid, entry: DpcAuditEntry | undefined): DpcConformityTally {
+export function entryConformity(
+  grid: DpcAuditGrid,
+  entry: DpcAuditEntry | undefined,
+): DpcConformityTally {
   if (!entry) return emptyConformity(dpcCriterionCount(grid) * grid.recordsPerRound);
   return tally(dpcCriteria(grid), entry.records, grid.recordsPerRound);
 }
@@ -721,7 +726,11 @@ export function dpcJourney(input: DpcJourneyInput): DpcJourney {
   const { grid, setup, t0, t1, preTestPercent, postTestPercent, attendedTraining, comparison } =
     input;
   const entryState = (entry: DpcAuditEntry | undefined): DpcStepState["state"] =>
-    entry?.status === "submitted" ? "done" : entry?.status === "in_progress" ? "in_progress" : "todo";
+    entry?.status === "submitted"
+      ? "done"
+      : entry?.status === "in_progress"
+        ? "in_progress"
+        : "todo";
   const entryDetail = (entry: DpcAuditEntry | undefined) => {
     const progress = entryProgress(grid, entry?.records ?? []);
     return `${progress.recordsComplete}/${progress.recordsExpected} dossiers complets · ${progress.percentComplete} % de la grille`;

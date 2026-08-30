@@ -213,30 +213,60 @@ function loadScriptOnce(src: string): Promise<void> {
 /* ------------------------------------------------------------------ */
 
 /**
- * Liste d'éléments déjà rattachés au programme, avec retrait explicite.
+ * Liste d'éléments rattachés au programme, avec deux gestes distincts.
  *
- * La case à cocher SÉLECTIONNE, elle ne déclenche rien : cocher puis décocher
- * doit laisser la liste intacte. Auparavant, décocher archivait aussitôt
- * l'élément, qui disparaissait — un geste de sélection produisait une
- * modification, sans confirmation ni retour possible depuis l'écran.
+ * La case à cocher ne déclenche RIEN par elle-même : elle porte l'état
+ * « retenue pour le parcours ». Cocher puis décocher laisse la base
+ * inchangée tant qu'aucun bouton n'a été utilisé. Décocher ne fait pas
+ * disparaître l'élément : il reste dans la liste, simplement hors parcours.
  *
- * Le retrait est donc un second geste, sur un bouton qui dit ce qu'il fait et
- * sur combien d'éléments il porte.
+ * Deux boutons, deux effets qu'il faut pouvoir distinguer d'un coup d'œil :
+ *
+ *   1. « Activer les sélections » enregistre l'état des cases. Ce qui est
+ *      coché devient retenu, ce qui ne l'est pas sort du parcours sans être
+ *      supprimé ni archivé.
+ *   2. « Retirer du programme » archive les éléments cochés : ils quittent
+ *      les listes actives mais restent en base, récupérables.
+ *
+ * `onSetRetained` est facultatif : les modalités d'évaluation n'ont pas
+ * d'état « retenue », leur liste n'affiche donc que le second bouton.
  */
-function RemovableAssociationList({
+function ProgramAssociationList({
   title,
   items,
   busyIds,
   removeLabel,
   onRemove,
+  onSetRetained,
 }: {
   title: string;
-  items: readonly { readonly id: string; readonly label: string }[];
+  items: readonly { readonly id: string; readonly label: string; readonly retained?: boolean }[];
   busyIds: ReadonlySet<string>;
   removeLabel: string;
   onRemove: (ids: readonly string[]) => void;
+  onSetRetained?: (ids: readonly string[], retained: boolean) => Promise<void>;
 }) {
-  const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
+  const retainable = onSetRetained !== undefined;
+
+  // État enregistré en base, tel que le parent vient de le relire.
+  const persisted = useMemo(
+    () => new Set(items.filter((item) => item.retained === true).map((item) => item.id)),
+    [items],
+  );
+  // Signature de l'état enregistré : elle change quand le parent recharge la
+  // liste après une écriture, et c'est le seul moment où l'on a le droit
+  // d'écraser les cases que l'utilisateur est en train de manipuler.
+  const persistedSignature = items.map((item) => `${item.id}:${item.retained === true}`).join("|");
+
+  const [selected, setSelected] = useState<ReadonlySet<string>>(persisted);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setSelected(persisted);
+    setSaveError(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [persistedSignature]);
 
   if (items.length === 0) return null;
 
@@ -251,6 +281,30 @@ function RemovableAssociationList({
   const selectedIds = items.filter((item) => selected.has(item.id)).map((item) => item.id);
   const busy = selectedIds.some((id) => busyIds.has(id));
 
+  const toRetain = items
+    .filter((item) => selected.has(item.id) && item.retained !== true)
+    .map((item) => item.id);
+  const toRelease = items
+    .filter((item) => !selected.has(item.id) && item.retained === true)
+    .map((item) => item.id);
+  const dirty = toRetain.length > 0 || toRelease.length > 0;
+
+  const save = async () => {
+    if (!onSetRetained || !dirty) return;
+    setSaving(true);
+    setSaveError(null);
+    try {
+      if (toRetain.length > 0) await onSetRetained(toRetain, true);
+      if (toRelease.length > 0) await onSetRetained(toRelease, false);
+    } catch (err) {
+      setSaveError(
+        err instanceof Error ? err.message : "Échec de l'enregistrement des sélections.",
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="space-y-1.5">
       <p className="text-sm font-medium">{title}</p>
@@ -259,21 +313,39 @@ function RemovableAssociationList({
           <li key={item.id} className="flex items-center gap-2">
             <Checkbox
               checked={selected.has(item.id)}
-              disabled={busyIds.has(item.id)}
+              disabled={busyIds.has(item.id) || saving}
               onCheckedChange={(checked) => toggle(item.id, checked === true)}
-              aria-label={`Sélectionner ${item.label}`}
+              aria-label={
+                retainable ? `Retenir ${item.label} pour le parcours` : `Sélectionner ${item.label}`
+              }
             />
             <span className="text-sm">{item.label}</span>
+            {retainable && item.retained !== true ? (
+              <span className="text-muted-foreground rounded border px-1.5 py-0.5 text-xs">
+                hors parcours
+              </span>
+            ) : null}
           </li>
         ))}
       </ul>
       <div className="flex flex-wrap items-center gap-2 pt-1">
+        {retainable ? (
+          <Button
+            type="button"
+            size="sm"
+            className="min-h-11"
+            disabled={!dirty || saving || busy}
+            onClick={() => void save()}
+          >
+            {saving ? "Enregistrement…" : "Activer les sélections pour intégration au programme"}
+          </Button>
+        ) : null}
         <Button
           type="button"
           variant="outline"
           size="sm"
           className="min-h-11"
-          disabled={selectedIds.length === 0 || busy}
+          disabled={selectedIds.length === 0 || busy || saving}
           onClick={() => {
             onRemove(selectedIds);
             setSelected(new Set());
@@ -283,11 +355,13 @@ function RemovableAssociationList({
             ? "Retrait en cours…"
             : `${removeLabel}${selectedIds.length > 0 ? ` (${selectedIds.length})` : ""}`}
         </Button>
-        <span className="text-xs text-muted-foreground">
-          Cocher ne retire rien : la sélection reste jusqu'à ce que vous utilisiez ce bouton. Le
-          retrait est réversible — l'élément est archivé, jamais supprimé.
-        </span>
       </div>
+      <p className="text-muted-foreground text-xs">
+        {retainable
+          ? "Cocher ne change rien tant que vous n'avez pas utilisé un bouton. Décocher puis activer sort l'élément du parcours sans le supprimer : il reste dans cette liste. Le retrait, lui, archive l'élément — réversible, jamais supprimé."
+          : "Cocher ne retire rien : la sélection reste jusqu'à ce que vous utilisiez ce bouton. Le retrait est réversible — l'élément est archivé, jamais supprimé."}
+      </p>
+      {saveError ? <p className="text-destructive text-xs">{saveError}</p> : null}
     </div>
   );
 }
@@ -352,8 +426,7 @@ export function AdminProgramDesigner() {
     // laissait à l'écran les objectifs du précédent. Pire, la sauvegarde
     // automatique les enregistrait alors comme brouillon du nouveau
     // programme, sans que rien ne le signale.
-    const draftModelId =
-      draft && "modelId" in draft ? (draft["modelId"] as string | null) : null;
+    const draftModelId = draft && "modelId" in draft ? (draft["modelId"] as string | null) : null;
     setModelId(draftModelId);
 
     const draftModelName =
@@ -498,6 +571,57 @@ export function AdminProgramDesigner() {
 
   const extractTxtText = async (file: File): Promise<string> => (await file.text()).trim();
 
+  /**
+   * Archive ZIP : on lit chaque fichier de l'archive avec le lecteur qui lui
+   * correspond, et on concatène le tout dans l'ordre alphabétique des chemins
+   * — un ordre stable, pour que deux imports de la même archive donnent le
+   * même texte.
+   *
+   * Chaque extrait est précédé du chemin du fichier dans l'archive : sans lui,
+   * le texte des objectifs devient un bloc indifférencié où plus personne ne
+   * sait quel paragraphe vient d'où.
+   *
+   * Les fichiers d'un format non lisible ne sont pas une erreur : ils sont
+   * ignorés et signalés, pour que l'archive entière ne soit pas rejetée à
+   * cause d'une image ou d'un ZIP imbriqué.
+   */
+  const extractZipText = async (
+    file: File,
+  ): Promise<{ readonly text: string; readonly ignored: readonly string[] }> => {
+    const { unzipSync } = await import("fflate");
+    const entries = unzipSync(new Uint8Array(await file.arrayBuffer()));
+
+    const names = Object.keys(entries)
+      .filter((name) => !name.endsWith("/")) // dossiers
+      .filter((name) => !name.startsWith("__MACOSX/")) // métadonnées macOS
+      .filter((name) => !(name.split("/").pop() ?? "").startsWith(".")) // fichiers cachés
+      .sort((a, b) => a.localeCompare(b, "fr"));
+
+    const parts: string[] = [];
+    const ignored: string[] = [];
+
+    for (const name of names) {
+      const lower = name.toLowerCase();
+      const bytes = entries[name];
+      if (!bytes || bytes.length === 0) continue;
+      const inner = new File([bytes.slice()], name.split("/").pop() ?? name);
+
+      let text = "";
+      if (lower.endsWith(".pdf")) text = await extractPdfText(inner);
+      else if (lower.endsWith(".docx")) text = await extractDocxText(inner);
+      else if (lower.endsWith(".txt") || lower.endsWith(".md")) text = await extractTxtText(inner);
+      else {
+        ignored.push(name);
+        continue;
+      }
+
+      if (text) parts.push(`## ${name}\n\n${text}`);
+      else ignored.push(name);
+    }
+
+    return { text: parts.join("\n\n").trim(), ignored };
+  };
+
   const handleObjectivesFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = ""; // permet de réimporter le même fichier ensuite
@@ -509,11 +633,14 @@ export function AdminProgramDesigner() {
     const name = file.name.toLowerCase();
     const isPdf = file.type === "application/pdf" || name.endsWith(".pdf");
     const isDocx =
-      file.type ===
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+      file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
       name.endsWith(".docx");
     const isLegacyDoc = name.endsWith(".doc") && !isDocx;
     const isTxt = file.type === "text/plain" || name.endsWith(".txt");
+    const isZip =
+      name.endsWith(".zip") ||
+      file.type === "application/zip" ||
+      file.type === "application/x-zip-compressed";
 
     if (isLegacyDoc) {
       setImportObjectivesError(
@@ -521,20 +648,38 @@ export function AdminProgramDesigner() {
       );
       return;
     }
-    if (!isPdf && !isDocx && !isTxt) return; // autre format : maquette (nom du fichier seulement)
+    // autre format : maquette (nom du fichier seulement)
+    if (!isPdf && !isDocx && !isTxt && !isZip) return;
 
     setImportingObjectives(true);
     try {
-      const extracted = isPdf
-        ? await extractPdfText(file)
-        : isDocx
-          ? await extractDocxText(file)
-          : await extractTxtText(file);
+      const result = isZip
+        ? await extractZipText(file)
+        : {
+            text: isPdf
+              ? await extractPdfText(file)
+              : isDocx
+                ? await extractDocxText(file)
+                : await extractTxtText(file),
+            ignored: [] as readonly string[],
+          };
+      const extracted = result.text;
 
       if (extracted) {
         setObjectives((prev) => (prev.trim() ? `${prev.trim()}\n\n${extracted}` : extracted));
+        // Les fichiers non lus sont signalés même quand l'import réussit :
+        // sans ça, une archive à moitié lue passerait pour complète.
+        if (result.ignored.length > 0) {
+          setImportObjectivesError(
+            `${result.ignored.length} fichier(s) de l'archive non lus (format non pris en charge ou sans texte) : ${result.ignored.slice(0, 5).join(", ")}${result.ignored.length > 5 ? "…" : ""}`,
+          );
+        }
       } else {
-        setImportObjectivesError("Aucun texte détecté dans ce fichier.");
+        setImportObjectivesError(
+          isZip
+            ? "Aucun texte lisible dans cette archive : elle doit contenir des PDF, des .docx, des .txt ou des .md."
+            : "Aucun texte détecté dans ce fichier.",
+        );
       }
     } catch (err) {
       setImportObjectivesError(
@@ -553,17 +698,23 @@ export function AdminProgramDesigner() {
    */
   const renderObjectivesImportShortcut = () => (
     <div className="bg-muted/30 flex flex-wrap items-center gap-2 rounded-md border border-dashed p-2">
-      <Button asChild variant="outline" size="sm" className="min-h-9" disabled={importingObjectives}>
+      <Button
+        asChild
+        variant="outline"
+        size="sm"
+        className="min-h-9"
+        disabled={importingObjectives}
+      >
         <label>
           {importingObjectives ? (
             <Loader2 className="me-1 size-4 animate-spin" aria-hidden />
           ) : (
             <FileUp className="me-1 size-4" aria-hidden />
           )}
-          Importer un fichier (PDF, Word, texte)
+          Importer un fichier (PDF, Word, texte ou archive ZIP)
           <input
             type="file"
-            accept=".pdf,application/pdf,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.txt,text/plain"
+            accept=".pdf,application/pdf,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.txt,.md,text/plain,.zip,application/zip,application/x-zip-compressed"
             className="sr-only"
             disabled={importingObjectives}
             onChange={(event) => void handleObjectivesFileChange(event)}
@@ -604,6 +755,18 @@ export function AdminProgramDesigner() {
         return next;
       });
     }
+  };
+
+  /**
+   * Enregistre l'état « retenue » d'un lot d'acquis, puis relit la liste.
+   * Le rechargement est indispensable : c'est lui qui refait descendre l'état
+   * enregistré dans la liste, et donc qui referme l'écart entre les cases
+   * affichées et la base.
+   */
+  const setOutcomesRetained = async (ids: readonly string[], retained: boolean) => {
+    if (ids.length === 0) return;
+    await dataAccess.outcomes.setOutcomesRetained(ids as readonly OutcomeId[], retained);
+    await refetch();
   };
 
   // Sauvegarde automatique (avec anti-rebond) du brouillon dès qu'un champ
@@ -838,7 +1001,7 @@ export function AdminProgramDesigner() {
                 Importer un fichier d'objectifs
                 <input
                   type="file"
-                  accept=".pdf,application/pdf,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.txt,text/plain"
+                  accept=".pdf,application/pdf,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.txt,.md,text/plain,.zip,application/zip,application/x-zip-compressed"
                   className="sr-only"
                   disabled={importingObjectives}
                   onChange={(event) => void handleObjectivesFileChange(event)}
@@ -852,7 +1015,9 @@ export function AdminProgramDesigner() {
             ) : importedFile ? (
               <span className="text-muted-foreground text-xs">
                 {importedFile}
-                {/\.(pdf|docx|txt)$/i.test(importedFile) ? " — texte ajouté ci-dessus" : " (maquette)"}
+                {/\.(pdf|docx|txt|md|zip)$/i.test(importedFile)
+                  ? " — texte ajouté ci-dessus"
+                  : " (maquette)"}
               </span>
             ) : null}
           </div>
@@ -971,13 +1136,14 @@ export function AdminProgramDesigner() {
                         <div className="space-y-3">
                           {realCurriculumVersionId ? (
                             <>
-                              <RemovableAssociationList
+                              <ProgramAssociationList
                                 title="Liste des compétences déjà associées à ce programme"
                                 items={data.outcomes
                                   .filter((o) => o.nature !== "knowledge")
                                   .map((outcome) => ({
                                     id: outcome.id,
                                     label: `${outcome.code} — ${outcome.label}`,
+                                    retained: outcome.retainedAt !== null,
                                   }))}
                                 busyIds={archivingIds}
                                 removeLabel="Retirer du programme"
@@ -986,6 +1152,7 @@ export function AdminProgramDesigner() {
                                     dataAccess.outcomes.archiveOutcome(id as OutcomeId),
                                   )
                                 }
+                                onSetRetained={setOutcomesRetained}
                               />
                               {renderObjectivesImportShortcut()}
                               <div className="space-y-1.5">
@@ -1045,13 +1212,14 @@ export function AdminProgramDesigner() {
                         <div className="space-y-3">
                           {realCurriculumVersionId ? (
                             <>
-                              <RemovableAssociationList
+                              <ProgramAssociationList
                                 title="Liste des connaissances déjà associées à ce programme"
                                 items={data.outcomes
                                   .filter((o) => o.nature === "knowledge")
                                   .map((outcome) => ({
                                     id: outcome.id,
                                     label: `${outcome.code} — ${outcome.label}`,
+                                    retained: outcome.retainedAt !== null,
                                   }))}
                                 busyIds={archivingIds}
                                 removeLabel="Retirer du programme"
@@ -1060,6 +1228,7 @@ export function AdminProgramDesigner() {
                                     dataAccess.outcomes.archiveOutcome(id as OutcomeId),
                                   )
                                 }
+                                onSetRetained={setOutcomesRetained}
                               />
                               {renderObjectivesImportShortcut()}
                               <div className="space-y-1.5">
@@ -1088,7 +1257,7 @@ export function AdminProgramDesigner() {
 
                       {state.mode === "now" && resource.id === "assessments" ? (
                         <div className="space-y-3">
-                          <RemovableAssociationList
+                          <ProgramAssociationList
                             title="Liste des modalités d'évaluation déjà associées à ce programme"
                             items={data.assessmentModalities.map((modality) => ({
                               id: modality.id,

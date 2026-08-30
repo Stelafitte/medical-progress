@@ -53,9 +53,7 @@ export const EMPTY_NEW_COMPETENCE_INPUT: NewCompetenceInput = {
 export type NewCompetenceIssue = "code-required" | "label-required" | "target-invalid";
 
 /** Vérifie la saisie : mêmes règles dans les deux espaces. */
-export function validateNewCompetence(
-  input: NewCompetenceInput,
-): readonly NewCompetenceIssue[] {
+export function validateNewCompetence(input: NewCompetenceInput): readonly NewCompetenceIssue[] {
   const issues: NewCompetenceIssue[] = [];
   if (input.code.trim().length === 0) issues.push("code-required");
   if (input.label.trim().length === 0) issues.push("label-required");
@@ -94,6 +92,7 @@ export function buildCompetenceFromInput(
     nature: input.nature satisfies OutcomeNature,
     domain: input.domain.trim().length > 0 ? input.domain.trim() : "Non classé",
     targetMastery: input.targetMastery,
+    retainedAt: ctx.now,
   };
 }
 

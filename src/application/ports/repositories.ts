@@ -108,7 +108,10 @@ export interface ProgramRepository {
    * programme »), avant finalisation et passage au pilotage. `draft` est un
    * objet libre sérialisable en JSON ; `null` efface le brouillon.
    */
-  saveProgramDesignDraft(programId: ProgramId, draft: Record<string, unknown> | null): Promise<void>;
+  saveProgramDesignDraft(
+    programId: ProgramId,
+    draft: Record<string, unknown> | null,
+  ): Promise<void>;
   /**
    * Analyse IA (Edge Function `analyze-program-objectives`) d'un texte
    * d'objectifs pédagogiques : propose un référentiel candidat (connaissances
@@ -197,6 +200,13 @@ export interface OutcomeRepository {
    * récupérable. Autorisation vérifiée côté serveur.
    */
   archiveOutcome(outcomeId: OutcomeId): Promise<void>;
+  /**
+   * Retient (ou retire du parcours) un lot d'acquis, sans les archiver : ils
+   * restent visibles et modifiables dans le referentiel du programme.
+   * Un seul appel pour tout le lot, pour que l'ecran et la base ne puissent
+   * pas diverger sur une bascule partielle.
+   */
+  setOutcomesRetained(outcomeIds: readonly OutcomeId[], retained: boolean): Promise<void>;
 }
 
 export interface EvidenceRepository {

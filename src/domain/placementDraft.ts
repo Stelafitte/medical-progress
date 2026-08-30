@@ -39,10 +39,7 @@ export const EMPTY_NEW_PLACEMENT_INPUT: NewPlacementInput = {
 };
 
 export type NewPlacementIssue =
-  | "name-required"
-  | "site-required"
-  | "department-required"
-  | "capacity-invalid";
+  "name-required" | "site-required" | "department-required" | "capacity-invalid";
 
 /** Vérifie la saisie : mêmes règles dans les deux onglets. */
 export function validateNewPlacement(input: NewPlacementInput): readonly NewPlacementIssue[] {

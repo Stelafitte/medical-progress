@@ -25,15 +25,7 @@ import type {
 import type { DirectoryFilter, DirectoryRow, EnrollmentStatus } from "./directory";
 import { filterDirectoryRows } from "./directory";
 import { detectPatientDataMarkers } from "./dpcProgramDraft";
-import type {
-  CohortId,
-  Id,
-  IsoDateTime,
-  PersonId,
-  ProgramId,
-  Provenance,
-  RoleName,
-} from "./types";
+import type { CohortId, Id, IsoDateTime, PersonId, ProgramId, Provenance, RoleName } from "./types";
 
 /* ------------------------------------------------------------------ */
 /* 1. Identifiants et libellés                                         */
@@ -90,13 +82,7 @@ export type AudienceDefinition =
   | { readonly kind: "overdue"; readonly asOf: IsoDateTime; readonly milestoneId?: string };
 
 export type CampaignStatus =
-  | "draft"
-  | "pending_approval"
-  | "approved"
-  | "scheduled"
-  | "running"
-  | "completed"
-  | "cancelled";
+  "draft" | "pending_approval" | "approved" | "scheduled" | "running" | "completed" | "cancelled";
 
 export interface CommunicationCampaign {
   readonly id: CommCampaignId;
@@ -145,12 +131,7 @@ export interface ScheduledMessage {
 }
 
 export type DeliveryStatus =
-  | "queued"
-  | "sent"
-  | "delivered"
-  | "failed"
-  | "cancelled"
-  | "suppressed";
+  "queued" | "sent" | "delivered" | "failed" | "cancelled" | "suppressed";
 
 export interface DeliveryAttempt {
   readonly campaignId: CommCampaignId;
@@ -249,11 +230,7 @@ export interface ActorScope {
 }
 
 /** Statuts d'inscription destinataires PAR DÉFAUT (`withdrawn` exclu). */
-const DEFAULT_ELIGIBLE_STATUSES: readonly EnrollmentStatus[] = [
-  "active",
-  "suspended",
-  "completed",
-];
+const DEFAULT_ELIGIBLE_STATUSES: readonly EnrollmentStatus[] = ["active", "suspended", "completed"];
 
 /* ------------------------------------------------------------------ */
 /* 5. Résolution d'audience                                            */
@@ -269,12 +246,7 @@ export interface ResolvedRecipient {
 
 export interface ExcludedRecipient {
   readonly personId: PersonId;
-  readonly reason:
-    | "opted_out"
-    | "out_of_scope"
-    | "withdrawn"
-    | "duplicate"
-    | "unknown_person";
+  readonly reason: "opted_out" | "out_of_scope" | "withdrawn" | "duplicate" | "unknown_person";
 }
 
 export interface AudienceResolution {
@@ -314,7 +286,10 @@ function selectRows(
     case "program_all":
       return { rows, unknownIds: [] };
     case "cohort":
-      return { rows: rows.filter((r) => r.enrollment.cohortId === definition.cohortId), unknownIds: [] };
+      return {
+        rows: rows.filter((r) => r.enrollment.cohortId === definition.cohortId),
+        unknownIds: [],
+      };
     case "group": {
       const group = snapshot.groups.find((g) => g.groupId === definition.groupId);
       if (!group) return { rows: [], unknownIds: [] };
@@ -519,10 +494,7 @@ export interface VariableContext {
 }
 
 export type VariableIssueKind =
-  | "unknown_variable"
-  | "unresolved_variable"
-  | "unsafe_value"
-  | "patient_variable";
+  "unknown_variable" | "unresolved_variable" | "unsafe_value" | "patient_variable";
 
 export interface VariableIssue {
   readonly kind: VariableIssueKind;
@@ -856,9 +828,10 @@ export function canSchedule(campaign: CommunicationCampaign): boolean {
 }
 
 /** Applique la transition ; renvoie la campagne inchangée si elle est interdite. */
-export function scheduleCampaign(
-  campaign: CommunicationCampaign,
-): { readonly campaign: CommunicationCampaign; readonly rejected: boolean } {
+export function scheduleCampaign(campaign: CommunicationCampaign): {
+  readonly campaign: CommunicationCampaign;
+  readonly rejected: boolean;
+} {
   if (!canSchedule(campaign)) return { campaign, rejected: true };
   return { campaign: { ...campaign, status: "scheduled" }, rejected: false };
 }
