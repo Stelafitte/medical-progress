@@ -870,6 +870,8 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
             durationMs: slide.durationMs,
             imageAssetId: slide.imageAssetId ?? null,
             audioAssetId: slide.audioAssetId ?? null,
+            videoAssetId: slide.videoAssetId ?? null,
+            slideText: slide.slideText ?? null,
             transcript: slide.transcript ?? null,
             transcriptLanguage: slide.transcriptLanguage ?? null,
           })),

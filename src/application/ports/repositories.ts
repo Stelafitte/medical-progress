@@ -266,7 +266,9 @@ export type ResourceAssetKind =
   | "transcript"
   | "manifest"
   | "thumbnail"
-  | "fallback_video";
+  | "fallback_video"
+  /** Clip d'une diapositive, rendu par PowerPoint avec ses animations. */
+  | "slide_video";
 
 /** Saisie du port `registerAsset` : enregistre en base un fichier déjà téléversé via une URL signée. */
 export interface RegisterResourceAssetInput {
@@ -294,6 +296,13 @@ export interface NarratedDeckSlideInput {
   /** Diapositive texte seul possible : aucune image intégrée dans le PPTX source. */
   readonly imageAssetId?: string;
   readonly audioAssetId?: string;
+  /**
+   * Clip de la diapositive. Présent dès qu'elle porte une animation ou une
+   * vidéo incluse : l'image fixe seule perdrait l'un et l'autre.
+   */
+  readonly videoAssetId?: string;
+  /** Texte affiché sur la diapositive. La narration, elle, va dans `transcript`. */
+  readonly slideText?: string;
   readonly transcript?: string;
   readonly transcriptLanguage?: string;
 }
@@ -311,7 +320,8 @@ export interface NarratedDeckChapterInput {
  */
 export interface PublishNarratedDeckInput {
   readonly resourceId: LearningResourceId;
-  readonly sourceAssetId: string;
+  /** Le .pptx d'origine, s'il a ete joint. Un paquet converti n'en contient pas. */
+  readonly sourceAssetId: string | null;
   readonly slideCount: number;
   readonly durationMs: number;
   readonly transcriptAvailable: boolean;

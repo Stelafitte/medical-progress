@@ -6,6 +6,7 @@ const read = (path: string) => readFileSync(path, "utf8");
 const player = read("src/features/resources/NarratedSlidesPlayer.tsx");
 const dialog = read("src/features/administration/AddMediaDialog.tsx");
 const converter = read("src/features/administration/PptxConverterDialog.tsx");
+const publisher = read("src/features/administration/NarratedPackagePublishDialog.tsx");
 const panel = read("src/features/administration/NarratedConversionPanel.tsx");
 const librarySection = read("src/features/administration/MediaLibrarySection.tsx");
 const detail = read("src/features/administration/MediaDetailDialog.tsx");
@@ -115,6 +116,21 @@ describe("parcours administrateur", () => {
     expect(converter).toContain("autoChapters");
     expect(converter).toContain("convertPptx");
     expect(dialog).not.toContain(".pptx");
+  });
+
+  it("publie reellement un cours converti, sans simulation", () => {
+    // Le rendu fidele exige PowerPoint : il est produit hors ligne par
+    // convert.ps1. Cet ecran prend le dossier resultant et le publie pour de
+    // bon — chaque fichier televerse, chaque asset enregistre, puis la
+    // publication en une transaction.
+    expect(publisher).toContain("dataAccess.resources.createResource");
+    expect(publisher).toContain("dataAccess.resources.requestUploadUrl");
+    expect(publisher).toContain("dataAccess.resources.uploadResourceFile");
+    expect(publisher).toContain("dataAccess.resources.registerAsset");
+    expect(publisher).toContain("dataAccess.resources.publishNarratedDeck");
+    expect(publisher).toContain('"slide_video"');
+    expect(publisher).not.toContain("simulé");
+    expect(librarySection).toContain("NarratedPackagePublishDialog");
   });
 
   it("affiche le journal des étapes et les alertes de conversion", () => {

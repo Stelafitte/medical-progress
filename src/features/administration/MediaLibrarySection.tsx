@@ -45,6 +45,7 @@ import {
 } from "@/features/professional/mock-ui";
 import { AddMediaDialog } from "@/features/administration/AddMediaDialog";
 import { PptxConverterDialog } from "@/features/administration/PptxConverterDialog";
+import { NarratedPackagePublishDialog } from "@/features/administration/NarratedPackagePublishDialog";
 
 import { MediaDetailDialog } from "@/features/administration/MediaDetailDialog";
 import {
@@ -147,6 +148,15 @@ export function MediaLibrarySection({
                  * programme/version/objectifs.
                  */}
                 <PptxConverterDialog onConverted={setLastAction} />
+                <NarratedPackagePublishDialog
+                  programName={programName}
+                  programId={programId}
+                  curriculumVersionId={curriculumVersionId}
+                  outcomes={outcomes}
+                  onPublished={(title) =>
+                    setLastAction(`Cours commenté publié : « ${title} ».`)
+                  }
+                />
                 <AddMediaDialog
                   programName={programName}
                   programId={programId}
