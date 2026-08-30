@@ -42,8 +42,20 @@ def run(command: list[str]) -> subprocess.CompletedProcess[bytes]:
     return result
 
 
-def slide_video(zf: zipfile.ZipFile, index: int) -> tuple[str, tuple[float, float, float, float]] | None:
-    """Fichier vidéo de la diapositive et son rectangle, en fractions de la diapositive."""
+def slide_video(
+    zf: zipfile.ZipFile, index: int
+) -> tuple[str, tuple[float, float, float, float], tuple[float, float]] | None:
+    """Fichier vidéo de la diapositive, son rectangle et son rognage.
+
+    Le rectangle est exprimé en fractions de la diapositive, indépendamment de
+    la résolution du rendu.
+
+    Le rognage vient de `<p14:trim st="..." end="..."/>` : deux durées en
+    millisecondes, RETRANCHÉES l'une au début et l'autre à la fin du fichier
+    source — `end` n'est pas un instant de fin absolu. L'auteur ne monte pas
+    ses vidéos avant de les insérer, il les rogne dans PowerPoint ; ignorer ce
+    rognage rejouerait des secondes qu'il a explicitement écartées.
+    """
     rels_name = f"ppt/slides/_rels/slide{index}.xml.rels"
     if rels_name not in zf.namelist():
         return None
@@ -73,13 +85,34 @@ def slide_video(zf: zipfile.ZipFile, index: int) -> tuple[str, tuple[float, floa
         ext = re.search(r'<a:ext cx="(\d+)" cy="(\d+)"/>', block)
         if not off or not ext:
             continue
-        return media, (
-            int(off.group(1)) / slide_w,
-            int(off.group(2)) / slide_h,
-            int(ext.group(1)) / slide_w,
-            int(ext.group(2)) / slide_h,
+        trim = re.search(r'<p14:trim([^>]*)/>', block)
+        trim_start = trim_end = 0.0
+        if trim:
+            attrs = trim.group(1)
+            st = re.search(r'\bst="(\d+)"', attrs)
+            en = re.search(r'\bend="(\d+)"', attrs)
+            trim_start = int(st.group(1)) / 1000 if st else 0.0
+            trim_end = int(en.group(1)) / 1000 if en else 0.0
+        return (
+            media,
+            (
+                int(off.group(1)) / slide_w,
+                int(off.group(2)) / slide_h,
+                int(ext.group(1)) / slide_w,
+                int(ext.group(2)) / slide_h,
+            ),
+            (trim_start, trim_end),
         )
     return None
+
+
+def probe_duration(path: Path) -> float:
+    out = subprocess.run(
+        ["ffprobe", "-v", "error", "-show_entries", "format=duration",
+         "-of", "default=noprint_wrappers=1:nokey=1", str(path)],
+        capture_output=True, text=True, check=True,
+    ).stdout.strip()
+    return float(out)
 
 
 def clip_size(path: Path) -> tuple[int, int]:
@@ -131,7 +164,7 @@ def main() -> int:
             found = slide_video(zf, index)
             if not found:
                 continue
-            media_path, (rx, ry, rw, rh) = found
+            media_path, (rx, ry, rw, rh), (trim_start, trim_end) = found
 
             width, height = clip_size(clip)
             # Dimensions paires : libx264 refuse les tailles impaires.
@@ -145,8 +178,20 @@ def main() -> int:
 
             source = temp / Path(media_path).name
             source.write_bytes(zf.read(media_path))
+
+            # Rognage : on coupe avant l'encodage, pour que la boucle rejoue
+            # exactement le passage retenu par l'auteur.
+            cut: list[str] = []
+            trimmed = ""
+            if trim_start or trim_end:
+                full = probe_duration(source)
+                keep_from = trim_start
+                keep_to = max(full - trim_end, keep_from)
+                cut = ["-ss", f"{keep_from:.3f}", "-to", f"{keep_to:.3f}"]
+                trimmed = f", rogne {keep_from:.2f}-{keep_to:.2f} s sur {full:.2f} s"
+
             overlay = temp / f"overlay-{index:03d}.mp4"
-            run(["ffmpeg", "-nostdin", "-v", "error", "-y", "-i", str(source),
+            run(["ffmpeg", "-nostdin", "-v", "error", "-y", *cut, "-i", str(source),
                  "-an", "-c:v", "libx264", "-preset", "veryfast", "-crf", str(args.crf),
                  "-pix_fmt", "yuv420p", "-vf", f"scale={rect[2]}:{rect[3]}", str(overlay)])
 
@@ -163,7 +208,8 @@ def main() -> int:
             shutil.move(str(merged), str(clip))
             treated += 1
             print(f"  diapo {index:>2} : {Path(media_path).name} reincrustee en boucle "
-                  f"a partir de {start:.2f} s  ({clip.stat().st_size / 1_048_576:.2f} Mo)")
+                  f"a partir de {start:.2f} s{trimmed}  "
+                  f"({clip.stat().st_size / 1_048_576:.2f} Mo)")
 
     if treated == 0:
         print("Aucune diapositive ne porte de video incrustee.")

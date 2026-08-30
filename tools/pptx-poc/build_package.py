@@ -340,6 +340,13 @@ def build(args: argparse.Namespace) -> None:
                     warnings.append(f"slide {index}: no video clip found")
 
             targets = {rel["id"]: rel["target"] for rel in relationships(zf, index)}
+            # Un rognage sur la narration decalerait le minutage sans que rien
+            # ne le signale. Aucun cas rencontre a ce jour, mais autant le dire.
+            if audio_targets and re.search(r"<p14:trim[^>]*/>\s*</p14:media>", xml):
+                warnings.append(
+                    f"slide {index}: un media porte un rognage PowerPoint ; "
+                    "verifier que la narration extraite correspond bien a ce qui est joue"
+                )
             for media_name in click_triggered_videos(xml, targets):
                 warnings.append(
                     f"slide {index}: la video {media_name} est reglee sur un demarrage au clic, "
