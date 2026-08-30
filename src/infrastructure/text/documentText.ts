@@ -1,8 +1,9 @@
 /**
  * Lecture du TEXTE d'un document pédagogique, côté navigateur.
  *
- * Formats lus réellement : PDF (pdf.js), Word .docx (mammoth.js), .txt et
- * .md. Les deux bibliothèques sont chargées depuis un CDN à la volée : rien
+ * Formats lus réellement : PDF (pdf.js), Word .docx (mammoth.js), .txt, .md
+ * et HTML (pages d'un site enregistré). Les deux bibliothèques sont chargées
+ * depuis un CDN à la volée : rien
  * à installer sur le poste, et le poids ne pèse que sur les écrans qui
  * importent vraiment un fichier.
  *
@@ -73,16 +74,40 @@ export async function extractDocxText(file: File): Promise<string> {
 
 export const extractTxtText = async (file: File): Promise<string> => (await file.text()).trim();
 
+/**
+ * Texte utile d'une page HTML.
+ *
+ * Un miroir de site (référentiel de collège, cours en ligne) est fait de
+ * pages où le contenu pèse moins que l'habillage. On retire donc scripts,
+ * styles, menus, en-têtes, pieds de page et formulaires, puis on préfère
+ * `<main>` ou `<article>` quand la page en a un. Sans ce nettoyage, chaque
+ * page envoyée à l'analyse commencerait par le même menu de navigation, et
+ * l'IA proposerait les mêmes « connaissances » pour toutes.
+ *
+ * `DOMParser` construit un document inerte : les scripts de la page ne sont
+ * jamais exécutés, et les images ne sont pas chargées.
+ */
+export async function extractHtmlText(file: File): Promise<string> {
+  const raw = await file.text();
+  const doc = new DOMParser().parseFromString(raw, "text/html");
+  doc
+    .querySelectorAll("script, style, noscript, svg, nav, header, footer, aside, form")
+    .forEach((element) => element.remove());
+  const root = doc.querySelector("main, article, [role='main']") ?? doc.body;
+  return (root?.textContent ?? "").replace(/\s+/g, " ").trim();
+}
+
 /** Format reconnu d'après l'EXTENSION, jamais d'après `File.type` — un fichier
  * sorti d'une archive n'a pas de type MIME, et celui du navigateur varie d'un
  * poste à l'autre. */
-export type ReadableFormat = "pdf" | "docx" | "text";
+export type ReadableFormat = "pdf" | "docx" | "text" | "html";
 
 export function readableFormat(fileName: string): ReadableFormat | null {
   const lower = fileName.toLowerCase();
   if (lower.endsWith(".pdf")) return "pdf";
   if (lower.endsWith(".docx")) return "docx";
   if (lower.endsWith(".txt") || lower.endsWith(".md")) return "text";
+  if (lower.endsWith(".html") || lower.endsWith(".htm")) return "html";
   return null;
 }
 
@@ -105,6 +130,7 @@ export async function extractText(file: File): Promise<string> {
   if (format === "pdf") return extractPdfText(file);
   if (format === "docx") return extractDocxText(file);
   if (format === "text") return extractTxtText(file);
+  if (format === "html") return extractHtmlText(file);
   throw new Error(`Format non pris en charge : ${file.name}`);
 }
 

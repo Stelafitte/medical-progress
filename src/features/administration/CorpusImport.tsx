@@ -164,11 +164,20 @@ interface AssessmentSuggestion {
 
 type SuggestionRow = OutcomeSuggestion | AssessmentSuggestion;
 
+/** Seuil au-dessous duquel une page n'est pas proposée à l'analyse par défaut.
+ * Un miroir de site contient surtout des pages d'index et de navigation ; les
+ * envoyer toutes à l'IA coûterait un appel chacune pour un menu répété. */
+const MIN_CHARS_FOR_ANALYSIS = 1500;
+
 interface DocumentRow {
   readonly key: string;
   readonly document: CorpusDocument;
+  /** Envoyer ce document à l'analyse IA — un appel, donc un coût, par document. */
+  analyze: boolean;
   /** Déposer ce fichier dans la médiathèque du programme. */
   keepDocument: boolean;
+  /** L'analyse a dû tronquer ce document : le texte dépassait la limite serveur. */
+  truncated: boolean;
   status: "pending" | "analyzing" | "analyzed" | "failed";
   error: string | null;
   suggestions: readonly SuggestionRow[];
@@ -220,6 +229,8 @@ export function CorpusImport({
     0,
   );
   const documentsToDeposit = rows.filter((row) => row.keepDocument).length;
+  const documentsToAnalyze = rows.filter((row) => row.analyze).length;
+  const truncatedCount = rows.filter((row) => row.truncated).length;
   const busy = reading || analyzing || creating;
 
   const handleFile = async (file: File) => {
@@ -244,7 +255,12 @@ export function CorpusImport({
         documents.map((document) => ({
           key: nextKey(),
           document,
-          keepDocument: true,
+          analyze: document.text.length >= MIN_CHARS_FOR_ANALYSIS,
+          // Une page HTML issue d'un site enregistré est une SOURCE dont on
+          // extrait des connaissances, pas un support à remettre aux
+          // apprenants : elle n'est pas déposée par défaut.
+          keepDocument: document.format !== "html",
+          truncated: false,
           status: "pending" as const,
           error: null,
           suggestions: [],
@@ -275,14 +291,21 @@ export function CorpusImport({
     setAnalyzing(true);
     setSummary(null);
     setErrors([]);
-    const total = rows.length;
+    // Seuls les documents cochés sont envoyés : un appel IA par document, donc
+    // un coût par document. Le compteur ne parle que de ceux-là.
+    const total = rows.filter((row) => row.analyze).length;
     setAnalyzeProgress({ done: 0, total });
+    let done = 0;
 
     const analyzedRows: DocumentRow[] = [];
     // Les codes sont attribués après coup, sur l'ensemble du corpus.
     const collected: { rowIndex: number; item: SuggestionRow }[] = [];
 
     for (const [index, row] of rows.entries()) {
+      if (!row.analyze) {
+        analyzedRows.push(row);
+        continue;
+      }
       setRows((prev) =>
         prev.map((r) => (r.key === row.key ? { ...r, status: "analyzing", error: null } : r)),
       );
@@ -291,7 +314,13 @@ export function CorpusImport({
           programId,
           row.document.text,
         );
-        analyzedRows.push({ ...row, status: "analyzed", error: null, suggestions: [] });
+        analyzedRows.push({
+          ...row,
+          status: "analyzed",
+          error: null,
+          truncated: result.truncated,
+          suggestions: [],
+        });
         if (target === "assessments") {
           result.assessmentModalities.forEach((item) => {
             collected.push({
@@ -341,7 +370,8 @@ export function CorpusImport({
           suggestions: [],
         });
       }
-      setAnalyzeProgress({ done: index + 1, total });
+      done += 1;
+      setAnalyzeProgress({ done, total });
     }
 
     const outcomeEntries = collected.filter(
@@ -595,7 +625,7 @@ export function CorpusImport({
               type="button"
               size="sm"
               className="min-h-11"
-              disabled={busy || analyzed}
+              disabled={busy || analyzed || documentsToAnalyze === 0}
               onClick={() => void runAnalysis()}
             >
               {analyzing ? (
@@ -605,9 +635,44 @@ export function CorpusImport({
               )}
               {analyzing && analyzeProgress
                 ? `Analyse ${analyzeProgress.done}/${analyzeProgress.total}…`
-                : "Analyser le corpus avec l'IA"}
+                : `Analyser ${documentsToAnalyze} document(s) avec l'IA`}
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="min-h-11"
+              disabled={busy || analyzed}
+              onClick={() =>
+                setRows((prev) => {
+                  const allOn = prev.every((row) => row.analyze);
+                  return prev.map((row) => ({ ...row, analyze: !allOn }));
+                })
+              }
+            >
+              Tout cocher / décocher (analyse)
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="min-h-11"
+              disabled={busy}
+              onClick={() =>
+                setRows((prev) => {
+                  const allOn = prev.every((row) => row.keepDocument);
+                  return prev.map((row) => ({ ...row, keepDocument: !allOn }));
+                })
+              }
+            >
+              Tout cocher / décocher (dépôt)
             </Button>
           </div>
+          <p className="text-muted-foreground text-xs">
+            Un appel d'analyse — donc un coût — par document coché. Les documents de moins de{" "}
+            {MIN_CHARS_FOR_ANALYSIS.toLocaleString("fr-FR")} caractères sont décochés d'office :
+            dans un site enregistré, ce sont presque toujours des pages d'index ou de navigation.
+          </p>
 
           <div className="space-y-1.5">
             <Label htmlFor="corpus-visibility">Visibilité des documents déposés</Label>
@@ -637,18 +702,34 @@ export function CorpusImport({
                   {row.status === "analyzing" ? (
                     <Loader2 className="size-4 animate-spin" aria-hidden />
                   ) : null}
+                  {row.truncated ? (
+                    <Badge variant="outline" className="text-destructive font-normal">
+                      texte tronqué à l'analyse
+                    </Badge>
+                  ) : null}
                 </div>
-
-                <label className="flex items-center gap-2 text-sm">
-                  <Checkbox
-                    checked={row.keepDocument}
-                    disabled={busy}
-                    onCheckedChange={(checked) =>
-                      patchRow(row.key, { keepDocument: checked === true })
-                    }
-                  />
-                  Déposer ce document dans la médiathèque
-                </label>
+                <div className="flex flex-wrap gap-4">
+                  <label className="flex items-center gap-2 text-sm">
+                    <Checkbox
+                      checked={row.analyze}
+                      disabled={busy || analyzed}
+                      onCheckedChange={(checked) =>
+                        patchRow(row.key, { analyze: checked === true })
+                      }
+                    />
+                    Analyser ce document
+                  </label>
+                  <label className="flex items-center gap-2 text-sm">
+                    <Checkbox
+                      checked={row.keepDocument}
+                      disabled={busy}
+                      onCheckedChange={(checked) =>
+                        patchRow(row.key, { keepDocument: checked === true })
+                      }
+                    />
+                    Déposer ce document dans la médiathèque
+                  </label>
+                </div>
 
                 {row.error ? <p className="text-destructive text-xs">{row.error}</p> : null}
 
@@ -803,6 +884,14 @@ export function CorpusImport({
             </span>
           </div>
         </>
+      ) : null}
+
+      {truncatedCount > 0 ? (
+        <p className="text-destructive text-xs">
+          {truncatedCount} document(s) dépassaient la limite de texte du service d'analyse et ont
+          été coupés : seul leur début a été analysé. Les connaissances de la fin du document
+          manquent donc.
+        </p>
       ) : null}
 
       {summary ? <p className="text-sm">{summary}</p> : null}
