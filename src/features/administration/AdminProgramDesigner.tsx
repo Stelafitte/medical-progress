@@ -33,7 +33,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { EmptyState, MockBadge, PanelCard, ScopeNotice } from "@/features/professional/mock-ui";
 import { AdminWorkLevelBanner } from "@/features/administration/AdminWorkLevel";
 import { useProgramAdmin } from "@/features/administration/useProgramAdmin";
+import { KnowledgeCorpusImport } from "@/features/administration/KnowledgeCorpusImport";
 import { useDataAccess } from "@/application/session";
+import {
+  corpusToText,
+  isLegacyDoc,
+  isZipFile,
+  readDocumentCorpus,
+  readableFormat,
+} from "@/infrastructure/text/documentText";
 import { CohortCreationForm } from "@/features/administration/CohortCreationForm";
 import { PlacementCreationForm } from "@/features/administration/PlacementCreationForm";
 import { CompetenceCreationForm } from "@/features/administration/CompetenceCreationForm";
@@ -180,34 +188,6 @@ const SCHEDULE_TEMPLATE: Record<ResourceKind, readonly { id: string; label: stri
 /* ------------------------------------------------------------------ */
 
 /** API mammoth.js minimale utilisée ici (chargée en global via un <script>). */
-interface MammothGlobal {
-  extractRawText: (input: { arrayBuffer: ArrayBuffer }) => Promise<{ value: string }>;
-}
-
-const loadedScripts = new Set<string>();
-
-/** Charge une bibliothèque UMD depuis un CDN une seule fois (mise en cache par URL). */
-function loadScriptOnce(src: string): Promise<void> {
-  if (loadedScripts.has(src)) return Promise.resolve();
-  return new Promise((resolve, reject) => {
-    const existing = document.querySelector(`script[src="${src}"]`);
-    if (existing) {
-      loadedScripts.add(src);
-      resolve();
-      return;
-    }
-    const script = document.createElement("script");
-    script.src = src;
-    script.async = true;
-    script.onload = () => {
-      loadedScripts.add(src);
-      resolve();
-    };
-    script.onerror = () => reject(new Error(`Échec du chargement de ${src}`));
-    document.head.appendChild(script);
-  });
-}
-
 /* ------------------------------------------------------------------ */
 /* Écran                                                              */
 /* ------------------------------------------------------------------ */
@@ -522,9 +502,7 @@ export function AdminProgramDesigner() {
       persistedDraftRef.current = JSON.stringify(draftPayload);
       setDraftSavedAt(new Date().toISOString());
     } catch (err) {
-      setDraftError(
-        err instanceof Error ? err.message : "Échec de l\'enregistrement du brouillon.",
-      );
+      setDraftError(err instanceof Error ? err.message : "Échec de l'enregistrement du brouillon.");
     } finally {
       setSavingDraft(false);
     }
@@ -533,95 +511,15 @@ export function AdminProgramDesigner() {
   const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   /**
-   * Import d'un fichier d'objectifs : le texte est réellement extrait pour
-   * un PDF (pdf.js), un Word .docx (mammoth.js) ou un .txt — tous chargés
-   * depuis un CDN à la volée, sans dépendance à installer sur le poste. Le
-   * texte extrait est ajouté au champ « Objectifs pédagogiques ».
-   */
-  const extractPdfText = async (file: File): Promise<string> => {
-    // L'indirection par variable évite à TypeScript de tenter de résoudre
-    // l'URL comme un module local.
-    const pdfjsModuleUrl = "https://cdn.jsdelivr.net/npm/pdfjs-dist@4/build/pdf.min.mjs";
-    const pdfjs = await import(/* @vite-ignore */ pdfjsModuleUrl);
-    pdfjs.GlobalWorkerOptions.workerSrc =
-      "https://cdn.jsdelivr.net/npm/pdfjs-dist@4/build/pdf.worker.min.mjs";
-
-    const buffer = await file.arrayBuffer();
-    const doc = await pdfjs.getDocument({ data: buffer }).promise;
-    const pageTexts: string[] = [];
-    for (let pageNumber = 1; pageNumber <= doc.numPages; pageNumber += 1) {
-      const page = await doc.getPage(pageNumber);
-      const content = await page.getTextContent();
-      const pageText = (content.items as { str?: string }[])
-        .map((item) => item.str ?? "")
-        .join(" ");
-      pageTexts.push(pageText.trim());
-    }
-    return pageTexts.join("\n\n").trim();
-  };
-
-  const extractDocxText = async (file: File): Promise<string> => {
-    await loadScriptOnce("https://cdn.jsdelivr.net/npm/mammoth@1/mammoth.browser.min.js");
-    const mammoth = (window as unknown as { mammoth?: MammothGlobal }).mammoth;
-    if (!mammoth) throw new Error("Lecteur Word indisponible (échec du chargement).");
-    const buffer = await file.arrayBuffer();
-    const result = await mammoth.extractRawText({ arrayBuffer: buffer });
-    return result.value.trim();
-  };
-
-  const extractTxtText = async (file: File): Promise<string> => (await file.text()).trim();
-
-  /**
-   * Archive ZIP : on lit chaque fichier de l'archive avec le lecteur qui lui
-   * correspond, et on concatène le tout dans l'ordre alphabétique des chemins
-   * — un ordre stable, pour que deux imports de la même archive donnent le
-   * même texte.
+   * Import d'un fichier d'objectifs : le texte est extrait par le module
+   * partagé `documentText` (PDF, Word .docx, .txt, .md, ou archive ZIP) et
+   * ajouté au champ « Objectifs pédagogiques ».
    *
-   * Chaque extrait est précédé du chemin du fichier dans l'archive : sans lui,
-   * le texte des objectifs devient un bloc indifférencié où plus personne ne
-   * sait quel paragraphe vient d'où.
-   *
-   * Les fichiers d'un format non lisible ne sont pas une erreur : ils sont
-   * ignorés et signalés, pour que l'archive entière ne soit pas rejetée à
-   * cause d'une image ou d'un ZIP imbriqué.
+   * Cet import-ci ne CONSERVE pas les fichiers : il ne sert qu'à nourrir le
+   * texte des objectifs. Pour déposer un corpus dans la médiathèque et en
+   * tirer des connaissances rattachées à leur document source, c'est
+   * `KnowledgeCorpusImport`, dans le bloc « Base de connaissances ».
    */
-  const extractZipText = async (
-    file: File,
-  ): Promise<{ readonly text: string; readonly ignored: readonly string[] }> => {
-    const { unzipSync } = await import("fflate");
-    const entries = unzipSync(new Uint8Array(await file.arrayBuffer()));
-
-    const names = Object.keys(entries)
-      .filter((name) => !name.endsWith("/")) // dossiers
-      .filter((name) => !name.startsWith("__MACOSX/")) // métadonnées macOS
-      .filter((name) => !(name.split("/").pop() ?? "").startsWith(".")) // fichiers cachés
-      .sort((a, b) => a.localeCompare(b, "fr"));
-
-    const parts: string[] = [];
-    const ignored: string[] = [];
-
-    for (const name of names) {
-      const lower = name.toLowerCase();
-      const bytes = entries[name];
-      if (!bytes || bytes.length === 0) continue;
-      const inner = new File([bytes.slice()], name.split("/").pop() ?? name);
-
-      let text = "";
-      if (lower.endsWith(".pdf")) text = await extractPdfText(inner);
-      else if (lower.endsWith(".docx")) text = await extractDocxText(inner);
-      else if (lower.endsWith(".txt") || lower.endsWith(".md")) text = await extractTxtText(inner);
-      else {
-        ignored.push(name);
-        continue;
-      }
-
-      if (text) parts.push(`## ${name}\n\n${text}`);
-      else ignored.push(name);
-    }
-
-    return { text: parts.join("\n\n").trim(), ignored };
-  };
-
   const handleObjectivesFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = ""; // permet de réimporter le même fichier ensuite
@@ -630,53 +528,32 @@ export function AdminProgramDesigner() {
     setImportedFile(file.name);
     setImportObjectivesError(null);
 
-    const name = file.name.toLowerCase();
-    const isPdf = file.type === "application/pdf" || name.endsWith(".pdf");
-    const isDocx =
-      file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
-      name.endsWith(".docx");
-    const isLegacyDoc = name.endsWith(".doc") && !isDocx;
-    const isTxt = file.type === "text/plain" || name.endsWith(".txt");
-    const isZip =
-      name.endsWith(".zip") ||
-      file.type === "application/zip" ||
-      file.type === "application/x-zip-compressed";
-
-    if (isLegacyDoc) {
+    if (isLegacyDoc(file.name)) {
       setImportObjectivesError(
         "Format .doc non pris en charge : enregistrez le fichier au format .docx puis réimportez-le.",
       );
       return;
     }
     // autre format : maquette (nom du fichier seulement)
-    if (!isPdf && !isDocx && !isTxt && !isZip) return;
+    if (!isZipFile(file) && readableFormat(file.name) === null) return;
 
     setImportingObjectives(true);
     try {
-      const result = isZip
-        ? await extractZipText(file)
-        : {
-            text: isPdf
-              ? await extractPdfText(file)
-              : isDocx
-                ? await extractDocxText(file)
-                : await extractTxtText(file),
-            ignored: [] as readonly string[],
-          };
-      const extracted = result.text;
+      const { documents, ignored } = await readDocumentCorpus(file);
+      const extracted = corpusToText(documents);
 
       if (extracted) {
         setObjectives((prev) => (prev.trim() ? `${prev.trim()}\n\n${extracted}` : extracted));
         // Les fichiers non lus sont signalés même quand l'import réussit :
         // sans ça, une archive à moitié lue passerait pour complète.
-        if (result.ignored.length > 0) {
+        if (ignored.length > 0) {
           setImportObjectivesError(
-            `${result.ignored.length} fichier(s) de l'archive non lus (format non pris en charge ou sans texte) : ${result.ignored.slice(0, 5).join(", ")}${result.ignored.length > 5 ? "…" : ""}`,
+            `${ignored.length} fichier(s) non lus (format non pris en charge ou sans texte) : ${ignored.slice(0, 5).join(", ")}${ignored.length > 5 ? "…" : ""}`,
           );
         }
       } else {
         setImportObjectivesError(
-          isZip
+          isZipFile(file)
             ? "Aucun texte lisible dans cette archive : elle doit contenir des PDF, des .docx, des .txt ou des .md."
             : "Aucun texte détecté dans ce fichier.",
         );
@@ -1230,6 +1107,20 @@ export function AdminProgramDesigner() {
                                 }
                                 onSetRetained={setOutcomesRetained}
                               />
+                              <div className="space-y-1.5">
+                                <p className="text-sm font-medium">
+                                  Importer une base de connaissances
+                                </p>
+                                <KnowledgeCorpusImport
+                                  programId={activeProgramId}
+                                  curriculumVersionId={realCurriculumVersionId}
+                                  existingOutcomeCodes={data.outcomes.map((o) => o.code)}
+                                  onCreated={() => {
+                                    patch("knowledge", { implemented: true });
+                                    void refetch();
+                                  }}
+                                />
+                              </div>
                               {renderObjectivesImportShortcut()}
                               <div className="space-y-1.5">
                                 <p className="text-sm font-medium">Ajouter une connaissance</p>
