@@ -118,6 +118,9 @@ if (-not $SkipVideo) {
     $videoArgs = @("--video-dir", (Join-Path $derived "video"))
 }
 
+# NOTE : le reincrustage a lieu apres l'assemblage, sur le paquet final, car il
+# a besoin des clips a leur emplacement definitif.
+
 Write-Output "Assemblage du paquet..."
 & $PythonExe (Join-Path $scriptDir "build_package.py") `
     --pptx $source `
@@ -128,6 +131,16 @@ Write-Output "Assemblage du paquet..."
 
 if ($LASTEXITCODE -ne 0) {
     throw "Package construction failed with exit code $LASTEXITCODE."
+}
+
+if (-not $SkipVideo) {
+    Write-Output "Reincrustation des videos des diapositives..."
+    & $PythonExe (Join-Path $scriptDir "overlay_slide_videos.py") `
+        --pptx $source `
+        --package $output
+    if ($LASTEXITCODE -ne 0) {
+        throw "Slide video overlay failed with exit code $LASTEXITCODE."
+    }
 }
 
 Remove-Item -LiteralPath $rendered -Recurse -Force
