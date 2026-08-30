@@ -312,6 +312,9 @@ export const mockDataAccess: DataAccess = {
           status: "published",
         });
       },
+      /** Aucune transcription hors ligne : la maquette annonce simplement qu'il n'y a rien a faire. */
+      transcribeNextSlide: () =>
+        ok({ slideIndex: null, characters: 0, remaining: 0, done: true }),
     };
   })(),
   media: {

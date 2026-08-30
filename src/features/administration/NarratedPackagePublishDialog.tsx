@@ -126,6 +126,8 @@ export function NarratedPackagePublishDialog({
   const [courseText, setCourseText] = useState<CourseText | null>(null);
   const [sourceFile, setSourceFile] = useState<File | null>(null);
   const [visibility, setVisibility] = useState<ResourceVisibility>("cohort");
+  const [transcribe, setTranscribe] = useState(true);
+  const [warning, setWarning] = useState<string | null>(null);
   const [linked, setLinked] = useState<readonly OutcomeId[]>([]);
   const [progress, setProgress] = useState<{ done: number; total: number; label: string } | null>(
     null,
@@ -140,6 +142,7 @@ export function NarratedPackagePublishDialog({
     setLinked([]);
     setProgress(null);
     setError(null);
+    setWarning(null);
     if (folderRef.current) folderRef.current.value = "";
   };
 
@@ -309,9 +312,48 @@ export function NarratedPackagePublishDialog({
           })),
         });
 
+        // Le cours est publié : ce qui suit ne peut plus le remettre en cause.
+        // Une transcription qui échoue laisse un cours complet, sans texte de
+        // narration, et se relance plus tard.
+        let transcriptionWarning: string | null = null;
+        if (transcribe) {
+          try {
+            let guard = manifest.slides.length + 5;
+            for (;;) {
+              const state = await dataAccess.resources.transcribeNextSlide(resource.id);
+              setProgress({
+                done: uploads + 1,
+                total: uploads + 1,
+                label:
+                  state.slideIndex === null
+                    ? "Transcription terminée."
+                    : `Transcription, diapositive ${state.slideIndex} ` +
+                      `(${state.remaining} restante(s))…`,
+              });
+              if (state.done) break;
+              guard -= 1;
+              if (guard <= 0) {
+                transcriptionWarning =
+                  "Transcription interrompue par sécurité : relancez-la depuis le support.";
+                break;
+              }
+            }
+          } catch (cause) {
+            transcriptionWarning =
+              "Le cours est publié, mais la transcription de la narration a échoué : " +
+              (cause instanceof Error ? cause.message : "cause inconnue") +
+              ".";
+          }
+        }
+
         onPublished(manifest.course.title);
-        reset();
-        setOpen(false);
+        if (transcriptionWarning) {
+          setWarning(transcriptionWarning);
+          setProgress(null);
+        } else {
+          reset();
+          setOpen(false);
+        }
       } catch (cause) {
         setProgress(null);
         setError(cause instanceof Error ? cause.message : "Publication impossible.");
@@ -425,6 +467,28 @@ export function NarratedPackagePublishDialog({
             ))}
           </div>
         </fieldset>
+
+        <div className="flex items-start gap-2">
+          <Checkbox
+            id="package-transcribe"
+            className="mt-0.5"
+            checked={transcribe}
+            onCheckedChange={(value) => setTranscribe(value === true)}
+          />
+          <Label htmlFor="package-transcribe" className="font-normal leading-snug">
+            Transcrire la narration après publication
+            <span className="block text-xs text-muted-foreground">
+              Le texte de la voix devient lisible et exploitable par l&apos;IA. Une diapositive à la
+              fois, après la mise en ligne : un échec ne remet pas le cours en cause.
+            </span>
+          </Label>
+        </div>
+
+        {warning ? (
+          <p role="status" className="rounded-md border border-border px-3 py-2 text-sm">
+            {warning}
+          </p>
+        ) : null}
 
         {progress ? (
           <div className="space-y-2" aria-live="polite">

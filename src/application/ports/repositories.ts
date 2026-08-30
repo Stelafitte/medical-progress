@@ -336,6 +336,15 @@ export interface PublishedNarratedDeck {
   readonly status: string;
 }
 
+/** Avancement de la transcription d'un cours, une diapositive par appel. */
+export interface TranscriptionProgress {
+  /** Diapositive qui vient d'être transcrite, null s'il n'y avait plus rien à faire. */
+  readonly slideIndex: number | null;
+  readonly characters: number;
+  readonly remaining: number;
+  readonly done: boolean;
+}
+
 export interface LearningResourceRepository {
   listResources(programId: ProgramId): Promise<readonly LearningResource[]>;
   /** Crée un support (publication immédiate en v1). Autorisation vérifiée côté serveur. */
@@ -348,6 +357,12 @@ export interface LearningResourceRepository {
   registerAsset(input: RegisterResourceAssetInput): Promise<RegisteredResourceAsset>;
   /** Publie un diaporama sonorisé complet (diapositives + chapitres). */
   publishNarratedDeck(input: PublishNarratedDeckInput): Promise<PublishedNarratedDeck>;
+  /**
+   * Transcrit la narration de la prochaine diapositive qui n'en a pas encore.
+   * Une diapositive par appel : un cours entier dépasserait le temps
+   * d'exécution du service, et un échec ferait tout reperdre.
+   */
+  transcribeNextSlide(resourceId: LearningResourceId): Promise<TranscriptionProgress>;
 }
 
 /**

@@ -13,6 +13,7 @@ import type {
   RequestUploadUrlInput,
   ResourceAssetKind,
   ResourceVisibility,
+  TranscriptionProgress,
   UploadUrlResult,
 } from "@/application/ports/repositories";
 import type {
@@ -855,6 +856,25 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
           kind: row.kind,
           bucketName: row.bucket_name,
           objectPath: row.object_path,
+        };
+      },
+      /** Délègue à l'Edge Function : la clé du service de transcription ne quitte jamais le serveur. */
+      async transcribeNextSlide(resourceId: LearningResourceId): Promise<TranscriptionProgress> {
+        const { data, error } = await client.functions.invoke("transcribe-slide-audio", {
+          body: { resourceId },
+        });
+        if (error) {
+          throw new Error(error instanceof Error ? error.message : "Transcription impossible.");
+        }
+        const payload = data as (Partial<TranscriptionProgress> & { error?: string }) | null;
+        if (!payload || payload.error) {
+          throw new Error(payload?.error ?? "Réponse invalide du service de transcription.");
+        }
+        return {
+          slideIndex: payload.slideIndex ?? null,
+          characters: payload.characters ?? 0,
+          remaining: payload.remaining ?? 0,
+          done: payload.done ?? true,
         };
       },
       async publishNarratedDeck(input: PublishNarratedDeckInput): Promise<PublishedNarratedDeck> {
