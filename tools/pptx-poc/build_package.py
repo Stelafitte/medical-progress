@@ -1,3 +1,20 @@
+"""Assemble le paquet apprenant a partir d'un .pptx et de ses diapositives rendues.
+
+Le paquet produit :
+
+    course-package/
+      manifest.json                 contrat de lecture (aucun nom de fichier source)
+      slides/slide-001.png          rendu fidele, produit par PowerPoint
+      video/slide-001.mp4           clip par diapositive (animations + videos), optionnel
+      audio/slide-001.m4a           narration
+      text/course.md                texte complet, lisible tel quel
+      text/course.json              meme texte, structure, destine a l'IA
+      player/                       lecteur autonome
+      private/conversion-report.json    seul endroit ou subsistent les noms sources
+
+Aucun octet du .pptx source ne sort d'ici : seuls les derives y figurent.
+"""
+
 from __future__ import annotations
 
 import argparse
@@ -5,6 +22,7 @@ import hashlib
 import json
 import re
 import shutil
+import subprocess
 import zipfile
 from pathlib import Path, PurePosixPath
 from xml.etree import ElementTree as ET
@@ -30,6 +48,10 @@ def slide_part(index: int) -> str:
 
 def rels_part(index: int) -> str:
     return f"ppt/slides/_rels/slide{index}.xml.rels"
+
+
+def notes_part(index: int) -> str:
+    return f"ppt/notesSlides/notesSlide{index}.xml"
 
 
 def normalize_target(part: str, target: str) -> str:
@@ -58,22 +80,81 @@ def relationships(zf: zipfile.ZipFile, index: int) -> list[dict[str, str]]:
     return result
 
 
-def slide_duration_ms(xml: str) -> int | None:
-    values = [
-        int(value)
-        for value in re.findall(r'<p:cTn[^>]* dur="([0-9]+)"[^>]*/>', xml)
-    ]
-    return max(values) if values else None
+def slide_advance_ms(xml: str) -> int | None:
+    """Duree d'affichage de la diapositive, telle que PowerPoint l'a enregistree.
+
+    C'est `advTm` sur `<p:transition>`, pose lors de l'enregistrement du
+    diaporama commente. A ne surtout pas confondre avec les `dur` des noeuds
+    `<p:cTn>`, qui sont les durees des EFFETS d'animation : les lire donnait
+    des diapositives de 1 milliseconde.
+    """
+    match = re.search(r"<p:transition[^>]*\badvTm=\"([0-9]+)\"", xml)
+    return int(match.group(1)) if match else None
 
 
-def slide_title(xml_bytes: bytes) -> str:
+def media_duration_ms(path: Path) -> int | None:
+    """Duree reelle d'un media, via ffprobe. None si ffprobe est absent."""
+    try:
+        completed = subprocess.run(
+            ["ffprobe", "-v", "error", "-show_entries", "format=duration",
+             "-of", "default=noprint_wrappers=1:nokey=1", str(path)],
+            capture_output=True, text=True, check=True,
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return None
+    try:
+        return int(round(float(completed.stdout.strip()) * 1000))
+    except ValueError:
+        return None
+
+
+def text_nodes(xml_bytes: bytes) -> list[str]:
     root = ET.fromstring(xml_bytes)
-    texts = [
+    return [
         node.text.strip()
         for node in root.findall(".//a:t", NS)
         if node.text and node.text.strip()
     ]
+
+
+def slide_title(xml_bytes: bytes) -> str:
+    texts = text_nodes(xml_bytes)
     return texts[0] if texts else ""
+
+
+def notes_text(zf: zipfile.ZipFile, index: int, names: set[str]) -> str:
+    part = notes_part(index)
+    if part not in names:
+        return ""
+    pieces = [t for t in text_nodes(zf.read(part)) if not t.isdigit()]
+    return " ".join(pieces).strip()
+
+
+def build_outline(slides: list[dict]) -> list[dict]:
+    """Sommaire : un chapitre par serie de diapositives partageant le meme titre.
+
+    Heuristique assumee, faute de structure de sections dans le fichier source.
+    Un cours dont toutes les diapositives portent un titre different produit
+    donc un chapitre par diapositive : c'est voulu, mieux vaut un sommaire plat
+    qu'un regroupement invente.
+    """
+    outline: list[dict] = []
+    for slide in slides:
+        title = slide["title"] or f"Diapositive {slide['index']}"
+        if outline and outline[-1]["title"] == title:
+            outline[-1]["slideCount"] += 1
+            outline[-1]["durationMs"] += slide["durationMs"] or 0
+            continue
+        outline.append(
+            {
+                "chapterIndex": len(outline),
+                "title": title,
+                "startsAtSlide": slide["index"],
+                "slideCount": 1,
+                "durationMs": slide["durationMs"] or 0,
+            }
+        )
+    return outline
 
 
 def sha256(path: Path) -> str:
@@ -84,24 +165,79 @@ def sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def write_text_outputs(output: Path, manifest: dict, slides_text: list[dict]) -> None:
+    """Texte du cours, sous deux formes : lisible, et structuree pour l'IA."""
+    text_dir = output / "text"
+    text_dir.mkdir(parents=True, exist_ok=True)
+
+    course = manifest["course"]
+    lines = [f"# {course['title']}", ""]
+    minutes = round((course["totalDurationMs"] or 0) / 60000, 1)
+    lines.append(f"{course['slideCount']} diapositives · {minutes} min")
+    lines.append("")
+    lines.append("## Sommaire")
+    lines.append("")
+    for chapter in manifest["outline"]:
+        lines.append(f"{chapter['chapterIndex'] + 1}. {chapter['title']} "
+                     f"(diapositive {chapter['startsAtSlide']})")
+    lines.append("")
+    for item in slides_text:
+        lines.append(f"## Diapositive {item['index']} — {item['title']}")
+        lines.append("")
+        if item["slideText"]:
+            lines.append(item["slideText"])
+            lines.append("")
+        if item["notes"]:
+            lines.append(f"Notes du presentateur : {item['notes']}")
+            lines.append("")
+        if item["transcript"]:
+            lines.append(f"Narration : {item['transcript']}")
+            lines.append("")
+        elif item["hasAudio"]:
+            lines.append("Narration : transcription non encore produite.")
+            lines.append("")
+
+    (text_dir / "course.md").write_text("\n".join(lines), encoding="utf-8")
+    (text_dir / "course.json").write_text(
+        json.dumps(
+            {
+                "courseId": course["id"],
+                "title": course["title"],
+                "outline": manifest["outline"],
+                "slides": slides_text,
+            },
+            ensure_ascii=False,
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+
+
 def build(args: argparse.Namespace) -> None:
     pptx = args.pptx.resolve()
     rendered_dir = args.rendered_dir.resolve()
     output = args.output_dir.resolve()
     player_dir = args.player_dir.resolve()
+    video_dir = args.video_dir.resolve() if args.video_dir else None
 
     slides_dir = output / "slides"
     audio_dir = output / "audio"
     private_dir = output / "private"
     output_player = output / "player"
+    output_video = output / "video"
     for directory in (slides_dir, audio_dir, private_dir, output_player):
         directory.mkdir(parents=True, exist_ok=True)
 
-    rendered = sorted(rendered_dir.glob("*.PNG"), key=natural_number)
+    rendered = sorted(
+        [p for p in rendered_dir.iterdir()
+         if p.is_file() and p.suffix.lower() in {".png", ".jpg", ".jpeg"}],
+        key=natural_number,
+    )
     if not rendered:
         raise ValueError("PowerPoint produced no rendered slide images.")
 
-    manifest_slides = []
+    manifest_slides: list[dict] = []
+    slides_text: list[dict] = []
     warnings: list[str] = []
 
     with zipfile.ZipFile(pptx) as zf:
@@ -115,8 +251,7 @@ def build(args: argparse.Namespace) -> None:
             )
 
         for index, rendered_slide in enumerate(rendered, start=1):
-            part = slide_part(index)
-            xml_bytes = zf.read(part)
+            xml_bytes = zf.read(slide_part(index))
             xml = xml_bytes.decode("utf-8")
             audio_targets = sorted(
                 {
@@ -134,32 +269,68 @@ def build(args: argparse.Namespace) -> None:
             shutil.copy2(rendered_slide, slides_dir / slide_name)
 
             audio_url = None
+            audio_path = None
             if audio_targets:
-                source_audio = audio_targets[0]
-                extension = PurePosixPath(source_audio).suffix.lower()
+                extension = PurePosixPath(audio_targets[0]).suffix.lower()
                 audio_name = f"slide-{index:03d}{extension}"
-                (audio_dir / audio_name).write_bytes(zf.read(source_audio))
+                audio_path = audio_dir / audio_name
+                audio_path.write_bytes(zf.read(audio_targets[0]))
                 audio_url = f"audio/{audio_name}"
 
-            duration = slide_duration_ms(xml)
+            # Duree : le minutage enregistre fait foi ; a defaut, la narration.
+            duration = slide_advance_ms(xml)
+            if duration is None and audio_path is not None:
+                duration = media_duration_ms(audio_path)
+                if duration is not None:
+                    warnings.append(
+                        f"slide {index}: no recorded slide timing, narration duration used"
+                    )
             if duration is None:
-                warnings.append(f"slide {index}: no numeric PowerPoint duration")
+                warnings.append(f"slide {index}: no slide duration available")
+
+            video_url = None
+            if video_dir is not None:
+                candidate = video_dir / f"slide-{index:03d}.mp4"
+                if candidate.exists():
+                    output_video.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(candidate, output_video / candidate.name)
+                    video_url = f"video/{candidate.name}"
+                else:
+                    warnings.append(f"slide {index}: no video clip found")
+
+            title = slide_title(xml_bytes)
+            texts = text_nodes(xml_bytes)
+            body = " ".join(texts[1:]).strip() if len(texts) > 1 else ""
+            notes = notes_text(zf, index, names)
 
             manifest_slides.append(
                 {
                     "id": f"slide-{index:03d}",
                     "index": index,
-                    "title": slide_title(xml_bytes),
+                    "title": title,
                     "imageUrl": f"slides/{slide_name}",
+                    "videoUrl": video_url,
                     "audioUrl": audio_url,
                     "durationMs": duration,
                     "transcriptUrl": None,
                 }
             )
+            slides_text.append(
+                {
+                    "index": index,
+                    "title": title,
+                    "slideText": body,
+                    "notes": notes,
+                    "transcript": "",
+                    "hasAudio": audio_url is not None,
+                    "hasVideo": video_url is not None,
+                }
+            )
 
     source_hash = sha256(pptx)
+    outline = build_outline(manifest_slides)
     manifest = {
-        "schemaVersion": "1.0",
+        "schemaVersion": "1.1",
         "course": {
             "id": f"narrated-deck-{source_hash[:12]}",
             "version": source_hash[:12],
@@ -167,13 +338,17 @@ def build(args: argparse.Namespace) -> None:
             "slideCount": len(manifest_slides),
             "totalDurationMs": sum(item["durationMs"] or 0 for item in manifest_slides),
         },
+        "outline": outline,
         "slides": manifest_slides,
         "capabilities": {
             "audio": all(item["audioUrl"] for item in manifest_slides),
+            "video": any(item["videoUrl"] for item in manifest_slides),
             "transcript": False,
             "resume": True,
         },
     }
+    write_text_outputs(output, manifest, slides_text)
+
     report = {
         "sourceFileName": pptx.name,
         "sourceSha256": source_hash,
@@ -200,6 +375,8 @@ def main() -> None:
     parser.add_argument("--rendered-dir", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--player-dir", type=Path, required=True)
+    parser.add_argument("--video-dir", type=Path, default=None,
+                        help="Dossier des clips par diapositive (slide-001.mp4, ...)")
     build(parser.parse_args())
 
 
