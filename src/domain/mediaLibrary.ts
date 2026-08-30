@@ -47,7 +47,7 @@ export const MEDIA_STATUS_LABELS_FR: Record<MediaStatus, string> = {
 export type MediaVisibility = "cohort" | "program" | "supervisors" | "private";
 
 export const MEDIA_VISIBILITY_LABELS_FR: Record<MediaVisibility, string> = {
-  cohort: "Promotion inscrite",
+  cohort: "Classe(s) concernée(s)",
   program: "Tout le programme",
   supervisors: "Encadrants et enseignants",
   private: "Équipe pédagogique uniquement",
@@ -64,7 +64,8 @@ export interface MediaAsset {
   readonly sizeHint?: string;
   readonly durationMinutes?: number;
   readonly hasTranscript?: boolean;
-  readonly storageActivated: false;
+  /** Faux pour les supports de la maquette, vrai dès que les fichiers sont réellement stockés. */
+  readonly storageActivated: boolean;
 }
 
 export interface MediaVersion {

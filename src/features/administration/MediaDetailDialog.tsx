@@ -25,6 +25,7 @@ import {
 } from "@/domain/mediaLibrary";
 import { NarratedConversionPanel } from "@/features/administration/NarratedConversionPanel";
 import type { Outcome } from "@/domain/types";
+import { NarratedDeckPreviewDialog } from "@/features/administration/NarratedDeckPreviewDialog";
 
 const formatDate = (iso?: string) => (iso ? new Date(iso).toLocaleDateString("fr-FR") : "—");
 
@@ -110,7 +111,9 @@ export function MediaDetailDialog({
         </div>
 
         <div className="space-y-1 rounded-md border border-dashed border-border p-3 text-sm">
-          <p className="font-medium">Fichier prévu (métadonnée)</p>
+          <p className="font-medium">
+            {resource.asset.storageActivated ? "Fichiers du support" : "Fichier prévu (métadonnée)"}
+          </p>
           <p className="break-all text-muted-foreground">
             {resource.asset.kind === "url" ? "URL déclarée" : "Nom de fichier déclaré"} :{" "}
             {resource.asset.label}
@@ -119,7 +122,9 @@ export function MediaDetailDialog({
             {resource.asset.sizeHint ? `Taille indicative ${resource.asset.sizeHint}. ` : ""}
             {resource.asset.durationMinutes ? `Durée ${resource.asset.durationMinutes} min. ` : ""}
             {resource.asset.hasTranscript ? "Transcription disponible. " : ""}
-            {MEDIA_STORAGE_NOTICE_FR}.
+            {resource.asset.storageActivated
+              ? "Stockage privé du programme : accessible uniquement par lien signé et temporaire."
+              : `${MEDIA_STORAGE_NOTICE_FR}.`}
           </p>
         </div>
 
@@ -147,22 +152,29 @@ export function MediaDetailDialog({
         </div>
 
         <DialogFooter className="flex-wrap gap-2">
-          {availableMediaActions(resource).map((action) => (
-            <Button
-              key={action}
-              type="button"
-              variant="outline"
-              size="sm"
-              className="min-h-11 w-full sm:w-auto"
-              onClick={() =>
-                onAction(
-                  `Action simulée : ${MEDIA_ACTION_LABELS_FR[action]} — « ${resource.title} ». Aucune donnée modifiée.`,
-                )
-              }
-            >
-              {MEDIA_ACTION_LABELS_FR[action]}
-            </Button>
-          ))}
+          {/*
+            « Prévisualiser » est la seule action réelle de cette liste : elle
+            joue le diaporama publié. Les autres restent simulées, et le disent.
+          */}
+          <NarratedDeckPreviewDialog resourceId={resource.id} title={resource.title} />
+          {availableMediaActions(resource)
+            .filter((action) => action !== "preview")
+            .map((action) => (
+              <Button
+                key={action}
+                type="button"
+                variant="outline"
+                size="sm"
+                className="min-h-11 w-full sm:w-auto"
+                onClick={() =>
+                  onAction(
+                    `Action simulée : ${MEDIA_ACTION_LABELS_FR[action]} — « ${resource.title} ». Aucune donnée modifiée.`,
+                  )
+                }
+              >
+                {MEDIA_ACTION_LABELS_FR[action]}
+              </Button>
+            ))}
         </DialogFooter>
       </DialogContent>
     </Dialog>

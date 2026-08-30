@@ -336,6 +336,28 @@ export interface PublishedNarratedDeck {
   readonly status: string;
 }
 
+/** Une diapositive prête à être jouée : liens signés, temporaires, sur le stockage privé. */
+export interface NarratedDeckPlaybackSlide {
+  readonly index: number;
+  readonly title: string;
+  readonly durationMs: number;
+  /** Clip rendu par PowerPoint, narration comprise. Absent pour une diapositive statique. */
+  readonly videoUrl?: string;
+  /** Affiche avant lecture, et repli si le clip ne peut pas être lu. */
+  readonly imageUrl?: string;
+  readonly transcript?: string;
+}
+
+export interface NarratedDeckPlayback {
+  readonly title: string;
+  readonly slides: readonly NarratedDeckPlaybackSlide[];
+  readonly chapters: readonly {
+    readonly chapterIndex: number;
+    readonly title: string;
+    readonly startsAtSlide: number;
+  }[];
+}
+
 /** Avancement de la transcription d'un cours, une diapositive par appel. */
 export interface TranscriptionProgress {
   /** Diapositive qui vient d'être transcrite, null s'il n'y avait plus rien à faire. */
@@ -363,6 +385,13 @@ export interface LearningResourceRepository {
    * d'exécution du service, et un échec ferait tout reperdre.
    */
   transcribeNextSlide(resourceId: LearningResourceId): Promise<TranscriptionProgress>;
+  /**
+   * Diaporama publié d'un support, prêt à jouer. Les liens sont signés et
+   * expirent : rien du stockage privé n'est exposé durablement.
+   */
+  getNarratedDeckPlayback(
+    resourceId: LearningResourceId,
+  ): Promise<NarratedDeckPlayback | undefined>;
 }
 
 /**

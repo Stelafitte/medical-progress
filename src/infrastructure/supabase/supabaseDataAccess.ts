@@ -12,6 +12,7 @@ import type {
   RegisteredResourceAsset,
   RequestUploadUrlInput,
   ResourceAssetKind,
+  NarratedDeckPlayback,
   ResourceVisibility,
   TranscriptionProgress,
   UploadUrlResult,
@@ -412,8 +413,10 @@ function mapMediaResource(
     ? { kind: "url", label: row.external_url, storageActivated: false }
     : {
         kind: "file",
-        label: asset?.original_file_name ?? asset?.object_path ?? "Fichier téléversé",
-        storageActivated: false,
+        label: asset?.original_file_name ?? "Fichiers téléversés dans le stockage privé",
+        // Le stockage est bien actif pour un support réel : ne pas laisser
+        // l'écran répéter la mention "non activé" héritée de la maquette.
+        storageActivated: true,
       };
   return {
     id: row.id as MediaResourceId,
@@ -501,6 +504,48 @@ const assessmentModalityColumns =
 
 const outcomeColumns =
   "id,program_id,curriculum_version_id,code,label,description,nature,domain,target_mastery,created_at";
+
+/**
+ * Lien signé pour chaque fichier demandé, groupé par bucket. Un fichier dont
+ * le lien ne peut pas être produit est simplement absent du résultat :
+ * l'appelant retombe alors sur ce qu'il a (l'affiche plutôt que le clip).
+ */
+async function signAssetUrls(
+  client: SupabaseClient,
+  assetIds: readonly string[],
+): Promise<Map<string, string>> {
+  const signed = new Map<string, string>();
+  if (assetIds.length === 0) return signed;
+
+  const { data, error } = await client
+    .from("learning_resource_assets")
+    .select("id,bucket_name,object_path")
+    .in("id", [...assetIds]);
+  assertNoSupabaseError(error);
+
+  const rows = (data ?? []) as { id: string; bucket_name: string; object_path: string }[];
+  const byBucket = new Map<string, typeof rows>();
+  for (const row of rows) {
+    byBucket.set(row.bucket_name, [...(byBucket.get(row.bucket_name) ?? []), row]);
+  }
+
+  await Promise.all(
+    [...byBucket.entries()].map(async ([bucket, bucketRows]) => {
+      const { data: urls, error: signError } = await client.storage
+        .from(bucket)
+        .createSignedUrls(
+          bucketRows.map((row) => row.object_path),
+          3600,
+        );
+      if (signError) return;
+      for (const [index, entry] of (urls ?? []).entries()) {
+        const row = bucketRows[index];
+        if (row && entry?.signedUrl) signed.set(row.id, entry.signedUrl);
+      }
+    }),
+  );
+  return signed;
+}
 
 /**
  * Première tranche Supabase. Les repositories non encore migrés restent
@@ -887,6 +932,84 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
           characters: payload.characters ?? 0,
           remaining: payload.remaining ?? 0,
           done: payload.done ?? true,
+        };
+      },
+      /**
+       * Reconstitue le diaporama publié le plus récent, avec un lien signé par
+       * fichier. Les objets restent privés : ces liens expirent au bout d'une
+       * heure et ne sont jamais stockés.
+       */
+      async getNarratedDeckPlayback(
+        resourceId: LearningResourceId,
+      ): Promise<NarratedDeckPlayback | undefined> {
+        const { data: deck, error: deckError } = await client
+          .from("narrated_decks")
+          .select("id")
+          .eq("resource_id", resourceId)
+          .order("version", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        assertNoSupabaseError(deckError);
+        if (!deck) return undefined;
+        const deckId = (deck as { id: string }).id;
+
+        const [{ data: slideRows, error: slideError }, { data: chapterRows, error: chapterError }] =
+          await Promise.all([
+            client
+              .from("narrated_deck_slides")
+              .select("slide_index,title,duration_ms,image_asset_id,video_asset_id,transcript")
+              .eq("deck_id", deckId)
+              .order("slide_index", { ascending: true }),
+            client
+              .from("narrated_deck_chapters")
+              .select("chapter_index,title,starts_at_slide")
+              .eq("deck_id", deckId)
+              .order("chapter_index", { ascending: true }),
+          ]);
+        assertNoSupabaseError(slideError);
+        assertNoSupabaseError(chapterError);
+
+        type SlideRow = {
+          slide_index: number;
+          title: string;
+          duration_ms: number;
+          image_asset_id: string | null;
+          video_asset_id: string | null;
+          transcript: string | null;
+        };
+        const slides = (slideRows ?? []) as SlideRow[];
+        const assetIds = [
+          ...new Set(
+            slides.flatMap((slide) =>
+              [slide.image_asset_id, slide.video_asset_id].filter((id): id is string => Boolean(id)),
+            ),
+          ),
+        ];
+        const signedByAsset = await signAssetUrls(client, assetIds);
+
+        return {
+          title: "",
+          slides: slides.map((slide) => ({
+            index: slide.slide_index,
+            title: slide.title,
+            durationMs: slide.duration_ms,
+            ...(slide.video_asset_id && signedByAsset.get(slide.video_asset_id)
+              ? { videoUrl: signedByAsset.get(slide.video_asset_id)! }
+              : {}),
+            ...(slide.image_asset_id && signedByAsset.get(slide.image_asset_id)
+              ? { imageUrl: signedByAsset.get(slide.image_asset_id)! }
+              : {}),
+            ...(slide.transcript ? { transcript: slide.transcript } : {}),
+          })),
+          chapters: ((chapterRows ?? []) as {
+            chapter_index: number;
+            title: string;
+            starts_at_slide: number;
+          }[]).map((chapter) => ({
+            chapterIndex: chapter.chapter_index,
+            title: chapter.title,
+            startsAtSlide: chapter.starts_at_slide,
+          })),
         };
       },
       async publishNarratedDeck(input: PublishNarratedDeckInput): Promise<PublishedNarratedDeck> {
