@@ -186,7 +186,10 @@ export function AddMediaDialog({
         {kind === "video" ? (
           <fieldset className="space-y-2">
             <legend className="text-sm font-medium">Origine</legend>
-            <RadioGroup value={origin} onValueChange={(value) => setOrigin(value as "file" | "url")}>
+            <RadioGroup
+              value={origin}
+              onValueChange={(value) => setOrigin(value as "file" | "url")}
+            >
               <div className="flex items-center gap-2">
                 <RadioGroupItem value="file" id="origin-file" />
                 <Label htmlFor="origin-file" className="font-normal">
@@ -214,7 +217,9 @@ export function AddMediaDialog({
               onChange={(event) => setFile(event.target.files?.[0] ?? null)}
             />
             <p className="text-xs text-muted-foreground">
-              {file ? `« ${file.name} » (${Math.ceil(file.size / 1024)} Ko)` : "Aucun fichier choisi."}
+              {file
+                ? `« ${file.name} » (${Math.ceil(file.size / 1024)} Ko)`
+                : "Aucun fichier choisi."}
             </p>
           </div>
         ) : (

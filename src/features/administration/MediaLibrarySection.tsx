@@ -37,12 +37,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  EmptyState,
-  PanelCard,
-  ScopeNotice,
-  StatCard,
-} from "@/features/professional/mock-ui";
+import { EmptyState, PanelCard, ScopeNotice, StatCard } from "@/features/professional/mock-ui";
 import { AddMediaDialog } from "@/features/administration/AddMediaDialog";
 import { PptxConverterDialog } from "@/features/administration/PptxConverterDialog";
 import { NarratedPackagePublishDialog } from "@/features/administration/NarratedPackagePublishDialog";
@@ -153,9 +148,7 @@ export function MediaLibrarySection({
                   programId={programId}
                   curriculumVersionId={curriculumVersionId}
                   outcomes={outcomes}
-                  onPublished={(title) =>
-                    setLastAction(`Cours commenté publié : « ${title} ».`)
-                  }
+                  onPublished={(title) => setLastAction(`Cours commenté publié : « ${title} ».`)}
                 />
                 <AddMediaDialog
                   programName={programName}

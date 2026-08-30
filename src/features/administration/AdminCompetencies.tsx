@@ -33,6 +33,7 @@ import {
   parseReferentialText,
 } from "@/features/administration/competenceTrackingViewModel";
 import { NATURE_LABELS_FR } from "@/domain/mastery";
+import { CorpusImport } from "@/features/administration/CorpusImport";
 import { CompetenceCreationForm } from "@/features/administration/CompetenceCreationForm";
 import { useDataAccess } from "@/application/session";
 import { COMPETENCE_MASTERY_LABELS_FR, type CompetenceNature } from "@/domain/competenceDraft";
@@ -254,6 +255,19 @@ export function AdminCompetencies() {
                 ))}
               </ul>
             ) : null}
+          </PanelCard>
+
+          <PanelCard
+            title="Voie automatique — importer un corpus de documents"
+            description="Un document ou une archive ZIP : chaque fichier lisible est déposé dans la médiathèque du programme, et les compétences que l'IA en tire restent rattachées au document dont elles viennent. Même outil que dans le « Concepteur de programme » — la liste est unique."
+          >
+            <CorpusImport
+              target="competences"
+              programId={programId}
+              curriculumVersionId={realCurriculumVersionId}
+              existingOutcomeCodes={outcomes.map((o) => o.code)}
+              onCreated={() => void refetch()}
+            />
           </PanelCard>
 
           <PanelCard

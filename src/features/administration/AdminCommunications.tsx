@@ -34,10 +34,7 @@ import {
   cancelPreparedCampaign,
   usePreparedCampaigns,
 } from "@/application/communicationStore";
-import {
-  buildActorScope,
-  buildCommunicationSnapshot,
-} from "@/application/communicationSnapshot";
+import { buildActorScope, buildCommunicationSnapshot } from "@/application/communicationSnapshot";
 import {
   buildDemoPreferences,
   communicationTemplates,
@@ -63,7 +60,6 @@ import {
 
 const LIMITS_FR =
   "Simulé — aucun envoi : aucun e-mail, aucune notification, aucun appel réseau, aucune tâche programmée. L'historique préparé est perdu au rechargement de la page.";
-
 
 const HUMAN_CHECK_FR =
   "Ce contrôle automatisé ne garantit pas à lui seul l'absence de données sensibles. Une vérification humaine reste obligatoire.";
@@ -347,8 +343,6 @@ export function AdminCommunications() {
 
   return (
     <div className="space-y-8">
-
-
       <div className="grid gap-3 md:grid-cols-3">
         <PanelCard title="Modèles" description="Conception du programme">
           <p className="text-sm text-muted-foreground">
@@ -607,7 +601,10 @@ export function AdminCommunications() {
       ) : null}
 
       {step === 1 ? (
-        <PanelCard title="2. Message" description="Modèle validé ou message libre, sans pièce jointe réelle.">
+        <PanelCard
+          title="2. Message"
+          description="Modèle validé ou message libre, sans pièce jointe réelle."
+        >
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <Label htmlFor="modele">Modèle de message</Label>

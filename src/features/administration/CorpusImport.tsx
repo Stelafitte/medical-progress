@@ -1,23 +1,29 @@
 /**
- * Import d'un corpus de base de connaissances : un document, ou une archive
- * ZIP de documents.
+ * Import d'un corpus : un document, ou une archive ZIP de documents.
+ *
+ * UN SEUL composant pour les trois entités qui s'importent — connaissances,
+ * compétences, modalités d'évaluation — et pour les DEUX écrans qui y donnent
+ * accès : le Concepteur de programme et l'onglet dédié. C'est la règle du
+ * projet : une entité, un mécanisme d'import, un seul stockage, deux portes
+ * d'entrée. Deux composants qui se ressembleraient finiraient par diverger,
+ * et l'un des deux écrans produirait des lignes que l'autre ne saurait pas
+ * relire.
  *
  * Ce que fait cet écran, et que l'import d'objectifs ne fait pas : il
  * CONSERVE les fichiers. Chaque document lisible est déposé dans la
- * médiathèque du programme, et les connaissances que l'IA en tire sont
- * rattachées au document dont elles proviennent. C'est ce lien
- * (`learning_resource_outcomes`) qui permet, plus tard, de remonter d'une
- * connaissance à sa source — sans lui, le référentiel se remplit d'items
- * dont plus personne ne sait d'où ils sortent.
+ * médiathèque du programme, et ce que l'IA en tire est rattaché au document
+ * dont il provient (`learning_resource_outcomes`) — sans quoi le référentiel
+ * se remplit d'items dont plus personne ne sait d'où ils sortent.
  *
  * Gouvernance inchangée : l'IA propose, l'enseignant valide. Rien n'est créé
  * avant le clic final, et chaque proposition reste décochable et modifiable.
  *
- * Aucune nouvelle brique serveur : la chaîne réutilise telles quelles
- * `analyze-program-objectives`, `create_outcome`, `create_learning_resource`
- * (qui pose les liens dans le même appel) et la chaîne de téléversement
- * signé. Les mêmes vérifications d'autorisation qu'un ajout manuel
- * s'appliquent donc, sans exception à écrire.
+ * Aucune brique serveur propre à cet écran : la chaîne réutilise telles
+ * quelles `analyze-program-objectives`, `create_outcome`,
+ * `create_assessment_modality`, `create_learning_resource` (qui pose les
+ * liens dans le même appel) et le téléversement signé. Les mêmes
+ * vérifications d'autorisation qu'un ajout manuel s'appliquent donc, sans
+ * exception à écrire.
  */
 import { useMemo, useState } from "react";
 import { Check, FileUp, Loader2, Sparkles } from "lucide-react";
@@ -28,6 +34,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useDataAccess } from "@/application/session";
 import type { ResourceVisibility } from "@/application/ports/repositories";
+import {
+  ASSESSMENT_SUBTYPE_LABELS_FR,
+  ASSESSMENT_USAGE_LABELS_FR,
+  SUBTYPES_BY_MODE,
+  type AssessmentMode,
+  type AssessmentSubtype,
+  type AssessmentUsage,
+} from "@/domain/assessmentModality";
 import {
   COMPETENCE_MASTERY_LABELS_FR,
   COMPETENCE_NATURE_LABELS_FR,
@@ -44,6 +58,28 @@ import type {
   OutcomeNature,
   ProgramId,
 } from "@/domain/types";
+
+/** Entité visée par l'import. Elle décide de ce qui est retenu dans la réponse
+ * de l'analyse et de la fonction de création appelée à la fin. */
+export type CorpusTarget = "knowledge" | "competences" | "assessments";
+
+const TARGET_LABELS: Record<CorpusTarget, string> = {
+  knowledge: "connaissance(s)",
+  competences: "compétence(s)",
+  assessments: "modalité(s) d'évaluation",
+};
+
+/** Dérivé de SUBTYPES_BY_MODE (source unique) plutôt que dupliqué : le mode
+ * est mécanique une fois le sous-type connu. */
+const MODE_BY_SUBTYPE: Record<AssessmentSubtype, AssessmentMode> = (() => {
+  const map = {} as Record<AssessmentSubtype, AssessmentMode>;
+  (Object.keys(SUBTYPES_BY_MODE) as AssessmentMode[]).forEach((mode) => {
+    SUBTYPES_BY_MODE[mode].forEach((subtype) => {
+      map[subtype] = mode;
+    });
+  });
+  return map;
+})();
 
 const SELECT_CLASS = "border-input bg-background min-h-11 w-full rounded-md border px-3 text-sm";
 
@@ -102,7 +138,9 @@ function nextKey(): string {
   return `corpus-${rowKeySeq}`;
 }
 
-interface SuggestionRow {
+/** Une proposition d'acquis (connaissance ou compétence). */
+interface OutcomeSuggestion {
+  readonly kind: "outcome";
   readonly key: string;
   selected: boolean;
   code: string;
@@ -112,6 +150,19 @@ interface SuggestionRow {
   nature: OutcomeNature;
   targetMastery: MasteryLevel;
 }
+
+/** Une proposition de modalité d'évaluation. */
+interface AssessmentSuggestion {
+  readonly kind: "assessment";
+  readonly key: string;
+  selected: boolean;
+  name: string;
+  subtype: AssessmentSubtype;
+  usage: AssessmentUsage;
+  notes: string;
+}
+
+type SuggestionRow = OutcomeSuggestion | AssessmentSuggestion;
 
 interface DocumentRow {
   readonly key: string;
@@ -123,21 +174,29 @@ interface DocumentRow {
   suggestions: readonly SuggestionRow[];
 }
 
-export function KnowledgeCorpusImport({
+export function CorpusImport({
+  target,
   programId,
   curriculumVersionId,
   existingOutcomeCodes = [],
+  existingAssessmentNames = [],
   onCreated,
 }: {
+  readonly target: CorpusTarget;
   readonly programId: ProgramId;
   readonly curriculumVersionId: CurriculumVersionId | undefined;
   readonly existingOutcomeCodes?: readonly string[];
+  readonly existingAssessmentNames?: readonly string[];
   readonly onCreated?: () => void;
 }) {
   const dataAccess = useDataAccess();
   const existingCodeSet = useMemo(
     () => new Set(existingOutcomeCodes.map((code) => code.trim().toUpperCase())),
     [existingOutcomeCodes],
+  );
+  const existingNameSet = useMemo(
+    () => new Set(existingAssessmentNames.map((name) => name.trim().toLowerCase())),
+    [existingAssessmentNames],
   );
 
   const [reading, setReading] = useState(false);
@@ -233,21 +292,47 @@ export function KnowledgeCorpusImport({
           row.document.text,
         );
         analyzedRows.push({ ...row, status: "analyzed", error: null, suggestions: [] });
-        result.knowledgeItems.forEach((item) => {
-          collected.push({
-            rowIndex: index,
-            item: {
-              key: nextKey(),
-              selected: true,
-              code: "",
-              label: item.label,
-              domain: item.domain,
-              description: item.description,
-              nature: item.nature,
-              targetMastery: item.targetMastery,
-            },
+        if (target === "assessments") {
+          result.assessmentModalities.forEach((item) => {
+            collected.push({
+              rowIndex: index,
+              item: {
+                kind: "assessment",
+                key: nextKey(),
+                selected: !existingNameSet.has(item.name.trim().toLowerCase()),
+                name: item.name,
+                subtype: item.subtype,
+                usage: item.usage,
+                notes: item.notes,
+              },
+            });
           });
-        });
+        } else {
+          // L'analyse rend connaissances ET compétences dans la même liste :
+          // on ne garde ici que la nature visée par cet écran, pour qu'un
+          // import lancé depuis « Compétences » ne remplisse pas la base de
+          // connaissances à l'insu du concepteur.
+          result.knowledgeItems
+            .filter((item) =>
+              target === "knowledge" ? item.nature === "knowledge" : item.nature !== "knowledge",
+            )
+            .forEach((item) => {
+              collected.push({
+                rowIndex: index,
+                item: {
+                  kind: "outcome",
+                  key: nextKey(),
+                  selected: true,
+                  code: "",
+                  label: item.label,
+                  domain: item.domain,
+                  description: item.description,
+                  nature: item.nature,
+                  targetMastery: item.targetMastery,
+                },
+              });
+            });
+        }
       } catch (err) {
         analyzedRows.push({
           ...row,
@@ -259,11 +344,15 @@ export function KnowledgeCorpusImport({
       setAnalyzeProgress({ done: index + 1, total });
     }
 
+    const outcomeEntries = collected.filter(
+      (entry): entry is { rowIndex: number; item: OutcomeSuggestion } =>
+        entry.item.kind === "outcome",
+    );
     const codes = buildCorpusCodes(
-      collected.map((entry) => entry.item.domain),
+      outcomeEntries.map((entry) => entry.item.domain),
       existingCodeSet,
     );
-    collected.forEach((entry, position) => {
+    outcomeEntries.forEach((entry, position) => {
       entry.item.code = codes[position] ?? `REF-${String(position + 1).padStart(2, "0")}`;
     });
 
@@ -277,13 +366,27 @@ export function KnowledgeCorpusImport({
     setAnalyzing(false);
   };
 
-  const patchSuggestion = (rowKey: string, key: string, next: Partial<SuggestionRow>) =>
+  /**
+   * Modification d'un champ d'une proposition.
+   *
+   * Le type de la retouche est celui de la variante concernée : TypeScript ne
+   * sait pas, sur une union, qu'un `Partial` s'applique à la même branche que
+   * la ligne modifiée. L'assertion est donc restreinte au strict nécessaire,
+   * et l'appelant reste typé — c'est `next` qui est vérifié à l'appel.
+   */
+  const patchSuggestion = (
+    rowKey: string,
+    key: string,
+    next: Partial<OutcomeSuggestion> | Partial<AssessmentSuggestion>,
+  ) =>
     setRows((prev) =>
       prev.map((row) =>
         row.key === rowKey
           ? {
               ...row,
-              suggestions: row.suggestions.map((s) => (s.key === key ? { ...s, ...next } : s)),
+              suggestions: row.suggestions.map((s) =>
+                s.key === key ? ({ ...s, ...next } as SuggestionRow) : s,
+              ),
             }
           : row,
       ),
@@ -309,13 +412,14 @@ export function KnowledgeCorpusImport({
     setCreating(true);
     setSummary(null);
     const failures: string[] = [];
-    let createdOutcomes = 0;
+    let createdItems = 0;
     let createdResources = 0;
 
     // Détection locale des collisions de code AVANT tout appel réseau : la
     // contrainte SQL les rejetterait une par une, avec un message Postgres
     // brut et une création à moitié faite.
     const seenCodes = new Set(existingCodeSet);
+    const seenNames = new Set(existingNameSet);
 
     for (const row of rows) {
       const chosen = row.suggestions.filter((s) => s.selected);
@@ -323,6 +427,40 @@ export function KnowledgeCorpusImport({
 
       const outcomeIds: OutcomeId[] = [];
       for (const suggestion of chosen) {
+        if (suggestion.kind === "assessment") {
+          const name = suggestion.name.trim();
+          if (!name) {
+            failures.push("Une modalité d'évaluation sans nom a été ignorée.");
+            continue;
+          }
+          if (seenNames.has(name.toLowerCase())) {
+            failures.push(
+              `« ${name} » : une modalité porte déjà ce nom dans ce programme — renommez-la ou décochez cette ligne.`,
+            );
+            continue;
+          }
+          try {
+            await dataAccess.assessments.createAssessmentModality({
+              programId,
+              name,
+              // Le mode est dérivé du sous-type, jamais saisi : la contrainte
+              // SQL `assessment_modalities_subtype_matches_mode` refuserait
+              // une association incohérente.
+              mode: MODE_BY_SUBTYPE[suggestion.subtype],
+              subtype: suggestion.subtype,
+              usage: suggestion.usage,
+              notes: suggestion.notes.trim(),
+            });
+            seenNames.add(name.toLowerCase());
+            createdItems += 1;
+          } catch (err) {
+            failures.push(
+              `« ${name} » : ${err instanceof Error ? err.message : "échec de création"}`,
+            );
+          }
+          continue;
+        }
+
         const code = suggestion.code.trim().toUpperCase();
         if (!code) {
           failures.push(`« ${suggestion.label} » : code vide.`);
@@ -347,7 +485,7 @@ export function KnowledgeCorpusImport({
           });
           seenCodes.add(code);
           outcomeIds.push(created.id);
-          createdOutcomes += 1;
+          createdItems += 1;
         } catch (err) {
           failures.push(
             `« ${suggestion.label} » : ${err instanceof Error ? err.message : "échec de création"}`,
@@ -394,9 +532,9 @@ export function KnowledgeCorpusImport({
       }
     }
 
-    if (createdOutcomes > 0 || createdResources > 0) {
+    if (createdItems > 0 || createdResources > 0) {
       setSummary(
-        `${createdOutcomes} connaissance(s) créée(s) et ${createdResources} document(s) déposé(s) dans la médiathèque${
+        `${createdItems} ${TARGET_LABELS[target]} créée(s) et ${createdResources} document(s) déposé(s) dans la médiathèque${
           failures.length > 0 ? " — voir les échecs ci-dessous" : "."
         }`,
       );
@@ -432,7 +570,7 @@ export function KnowledgeCorpusImport({
           </label>
         </Button>
         <span className="text-muted-foreground text-xs">
-          Les fichiers sont déposés dans la médiathèque du programme, et les connaissances extraites
+          Les fichiers sont déposés dans la médiathèque du programme, et les propositions extraites
           restent rattachées au document dont elles viennent.
         </span>
       </div>
@@ -516,60 +654,126 @@ export function KnowledgeCorpusImport({
 
                 {row.suggestions.length > 0 ? (
                   <ul className="space-y-2">
-                    {row.suggestions.map((suggestion) => (
-                      <li
-                        key={suggestion.key}
-                        className="grid gap-2 sm:grid-cols-[auto_9rem_1fr_10rem]"
-                      >
-                        <Checkbox
-                          checked={suggestion.selected}
-                          disabled={busy}
-                          aria-label={`Retenir ${suggestion.label}`}
-                          onCheckedChange={(checked) =>
-                            patchSuggestion(row.key, suggestion.key, {
-                              selected: checked === true,
-                            })
-                          }
-                        />
-                        <Input
-                          value={suggestion.code}
-                          disabled={busy}
-                          aria-label="Code"
-                          onChange={(event) =>
-                            patchSuggestion(row.key, suggestion.key, { code: event.target.value })
-                          }
-                        />
-                        <Input
-                          value={suggestion.label}
-                          disabled={busy}
-                          aria-label="Intitulé"
-                          onChange={(event) =>
-                            patchSuggestion(row.key, suggestion.key, { label: event.target.value })
-                          }
-                        />
-                        <select
-                          className={SELECT_CLASS}
-                          value={suggestion.nature}
-                          disabled={busy}
-                          aria-label="Nature"
-                          onChange={(event) =>
-                            patchSuggestion(row.key, suggestion.key, {
-                              nature: event.target.value as OutcomeNature,
-                            })
-                          }
+                    {row.suggestions.map((suggestion) =>
+                      suggestion.kind === "assessment" ? (
+                        <li
+                          key={suggestion.key}
+                          className="grid gap-2 sm:grid-cols-[auto_1fr_10rem_10rem]"
                         >
-                          {(Object.keys(OUTCOME_NATURE_LABELS_FR) as OutcomeNature[]).map((n) => (
-                            <option key={n} value={n}>
-                              {OUTCOME_NATURE_LABELS_FR[n]}
-                            </option>
-                          ))}
-                        </select>
-                      </li>
-                    ))}
+                          <Checkbox
+                            checked={suggestion.selected}
+                            disabled={busy}
+                            aria-label={`Retenir ${suggestion.name}`}
+                            onCheckedChange={(checked) =>
+                              patchSuggestion(row.key, suggestion.key, {
+                                selected: checked === true,
+                              })
+                            }
+                          />
+                          <Input
+                            value={suggestion.name}
+                            disabled={busy}
+                            aria-label="Nom de la modalité"
+                            onChange={(event) =>
+                              patchSuggestion(row.key, suggestion.key, { name: event.target.value })
+                            }
+                          />
+                          <select
+                            className={SELECT_CLASS}
+                            value={suggestion.subtype}
+                            disabled={busy}
+                            aria-label="Sous-type"
+                            onChange={(event) =>
+                              patchSuggestion(row.key, suggestion.key, {
+                                subtype: event.target.value as AssessmentSubtype,
+                              })
+                            }
+                          >
+                            {(Object.keys(ASSESSMENT_SUBTYPE_LABELS_FR) as AssessmentSubtype[]).map(
+                              (value) => (
+                                <option key={value} value={value}>
+                                  {ASSESSMENT_SUBTYPE_LABELS_FR[value]}
+                                </option>
+                              ),
+                            )}
+                          </select>
+                          <select
+                            className={SELECT_CLASS}
+                            value={suggestion.usage}
+                            disabled={busy}
+                            aria-label="Usage"
+                            onChange={(event) =>
+                              patchSuggestion(row.key, suggestion.key, {
+                                usage: event.target.value as AssessmentUsage,
+                              })
+                            }
+                          >
+                            {(Object.keys(ASSESSMENT_USAGE_LABELS_FR) as AssessmentUsage[]).map(
+                              (value) => (
+                                <option key={value} value={value}>
+                                  {ASSESSMENT_USAGE_LABELS_FR[value]}
+                                </option>
+                              ),
+                            )}
+                          </select>
+                        </li>
+                      ) : (
+                        <li
+                          key={suggestion.key}
+                          className="grid gap-2 sm:grid-cols-[auto_9rem_1fr_10rem]"
+                        >
+                          <Checkbox
+                            checked={suggestion.selected}
+                            disabled={busy}
+                            aria-label={`Retenir ${suggestion.label}`}
+                            onCheckedChange={(checked) =>
+                              patchSuggestion(row.key, suggestion.key, {
+                                selected: checked === true,
+                              })
+                            }
+                          />
+                          <Input
+                            value={suggestion.code}
+                            disabled={busy}
+                            aria-label="Code"
+                            onChange={(event) =>
+                              patchSuggestion(row.key, suggestion.key, { code: event.target.value })
+                            }
+                          />
+                          <Input
+                            value={suggestion.label}
+                            disabled={busy}
+                            aria-label="Intitulé"
+                            onChange={(event) =>
+                              patchSuggestion(row.key, suggestion.key, {
+                                label: event.target.value,
+                              })
+                            }
+                          />
+                          <select
+                            className={SELECT_CLASS}
+                            value={suggestion.nature}
+                            disabled={busy}
+                            aria-label="Nature"
+                            onChange={(event) =>
+                              patchSuggestion(row.key, suggestion.key, {
+                                nature: event.target.value as OutcomeNature,
+                              })
+                            }
+                          >
+                            {(Object.keys(OUTCOME_NATURE_LABELS_FR) as OutcomeNature[]).map((n) => (
+                              <option key={n} value={n}>
+                                {OUTCOME_NATURE_LABELS_FR[n]}
+                              </option>
+                            ))}
+                          </select>
+                        </li>
+                      ),
+                    )}
                   </ul>
                 ) : row.status === "analyzed" ? (
                   <p className="text-muted-foreground text-xs">
-                    Aucune connaissance proposée pour ce document.
+                    Aucune proposition pour ce document.
                   </p>
                 ) : null}
               </li>
@@ -588,12 +792,14 @@ export function KnowledgeCorpusImport({
               ) : (
                 <Check className="me-1 size-4" aria-hidden />
               )}
-              Créer {selectedCount} connaissance(s) et déposer {documentsToDeposit} document(s)
+              Créer {selectedCount} {TARGET_LABELS[target]} et déposer {documentsToDeposit}{" "}
+              document(s)
             </Button>
             <span className="text-muted-foreground text-xs">
-              Rien n'est écrit avant ce clic. Le niveau cible par défaut est «{" "}
-              {COMPETENCE_MASTERY_LABELS_FR.proficient} » et reste modifiable ensuite dans l'onglet
-              dédié.
+              Rien n'est écrit avant ce clic.{" "}
+              {target === "assessments"
+                ? "Le mode (présentiel ou en ligne) est déduit du sous-type."
+                : `Le niveau cible par défaut est « ${COMPETENCE_MASTERY_LABELS_FR.proficient} » et reste modifiable ensuite dans l'onglet dédié.`}
             </span>
           </div>
         </>

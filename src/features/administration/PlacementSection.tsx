@@ -147,18 +147,18 @@ export function PlacementSection({
       </PanelCard>
 
       {showCreation ? (
-      <PanelCard
-        title="Créer un terrain de stage"
-        description="Éléments administratifs du stage : nom, établissement, service, places d'accueil, responsable et mode de validation."
-        action={<MockBadge />}
-      >
-        <PlacementCreationForm
-          programId={programId}
-          idPrefix="stage-section"
-          submitLabel="Créer le terrain de stage"
-          hint="Le terrain rejoint la liste unique : il est aussitôt proposé dans le « Concepteur de programme » et dans le pilotage."
-        />
-      </PanelCard>
+        <PanelCard
+          title="Créer un terrain de stage"
+          description="Éléments administratifs du stage : nom, établissement, service, places d'accueil, responsable et mode de validation."
+          action={<MockBadge />}
+        >
+          <PlacementCreationForm
+            programId={programId}
+            idPrefix="stage-section"
+            submitLabel="Créer le terrain de stage"
+            hint="Le terrain rejoint la liste unique : il est aussitôt proposé dans le « Concepteur de programme » et dans le pilotage."
+          />
+        </PanelCard>
       ) : null}
 
       <PanelCard

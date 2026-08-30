@@ -54,10 +54,7 @@ export function LearnerTrackingSection({
 
   const rows = useMemo<readonly LearnerTrackingRow[]>(() => {
     const assessments = data.program
-      ? assessmentFixturesFor(
-          data.program.id,
-          data.program.code.toUpperCase().startsWith("DFASM"),
-        )
+      ? assessmentFixturesFor(data.program.id, data.program.code.toUpperCase().startsWith("DFASM"))
       : [];
     const enrollments = data.enrollments.filter((e) => e.cohortId === selectedId);
     return buildLearnerTrackingRows({
@@ -98,8 +95,8 @@ export function LearnerTrackingSection({
 
         <p className="text-muted-foreground mt-3 text-xs">
           Avancement global moyen {summary.globalPercent} % · {summary.awaitingValidation}{" "}
-          compétence(s) déclarée(s) en attente de validation humaine ·{" "}
-          {summary.blockedLearners} apprenant(s) avec un axe encore à 0 %.
+          compétence(s) déclarée(s) en attente de validation humaine · {summary.blockedLearners}{" "}
+          apprenant(s) avec un axe encore à 0 %.
         </p>
 
         {rows.length === 0 ? (
@@ -115,8 +112,7 @@ export function LearnerTrackingSection({
                 {selected ? `Classe ${selected.label} · ` : ""}
                 {(["theory", "competence", "placement", "assessment"] as const)
                   .map(
-                    (axis) =>
-                      `${TRACKING_AXIS_LABELS_FR[axis]} : ${TRACKING_AXIS_HINTS_FR[axis]}`,
+                    (axis) => `${TRACKING_AXIS_LABELS_FR[axis]} : ${TRACKING_AXIS_HINTS_FR[axis]}`,
                   )
                   .join(" ")}
               </caption>

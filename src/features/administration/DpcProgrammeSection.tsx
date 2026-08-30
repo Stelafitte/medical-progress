@@ -8,7 +8,13 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDataAccess, useSession } from "@/application/session";
-import { EmptyState, MockBadge, PanelCard, ScopeNotice, StatCard } from "@/features/professional/mock-ui";
+import {
+  EmptyState,
+  MockBadge,
+  PanelCard,
+  ScopeNotice,
+  StatCard,
+} from "@/features/professional/mock-ui";
 import {
   DPC_NO_PATIENT_DATA_NOTICE_FR,
   DPC_ROUND_LABELS_FR,
@@ -75,8 +81,8 @@ export function DpcProgrammeSection() {
   return (
     <div className="space-y-6">
       <ScopeNotice>
-        Programme intégré DPC : <strong>configuration</strong> du socle, pas une application séparée.{" "}
-        {DPC_NO_PATIENT_DATA_NOTICE_FR}
+        Programme intégré DPC : <strong>configuration</strong> du socle, pas une application
+        séparée. {DPC_NO_PATIENT_DATA_NOTICE_FR}
       </ScopeNotice>
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -165,7 +171,10 @@ export function DpcProgrammeSection() {
         </ul>
       </PanelCard>
 
-      <PanelCard title="Conformité par partie" description="Agrégat de promotion, jamais nominatif.">
+      <PanelCard
+        title="Conformité par partie"
+        description="Agrégat de promotion, jamais nominatif."
+      >
         <ul className="space-y-2">
           {sections.map((row) => (
             <li key={row.section.id} className="space-y-1">

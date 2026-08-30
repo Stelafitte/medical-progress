@@ -121,7 +121,10 @@ export function AdminDocuments() {
         description="Le modèle : ce que le programme réclame, indépendamment d'une promotion."
       />
 
-      <PanelCard title="Référentiel des pièces" description={`${localRequirements.length} pièce(s) définie(s)`}>
+      <PanelCard
+        title="Référentiel des pièces"
+        description={`${localRequirements.length} pièce(s) définie(s)`}
+      >
         {localRequirements.length === 0 ? (
           <EmptyState>
             Aucune pièce exigée n'est encore définie pour ce programme. Utilisez l'import rapide ou

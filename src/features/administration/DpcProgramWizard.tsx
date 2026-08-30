@@ -36,11 +36,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -286,8 +282,7 @@ export function DpcProgramWizard() {
     });
 
   const addRound = (grid: DpcGridConfig) => {
-    const order =
-      draft.audit.rounds.reduce((max, round) => Math.max(max, round.order), 0) + 1;
+    const order = draft.audit.rounds.reduce((max, round) => Math.max(max, round.order), 0) + 1;
     setDraft({
       ...draft,
       audit: {
@@ -466,7 +461,9 @@ export function DpcProgramWizard() {
                 type="button"
                 variant="outline"
                 className={`${touch} w-full gap-2 sm:w-auto`}
-                onClick={() => addSimulatedDocuments([`document_simule_${draft.documents.length + 1}.docx`])}
+                onClick={() =>
+                  addSimulatedDocuments([`document_simule_${draft.documents.length + 1}.docx`])
+                }
               >
                 <Upload className="size-4" aria-hidden="true" />
                 Simuler un dépôt
@@ -567,9 +564,9 @@ export function DpcProgramWizard() {
             <section className="space-y-1 rounded-md border border-border p-3">
               <h3 className="text-sm font-medium">Traçabilité de la version</h3>
               <p className="text-muted-foreground text-xs">
-                Données structurées issues du programme importé : version {draft.version} · empreinte{" "}
-                {draft.checksum ?? "non calculée"}. Section technique secondaire : aucune action de
-                publication n'est demandée au coordinateur.
+                Données structurées issues du programme importé : version {draft.version} ·
+                empreinte {draft.checksum ?? "non calculée"}. Section technique secondaire : aucune
+                action de publication n'est demandée au coordinateur.
               </p>
             </section>
             <div className="grid gap-3 sm:grid-cols-2">
@@ -662,13 +659,18 @@ export function DpcProgramWizard() {
             <div className="flex flex-wrap items-center gap-2 text-sm">
               <Badge variant="outline">{shape.grids} grille(s)</Badge>
               <Badge variant="outline">{shape.rounds} tour(s)</Badge>
-              <Button type="button" variant="outline" className={`${touch} ml-auto`} onClick={addGrid}>
+              <Button
+                type="button"
+                variant="outline"
+                className={`${touch} ml-auto`}
+                onClick={addGrid}
+              >
                 Ajouter une grille
               </Button>
             </div>
             <p className="text-muted-foreground text-xs">
-              Aucune valeur n'est imposée : le nombre de grilles, de parties, de critères, de tours et
-              de dossiers est propre à chaque programme.
+              Aucune valeur n'est imposée : le nombre de grilles, de parties, de critères, de tours
+              et de dossiers est propre à chaque programme.
             </p>
 
             {draft.audit.grids.length === 0 ? (
@@ -681,7 +683,10 @@ export function DpcProgramWizard() {
               const rounds = orderedRounds(draft.audit).filter((r) => r.gridId === grid.gridId);
               const isHvgGrid = grid.gridId === dpcHvgGrid.id;
               return (
-                <section key={grid.gridId} className="space-y-3 rounded-md border border-border p-3">
+                <section
+                  key={grid.gridId}
+                  className="space-y-3 rounded-md border border-border p-3"
+                >
                   <div className="grid gap-3 sm:grid-cols-2">
                     <div className="space-y-1">
                       <Label htmlFor={`${grid.gridId}-title`}>Titre de la grille</Label>
@@ -821,7 +826,11 @@ export function DpcProgramWizard() {
                   {isHvgGrid ? (
                     <Collapsible>
                       <CollapsibleTrigger asChild>
-                        <Button type="button" variant="outline" className={`${touch} w-full sm:w-auto`}>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className={`${touch} w-full sm:w-auto`}
+                        >
                           Voir les parties et critères ({dpcHvgGrid.sections.length} parties)
                         </Button>
                       </CollapsibleTrigger>
@@ -886,7 +895,10 @@ export function DpcProgramWizard() {
 
                   <ul className="space-y-3">
                     {rounds.map((round) => (
-                      <li key={round.roundId} className="grid gap-3 rounded-md border border-border p-3 sm:grid-cols-2">
+                      <li
+                        key={round.roundId}
+                        className="grid gap-3 rounded-md border border-border p-3 sm:grid-cols-2"
+                      >
                         <div className="space-y-1">
                           <Label htmlFor={`${round.roundId}-label`}>Libellé du tour</Label>
                           <Input
@@ -952,7 +964,8 @@ export function DpcProgramWizard() {
                         </div>
                         <p className="text-muted-foreground text-xs sm:col-span-2">
                           Ordre {round.order} · version de grille {round.gridVersion} ·{" "}
-                          {recordsExpectedForRound(draft.audit, round.roundId) ?? "?"} dossiers attendus
+                          {recordsExpectedForRound(draft.audit, round.roundId) ?? "?"} dossiers
+                          attendus
                         </p>
                         <Button
                           type="button"
@@ -986,8 +999,8 @@ export function DpcProgramWizard() {
               </h3>
               <p className="text-muted-foreground text-sm">
                 Analyse de dossiers réels par le professionnel, critère par critère, en Oui / Non /
-                Non applicable. Ce n'est pas une évaluation de connaissances : le résultat décrit une
-                pratique observée, jamais un score de savoir.
+                Non applicable. Ce n'est pas une évaluation de connaissances : le résultat décrit
+                une pratique observée, jamais un score de savoir.
               </p>
               <ul className="text-sm">
                 <li>{shape.grids} grille(s) d'audit</li>
@@ -1042,8 +1055,8 @@ export function DpcProgramWizard() {
             <p className="flex items-start gap-2 rounded-md border border-border p-3 text-sm">
               <CalendarClock className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
               <span>
-                <strong>Tous les composants sont optionnels.</strong> Un DPC peut comporter ou non un
-                audit de pratiques avant / après, des tests de connaissances amont / aval et une
+                <strong>Tous les composants sont optionnels.</strong> Un DPC peut comporter ou non
+                un audit de pratiques avant / après, des tests de connaissances amont / aval et une
                 formation en présentiel, en visioconférence ou en e-formation. Le coordinateur
                 sélectionne les composants retenus, puis fixe le calendrier précis de chacun.
               </span>
@@ -1091,9 +1104,7 @@ export function DpcProgramWizard() {
                 return (
                   <li key={slot.id} className="space-y-3 rounded-md border border-border p-3">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-medium">
-                        {DPC_COMPONENT_KIND_LABELS_FR[slot.kind]}
-                      </span>
+                      <span className="font-medium">{DPC_COMPONENT_KIND_LABELS_FR[slot.kind]}</span>
                       <Badge variant={isSlotScheduled(slot) ? "outline" : "secondary"}>
                         {isSlotScheduled(slot) ? "Programmé" : "À programmer"}
                       </Badge>
@@ -1433,7 +1444,9 @@ export function DpcProgramWizard() {
 
         {stepId === "publication_check" ? (
           <div className="space-y-4">
-            <div className={`${touch} flex flex-wrap items-center gap-3 rounded-md border border-border p-3`}>
+            <div
+              className={`${touch} flex flex-wrap items-center gap-3 rounded-md border border-border p-3`}
+            >
               <Switch
                 id="dpc-medical-validated"
                 checked={draft.medicalParametersValidated}
@@ -1459,8 +1472,11 @@ export function DpcProgramWizard() {
                 >
                   <span className="flex items-center gap-2 text-sm font-medium">
                     <FileCheck2 className="size-4 shrink-0" aria-hidden="true" />
-                    {item.satisfied ? "Conforme" : item.required ? "À compléter" : "Optionnel"} :{" "}
-                    {item.label}
+                    {item.satisfied
+                      ? "Conforme"
+                      : item.required
+                        ? "À compléter"
+                        : "Optionnel"} : {item.label}
                   </span>
                   <span className="text-muted-foreground text-xs sm:ml-auto sm:text-right">
                     {item.detail}
@@ -1476,7 +1492,9 @@ export function DpcProgramWizard() {
             {readiness.blocking.length > 0 ? (
               <ul role="alert" className="rounded-md border border-destructive p-3 text-sm">
                 {readiness.blocking.map((item) => (
-                  <li key={item.id}>Bloquant : {item.label} — {item.detail}</li>
+                  <li key={item.id}>
+                    Bloquant : {item.label} — {item.detail}
+                  </li>
                 ))}
               </ul>
             ) : null}
@@ -1521,9 +1539,7 @@ export function DpcProgramWizard() {
           className={`${touch} w-full sm:w-auto`}
           disabled={stepIndex === DPC_WIZARD_STEPS.length - 1}
           onClick={() =>
-            setStepId(
-              DPC_WIZARD_STEPS[Math.min(DPC_WIZARD_STEPS.length - 1, stepIndex + 1)]!.id,
-            )
+            setStepId(DPC_WIZARD_STEPS[Math.min(DPC_WIZARD_STEPS.length - 1, stepIndex + 1)]!.id)
           }
         >
           Étape suivante

@@ -179,8 +179,7 @@ export function NarratedPackagePublishDialog({
         1 +
         (sourceFile ? 1 : 0) +
         manifest.slides.reduce(
-          (count, slide) =>
-            count + 1 + (slide.videoUrl ? 1 : 0) + (slide.audioUrl ? 1 : 0),
+          (count, slide) => count + 1 + (slide.videoUrl ? 1 : 0) + (slide.audioUrl ? 1 : 0),
           0,
         );
       let done = 0;

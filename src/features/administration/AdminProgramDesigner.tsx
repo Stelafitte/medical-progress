@@ -33,7 +33,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { EmptyState, MockBadge, PanelCard, ScopeNotice } from "@/features/professional/mock-ui";
 import { AdminWorkLevelBanner } from "@/features/administration/AdminWorkLevel";
 import { useProgramAdmin } from "@/features/administration/useProgramAdmin";
-import { KnowledgeCorpusImport } from "@/features/administration/KnowledgeCorpusImport";
+import { CorpusImport } from "@/features/administration/CorpusImport";
 import { useDataAccess } from "@/application/session";
 import {
   corpusToText,
@@ -635,6 +635,66 @@ export function AdminProgramDesigner() {
   };
 
   /**
+   * Liste des éléments que le programme possède DÉJÀ pour cette ressource,
+   * avec leurs cases « retenue pour le parcours ».
+   *
+   * Rendue à l'identique dans « Implémenter maintenant » et dans « Réutiliser
+   * l'existant » : ce sont deux façons d'arriver au même stock, pas deux
+   * stocks. Un élément déposé depuis l'onglet dédié appartient déjà à ce
+   * programme — « réutiliser » ne le rattache pas, il le retient.
+   */
+  const renderAssociationsFor = (resourceId: ResourceKind) => {
+    // Le helper est défini avant la garde de chargement de l'écran.
+    if (!data) return null;
+    if (resourceId === "knowledge" || resourceId === "competences") {
+      const isKnowledge = resourceId === "knowledge";
+      return (
+        <ProgramAssociationList
+          title={
+            isKnowledge
+              ? "Liste des connaissances déjà associées à ce programme"
+              : "Liste des compétences déjà associées à ce programme"
+          }
+          items={data.outcomes
+            .filter((o) => (isKnowledge ? o.nature === "knowledge" : o.nature !== "knowledge"))
+            .map((outcome) => ({
+              id: outcome.id,
+              label: `${outcome.code} — ${outcome.label}`,
+              retained: outcome.retainedAt !== null,
+            }))}
+          busyIds={archivingIds}
+          removeLabel="Retirer du programme"
+          onRemove={(ids) =>
+            void removeAssociations(ids, (id) =>
+              dataAccess.outcomes.archiveOutcome(id as OutcomeId),
+            )
+          }
+          onSetRetained={setOutcomesRetained}
+        />
+      );
+    }
+    if (resourceId === "assessments") {
+      return (
+        <ProgramAssociationList
+          title="Liste des modalités d'évaluation déjà associées à ce programme"
+          items={data.assessmentModalities.map((modality) => ({
+            id: modality.id,
+            label: modality.name,
+          }))}
+          busyIds={archivingIds}
+          removeLabel="Retirer du programme"
+          onRemove={(ids) =>
+            void removeAssociations(ids, (id) =>
+              dataAccess.assessments.archiveAssessmentModality(id),
+            )
+          }
+        />
+      );
+    }
+    return null;
+  };
+
+  /**
    * Enregistre l'état « retenue » d'un lot d'acquis, puis relit la liste.
    * Le rechargement est indispensable : c'est lui qui refait descendre l'état
    * enregistré dans la liste, et donc qui referme l'écart entre les cases
@@ -1013,24 +1073,22 @@ export function AdminProgramDesigner() {
                         <div className="space-y-3">
                           {realCurriculumVersionId ? (
                             <>
-                              <ProgramAssociationList
-                                title="Liste des compétences déjà associées à ce programme"
-                                items={data.outcomes
-                                  .filter((o) => o.nature !== "knowledge")
-                                  .map((outcome) => ({
-                                    id: outcome.id,
-                                    label: `${outcome.code} — ${outcome.label}`,
-                                    retained: outcome.retainedAt !== null,
-                                  }))}
-                                busyIds={archivingIds}
-                                removeLabel="Retirer du programme"
-                                onRemove={(ids) =>
-                                  void removeAssociations(ids, (id) =>
-                                    dataAccess.outcomes.archiveOutcome(id as OutcomeId),
-                                  )
-                                }
-                                onSetRetained={setOutcomesRetained}
-                              />
+                              {renderAssociationsFor("competences")}
+                              <div className="space-y-1.5">
+                                <p className="text-sm font-medium">
+                                  Importer un corpus de compétences
+                                </p>
+                                <CorpusImport
+                                  target="competences"
+                                  programId={activeProgramId}
+                                  curriculumVersionId={realCurriculumVersionId}
+                                  existingOutcomeCodes={data.outcomes.map((o) => o.code)}
+                                  onCreated={() => {
+                                    patch("competences", { implemented: true });
+                                    void refetch();
+                                  }}
+                                />
+                              </div>
                               {renderObjectivesImportShortcut()}
                               <div className="space-y-1.5">
                                 <p className="text-sm font-medium">Ajouter une compétence</p>
@@ -1089,29 +1147,13 @@ export function AdminProgramDesigner() {
                         <div className="space-y-3">
                           {realCurriculumVersionId ? (
                             <>
-                              <ProgramAssociationList
-                                title="Liste des connaissances déjà associées à ce programme"
-                                items={data.outcomes
-                                  .filter((o) => o.nature === "knowledge")
-                                  .map((outcome) => ({
-                                    id: outcome.id,
-                                    label: `${outcome.code} — ${outcome.label}`,
-                                    retained: outcome.retainedAt !== null,
-                                  }))}
-                                busyIds={archivingIds}
-                                removeLabel="Retirer du programme"
-                                onRemove={(ids) =>
-                                  void removeAssociations(ids, (id) =>
-                                    dataAccess.outcomes.archiveOutcome(id as OutcomeId),
-                                  )
-                                }
-                                onSetRetained={setOutcomesRetained}
-                              />
+                              {renderAssociationsFor("knowledge")}
                               <div className="space-y-1.5">
                                 <p className="text-sm font-medium">
                                   Importer une base de connaissances
                                 </p>
-                                <KnowledgeCorpusImport
+                                <CorpusImport
+                                  target="knowledge"
                                   programId={activeProgramId}
                                   curriculumVersionId={realCurriculumVersionId}
                                   existingOutcomeCodes={data.outcomes.map((o) => o.code)}
@@ -1148,20 +1190,20 @@ export function AdminProgramDesigner() {
 
                       {state.mode === "now" && resource.id === "assessments" ? (
                         <div className="space-y-3">
-                          <ProgramAssociationList
-                            title="Liste des modalités d'évaluation déjà associées à ce programme"
-                            items={data.assessmentModalities.map((modality) => ({
-                              id: modality.id,
-                              label: modality.name,
-                            }))}
-                            busyIds={archivingIds}
-                            removeLabel="Retirer du programme"
-                            onRemove={(ids) =>
-                              void removeAssociations(ids, (id) =>
-                                dataAccess.assessments.archiveAssessmentModality(id),
-                              )
-                            }
-                          />
+                          {renderAssociationsFor("assessments")}
+                          <div className="space-y-1.5">
+                            <p className="text-sm font-medium">Importer un corpus d'évaluations</p>
+                            <CorpusImport
+                              target="assessments"
+                              programId={activeProgramId}
+                              curriculumVersionId={realCurriculumVersionId}
+                              existingAssessmentNames={data.assessmentModalities.map((m) => m.name)}
+                              onCreated={() => {
+                                patch("assessments", { implemented: true });
+                                void refetch();
+                              }}
+                            />
+                          </div>
                           {renderObjectivesImportShortcut()}
                           <div className="space-y-1.5">
                             <p className="text-sm font-medium">Ajouter une modalité d'évaluation</p>
@@ -1220,10 +1262,14 @@ export function AdminProgramDesigner() {
                       ) : null}
 
                       {state.mode === "existing" ? (
-                        <p className="text-muted-foreground text-sm">
-                          Les {existingCounts[resource.id]} élément(s) déjà saisis dans l'onglet
-                          dédié seront associés à ce programme.
-                        </p>
+                        <div className="space-y-3">
+                          <p className="text-muted-foreground text-sm">
+                            Les {existingCounts[resource.id]} élément(s) déjà saisis dans l'onglet
+                            dédié appartiennent déjà à ce programme. Cochez ceux que ce parcours
+                            retient.
+                          </p>
+                          {renderAssociationsFor(resource.id)}
+                        </div>
                       ) : null}
 
                       {state.mode === "later" ? (

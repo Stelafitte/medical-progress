@@ -6,7 +6,8 @@
 import { useState } from "react";
 import { SectionHeading } from "@/components/section-heading";
 import { Skeleton } from "@/components/ui/skeleton";
-import { MockBadge, ScopeNotice, StatCard } from "@/features/professional/mock-ui";
+import { MockBadge, PanelCard, ScopeNotice, StatCard } from "@/features/professional/mock-ui";
+import { CorpusImport } from "@/features/administration/CorpusImport";
 import { AssessmentModalitySection } from "@/features/administration/AssessmentModalitySection";
 import { useProgramAdmin } from "@/features/administration/useProgramAdmin";
 import { defaultPilotCohortId } from "@/features/administration/adminProgramViewModel";
@@ -47,6 +48,19 @@ export function AdminAssessments() {
         <StatCard label="Cohortes concernées" value={cohorts.length} />
         <StatCard label="Objectifs évaluables" value={data.outcomes.length} />
       </div>
+
+      <PanelCard
+        title="Voie automatique — importer un corpus de documents"
+        description="Un document ou une archive ZIP : les modalités d'évaluation que l'IA y repère sont proposées à la validation, et les fichiers sont déposés dans la médiathèque. Même outil que dans le « Concepteur de programme » — la liste est unique."
+      >
+        <CorpusImport
+          target="assessments"
+          programId={program.id}
+          curriculumVersionId={data.versions[0]?.id}
+          existingAssessmentNames={modalities.map((m) => m.name)}
+          onCreated={() => void refetch()}
+        />
+      </PanelCard>
 
       <AssessmentModalitySection
         programId={program.id}

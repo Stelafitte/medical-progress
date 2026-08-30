@@ -118,8 +118,8 @@ export function PlatformOverview() {
 
       <ScopeNotice>
         Supervision uniquement : {platformAdminCanOpenLearnerFile() ? "accès" : "aucun accès"} aux
-        dossiers pédagogiques depuis cet espace. Pour entrer dans un programme, ouvrez l'onglet
-        « Programmes agrégés » ou utilisez le menu déroulant en haut à droite.
+        dossiers pédagogiques depuis cet espace. Pour entrer dans un programme, ouvrez l'onglet «
+        Programmes agrégés » ou utilisez le menu déroulant en haut à droite.
       </ScopeNotice>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -176,8 +176,13 @@ export function PlatformOverview() {
                     <TableCell className="font-medium">{program.name}</TableCell>
                     <TableCell className="text-muted-foreground">{program.kind}</TableCell>
                     <TableCell>
-                      <Badge variant={running > 0 ? "secondary" : "outline"} className="font-normal">
-                        {running > 0 ? `${running} promotion(s) en cours` : "aucune promotion ouverte"}
+                      <Badge
+                        variant={running > 0 ? "secondary" : "outline"}
+                        className="font-normal"
+                      >
+                        {running > 0
+                          ? `${running} promotion(s) en cours`
+                          : "aucune promotion ouverte"}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">{cohorts.length}</TableCell>
@@ -237,7 +242,10 @@ export function PlatformOverview() {
           ) : (
             <ul className="space-y-2">
               {staffRows.map((row) => (
-                <li key={row.personId} className="flex flex-wrap items-center justify-between gap-2">
+                <li
+                  key={row.personId}
+                  className="flex flex-wrap items-center justify-between gap-2"
+                >
                   <span>
                     <span className="font-medium">{row.fullName}</span>{" "}
                     <span className="text-muted-foreground text-xs">

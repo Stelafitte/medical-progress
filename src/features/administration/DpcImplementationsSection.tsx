@@ -36,11 +36,7 @@ function formatDate(value: string, timeZone: string): string {
   }).format(new Date(value));
 }
 
-function ImplementationCard({
-  implementation,
-}: {
-  implementation: DpcProgramImplementation;
-}) {
+function ImplementationCard({ implementation }: { implementation: DpcProgramImplementation }) {
   const overview = implementationOverview(implementation);
   const issues = validateImplementation(implementation);
   const openable = canOpenImplementation(implementation, dpcHvgReferencePublished);
@@ -129,10 +125,7 @@ function ImplementationCard({
 }
 
 export function DpcImplementationsSection() {
-  const versions = implementedReferenceVersions(
-    dpcHvgImplementations,
-    dpcHvgProgramDefinition.id,
-  );
+  const versions = implementedReferenceVersions(dpcHvgImplementations, dpcHvgProgramDefinition.id);
 
   return (
     <section className="space-y-4">

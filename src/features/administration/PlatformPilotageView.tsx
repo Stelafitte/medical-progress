@@ -46,12 +46,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { toast } from "sonner";
-import {
-  EmptyState,
-  MockBadge,
-  PanelCard,
-  ScopeNotice,
-} from "@/features/professional/mock-ui";
+import { EmptyState, MockBadge, PanelCard, ScopeNotice } from "@/features/professional/mock-ui";
 import { useDataAccess } from "@/application/session";
 import {
   ACCOUNT_STATUS_LABELS_FR,
@@ -717,9 +712,7 @@ function MailingSection({ rows }: { rows: readonly PlatformDirectoryRow[] }) {
   const [body, setBody] = useState("");
 
   const staff = resolveNonLearnerRecipients(rows);
-  const candidates = staff.filter((row) =>
-    row.groups.some((g) => groupKeys.includes(g as string)),
-  );
+  const candidates = staff.filter((row) => row.groups.some((g) => groupKeys.includes(g as string)));
   const recipients = candidates.filter((row) => !excludedIds.includes(row.personId as string));
   const check = checkNonLearnerMailing({ subject, body, groupKeys }, recipients.length);
 
@@ -792,9 +785,7 @@ function MailingSection({ rows }: { rows: readonly PlatformDirectoryRow[] }) {
                     <span className="font-medium">{row.fullName}</span>
                     <span className="text-muted-foreground text-xs">
                       {row.email} ·{" "}
-                      {row.groups
-                        .map((g) => PLATFORM_ROLE_GROUP_LABELS_FR[g] ?? g)
-                        .join(" · ")}
+                      {row.groups.map((g) => PLATFORM_ROLE_GROUP_LABELS_FR[g] ?? g).join(" · ")}
                     </span>
                   </Label>
                 </li>
@@ -808,7 +799,6 @@ function MailingSection({ rows }: { rows: readonly PlatformDirectoryRow[] }) {
         {recipients.length} destinataire(s) sélectionné(s) sur {candidates.length} résolu(s) —{" "}
         {staff.length} intervenant(s) au total.
       </p>
-
 
       <div className="space-y-2">
         <Label htmlFor="mailing-subject">Objet</Label>
@@ -838,9 +828,7 @@ function MailingSection({ rows }: { rows: readonly PlatformDirectoryRow[] }) {
         </ul>
       ) : null}
       {check.patientVerdict !== "none" ? (
-        <p className="text-destructive text-xs">
-          Marqueurs détectés : {check.markers.join(", ")}.
-        </p>
+        <p className="text-destructive text-xs">Marqueurs détectés : {check.markers.join(", ")}.</p>
       ) : null}
 
       <Button

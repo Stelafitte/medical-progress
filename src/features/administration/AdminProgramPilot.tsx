@@ -110,10 +110,12 @@ export function AdminProgramPilot() {
   });
   const groupSummary = summarizeGroupActivity(learnerRows);
   /** Suivi NOMINATIF des compétences : il appartient au pilotage, pas au référentiel. */
-  const competenceRows = buildLearnerCompetenceRows(cohortEnrollments, data.outcomes).map((row) => ({
-    ...row,
-    personName: personNameFor(data, row.enrollmentId),
-  }));
+  const competenceRows = buildLearnerCompetenceRows(cohortEnrollments, data.outcomes).map(
+    (row) => ({
+      ...row,
+      personName: personNameFor(data, row.enrollmentId),
+    }),
+  );
 
   return (
     <div className="space-y-6">
@@ -131,7 +133,12 @@ export function AdminProgramPilot() {
         programme ».
       </ScopeNotice>
 
-      <CohortSelector cohorts={cohorts} value={selectedId} onChange={setCohortId} label="Promotion pilotée" />
+      <CohortSelector
+        cohorts={cohorts}
+        value={selectedId}
+        onChange={setCohortId}
+        label="Promotion pilotée"
+      />
 
       {!selected ? (
         <EmptyState>Aucune promotion rattachée à ce programme.</EmptyState>
@@ -292,8 +299,6 @@ export function AdminProgramPilot() {
             />
           ) : null}
 
-
-
           <PilotTools
             phase={cohortPhase(selected)}
             rows={learnerRows}
@@ -315,7 +320,6 @@ export function AdminProgramPilot() {
                 : "tous les jalons connus sont passés",
             }}
           />
-
         </>
       )}
     </div>
@@ -357,12 +361,7 @@ function ProgrammingPanel({ phase }: { phase: CohortPhase }) {
 
       <div className="flex flex-wrap gap-2">
         {allowedProgrammingActions(state).map((action) => (
-          <Button
-            key={action}
-            variant="outline"
-            className="min-h-11"
-            onClick={() => apply(action)}
-          >
+          <Button key={action} variant="outline" className="min-h-11" onClick={() => apply(action)}>
             {PROGRAMMING_ACTION_LABELS_FR[action]}
           </Button>
         ))}
@@ -504,7 +503,6 @@ function ActivityPanel({ activity }: { activity: ProgramActivity }) {
   );
 }
 
-
 /* ------------------------------------------------------------------ */
 /* Gestion des apprenants et notifications                             */
 /* ------------------------------------------------------------------ */
@@ -572,9 +570,7 @@ function LearnerManagementPanel({
               <div className="flex flex-wrap items-center gap-2">
                 <span className="font-medium">{row.personName}</span>
                 <MarkerBadge row={row} />
-                <span className="text-muted-foreground text-xs">
-                  inscription : {row.status}
-                </span>
+                <span className="text-muted-foreground text-xs">inscription : {row.status}</span>
                 {row.alertCount > 0 ? (
                   <span className="text-muted-foreground text-xs">
                     {row.alertCount} signal(s) ouvert(s)
@@ -593,7 +589,9 @@ function LearnerManagementPanel({
       {/* Suivi NOMINATIF des compétences : déplacé ici depuis l'onglet Compétences,
           qui ne porte plus que le référentiel et sa couverture. */}
       <div className="space-y-2">
-        <h3 className="text-sm font-semibold">Acquisition des compétences, apprenant par apprenant</h3>
+        <h3 className="text-sm font-semibold">
+          Acquisition des compétences, apprenant par apprenant
+        </h3>
         <p className="text-muted-foreground text-xs">
           Une compétence en situation réelle n'est comptée acquise qu'après validation par un tiers
           habilité. Le référentiel lui-même se règle dans l'onglet « Compétences ».
@@ -656,10 +654,7 @@ function LearnerManagementPanel({
         ) : (
           <ul className="space-y-2 text-sm">
             {notifications.map((notification) => (
-              <li
-                key={notification.id}
-                className="border-border space-y-2 rounded-md border p-3"
-              >
+              <li key={notification.id} className="border-border space-y-2 rounded-md border p-3">
                 <div className="flex flex-wrap items-center gap-2">
                   <Bell className="text-muted-foreground size-4" aria-hidden />
                   <span className="font-medium">{notification.label}</span>
@@ -694,7 +689,6 @@ function LearnerManagementPanel({
         </Button>
         <AdminCommunications />
       </div>
-
     </div>
   );
 }
@@ -758,12 +752,10 @@ function PilotTools({
   const badgeFor = (key: ToolKey): string | null => {
     if (key === "activite")
       return `${activity.milestonesPassed}/${activity.milestonesTotal} jalons`;
-    if (key === "apprenants")
-      return `${summary.lateLearners + summary.idleLearners} à traiter`;
+    if (key === "apprenants") return `${summary.lateLearners + summary.idleLearners} à traiter`;
     if (key === "programmation") return PROGRAMMING_STATE_LABELS_FR[PHASE_TO_PROGRAMMING[phase]];
     return null;
   };
-
 
   return (
     <PanelCard

@@ -24,13 +24,11 @@ import {
   type AssessmentSubtype,
   type AssessmentUsage,
 } from "@/domain/assessmentModality";
-import { COMPETENCE_MASTERY_LABELS_FR, COMPETENCE_NATURE_LABELS_FR } from "@/domain/competenceDraft";
-import type {
-  CurriculumVersionId,
-  MasteryLevel,
-  OutcomeNature,
-  ProgramId,
-} from "@/domain/types";
+import {
+  COMPETENCE_MASTERY_LABELS_FR,
+  COMPETENCE_NATURE_LABELS_FR,
+} from "@/domain/competenceDraft";
+import type { CurriculumVersionId, MasteryLevel, OutcomeNature, ProgramId } from "@/domain/types";
 
 const SELECT_CLASS = "border-input bg-background min-h-11 w-full rounded-md border px-3 text-sm";
 
@@ -193,7 +191,9 @@ export function ProgramAiReferentialAnalysis({
   };
 
   const patchOutcome = (key: string, next: Partial<OutcomeRow>) =>
-    setOutcomeRows((prev) => prev?.map((row) => (row.key === key ? { ...row, ...next } : row)) ?? prev);
+    setOutcomeRows(
+      (prev) => prev?.map((row) => (row.key === key ? { ...row, ...next } : row)) ?? prev,
+    );
 
   const patchAssessment = (key: string, next: Partial<AssessmentRow>) =>
     setAssessmentRows(
@@ -206,7 +206,9 @@ export function ProgramAiReferentialAnalysis({
 
   const createSelected = async () => {
     if (!curriculumVersionId) {
-      setCreateErrors(["Aucune version de curriculum réelle pour ce programme : impossible de créer."]);
+      setCreateErrors([
+        "Aucune version de curriculum réelle pour ce programme : impossible de créer.",
+      ]);
       return;
     }
     setCreating(true);
@@ -410,24 +412,30 @@ export function ProgramAiReferentialAnalysis({
                               patchOutcome(row.key, { nature: e.target.value as OutcomeNature })
                             }
                           >
-                            {(Object.keys(OUTCOME_NATURE_LABELS_FR) as OutcomeNature[]).map((nature) => (
-                              <option key={nature} value={nature}>
-                                {OUTCOME_NATURE_LABELS_FR[nature]}
-                              </option>
-                            ))}
+                            {(Object.keys(OUTCOME_NATURE_LABELS_FR) as OutcomeNature[]).map(
+                              (nature) => (
+                                <option key={nature} value={nature}>
+                                  {OUTCOME_NATURE_LABELS_FR[nature]}
+                                </option>
+                              ),
+                            )}
                           </select>
                           <select
                             className={SELECT_CLASS}
                             value={row.targetMastery}
                             onChange={(e) =>
-                              patchOutcome(row.key, { targetMastery: e.target.value as MasteryLevel })
+                              patchOutcome(row.key, {
+                                targetMastery: e.target.value as MasteryLevel,
+                              })
                             }
                           >
-                            {(Object.keys(COMPETENCE_MASTERY_LABELS_FR) as MasteryLevel[]).map((level) => (
-                              <option key={level} value={level}>
-                                {COMPETENCE_MASTERY_LABELS_FR[level]}
-                              </option>
-                            ))}
+                            {(Object.keys(COMPETENCE_MASTERY_LABELS_FR) as MasteryLevel[]).map(
+                              (level) => (
+                                <option key={level} value={level}>
+                                  {COMPETENCE_MASTERY_LABELS_FR[level]}
+                                </option>
+                              ),
+                            )}
                           </select>
                         </div>
                         <Textarea
@@ -546,7 +554,8 @@ export function ProgramAiReferentialAnalysis({
                 ) : (
                   <Check className="me-1 size-4" aria-hidden />
                 )}
-                Créer les éléments sélectionnés ({selectedOutcomes.length + selectedAssessments.length})
+                Créer les éléments sélectionnés (
+                {selectedOutcomes.length + selectedAssessments.length})
               </Button>
               {!curriculumVersionId ? (
                 <span className="text-muted-foreground text-xs">
@@ -556,9 +565,7 @@ export function ProgramAiReferentialAnalysis({
             </div>
           ) : null}
 
-          {createSummary ? (
-            <p className="text-muted-foreground text-sm">{createSummary}</p>
-          ) : null}
+          {createSummary ? <p className="text-muted-foreground text-sm">{createSummary}</p> : null}
           {createErrors.length > 0 ? (
             <ul className="space-y-1">
               {createErrors.map((message) => (

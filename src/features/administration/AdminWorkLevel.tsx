@@ -25,7 +25,6 @@ const LEVELS: readonly { id: AdminWorkLevel; label: string; detail: string }[] =
   },
 ];
 
-
 interface AdminWorkLevelBannerProps {
   level: AdminWorkLevel;
   programName: string;

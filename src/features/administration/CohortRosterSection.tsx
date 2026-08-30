@@ -299,38 +299,38 @@ export function CohortRosterSection({
       title="Exporter une promotion"
       description="Export CSV des identités et des états d'inscription. Les instantanés statistiques restent conservés d'une année à l'autre."
     >
-        <div className="flex flex-wrap items-end gap-3">
-          <div className="min-w-56 space-y-2">
-            <Label htmlFor="export-cohort">Promotion</Label>
-            <Select value={exportCohortId} onValueChange={setExportCohortId}>
-              <SelectTrigger id="export-cohort" className="min-h-11">
-                <SelectValue placeholder="Choisir une promotion" />
-              </SelectTrigger>
-              <SelectContent>
-                {data.cohorts.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.label} · {c.academicYear}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            className="min-h-11"
-            disabled={exportRows.length === 0}
-            onClick={() =>
-              download(`promotion-${exportCohortId}.csv`, buildCohortExportCsv(exportRows))
-            }
-          >
-            <Download className="mr-2 size-4" aria-hidden /> Exporter en CSV
-          </Button>
-          <span className="text-xs text-muted-foreground">
-            {exportRows.length} étudiant(s) dans la promotion sélectionnée.
-          </span>
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="min-w-56 space-y-2">
+          <Label htmlFor="export-cohort">Promotion</Label>
+          <Select value={exportCohortId} onValueChange={setExportCohortId}>
+            <SelectTrigger id="export-cohort" className="min-h-11">
+              <SelectValue placeholder="Choisir une promotion" />
+            </SelectTrigger>
+            <SelectContent>
+              {data.cohorts.map((c) => (
+                <SelectItem key={c.id} value={c.id}>
+                  {c.label} · {c.academicYear}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="min-h-11"
+          disabled={exportRows.length === 0}
+          onClick={() =>
+            download(`promotion-${exportCohortId}.csv`, buildCohortExportCsv(exportRows))
+          }
+        >
+          <Download className="mr-2 size-4" aria-hidden /> Exporter en CSV
+        </Button>
+        <span className="text-xs text-muted-foreground">
+          {exportRows.length} étudiant(s) dans la promotion sélectionnée.
+        </span>
+      </div>
     </PanelCard>
   );
 

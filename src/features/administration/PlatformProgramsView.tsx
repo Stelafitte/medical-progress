@@ -21,12 +21,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  EmptyState,
-  MockBadge,
-  PanelCard,
-  ScopeNotice,
-} from "@/features/professional/mock-ui";
+import { EmptyState, MockBadge, PanelCard, ScopeNotice } from "@/features/professional/mock-ui";
 import { useDataAccess, useSession } from "@/application/session";
 import { RETENTION_TBD_FR } from "@/domain/administration";
 import {

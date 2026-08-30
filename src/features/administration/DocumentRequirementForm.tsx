@@ -24,8 +24,7 @@ import {
 } from "@/domain/documentRequirement";
 import type { ProgramId } from "@/domain/types";
 
-const SELECT_CLASS =
-  "border-input bg-background min-h-11 w-full rounded-md border px-3 text-sm";
+const SELECT_CLASS = "border-input bg-background min-h-11 w-full rounded-md border px-3 text-sm";
 
 export function DocumentRequirementForm({
   programId,

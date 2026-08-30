@@ -22,7 +22,7 @@ import {
   ScopeNotice,
   StatCard,
 } from "@/features/professional/mock-ui";
-import { KnowledgeCorpusImport } from "@/features/administration/KnowledgeCorpusImport";
+import { CorpusImport } from "@/features/administration/CorpusImport";
 import { MediaLibrarySection } from "@/features/administration/MediaLibrarySection";
 import { ContentAiSection } from "@/features/administration/ContentAiSection";
 import { CohortSelector } from "@/features/administration/CohortSelector";
@@ -252,7 +252,8 @@ export function AdminKnowledgeBase() {
             title="Voie automatique — importer un corpus de documents"
             description="Un document ou une archive ZIP : chaque fichier lisible est déposé dans la médiathèque ci-dessous, et les connaissances que l'IA en tire restent rattachées au document dont elles viennent. Rien n'est créé sans votre validation."
           >
-            <KnowledgeCorpusImport
+            <CorpusImport
+              target="knowledge"
               programId={programId}
               curriculumVersionId={realCurriculumVersionId}
               existingOutcomeCodes={outcomes.map((o) => o.code)}

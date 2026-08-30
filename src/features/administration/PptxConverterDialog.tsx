@@ -101,7 +101,8 @@ export function PptxConverterDialog({ onConverted }: { onConverted?: (label: str
       const bytes = new Uint8Array(await file.arrayBuffer());
       setPhase(1);
       const inventory = readPptxPackage(file.name, bytes);
-      if (inventory.slides.length === 0) throw new Error("Aucune diapositive trouvée dans ce paquet.");
+      if (inventory.slides.length === 0)
+        throw new Error("Aucune diapositive trouvée dans ce paquet.");
       setPhase(2);
       const durations = await measureAudioDurations(inventory);
       setPhase(3);

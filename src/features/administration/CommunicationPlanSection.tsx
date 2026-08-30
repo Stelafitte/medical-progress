@@ -201,7 +201,9 @@ export function CommunicationPlanSection({
               setPlan(
                 approveProposals(
                   currentPlan,
-                  timeline.filter((p) => p.state === "enabled" || p.state === "edited").map((p) => p.id),
+                  timeline
+                    .filter((p) => p.state === "enabled" || p.state === "edited")
+                    .map((p) => p.id),
                 ),
               )
             }
@@ -229,7 +231,11 @@ export function CommunicationPlanSection({
               ))}
             </ul>
             <div className="flex flex-col gap-2 sm:flex-row">
-              <Button type="button" className={`${TOUCH} w-full sm:w-auto`} onClick={applyRecalculation}>
+              <Button
+                type="button"
+                className={`${TOUCH} w-full sm:w-auto`}
+                onClick={applyRecalculation}
+              >
                 Appliquer le recalcul
               </Button>
               <Button
@@ -328,7 +334,9 @@ export function CommunicationPlanSection({
               {openId === proposal.id ? (
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="space-y-1">
-                    <Label htmlFor={`date-${proposal.id}`}>Date et heure ({proposal.timeZone})</Label>
+                    <Label htmlFor={`date-${proposal.id}`}>
+                      Date et heure ({proposal.timeZone})
+                    </Label>
                     <Input
                       id={`date-${proposal.id}`}
                       type="datetime-local"
@@ -344,7 +352,9 @@ export function CommunicationPlanSection({
                     />
                   </div>
                   <div className="space-y-1">
-                    <Label htmlFor={`audience-${proposal.id}`}>Destinataires (périmètre du programme)</Label>
+                    <Label htmlFor={`audience-${proposal.id}`}>
+                      Destinataires (périmètre du programme)
+                    </Label>
                     <Select
                       value={proposal.audience}
                       onValueChange={(value) =>
@@ -387,7 +397,9 @@ export function CommunicationPlanSection({
                       rows={5}
                       value={proposal.body}
                       onChange={(event) =>
-                        setPlan(editProposal(currentPlan, proposal.id, { body: event.target.value }))
+                        setPlan(
+                          editProposal(currentPlan, proposal.id, { body: event.target.value }),
+                        )
                       }
                     />
                   </div>

@@ -53,7 +53,6 @@ export function AdminStages() {
         <StatCard label="Affectations connues" value={data.assignments.length} />
       </div>
 
-
       <PlacementSection
         programId={programId}
         programName={data.program?.name ?? "ce programme"}

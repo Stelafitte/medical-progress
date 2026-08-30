@@ -11,7 +11,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { EmptyState, MockBadge, PanelCard, ScopeNotice, StatCard } from "@/features/professional/mock-ui";
+import {
+  EmptyState,
+  MockBadge,
+  PanelCard,
+  ScopeNotice,
+  StatCard,
+} from "@/features/professional/mock-ui";
 import { useDataAccess } from "@/application/session";
 import { RETENTION_TBD_FR, platformAdminCanOpenLearnerFile } from "@/domain/administration";
 import { ROLE_LABELS_FR } from "@/domain/roles";
@@ -50,7 +56,6 @@ export function PlatformAdminView() {
       return { rows, people, roles, audit, programs, cohorts, statsByProgram };
     },
   });
-
 
   if (isPending || !result) return <Skeleton className="h-80 w-full" />;
 
@@ -105,9 +110,7 @@ export function PlatformAdminView() {
                 r.scope.kind === "program" &&
                 r.scope.programId === program.id,
             )
-            .map(
-              (r) => result.people.find((p) => p.id === r.personId)?.fullName ?? r.personId,
-            );
+            .map((r) => result.people.find((p) => p.id === r.personId)?.fullName ?? r.personId);
           const running = cohorts.filter((c) => cohortPhase(c) === "running").length;
           const planned = cohorts.filter((c) => cohortPhase(c) === "planned").length;
           const closed = cohorts.filter((c) => cohortPhase(c) === "closed").length;
@@ -116,14 +119,16 @@ export function PlatformAdminView() {
           ].sort((a, b) => b.academicYear.localeCompare(a.academicYear));
           const usage = result.audit.filter((e) => e.programId === program.id).slice(0, 6);
 
-
-
           return (
             <PanelCard
               key={program.id}
               title={program.name}
               description={`${program.institution} · ${program.code}`}
-              action={<Badge variant="outline" className="font-normal">{cohorts.length} promotion(s)</Badge>}
+              action={
+                <Badge variant="outline" className="font-normal">
+                  {cohorts.length} promotion(s)
+                </Badge>
+              }
             >
               <div className="flex flex-wrap gap-2">
                 <Badge variant="secondary" className="font-normal">
@@ -177,7 +182,6 @@ export function PlatformAdminView() {
                   })}
                 </ul>
               )}
-
 
               <div className="space-y-2">
                 <p className="text-sm font-medium">Historique des promotions</p>
@@ -235,7 +239,6 @@ export function PlatformAdminView() {
               </div>
 
               <div className="text-muted-foreground space-y-1 text-xs">
-
                 <p>
                   Administrateurs autorisés :{" "}
                   {admins.length > 0 ? admins.join(", ") : "aucun rôle attribué"}
@@ -251,7 +254,6 @@ export function PlatformAdminView() {
           );
         })}
       </div>
-
 
       <PanelCard title="Programmes et administrateurs autorisés">
         <div className="overflow-x-auto">

@@ -40,8 +40,6 @@ import {
   PROGRAM_CATEGORY_LABELS_FR,
   PROGRAM_LIFECYCLE_LABELS_FR,
   PROGRAM_TRACK_LABELS_FR,
-
-
   countByLifecycle,
   filterProgramCards,
   hasActiveFilters,
@@ -53,7 +51,6 @@ import {
   type ProgramCategory,
   type ProgramLifecycle,
   type ProgramTrack,
-
 } from "@/features/administration/allProgramsFilters";
 
 const TRACKS: readonly ProgramTrack[] = ["initial", "continuing"];
@@ -74,8 +71,6 @@ export function AllProgramsView() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   // Le filtre catégorie est un choix unique : la première valeur fait foi.
   const selectedCategory: ProgramCategory | undefined = filters.categories[0];
-
-
 
   const { data: cohorts, isPending } = useQuery({
     queryKey: ["all-programs-cohorts"],
@@ -140,157 +135,155 @@ export function AllProgramsView() {
         </div>
 
         {filtersOpen ? (
-        <>
-        <div className="space-y-2">
-          <p className="text-xs font-medium text-muted-foreground">Type de formation</p>
-          <div className="flex flex-wrap items-center gap-2">
-            {TRACKS.map((track) => {
-              const active = filters.tracks.includes(track);
-              return (
-                <Button
-                  key={track}
-                  type="button"
-                  size="sm"
-                  variant={active ? "default" : "outline"}
-                  aria-pressed={active}
-                  className="min-h-11"
-                  onClick={() =>
-                    setFilters((prev) => ({
-                      ...prev,
-                      tracks: toggleFilterValue(prev.tracks, track),
-                    }))
-                  }
-                >
-                  {PROGRAM_TRACK_LABELS_FR[track]}
-                </Button>
-              );
-            })}
+          <>
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-muted-foreground">Type de formation</p>
+              <div className="flex flex-wrap items-center gap-2">
+                {TRACKS.map((track) => {
+                  const active = filters.tracks.includes(track);
+                  return (
+                    <Button
+                      key={track}
+                      type="button"
+                      size="sm"
+                      variant={active ? "default" : "outline"}
+                      aria-pressed={active}
+                      className="min-h-11"
+                      onClick={() =>
+                        setFilters((prev) => ({
+                          ...prev,
+                          tracks: toggleFilterValue(prev.tracks, track),
+                        }))
+                      }
+                    >
+                      {PROGRAM_TRACK_LABELS_FR[track]}
+                    </Button>
+                  );
+                })}
 
-            {/* Catégories : choix unique, sous-niveau de la filière (FMI puis FMC). */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant={selectedCategory ? "default" : "outline"}
-                  className="min-h-11"
-                >
-                  {selectedCategory
-                    ? `Catégorie : ${PROGRAM_CATEGORY_LABELS_FR[selectedCategory]}`
-                    : "Catégories"}
-                  <ChevronDown className="ml-1 h-4 w-4" aria-hidden="true" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-60">
-                {TRACKS.map((track, index) => (
-                  <div key={track}>
-                    {index > 0 ? <DropdownMenuSeparator /> : null}
-                    <DropdownMenuLabel>{PROGRAM_TRACK_LABELS_FR[track]}</DropdownMenuLabel>
-                    {PROGRAM_CATEGORIES_BY_TRACK[track].map((category) => (
-                      <DropdownMenuCheckboxItem
-                        key={category}
-                        checked={selectedCategory === category}
-                        onCheckedChange={() =>
-                          setFilters((prev) => ({
-                            ...prev,
-                            categories: prev.categories[0] === category ? [] : [category],
-                          }))
-                        }
-                      >
-                        {PROGRAM_CATEGORY_LABELS_FR[category]}
-                      </DropdownMenuCheckboxItem>
+                {/* Catégories : choix unique, sous-niveau de la filière (FMI puis FMC). */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={selectedCategory ? "default" : "outline"}
+                      className="min-h-11"
+                    >
+                      {selectedCategory
+                        ? `Catégorie : ${PROGRAM_CATEGORY_LABELS_FR[selectedCategory]}`
+                        : "Catégories"}
+                      <ChevronDown className="ml-1 h-4 w-4" aria-hidden="true" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-60">
+                    {TRACKS.map((track, index) => (
+                      <div key={track}>
+                        {index > 0 ? <DropdownMenuSeparator /> : null}
+                        <DropdownMenuLabel>{PROGRAM_TRACK_LABELS_FR[track]}</DropdownMenuLabel>
+                        {PROGRAM_CATEGORIES_BY_TRACK[track].map((category) => (
+                          <DropdownMenuCheckboxItem
+                            key={category}
+                            checked={selectedCategory === category}
+                            onCheckedChange={() =>
+                              setFilters((prev) => ({
+                                ...prev,
+                                categories: prev.categories[0] === category ? [] : [category],
+                              }))
+                            }
+                          >
+                            {PROGRAM_CATEGORY_LABELS_FR[category]}
+                          </DropdownMenuCheckboxItem>
+                        ))}
+                      </div>
                     ))}
-                  </div>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+                  </DropdownMenuContent>
+                </DropdownMenu>
 
-            {selectedCategory ? (
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                className="min-h-11"
-                onClick={() => setFilters((prev) => ({ ...prev, categories: [] }))}
-              >
-                Effacer la catégorie
-              </Button>
-            ) : null}
+                {selectedCategory ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="min-h-11"
+                    onClick={() => setFilters((prev) => ({ ...prev, categories: [] }))}
+                  >
+                    Effacer la catégorie
+                  </Button>
+                ) : null}
+              </div>
+            </div>
 
-          </div>
-        </div>
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-muted-foreground">État du programme</p>
+              <div className="flex flex-wrap gap-2">
+                {LIFECYCLES.map((lifecycle) => {
+                  const active = filters.lifecycles.includes(lifecycle);
+                  return (
+                    <Button
+                      key={lifecycle}
+                      type="button"
+                      size="sm"
+                      variant={active ? "default" : "outline"}
+                      aria-pressed={active}
+                      className="min-h-11"
+                      onClick={() =>
+                        setFilters((prev) => ({
+                          ...prev,
+                          lifecycles: toggleFilterValue(prev.lifecycles, lifecycle),
+                        }))
+                      }
+                    >
+                      {PROGRAM_LIFECYCLE_LABELS_FR[lifecycle]}
+                      <Badge variant="secondary" className="ml-2 font-normal">
+                        {counts[lifecycle]}
+                      </Badge>
+                    </Button>
+                  );
+                })}
+              </div>
+            </div>
 
-
-        <div className="space-y-2">
-          <p className="text-xs font-medium text-muted-foreground">État du programme</p>
-          <div className="flex flex-wrap gap-2">
-            {LIFECYCLES.map((lifecycle) => {
-              const active = filters.lifecycles.includes(lifecycle);
-              return (
+            <div className="flex flex-wrap items-end gap-3">
+              <div className="space-y-1">
+                <Label htmlFor="filtre-date-debut" className="text-xs text-muted-foreground">
+                  Période : du
+                </Label>
+                <Input
+                  id="filtre-date-debut"
+                  type="date"
+                  className="min-h-11 w-44"
+                  value={filters.from}
+                  onChange={(event) =>
+                    setFilters((prev) => ({ ...prev, from: event.target.value }))
+                  }
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="filtre-date-fin" className="text-xs text-muted-foreground">
+                  au
+                </Label>
+                <Input
+                  id="filtre-date-fin"
+                  type="date"
+                  className="min-h-11 w-44"
+                  value={filters.to}
+                  onChange={(event) => setFilters((prev) => ({ ...prev, to: event.target.value }))}
+                />
+              </div>
+              {hasActiveFilters(filters) ? (
                 <Button
-                  key={lifecycle}
                   type="button"
                   size="sm"
-                  variant={active ? "default" : "outline"}
-                  aria-pressed={active}
+                  variant="ghost"
                   className="min-h-11"
-                  onClick={() =>
-                    setFilters((prev) => ({
-                      ...prev,
-                      lifecycles: toggleFilterValue(prev.lifecycles, lifecycle),
-                    }))
-                  }
+                  onClick={() => setFilters(EMPTY_ALL_PROGRAMS_FILTERS)}
                 >
-                  {PROGRAM_LIFECYCLE_LABELS_FR[lifecycle]}
-                  <Badge variant="secondary" className="ml-2 font-normal">
-                    {counts[lifecycle]}
-                  </Badge>
+                  Réinitialiser les filtres
                 </Button>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="flex flex-wrap items-end gap-3">
-          <div className="space-y-1">
-            <Label htmlFor="filtre-date-debut" className="text-xs text-muted-foreground">
-              Période : du
-            </Label>
-            <Input
-              id="filtre-date-debut"
-              type="date"
-              className="min-h-11 w-44"
-              value={filters.from}
-              onChange={(event) =>
-                setFilters((prev) => ({ ...prev, from: event.target.value }))
-              }
-            />
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="filtre-date-fin" className="text-xs text-muted-foreground">
-              au
-            </Label>
-            <Input
-              id="filtre-date-fin"
-              type="date"
-              className="min-h-11 w-44"
-              value={filters.to}
-              onChange={(event) => setFilters((prev) => ({ ...prev, to: event.target.value }))}
-            />
-          </div>
-          {hasActiveFilters(filters) ? (
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              className="min-h-11"
-              onClick={() => setFilters(EMPTY_ALL_PROGRAMS_FILTERS)}
-            >
-              Réinitialiser les filtres
-            </Button>
-          ) : null}
-        </div>
-        </>
+              ) : null}
+            </div>
+          </>
         ) : null}
       </section>
 

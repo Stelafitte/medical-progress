@@ -37,10 +37,7 @@ export function CohortSelector({
   const selected = ordered.find((c) => c.id === value);
 
   return (
-    <section
-      aria-label={label}
-      className="border-border bg-card space-y-4 rounded-lg border p-4"
-    >
+    <section aria-label={label} className="border-border bg-card space-y-4 rounded-lg border p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div className="min-w-0 flex-1 space-y-1">
           <label htmlFor="cohort-selector" className="text-sm font-medium">

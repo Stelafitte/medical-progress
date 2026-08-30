@@ -138,9 +138,7 @@ function SecuritySection() {
             type="number"
             min={5}
             value={parsed.sessionTimeoutMinutes}
-            onChange={(e) =>
-              setDraft({ ...draft, sessionTimeoutMinutes: Number(e.target.value) })
-            }
+            onChange={(e) => setDraft({ ...draft, sessionTimeoutMinutes: Number(e.target.value) })}
           />
         </div>
         <div className="space-y-1">
@@ -267,11 +265,7 @@ function RetentionSection() {
 /* Délégations de rôles                                                */
 /* ------------------------------------------------------------------ */
 
-const DELEGABLE_ROLES: readonly RoleName[] = [
-  "administrator",
-  "teacher",
-  "placement_supervisor",
-];
+const DELEGABLE_ROLES: readonly RoleName[] = ["administrator", "teacher", "placement_supervisor"];
 
 function DelegationSection({
   programs,
@@ -300,10 +294,7 @@ function DelegationSection({
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1">
           <Label htmlFor="deleg-person">Personne</Label>
-          <Select
-            value={draft.personId}
-            onValueChange={(v) => setDraft({ ...draft, personId: v })}
-          >
+          <Select value={draft.personId} onValueChange={(v) => setDraft({ ...draft, personId: v })}>
             <SelectTrigger id="deleg-person" className="min-h-11">
               <SelectValue placeholder="Choisir une personne" />
             </SelectTrigger>
@@ -338,9 +329,7 @@ function DelegationSection({
           <Label htmlFor="deleg-scope">Portée</Label>
           <Select
             value={draft.scope}
-            onValueChange={(v) =>
-              setDraft({ ...draft, scope: v as RoleDelegationDraft["scope"] })
-            }
+            onValueChange={(v) => setDraft({ ...draft, scope: v as RoleDelegationDraft["scope"] })}
           >
             <SelectTrigger id="deleg-scope" className="min-h-11">
               <SelectValue />
@@ -719,10 +708,7 @@ function AuditExportSection({
 
 function IntegrationsSection() {
   return (
-    <PanelCard
-      title="Intégrations et passerelles"
-      description={PLATFORM_GOVERNANCE_MOCK_FR}
-    >
+    <PanelCard title="Intégrations et passerelles" description={PLATFORM_GOVERNANCE_MOCK_FR}>
       <ul className="space-y-2 text-sm">
         {INTEGRATION_CATALOG.map((entry) => (
           <li key={entry.key} className="rounded-md border border-border px-3 py-2">

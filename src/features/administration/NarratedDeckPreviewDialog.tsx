@@ -71,14 +71,18 @@ export function NarratedDeckPreviewDialog({
   const slides = playback?.slides ?? [];
   const slide = slides[current];
   const chapterOf = (index: number) =>
-    [...(playback?.chapters ?? [])]
-      .reverse()
-      .find((chapter) => chapter.startsAtSlide <= index + 1)?.title ?? "";
+    [...(playback?.chapters ?? [])].reverse().find((chapter) => chapter.startsAtSlide <= index + 1)
+      ?.title ?? "";
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button type="button" variant="outline" size="sm" className="min-h-11 w-full gap-2 sm:w-auto">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="min-h-11 w-full gap-2 sm:w-auto"
+        >
           <PlayCircle className="size-4" aria-hidden />
           Prévisualiser
         </Button>
@@ -165,7 +169,9 @@ export function NarratedDeckPreviewDialog({
                       }`}
                       onClick={() => setCurrent(index)}
                     >
-                      <span className="font-mono text-xs">{String(item.index).padStart(2, "0")}</span>{" "}
+                      <span className="font-mono text-xs">
+                        {String(item.index).padStart(2, "0")}
+                      </span>{" "}
                       {item.title || `Diapositive ${item.index}`}
                       <span className="ml-2 text-xs text-muted-foreground">
                         {formatDuration(item.durationMs)}
