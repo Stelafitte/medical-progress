@@ -212,6 +212,86 @@ function loadScriptOnce(src: string): Promise<void> {
 /* Écran                                                              */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Liste d'éléments déjà rattachés au programme, avec retrait explicite.
+ *
+ * La case à cocher SÉLECTIONNE, elle ne déclenche rien : cocher puis décocher
+ * doit laisser la liste intacte. Auparavant, décocher archivait aussitôt
+ * l'élément, qui disparaissait — un geste de sélection produisait une
+ * modification, sans confirmation ni retour possible depuis l'écran.
+ *
+ * Le retrait est donc un second geste, sur un bouton qui dit ce qu'il fait et
+ * sur combien d'éléments il porte.
+ */
+function RemovableAssociationList({
+  title,
+  items,
+  busyIds,
+  removeLabel,
+  onRemove,
+}: {
+  title: string;
+  items: readonly { readonly id: string; readonly label: string }[];
+  busyIds: ReadonlySet<string>;
+  removeLabel: string;
+  onRemove: (ids: readonly string[]) => void;
+}) {
+  const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
+
+  if (items.length === 0) return null;
+
+  const toggle = (id: string, checked: boolean) =>
+    setSelected((previous) => {
+      const next = new Set(previous);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+
+  const selectedIds = items.filter((item) => selected.has(item.id)).map((item) => item.id);
+  const busy = selectedIds.some((id) => busyIds.has(id));
+
+  return (
+    <div className="space-y-1.5">
+      <p className="text-sm font-medium">{title}</p>
+      <ul className="space-y-1.5">
+        {items.map((item) => (
+          <li key={item.id} className="flex items-center gap-2">
+            <Checkbox
+              checked={selected.has(item.id)}
+              disabled={busyIds.has(item.id)}
+              onCheckedChange={(checked) => toggle(item.id, checked === true)}
+              aria-label={`Sélectionner ${item.label}`}
+            />
+            <span className="text-sm">{item.label}</span>
+          </li>
+        ))}
+      </ul>
+      <div className="flex flex-wrap items-center gap-2 pt-1">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="min-h-11"
+          disabled={selectedIds.length === 0 || busy}
+          onClick={() => {
+            onRemove(selectedIds);
+            setSelected(new Set());
+          }}
+        >
+          {busy
+            ? "Retrait en cours…"
+            : `${removeLabel}${selectedIds.length > 0 ? ` (${selectedIds.length})` : ""}`}
+        </Button>
+        <span className="text-xs text-muted-foreground">
+          Cocher ne retire rien : la sélection reste jusqu'à ce que vous utilisiez ce bouton. Le
+          retrait est réversible — l'élément est archivé, jamais supprimé.
+        </span>
+      </div>
+    </div>
+  );
+}
+
 export function AdminProgramDesigner() {
   const { data, isPending, refetch } = useProgramAdmin();
 
@@ -443,39 +523,28 @@ export function AdminProgramDesigner() {
   );
 
   /**
-   * Décocher un élément déjà associé au programme (connaissance, compétence
-   * ou modalité d'évaluation) l'archive : il disparaît des listes actives
-   * mais reste récupérable (aucune suppression définitive).
+   * Retirer du programme les éléments sélectionnés. L'archivage est
+   * réversible : ils disparaissent des listes actives mais restent
+   * récupérables, aucune suppression définitive.
+   *
+   * Le lot est traité en une passe, avec un seul rechargement à la fin.
    */
-  const handleArchiveOutcome = async (outcomeId: OutcomeId) => {
+  const removeAssociations = async (
+    ids: readonly string[],
+    archive: (id: string) => Promise<unknown>,
+  ) => {
+    if (ids.length === 0) return;
     setArchiveError(null);
-    setArchivingIds((prev) => new Set(prev).add(outcomeId));
+    setArchivingIds((prev) => new Set([...prev, ...ids]));
     try {
-      await dataAccess.outcomes.archiveOutcome(outcomeId);
+      for (const id of ids) await archive(id);
       await refetch();
     } catch (err) {
       setArchiveError(err instanceof Error ? err.message : "Échec du retrait de l'élément.");
     } finally {
       setArchivingIds((prev) => {
         const next = new Set(prev);
-        next.delete(outcomeId);
-        return next;
-      });
-    }
-  };
-
-  const handleArchiveAssessmentModality = async (modalityId: string) => {
-    setArchiveError(null);
-    setArchivingIds((prev) => new Set(prev).add(modalityId));
-    try {
-      await dataAccess.assessments.archiveAssessmentModality(modalityId);
-      await refetch();
-    } catch (err) {
-      setArchiveError(err instanceof Error ? err.message : "Échec du retrait de l'élément.");
-    } finally {
-      setArchivingIds((prev) => {
-        const next = new Set(prev);
-        next.delete(modalityId);
+        for (const id of ids) next.delete(id);
         return next;
       });
     }
@@ -836,32 +905,22 @@ export function AdminProgramDesigner() {
                         <div className="space-y-3">
                           {realCurriculumVersionId ? (
                             <>
-                              {data.outcomes.filter((o) => o.nature !== "knowledge").length > 0 ? (
-                                <div className="space-y-1.5">
-                                  <p className="text-sm font-medium">
-                                    Liste des compétences déjà associées à ce programme
-                                  </p>
-                                  <ul className="space-y-1.5">
-                                    {data.outcomes
-                                      .filter((o) => o.nature !== "knowledge")
-                                      .map((outcome) => (
-                                        <li key={outcome.id} className="flex items-center gap-2">
-                                          <Checkbox
-                                            checked
-                                            disabled={archivingIds.has(outcome.id)}
-                                            onCheckedChange={(checked) => {
-                                              if (checked === false) void handleArchiveOutcome(outcome.id);
-                                            }}
-                                            aria-label={`Retirer ${outcome.code} du programme`}
-                                          />
-                                          <span className="text-sm">
-                                            {outcome.code} — {outcome.label}
-                                          </span>
-                                        </li>
-                                      ))}
-                                  </ul>
-                                </div>
-                              ) : null}
+                              <RemovableAssociationList
+                                title="Liste des compétences déjà associées à ce programme"
+                                items={data.outcomes
+                                  .filter((o) => o.nature !== "knowledge")
+                                  .map((outcome) => ({
+                                    id: outcome.id,
+                                    label: `${outcome.code} — ${outcome.label}`,
+                                  }))}
+                                busyIds={archivingIds}
+                                removeLabel="Retirer du programme"
+                                onRemove={(ids) =>
+                                  void removeAssociations(ids, (id) =>
+                                    dataAccess.outcomes.archiveOutcome(id as OutcomeId),
+                                  )
+                                }
+                              />
                               {renderObjectivesImportShortcut()}
                               <div className="space-y-1.5">
                                 <p className="text-sm font-medium">Ajouter une compétence</p>
@@ -920,32 +979,22 @@ export function AdminProgramDesigner() {
                         <div className="space-y-3">
                           {realCurriculumVersionId ? (
                             <>
-                              {data.outcomes.filter((o) => o.nature === "knowledge").length > 0 ? (
-                                <div className="space-y-1.5">
-                                  <p className="text-sm font-medium">
-                                    Liste des connaissances déjà associées à ce programme
-                                  </p>
-                                  <ul className="space-y-1.5">
-                                    {data.outcomes
-                                      .filter((o) => o.nature === "knowledge")
-                                      .map((outcome) => (
-                                        <li key={outcome.id} className="flex items-center gap-2">
-                                          <Checkbox
-                                            checked
-                                            disabled={archivingIds.has(outcome.id)}
-                                            onCheckedChange={(checked) => {
-                                              if (checked === false) void handleArchiveOutcome(outcome.id);
-                                            }}
-                                            aria-label={`Retirer ${outcome.code} du programme`}
-                                          />
-                                          <span className="text-sm">
-                                            {outcome.code} — {outcome.label}
-                                          </span>
-                                        </li>
-                                      ))}
-                                  </ul>
-                                </div>
-                              ) : null}
+                              <RemovableAssociationList
+                                title="Liste des connaissances déjà associées à ce programme"
+                                items={data.outcomes
+                                  .filter((o) => o.nature === "knowledge")
+                                  .map((outcome) => ({
+                                    id: outcome.id,
+                                    label: `${outcome.code} — ${outcome.label}`,
+                                  }))}
+                                busyIds={archivingIds}
+                                removeLabel="Retirer du programme"
+                                onRemove={(ids) =>
+                                  void removeAssociations(ids, (id) =>
+                                    dataAccess.outcomes.archiveOutcome(id as OutcomeId),
+                                  )
+                                }
+                              />
                               {renderObjectivesImportShortcut()}
                               <div className="space-y-1.5">
                                 <p className="text-sm font-medium">Ajouter une connaissance</p>
@@ -973,28 +1022,20 @@ export function AdminProgramDesigner() {
 
                       {state.mode === "now" && resource.id === "assessments" ? (
                         <div className="space-y-3">
-                          {data.assessmentModalities.length > 0 ? (
-                            <div className="space-y-1.5">
-                              <p className="text-sm font-medium">
-                                Liste des modalités d'évaluation déjà associées à ce programme
-                              </p>
-                              <ul className="space-y-1.5">
-                                {data.assessmentModalities.map((modality) => (
-                                  <li key={modality.id} className="flex items-center gap-2">
-                                    <Checkbox
-                                      checked
-                                      disabled={archivingIds.has(modality.id)}
-                                      onCheckedChange={(checked) => {
-                                        if (checked === false) void handleArchiveAssessmentModality(modality.id);
-                                      }}
-                                      aria-label={`Retirer ${modality.name} du programme`}
-                                    />
-                                    <span className="text-sm">{modality.name}</span>
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
-                          ) : null}
+                          <RemovableAssociationList
+                            title="Liste des modalités d'évaluation déjà associées à ce programme"
+                            items={data.assessmentModalities.map((modality) => ({
+                              id: modality.id,
+                              label: modality.name,
+                            }))}
+                            busyIds={archivingIds}
+                            removeLabel="Retirer du programme"
+                            onRemove={(ids) =>
+                              void removeAssociations(ids, (id) =>
+                                dataAccess.assessments.archiveAssessmentModality(id),
+                              )
+                            }
+                          />
                           {renderObjectivesImportShortcut()}
                           <div className="space-y-1.5">
                             <p className="text-sm font-medium">Ajouter une modalité d'évaluation</p>
