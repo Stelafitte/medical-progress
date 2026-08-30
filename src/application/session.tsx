@@ -45,6 +45,13 @@ import type {
   RoleName,
 } from "@/domain/types";
 
+/**
+ * Masquage temporaire, cote ecran uniquement (aucune donnee supprimee) :
+ * programmes qui ne doivent pas apparaitre dans l'admin pour l'instant.
+ * A retirer quand le programme sera pret a etre remontre.
+ */
+const HIDDEN_PROGRAM_CODES: readonly string[] = ["DPC-ODP2C"];
+
 export interface SessionValue {
   readonly person: Person;
   readonly people: readonly Person[];
@@ -211,9 +218,15 @@ function SupabaseSessionProvider({ children }: { children: ReactNode }) {
 
   const load = useCallback(async () => {
     if (!client) throw new Error("Le client Supabase n’est pas configuré.");
-    const { person, programs, enrollments, roles } = await loadAuthenticatedSupabaseSession(
-      client,
-      dataAccess,
+    const {
+      person,
+      programs: loadedPrograms,
+      enrollments,
+      roles,
+    } = await loadAuthenticatedSupabaseSession(client, dataAccess);
+    // Masquage temporaire, cote ecran uniquement (aucune donnee supprimee).
+    const programs = loadedPrograms.filter(
+      (program) => !HIDDEN_PROGRAM_CODES.includes(program.code),
     );
     setState({ person, programs, enrollments, roles });
     setActiveProgramId((current) =>
