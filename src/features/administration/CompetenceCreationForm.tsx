@@ -20,6 +20,7 @@ import {
   validateNewCompetence,
 } from "@/domain/competenceDraft";
 import { useDataAccess } from "@/application/session";
+import { attachOutcomeContent } from "@/features/administration/attachOutcomeContent";
 import type { CurriculumVersionId, MasteryLevel, Outcome, ProgramId } from "@/domain/types";
 
 const TARGET_LEVELS: readonly MasteryLevel[] = [
@@ -54,6 +55,10 @@ export function CompetenceCreationForm({
   const [created, setCreated] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  /** Contenu pédagogique saisi à la main. Volontairement hors du brouillon du
+   * domaine : il ne décrit pas l'acquis, il devient un support rattaché. */
+  const [content, setContent] = useState("");
+  const [contentWarning, setContentWarning] = useState<string | null>(null);
 
   const issues = validateNewCompetence(input);
   const patch = (next: Partial<NewCompetenceInput>) => {
@@ -79,6 +84,24 @@ export function CompetenceCreationForm({
         domain: input.domain.trim().length > 0 ? input.domain.trim() : "Non classé",
         targetMastery: input.targetMastery,
       });
+      // L'acquis est créé ; le contenu est un second geste qui ne doit pas
+      // pouvoir l'annuler. Un échec ici est signalé, pas propagé.
+      try {
+        await attachOutcomeContent(dataAccess, {
+          programId,
+          curriculumVersionId,
+          outcome,
+          content,
+        });
+        setContentWarning(null);
+      } catch (reason) {
+        setContentWarning(
+          reason instanceof Error
+            ? `L'acquis est créé, mais son contenu n'a pas pu être enregistré : ${reason.message}`
+            : "L'acquis est créé, mais son contenu n'a pas pu être enregistré.",
+        );
+      }
+      setContent("");
       setInput(EMPTY_NEW_COMPETENCE_INPUT);
       setShowIssues(false);
       setCreated(outcome.label);
@@ -165,7 +188,24 @@ export function CompetenceCreationForm({
             onChange={(e) => patch({ description: e.target.value })}
           />
         </div>
+        <div className="space-y-1.5 sm:col-span-2">
+          <Label htmlFor={`${idPrefix}-content`}>Contenu (optionnel)</Label>
+          <Textarea
+            id={`${idPrefix}-content`}
+            rows={6}
+            value={content}
+            placeholder="Le cours lui-même : définitions, mécanismes, points clés. Ce texte devient un support rattaché à cet acquis, exploitable comme un document importé."
+            onChange={(e) => setContent(e.target.value)}
+          />
+          <p className="text-muted-foreground text-xs">
+            Distinct de l'attendu ci-dessus : l'attendu dit ce que l'apprenant doit savoir, le
+            contenu est la matière elle-même. Il rejoint la médiathèque du programme, au même
+            endroit que les documents importés, et reste modifiable ensuite.
+          </p>
+        </div>
       </div>
+
+      {contentWarning ? <p className="text-destructive text-sm">{contentWarning}</p> : null}
 
       {showIssues && issues.length > 0 ? (
         <ul className="text-destructive space-y-1 text-sm">
