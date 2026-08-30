@@ -42,6 +42,9 @@ export function KnowledgeCreationForm({
 }) {
   const dataAccess = useDataAccess();
   const [input, setInput] = useState<NewKnowledgeInput>(EMPTY_NEW_KNOWLEDGE_INPUT);
+  // Le niveau attendu n'est pris en compte qu'une fois choisi explicitement :
+  // pas de niveau pré-rempli silencieusement accepté à la création.
+  const [targetTouched, setTargetTouched] = useState(false);
   const [showIssues, setShowIssues] = useState(false);
   const [created, setCreated] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -54,7 +57,7 @@ export function KnowledgeCreationForm({
   };
 
   async function submit() {
-    if (issues.length > 0) {
+    if (issues.length > 0 || !targetTouched) {
       setShowIssues(true);
       return;
     }
@@ -72,6 +75,7 @@ export function KnowledgeCreationForm({
         targetMastery: input.targetMastery,
       });
       setInput(EMPTY_NEW_KNOWLEDGE_INPUT);
+      setTargetTouched(false);
       setShowIssues(false);
       setCreated(outcome.label);
       onCreated?.(outcome);
@@ -121,16 +125,25 @@ export function KnowledgeCreationForm({
           <Label htmlFor={`${idPrefix}-target`}>Niveau attendu</Label>
           <select
             id={`${idPrefix}-target`}
-            value={input.targetMastery}
-            onChange={(e) => patch({ targetMastery: e.target.value as MasteryLevel })}
+            value={targetTouched ? input.targetMastery : ""}
+            onChange={(e) => {
+              setTargetTouched(true);
+              patch({ targetMastery: e.target.value as MasteryLevel });
+            }}
             className="border-input bg-background min-h-11 w-full rounded-md border px-3 text-sm"
           >
+            <option value="" disabled>
+              Choisir un niveau…
+            </option>
             {TARGET_LEVELS.map((level) => (
               <option key={level} value={level}>
                 {COMPETENCE_MASTERY_LABELS_FR[level]}
               </option>
             ))}
           </select>
+          {showIssues && !targetTouched ? (
+            <p className="text-destructive text-xs">Choisissez un niveau attendu.</p>
+          ) : null}
         </div>
         <div className="space-y-1.5 sm:col-span-2">
           <Label htmlFor={`${idPrefix}-description`}>Attendu (optionnel)</Label>

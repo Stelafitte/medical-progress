@@ -7,7 +7,7 @@
  * de la promotion. Le seul lien sortant est le passage au pilotage, une fois
  * le programme conçu et la promotion associée.
  */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   ArrowRight,
@@ -16,13 +16,13 @@ import {
   ClipboardCheck,
   FileCheck,
   FileUp,
-  Sparkles,
   Target,
   Users,
   Notebook,
   Check,
+  Save,
+  Loader2,
 } from "lucide-react";
-import { SectionHeading } from "@/components/section-heading";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -33,16 +33,18 @@ import { Textarea } from "@/components/ui/textarea";
 import { EmptyState, MockBadge, PanelCard, ScopeNotice } from "@/features/professional/mock-ui";
 import { AdminWorkLevelBanner } from "@/features/administration/AdminWorkLevel";
 import { useProgramAdmin } from "@/features/administration/useProgramAdmin";
+import { useDataAccess } from "@/application/session";
 import { CohortCreationForm } from "@/features/administration/CohortCreationForm";
 import { PlacementCreationForm } from "@/features/administration/PlacementCreationForm";
 import { CompetenceCreationForm } from "@/features/administration/CompetenceCreationForm";
 import { DocumentRequirementForm } from "@/features/administration/DocumentRequirementForm";
 import { KnowledgeCreationForm } from "@/features/administration/KnowledgeCreationForm";
 import { AssessmentModalityForm } from "@/features/administration/AssessmentModalityForm";
+import { ProgramAiReferentialAnalysis } from "@/features/administration/ProgramAiReferentialAnalysis";
 import { useLocalDocumentRequirements } from "@/application/documentRequirementStore";
 import { useLocalPlacements } from "@/application/placementDraftStore";
 
-import type { CohortId, ProgramId } from "@/domain/types";
+import type { CohortId, OutcomeId, ProgramId } from "@/domain/types";
 import { formatFrDate } from "@/features/administration/adminProgramViewModel";
 
 /* ------------------------------------------------------------------ */
@@ -173,13 +175,37 @@ const SCHEDULE_TEMPLATE: Record<ResourceKind, readonly { id: string; label: stri
   ],
 };
 
-/** Analyse (maquette déterministe) des objectifs pédagogiques saisis. */
-function analyseObjectives(text: string): readonly ResourceKind[] {
-  const haystack = text.toLowerCase();
-  const found = RESOURCES.filter((resource) =>
-    resource.keywords.some((keyword) => haystack.includes(keyword)),
-  ).map((resource) => resource.id);
-  return found.length > 0 ? found : ["knowledge"];
+/* ------------------------------------------------------------------ */
+/* Import de fichiers d'objectifs (PDF / Word / texte)                */
+/* ------------------------------------------------------------------ */
+
+/** API mammoth.js minimale utilisée ici (chargée en global via un <script>). */
+interface MammothGlobal {
+  extractRawText: (input: { arrayBuffer: ArrayBuffer }) => Promise<{ value: string }>;
+}
+
+const loadedScripts = new Set<string>();
+
+/** Charge une bibliothèque UMD depuis un CDN une seule fois (mise en cache par URL). */
+function loadScriptOnce(src: string): Promise<void> {
+  if (loadedScripts.has(src)) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const existing = document.querySelector(`script[src="${src}"]`);
+    if (existing) {
+      loadedScripts.add(src);
+      resolve();
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = src;
+    script.async = true;
+    script.onload = () => {
+      loadedScripts.add(src);
+      resolve();
+    };
+    script.onerror = () => reject(new Error(`Échec du chargement de ${src}`));
+    document.head.appendChild(script);
+  });
 }
 
 /* ------------------------------------------------------------------ */
@@ -193,7 +219,8 @@ export function AdminProgramDesigner() {
   const [modelName, setModelName] = useState("");
   const [objectives, setObjectives] = useState("");
   const [importedFile, setImportedFile] = useState<string | null>(null);
-  const [analysed, setAnalysed] = useState<readonly ResourceKind[] | null>(null);
+  const [importingObjectives, setImportingObjectives] = useState(false);
+  const [importObjectivesError, setImportObjectivesError] = useState<string | null>(null);
   const [resources, setResources] = useState<Record<ResourceKind, ResourceState>>({
     knowledge: INITIAL_RESOURCE,
     competences: INITIAL_RESOURCE,
@@ -210,6 +237,15 @@ export function AdminProgramDesigner() {
   const [schedule, setSchedule] = useState<Record<string, ScheduleEntry>>({});
   const localPlacements = useLocalPlacements(data?.program?.id);
   const localRequirements = useLocalDocumentRequirements(data?.program?.id);
+  const dataAccess = useDataAccess();
+  const [draftLoadedForProgramId, setDraftLoadedForProgramId] = useState<string | null>(null);
+  const [savingDraft, setSavingDraft] = useState(false);
+  const [draftSavedAt, setDraftSavedAt] = useState<string | null>(null);
+  const [draftError, setDraftError] = useState<string | null>(null);
+  // Retrait (archivage réversible) d'une connaissance/compétence/modalité
+  // déjà associée au programme, depuis la case à cocher de la liste.
+  const [archivingIds, setArchivingIds] = useState<ReadonlySet<string>>(new Set());
+  const [archiveError, setArchiveError] = useState<string | null>(null);
 
   const existingCounts = useMemo<Record<ResourceKind, number>>(
     () => ({
@@ -225,12 +261,266 @@ export function AdminProgramDesigner() {
     [data, localPlacements, localRequirements],
   );
 
+  useEffect(() => {
+    const programId = data?.program?.id;
+    if (!programId || draftLoadedForProgramId === programId) return;
+    const draft = data?.program?.designDraft as Record<string, unknown> | null | undefined;
+    if (draft) {
+      const draftModelId = "modelId" in draft ? (draft["modelId"] as string | null) : null;
+      if ("modelId" in draft) setModelId(draftModelId);
+      const draftModelName = typeof draft["modelName"] === "string" ? draft["modelName"] : "";
+      if (draftModelName) {
+        setModelName(draftModelName);
+      } else if (draftModelId) {
+        // Brouillons enregistrés avant que ce champ ne soit alimenté : on
+        // affiche a minima le nom de la version sélectionnée, modifiable.
+        const selected = data?.versions.find((v) => v.id === draftModelId);
+        if (selected) setModelName(selected.label);
+      }
+      if (typeof draft["objectives"] === "string") setObjectives(draft["objectives"]);
+      if (draft["resources"]) setResources(draft["resources"] as typeof resources);
+      if (draft["cohortMode"] === "existing" || draft["cohortMode"] === "new") {
+        setCohortMode(draft["cohortMode"]);
+      }
+      if ("selectedCohortId" in draft) {
+        setSelectedCohortId(draft["selectedCohortId"] as string | null);
+      }
+      if (typeof draft["programStartsOn"] === "string") {
+        setProgramStartsOn(draft["programStartsOn"]);
+      }
+      if (typeof draft["programEndsOn"] === "string") setProgramEndsOn(draft["programEndsOn"]);
+      if (draft["schedule"]) setSchedule(draft["schedule"] as typeof schedule);
+    }
+    setDraftLoadedForProgramId(programId);
+  }, [data?.program?.id, data?.program?.designDraft, draftLoadedForProgramId]);
+
+  const handleSaveDraft = async () => {
+    const programId = data?.program?.id;
+    if (!programId) return;
+    setSavingDraft(true);
+    setDraftError(null);
+    try {
+      await dataAccess.programs.saveProgramDesignDraft(programId, {
+        modelId,
+        modelName,
+        objectives,
+        resources,
+        cohortMode,
+        selectedCohortId,
+        programStartsOn,
+        programEndsOn,
+        schedule,
+      });
+      setDraftSavedAt(new Date().toISOString());
+    } catch (err) {
+      setDraftError(
+        err instanceof Error ? err.message : "Échec de l\'enregistrement du brouillon.",
+      );
+    } finally {
+      setSavingDraft(false);
+    }
+  };
+
+  const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  /**
+   * Import d'un fichier d'objectifs : le texte est réellement extrait pour
+   * un PDF (pdf.js), un Word .docx (mammoth.js) ou un .txt — tous chargés
+   * depuis un CDN à la volée, sans dépendance à installer sur le poste. Le
+   * texte extrait est ajouté au champ « Objectifs pédagogiques ».
+   */
+  const extractPdfText = async (file: File): Promise<string> => {
+    // L'indirection par variable évite à TypeScript de tenter de résoudre
+    // l'URL comme un module local.
+    const pdfjsModuleUrl = "https://cdn.jsdelivr.net/npm/pdfjs-dist@4/build/pdf.min.mjs";
+    const pdfjs = await import(/* @vite-ignore */ pdfjsModuleUrl);
+    pdfjs.GlobalWorkerOptions.workerSrc =
+      "https://cdn.jsdelivr.net/npm/pdfjs-dist@4/build/pdf.worker.min.mjs";
+
+    const buffer = await file.arrayBuffer();
+    const doc = await pdfjs.getDocument({ data: buffer }).promise;
+    const pageTexts: string[] = [];
+    for (let pageNumber = 1; pageNumber <= doc.numPages; pageNumber += 1) {
+      const page = await doc.getPage(pageNumber);
+      const content = await page.getTextContent();
+      const pageText = (content.items as { str?: string }[])
+        .map((item) => item.str ?? "")
+        .join(" ");
+      pageTexts.push(pageText.trim());
+    }
+    return pageTexts.join("\n\n").trim();
+  };
+
+  const extractDocxText = async (file: File): Promise<string> => {
+    await loadScriptOnce("https://cdn.jsdelivr.net/npm/mammoth@1/mammoth.browser.min.js");
+    const mammoth = (window as unknown as { mammoth?: MammothGlobal }).mammoth;
+    if (!mammoth) throw new Error("Lecteur Word indisponible (échec du chargement).");
+    const buffer = await file.arrayBuffer();
+    const result = await mammoth.extractRawText({ arrayBuffer: buffer });
+    return result.value.trim();
+  };
+
+  const extractTxtText = async (file: File): Promise<string> => (await file.text()).trim();
+
+  const handleObjectivesFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = ""; // permet de réimporter le même fichier ensuite
+    if (!file) return;
+
+    setImportedFile(file.name);
+    setImportObjectivesError(null);
+
+    const name = file.name.toLowerCase();
+    const isPdf = file.type === "application/pdf" || name.endsWith(".pdf");
+    const isDocx =
+      file.type ===
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+      name.endsWith(".docx");
+    const isLegacyDoc = name.endsWith(".doc") && !isDocx;
+    const isTxt = file.type === "text/plain" || name.endsWith(".txt");
+
+    if (isLegacyDoc) {
+      setImportObjectivesError(
+        "Format .doc non pris en charge : enregistrez le fichier au format .docx puis réimportez-le.",
+      );
+      return;
+    }
+    if (!isPdf && !isDocx && !isTxt) return; // autre format : maquette (nom du fichier seulement)
+
+    setImportingObjectives(true);
+    try {
+      const extracted = isPdf
+        ? await extractPdfText(file)
+        : isDocx
+          ? await extractDocxText(file)
+          : await extractTxtText(file);
+
+      if (extracted) {
+        setObjectives((prev) => (prev.trim() ? `${prev.trim()}\n\n${extracted}` : extracted));
+      } else {
+        setImportObjectivesError("Aucun texte détecté dans ce fichier.");
+      }
+    } catch (err) {
+      setImportObjectivesError(
+        err instanceof Error ? err.message : "Échec de la lecture du fichier.",
+      );
+    } finally {
+      setImportingObjectives(false);
+    }
+  };
+
+  /**
+   * Raccourci d'import réutilisé dans chaque bloc « ressource » du
+   * concepteur (connaissances, compétences, évaluations) : permet de
+   * réimporter un nouveau fichier à tout moment sans remonter en haut de
+   * page. Le texte extrait s'ajoute aux objectifs déjà présents.
+   */
+  const renderObjectivesImportShortcut = () => (
+    <div className="bg-muted/30 flex flex-wrap items-center gap-2 rounded-md border border-dashed p-2">
+      <Button asChild variant="outline" size="sm" className="min-h-9" disabled={importingObjectives}>
+        <label>
+          {importingObjectives ? (
+            <Loader2 className="me-1 size-4 animate-spin" aria-hidden />
+          ) : (
+            <FileUp className="me-1 size-4" aria-hidden />
+          )}
+          Importer un fichier (PDF, Word, texte)
+          <input
+            type="file"
+            accept=".pdf,application/pdf,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.txt,text/plain"
+            className="sr-only"
+            disabled={importingObjectives}
+            onChange={(event) => void handleObjectivesFileChange(event)}
+          />
+        </label>
+      </Button>
+      <span className="text-muted-foreground text-xs">
+        {importingObjectives
+          ? "Lecture du fichier en cours…"
+          : "Le texte est ajouté aux objectifs pédagogiques ; relancez ensuite l'analyse IA du référentiel ci-dessus."}
+      </span>
+    </div>
+  );
+
+  /**
+   * Décocher un élément déjà associé au programme (connaissance, compétence
+   * ou modalité d'évaluation) l'archive : il disparaît des listes actives
+   * mais reste récupérable (aucune suppression définitive).
+   */
+  const handleArchiveOutcome = async (outcomeId: OutcomeId) => {
+    setArchiveError(null);
+    setArchivingIds((prev) => new Set(prev).add(outcomeId));
+    try {
+      await dataAccess.outcomes.archiveOutcome(outcomeId);
+      await refetch();
+    } catch (err) {
+      setArchiveError(err instanceof Error ? err.message : "Échec du retrait de l'élément.");
+    } finally {
+      setArchivingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(outcomeId);
+        return next;
+      });
+    }
+  };
+
+  const handleArchiveAssessmentModality = async (modalityId: string) => {
+    setArchiveError(null);
+    setArchivingIds((prev) => new Set(prev).add(modalityId));
+    try {
+      await dataAccess.assessments.archiveAssessmentModality(modalityId);
+      await refetch();
+    } catch (err) {
+      setArchiveError(err instanceof Error ? err.message : "Échec du retrait de l'élément.");
+    } finally {
+      setArchivingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(modalityId);
+        return next;
+      });
+    }
+  };
+
+  // Sauvegarde automatique (avec anti-rebond) du brouillon dès qu'un champ
+  // change, pour ne pas dépendre d'un clic sur « Enregistrer le brouillon ».
+  // On attend que le chargement initial du brouillon soit terminé pour ce
+  // programme afin de ne pas réécrire par-dessus lui au montage.
+  useEffect(() => {
+    if (draftLoadedForProgramId !== data?.program?.id) return;
+    if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
+    autosaveTimer.current = setTimeout(() => {
+      void handleSaveDraft();
+    }, 1200);
+    return () => {
+      if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    draftLoadedForProgramId,
+    data?.program?.id,
+    modelId,
+    modelName,
+    objectives,
+    resources,
+    cohortMode,
+    selectedCohortId,
+    programStartsOn,
+    programEndsOn,
+    schedule,
+  ]);
+
   if (isPending || !data) return <Skeleton className="h-80 w-full" />;
 
   const cohorts = data.cohorts;
   const activeProgramId = (data.program?.id ?? "program-unknown") as ProgramId;
   /** Création réelle (classe, compétence, connaissance) : exige une vraie version de curriculum. */
   const realCurriculumVersionId = data.versions[0]?.id;
+
+  const selectedVersion = data.versions.find((v) => v.id === modelId) ?? null;
+  /** Version « en cours » (brouillon) : son nom/objectifs restent modifiables ici même. */
+  const editingExistingDraft = selectedVersion?.status === "draft";
+  /** Modèle finalisé/archivé sélectionné : on ne réécrit pas son nom depuis cet écran. */
+  const modelFieldsLocked = selectedVersion !== null && !editingExistingDraft;
 
   const modelReady = modelId !== null || modelName.trim().length > 0;
   const chosenResources = RESOURCES.filter((r) => resources[r.id].selected);
@@ -268,30 +558,49 @@ export function AdminProgramDesigner() {
   const patch = (id: ResourceKind, next: Partial<ResourceState>) =>
     setResources((prev) => ({ ...prev, [id]: { ...prev[id], ...next } }));
 
-  const runAnalysis = () => {
-    const detected = analyseObjectives(`${objectives} ${importedFile ?? ""}`);
-    setAnalysed(detected);
-    setResources((prev) => {
-      const next = { ...prev };
-      for (const kind of detected) {
-        next[kind] = {
-          ...next[kind],
-          selected: true,
-          mode: existingCounts[kind] > 0 ? "existing" : "now",
-        };
-      }
-      return next;
-    });
-  };
-
   return (
     <div className="space-y-6">
-      <SectionHeading
-        title="Concepteur de programme"
-        level={1}
-        action={<MockBadge />}
-        description="Concevez le programme et préparez sa promotion sans quitter cet onglet."
-      />
+      <div className="mb-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h1 id="concepteur-de-programme" className="text-2xl font-semibold">
+            Concepteur de programme
+          </h1>
+          <div className="flex flex-wrap items-center gap-2">
+            {draftError ? (
+              <span className="text-destructive text-xs">{draftError}</span>
+            ) : draftSavedAt ? (
+              <span className="text-muted-foreground text-xs">
+                Brouillon enregistré à{" "}
+                {new Date(draftSavedAt).toLocaleTimeString("fr-FR", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </span>
+            ) : null}
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="min-h-11"
+              disabled={savingDraft}
+              onClick={() => void handleSaveDraft()}
+            >
+              {savingDraft ? (
+                <Loader2 className="me-1 size-4 animate-spin" aria-hidden />
+              ) : (
+                <Save className="me-1 size-4" aria-hidden />
+              )}
+              Enregistrer le brouillon
+            </Button>
+            <MockBadge />
+          </div>
+        </div>
+        <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+          Concevez le programme et préparez sa promotion sans quitter cet onglet. Le brouillon
+          (modèle, objectifs, planning) est enregistré automatiquement au fil de la saisie, avant
+          finalisation.
+        </p>
+      </div>
 
       <AdminWorkLevelBanner
         level="program"
@@ -329,8 +638,9 @@ export function AdminProgramDesigner() {
                     <button
                       type="button"
                       onClick={() => {
-                        setModelId(active ? null : version.id);
-                        if (!active) setModelName("");
+                        const next = active ? null : version.id;
+                        setModelId(next);
+                        setModelName(next ? version.label : "");
                       }}
                       aria-pressed={active}
                       className={`flex min-h-11 w-full flex-wrap items-center gap-2 rounded-md border p-3 text-start text-sm ${
@@ -355,17 +665,19 @@ export function AdminProgramDesigner() {
           )}
         </fieldset>
 
-        {/* b) création du modèle */}
+        {/* b) création ou édition du modèle en cours */}
         <fieldset className="border-border space-y-3 rounded-md border p-4">
           <legend className="px-1 text-sm font-medium">
-            Sinon, créer le modèle et ses objectifs pédagogiques
+            {editingExistingDraft
+              ? "Modèle en cours et ses objectifs pédagogiques"
+              : "Sinon, créer le modèle et ses objectifs pédagogiques"}
           </legend>
           <div className="space-y-1.5">
             <Label htmlFor="model-name">Nom du modèle</Label>
             <Input
               id="model-name"
               value={modelName}
-              disabled={modelId !== null}
+              disabled={modelFieldsLocked}
               onChange={(event) => setModelName(event.target.value)}
               placeholder="Référentiel 2026 — échocardiographie"
             />
@@ -381,59 +693,62 @@ export function AdminProgramDesigner() {
             />
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Button asChild variant="outline" className="min-h-11">
+            <Button asChild variant="outline" className="min-h-11" disabled={importingObjectives}>
               <label>
-                <FileUp className="me-1 size-4" aria-hidden />
+                {importingObjectives ? (
+                  <Loader2 className="me-1 size-4 animate-spin" aria-hidden />
+                ) : (
+                  <FileUp className="me-1 size-4" aria-hidden />
+                )}
                 Importer un fichier d'objectifs
                 <input
                   type="file"
+                  accept=".pdf,application/pdf,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.txt,text/plain"
                   className="sr-only"
-                  onChange={(event) => setImportedFile(event.target.files?.[0]?.name ?? null)}
+                  disabled={importingObjectives}
+                  onChange={(event) => void handleObjectivesFileChange(event)}
                 />
               </label>
             </Button>
-            {importedFile ? (
-              <span className="text-muted-foreground text-xs">{importedFile} (maquette)</span>
+            {importingObjectives ? (
+              <span className="text-muted-foreground text-xs">Lecture du fichier en cours…</span>
+            ) : importObjectivesError ? (
+              <span className="text-destructive text-xs">{importObjectivesError}</span>
+            ) : importedFile ? (
+              <span className="text-muted-foreground text-xs">
+                {importedFile}
+                {/\.(pdf|docx|txt)$/i.test(importedFile) ? " — texte ajouté ci-dessus" : " (maquette)"}
+              </span>
             ) : null}
           </div>
         </fieldset>
 
-        {/* c) analyse IA */}
+        {/* c) analyse IA du référentiel, à partir des objectifs ci-dessus */}
         <fieldset className="border-border space-y-3 rounded-md border p-4">
           <legend className="px-1 text-sm font-medium">
-            Analyse du programme et ressources nécessaires
+            Analyse IA du référentiel (connaissances, compétences, évaluations)
           </legend>
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              type="button"
-              className="min-h-11"
-              disabled={objectives.trim().length === 0 && importedFile === null}
-              onClick={runAnalysis}
-            >
-              <Sparkles className="me-1 size-4" aria-hidden />
-              Analyser les objectifs
-            </Button>
-            <MockBadge label="Analyse simulée" />
-          </div>
+          <ProgramAiReferentialAnalysis
+            programId={activeProgramId}
+            curriculumVersionId={realCurriculumVersionId}
+            objectives={objectives}
+            existingOutcomeCodes={data.outcomes.map((o) => o.code)}
+            existingAssessmentNames={data.assessmentModalities.map((m) => m.name)}
+            onCreated={() => void refetch()}
+          />
+        </fieldset>
 
-          {analysed ? (
-            <p className="text-muted-foreground text-sm">
-              Ressources proposées :{" "}
-              {analysed
-                .map((kind) => RESOURCES.find((r) => r.id === kind)?.label ?? kind)
-                .join(", ")}
-              . Complétez librement la sélection ci-dessous.
-            </p>
-          ) : (
-            <p className="text-muted-foreground text-sm">
-              Vous pouvez aussi cocher directement les ressources voulues, sans analyse.
-            </p>
-          )}
+        {/* d) ressources du programme */}
+        <fieldset className="border-border space-y-3 rounded-md border p-4">
+          <legend className="px-1 text-sm font-medium">Ressources du programme</legend>
+          <p className="text-muted-foreground text-sm">
+            Cochez directement les ressources nécessaires au programme.
+          </p>
+          {archiveError ? <p className="text-destructive text-sm">{archiveError}</p> : null}
 
           <div className="space-y-3">
             {RESOURCES.map((resource) => {
               const state = resources[resource.id];
-              const suggested = analysed?.includes(resource.id) ?? false;
               const Icon = resource.icon;
               return (
                 <article
@@ -457,11 +772,6 @@ export function AdminProgramDesigner() {
                       </Label>
                       <p className="text-muted-foreground mt-1 text-xs">{resource.hint}</p>
                       <div className="mt-1 flex flex-wrap gap-2">
-                        {suggested ? (
-                          <Badge variant="secondary" className="font-normal">
-                            proposé par l'analyse
-                          </Badge>
-                        ) : null}
                         <Badge variant="outline" className="font-normal">
                           {existingCounts[resource.id]} élément(s) déjà dans l'onglet dédié
                         </Badge>
@@ -493,55 +803,80 @@ export function AdminProgramDesigner() {
                       </div>
 
                       {state.mode === "now" && resource.id === "stage" ? (
-                        <div className="space-y-2">
-                          <p className="text-sm font-medium">Créer un terrain de stage</p>
-                          <PlacementCreationForm
-                            programId={activeProgramId}
-                            idPrefix="designer-stage"
-                            submitLabel="Créer le terrain de stage"
-                            hint="Même outil et même liste que l'onglet « Gestion des stages » : le terrain y apparaît aussitôt, rattaché à ce programme."
-                            onCreated={() => patch("stage", { implemented: true })}
-                          />
+                        <div className="space-y-3">
                           {localPlacements.length > 0 ? (
-                            <ul className="text-muted-foreground space-y-1 text-xs">
-                              {localPlacements.map((local) => (
-                                <li key={local.placement.id}>
-                                  {local.placement.name} — {local.placement.site} ·{" "}
-                                  {local.placement.capacity} place(s)
-                                </li>
-                              ))}
-                            </ul>
+                            <div className="space-y-1.5">
+                              <p className="text-sm font-medium">
+                                Terrains de stage déjà créés dans cette session
+                              </p>
+                              <ul className="text-muted-foreground space-y-1 text-xs">
+                                {localPlacements.map((local) => (
+                                  <li key={local.placement.id}>
+                                    {local.placement.name} — {local.placement.site} ·{" "}
+                                    {local.placement.capacity} place(s)
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
                           ) : null}
+                          <div className="space-y-1.5">
+                            <p className="text-sm font-medium">Ajouter un terrain de stage</p>
+                            <PlacementCreationForm
+                              programId={activeProgramId}
+                              idPrefix="designer-stage"
+                              submitLabel="Créer le terrain de stage"
+                              hint="Même outil et même liste que l'onglet « Gestion des stages » : le terrain y apparaît aussitôt, rattaché à ce programme."
+                              onCreated={() => patch("stage", { implemented: true })}
+                            />
+                          </div>
                         </div>
                       ) : null}
 
                       {state.mode === "now" && resource.id === "competences" ? (
-                        <div className="space-y-2">
-                          <p className="text-sm font-medium">Créer une compétence</p>
+                        <div className="space-y-3">
                           {realCurriculumVersionId ? (
                             <>
-                              <CompetenceCreationForm
-                                programId={activeProgramId}
-                                curriculumVersionId={realCurriculumVersionId}
-                                idPrefix="designer-competence"
-                                submitLabel="Créer la compétence"
-                                hint="Même outil et même liste que l'onglet « Compétences » : elle y apparaît aussitôt, rattachée à ce programme."
-                                onCreated={() => {
-                                  patch("competences", { implemented: true });
-                                  void refetch();
-                                }}
-                              />
                               {data.outcomes.filter((o) => o.nature !== "knowledge").length > 0 ? (
-                                <ul className="text-muted-foreground space-y-1 text-xs">
-                                  {data.outcomes
-                                    .filter((o) => o.nature !== "knowledge")
-                                    .map((outcome) => (
-                                      <li key={outcome.id}>
-                                        {outcome.code} — {outcome.label}
-                                      </li>
-                                    ))}
-                                </ul>
+                                <div className="space-y-1.5">
+                                  <p className="text-sm font-medium">
+                                    Liste des compétences déjà associées à ce programme
+                                  </p>
+                                  <ul className="space-y-1.5">
+                                    {data.outcomes
+                                      .filter((o) => o.nature !== "knowledge")
+                                      .map((outcome) => (
+                                        <li key={outcome.id} className="flex items-center gap-2">
+                                          <Checkbox
+                                            checked
+                                            disabled={archivingIds.has(outcome.id)}
+                                            onCheckedChange={(checked) => {
+                                              if (checked === false) void handleArchiveOutcome(outcome.id);
+                                            }}
+                                            aria-label={`Retirer ${outcome.code} du programme`}
+                                          />
+                                          <span className="text-sm">
+                                            {outcome.code} — {outcome.label}
+                                          </span>
+                                        </li>
+                                      ))}
+                                  </ul>
+                                </div>
                               ) : null}
+                              {renderObjectivesImportShortcut()}
+                              <div className="space-y-1.5">
+                                <p className="text-sm font-medium">Ajouter une compétence</p>
+                                <CompetenceCreationForm
+                                  programId={activeProgramId}
+                                  curriculumVersionId={realCurriculumVersionId}
+                                  idPrefix="designer-competence"
+                                  submitLabel="Créer la compétence"
+                                  hint="Même outil et même liste que l'onglet « Compétences » : elle y apparaît aussitôt, rattachée à ce programme."
+                                  onCreated={() => {
+                                    patch("competences", { implemented: true });
+                                    void refetch();
+                                  }}
+                                />
+                              </div>
                             </>
                           ) : (
                             <EmptyState>
@@ -553,54 +888,79 @@ export function AdminProgramDesigner() {
                       ) : null}
 
                       {state.mode === "now" && resource.id === "documents" ? (
-                        <div className="space-y-2">
-                          <p className="text-sm font-medium">Créer une pièce exigée</p>
-                          <DocumentRequirementForm
-                            programId={activeProgramId}
-                            idPrefix="designer-document"
-                            submitLabel="Créer la pièce exigée"
-                            hint="Même outil et même liste que l'onglet « Documents et certificats » : la pièce y apparaît aussitôt, rattachée à ce programme."
-                            onCreated={() => patch("documents", { implemented: true })}
-                          />
+                        <div className="space-y-3">
                           {localRequirements.length > 0 ? (
-                            <ul className="text-muted-foreground space-y-1 text-xs">
-                              {localRequirements.map((item) => (
-                                <li key={item.id}>
-                                  {item.code} — {item.label}
-                                </li>
-                              ))}
-                            </ul>
+                            <div className="space-y-1.5">
+                              <p className="text-sm font-medium">
+                                Pièces déjà exigées dans cette session
+                              </p>
+                              <ul className="text-muted-foreground space-y-1 text-xs">
+                                {localRequirements.map((item) => (
+                                  <li key={item.id}>
+                                    {item.code} — {item.label}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
                           ) : null}
+                          <div className="space-y-1.5">
+                            <p className="text-sm font-medium">Ajouter une pièce exigée</p>
+                            <DocumentRequirementForm
+                              programId={activeProgramId}
+                              idPrefix="designer-document"
+                              submitLabel="Créer la pièce exigée"
+                              hint="Même outil et même liste que l'onglet « Documents et certificats » : la pièce y apparaît aussitôt, rattachée à ce programme."
+                              onCreated={() => patch("documents", { implemented: true })}
+                            />
+                          </div>
                         </div>
                       ) : null}
 
                       {state.mode === "now" && resource.id === "knowledge" ? (
-                        <div className="space-y-2">
-                          <p className="text-sm font-medium">Créer une base de connaissance</p>
+                        <div className="space-y-3">
                           {realCurriculumVersionId ? (
                             <>
-                              <KnowledgeCreationForm
-                                programId={activeProgramId}
-                                curriculumVersionId={realCurriculumVersionId}
-                                idPrefix="designer-knowledge"
-                                submitLabel="Créer la connaissance"
-                                hint="Même outil et même liste que l'onglet « Connaissances » : elle y apparaît aussitôt, rattachée à ce programme."
-                                onCreated={() => {
-                                  patch("knowledge", { implemented: true });
-                                  void refetch();
-                                }}
-                              />
                               {data.outcomes.filter((o) => o.nature === "knowledge").length > 0 ? (
-                                <ul className="text-muted-foreground space-y-1 text-xs">
-                                  {data.outcomes
-                                    .filter((o) => o.nature === "knowledge")
-                                    .map((outcome) => (
-                                      <li key={outcome.id}>
-                                        {outcome.code} — {outcome.label}
-                                      </li>
-                                    ))}
-                                </ul>
+                                <div className="space-y-1.5">
+                                  <p className="text-sm font-medium">
+                                    Liste des connaissances déjà associées à ce programme
+                                  </p>
+                                  <ul className="space-y-1.5">
+                                    {data.outcomes
+                                      .filter((o) => o.nature === "knowledge")
+                                      .map((outcome) => (
+                                        <li key={outcome.id} className="flex items-center gap-2">
+                                          <Checkbox
+                                            checked
+                                            disabled={archivingIds.has(outcome.id)}
+                                            onCheckedChange={(checked) => {
+                                              if (checked === false) void handleArchiveOutcome(outcome.id);
+                                            }}
+                                            aria-label={`Retirer ${outcome.code} du programme`}
+                                          />
+                                          <span className="text-sm">
+                                            {outcome.code} — {outcome.label}
+                                          </span>
+                                        </li>
+                                      ))}
+                                  </ul>
+                                </div>
                               ) : null}
+                              {renderObjectivesImportShortcut()}
+                              <div className="space-y-1.5">
+                                <p className="text-sm font-medium">Ajouter une connaissance</p>
+                                <KnowledgeCreationForm
+                                  programId={activeProgramId}
+                                  curriculumVersionId={realCurriculumVersionId}
+                                  idPrefix="designer-knowledge"
+                                  submitLabel="Créer la connaissance"
+                                  hint="Même outil et même liste que l'onglet « Connaissances » : elle y apparaît aussitôt, rattachée à ce programme."
+                                  onCreated={() => {
+                                    patch("knowledge", { implemented: true });
+                                    void refetch();
+                                  }}
+                                />
+                              </div>
                             </>
                           ) : (
                             <EmptyState>
@@ -612,25 +972,43 @@ export function AdminProgramDesigner() {
                       ) : null}
 
                       {state.mode === "now" && resource.id === "assessments" ? (
-                        <div className="space-y-2">
-                          <p className="text-sm font-medium">Créer une modalité d'évaluation</p>
-                          <AssessmentModalityForm
-                            programId={activeProgramId}
-                            idPrefix="designer-assessment"
-                            submitLabel="Créer la modalité d'évaluation"
-                            hint="Même outil et même liste que l'onglet « Évaluations » : la modalité y apparaît aussitôt, rattachée à ce programme."
-                            onCreated={() => {
-                              patch("assessments", { implemented: true });
-                              void refetch();
-                            }}
-                          />
+                        <div className="space-y-3">
                           {data.assessmentModalities.length > 0 ? (
-                            <ul className="text-muted-foreground space-y-1 text-xs">
-                              {data.assessmentModalities.map((modality) => (
-                                <li key={modality.id}>{modality.name}</li>
-                              ))}
-                            </ul>
+                            <div className="space-y-1.5">
+                              <p className="text-sm font-medium">
+                                Liste des modalités d'évaluation déjà associées à ce programme
+                              </p>
+                              <ul className="space-y-1.5">
+                                {data.assessmentModalities.map((modality) => (
+                                  <li key={modality.id} className="flex items-center gap-2">
+                                    <Checkbox
+                                      checked
+                                      disabled={archivingIds.has(modality.id)}
+                                      onCheckedChange={(checked) => {
+                                        if (checked === false) void handleArchiveAssessmentModality(modality.id);
+                                      }}
+                                      aria-label={`Retirer ${modality.name} du programme`}
+                                    />
+                                    <span className="text-sm">{modality.name}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
                           ) : null}
+                          {renderObjectivesImportShortcut()}
+                          <div className="space-y-1.5">
+                            <p className="text-sm font-medium">Ajouter une modalité d'évaluation</p>
+                            <AssessmentModalityForm
+                              programId={activeProgramId}
+                              idPrefix="designer-assessment"
+                              submitLabel="Créer la modalité d'évaluation"
+                              hint="Même outil et même liste que l'onglet « Évaluations » : la modalité y apparaît aussitôt, rattachée à ce programme."
+                              onCreated={() => {
+                                patch("assessments", { implemented: true });
+                                void refetch();
+                              }}
+                            />
+                          </div>
                         </div>
                       ) : null}
 
