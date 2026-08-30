@@ -226,6 +226,19 @@ export function CorpusImport({
    * décrites. La description automatique reste à construire.
    */
   const [depositImages, setDepositImages] = useState(false);
+  /**
+   * Filtre sur le chemin des documents.
+   *
+   * Un site enregistré mêle les pages de contenu (« /page/chapitre-… ») aux
+   * pages d'actualité, de compte et de mentions légales. Le filtre porte sur
+   * ce qui distingue les unes des autres — le chemin — et non sur une
+   * heuristique de contenu qui se tromperait sans le dire.
+   *
+   * Ce qui est masqué est EXCLU de tout : analyse, dépôt, création. La règle
+   * est « ce que vous voyez est ce qui se passera » ; un document caché qui
+   * serait quand même traité serait le pire des deux mondes.
+   */
+  const [pathFilter, setPathFilter] = useState("");
 
   const [analyzing, setAnalyzing] = useState(false);
   const [analyzeProgress, setAnalyzeProgress] = useState<{ done: number; total: number } | null>(
@@ -236,17 +249,26 @@ export function CorpusImport({
   const [summary, setSummary] = useState<string | null>(null);
   const [errors, setErrors] = useState<readonly string[]>([]);
 
+  const needle = pathFilter.trim().toLowerCase();
+  const visibleRows = needle
+    ? rows.filter((row) => row.document.path.toLowerCase().includes(needle))
+    : rows;
+  const hiddenCount = rows.length - visibleRows.length;
+
   const analyzed = rows.some((row) => row.status === "analyzed");
-  const selectedCount = rows.reduce(
+  const selectedCount = visibleRows.reduce(
     (total, row) => total + row.suggestions.filter((s) => s.selected).length,
     0,
   );
-  const documentsToDeposit = rows.filter((row) => row.keepDocument).length;
-  const documentsToAnalyze = rows.filter((row) => row.analyze).length;
-  const truncatedCount = rows.filter((row) => row.truncated).length;
-  const imagesAvailable = rows.reduce((total, row) => total + row.document.images.length, 0);
+  const documentsToDeposit = visibleRows.filter((row) => row.keepDocument).length;
+  const documentsToAnalyze = visibleRows.filter((row) => row.analyze).length;
+  const truncatedCount = visibleRows.filter((row) => row.truncated).length;
+  const imagesAvailable = visibleRows.reduce((total, row) => total + row.document.images.length, 0);
   const imagesToDeposit = depositImages
-    ? rows.reduce((total, row) => total + (row.keepDocument ? row.document.images.length : 0), 0)
+    ? visibleRows.reduce(
+        (total, row) => total + (row.keepDocument ? row.document.images.length : 0),
+        0,
+      )
     : 0;
   const busy = reading || analyzing || creating;
 
@@ -310,7 +332,7 @@ export function CorpusImport({
     setErrors([]);
     // Seuls les documents cochés sont envoyés : un appel IA par document, donc
     // un coût par document. Le compteur ne parle que de ceux-là.
-    const total = rows.filter((row) => row.analyze).length;
+    const total = visibleRows.filter((row) => row.analyze).length;
     setAnalyzeProgress({ done: 0, total });
     let done = 0;
 
@@ -318,8 +340,10 @@ export function CorpusImport({
     // Les codes sont attribués après coup, sur l'ensemble du corpus.
     const collected: { rowIndex: number; item: SuggestionRow }[] = [];
 
+    const hidden = new Set(rows.filter((row) => !visibleRows.includes(row)).map((r) => r.key));
+
     for (const [index, row] of rows.entries()) {
-      if (!row.analyze) {
+      if (hidden.has(row.key) || !row.analyze) {
         analyzedRows.push(row);
         continue;
       }
@@ -469,7 +493,7 @@ export function CorpusImport({
     const seenCodes = new Set(existingCodeSet);
     const seenNames = new Set(existingNameSet);
 
-    for (const row of rows) {
+    for (const row of visibleRows) {
       const chosen = row.suggestions.filter((s) => s.selected);
       if (chosen.length === 0 && !row.keepDocument) continue;
 
@@ -698,8 +722,11 @@ export function CorpusImport({
               disabled={busy || analyzed}
               onClick={() =>
                 setRows((prev) => {
-                  const allOn = prev.every((row) => row.analyze);
-                  return prev.map((row) => ({ ...row, analyze: !allOn }));
+                  const shown = prev.filter((row) => visibleRows.includes(row));
+                  const allOn = shown.every((row) => row.analyze);
+                  return prev.map((row) =>
+                    visibleRows.includes(row) ? { ...row, analyze: !allOn } : row,
+                  );
                 })
               }
             >
@@ -713,8 +740,11 @@ export function CorpusImport({
               disabled={busy}
               onClick={() =>
                 setRows((prev) => {
-                  const allOn = prev.every((row) => row.keepDocument);
-                  return prev.map((row) => ({ ...row, keepDocument: !allOn }));
+                  const shown = prev.filter((row) => visibleRows.includes(row));
+                  const allOn = shown.every((row) => row.keepDocument);
+                  return prev.map((row) =>
+                    visibleRows.includes(row) ? { ...row, keepDocument: !allOn } : row,
+                  );
                 })
               }
             >
@@ -726,6 +756,22 @@ export function CorpusImport({
             {MIN_CHARS_FOR_ANALYSIS.toLocaleString("fr-FR")} caractères sont décochés d'office :
             dans un site enregistré, ce sont presque toujours des pages d'index ou de navigation.
           </p>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="corpus-path-filter">Ne garder que les chemins contenant</Label>
+            <Input
+              id="corpus-path-filter"
+              value={pathFilter}
+              disabled={busy}
+              placeholder="chapitre"
+              onChange={(event) => setPathFilter(event.target.value)}
+            />
+            <p className="text-muted-foreground text-xs">
+              {hiddenCount > 0
+                ? `${hiddenCount} document(s) masqués — ils ne seront ni analysés, ni déposés, ni créés.`
+                : "Laissez vide pour tout garder. Sur un site enregistré, « chapitre » suffit le plus souvent à écarter actualités, mentions légales et pages de compte."}
+            </p>
+          </div>
 
           <div className="space-y-1.5">
             <Label htmlFor="corpus-visibility">Visibilité des documents déposés</Label>
@@ -762,7 +808,7 @@ export function CorpusImport({
           ) : null}
 
           <ul className="space-y-3">
-            {rows.map((row) => (
+            {visibleRows.map((row) => (
               <li key={row.key} className="border-border space-y-2 rounded-md border p-3">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-sm font-medium">{row.document.path}</span>
@@ -876,7 +922,7 @@ export function CorpusImport({
                       ) : (
                         <li
                           key={suggestion.key}
-                          className="grid gap-2 sm:grid-cols-[auto_9rem_1fr_10rem]"
+                          className="grid gap-2 sm:grid-cols-[auto_12rem_1fr_10rem]"
                         >
                           <Checkbox
                             checked={suggestion.selected}
