@@ -45,6 +45,7 @@ import type {
   ResourceVisibility,
 } from "@/application/ports/repositories";
 import type { CurriculumVersionId, Outcome, OutcomeId, ProgramId } from "@/domain/types";
+import { requireCanonicalMediaType } from "@/infrastructure/storage/mediaTypes";
 
 export const PUBLISH_PACKAGE_LABEL_FR = "Publier le cours";
 
@@ -86,23 +87,6 @@ function packagePath(file: File): string {
   const relative = file.webkitRelativePath || file.name;
   const parts = relative.split("/");
   return parts.length > 1 ? parts.slice(1).join("/") : relative;
-}
-
-const MEDIA_TYPES: Record<string, string> = {
-  png: "image/png",
-  jpg: "image/jpeg",
-  jpeg: "image/jpeg",
-  mp4: "video/mp4",
-  m4a: "audio/mp4",
-  mp3: "audio/mpeg",
-  wav: "audio/wav",
-  json: "application/json",
-};
-
-function mediaTypeOf(file: File): string {
-  if (file.type) return file.type;
-  const extension = file.name.split(".").pop()?.toLowerCase() ?? "";
-  return MEDIA_TYPES[extension] ?? "application/octet-stream";
 }
 
 export function NarratedPackagePublishDialog({
@@ -234,7 +218,7 @@ export function NarratedPackagePublishDialog({
             kind,
             bucketName: upload.bucket,
             objectPath: upload.objectPath,
-            mediaType: mediaTypeOf(file),
+            mediaType: requireCanonicalMediaType(file.name),
             originalFileName: file.name,
             byteSize: file.size,
           });
@@ -257,7 +241,7 @@ export function NarratedPackagePublishDialog({
             kind: "source",
             bucketName: upload.bucket,
             objectPath: upload.objectPath,
-            mediaType: mediaTypeOf(sourceFile),
+            mediaType: requireCanonicalMediaType(sourceFile.name),
             originalFileName: sourceFile.name,
             byteSize: sourceFile.size,
           });

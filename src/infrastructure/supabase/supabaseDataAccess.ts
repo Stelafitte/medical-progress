@@ -49,6 +49,7 @@ import type {
   SendInvitationOutcome,
 } from "@/domain/peopleStaging";
 import { mockDataAccess } from "@/infrastructure/mock/mockDataAccess";
+import { requireCanonicalMediaType } from "@/infrastructure/storage/mediaTypes";
 
 const nativeProvenance = { sourceSystem: "native" as const };
 
@@ -825,11 +826,17 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
           token: payload.token,
         };
       },
-      /** Téléversement réel vers le stockage privé, via le token de l'URL signée. */
+      /**
+       * Téléversement réel vers le stockage privé, via le token de l'URL signée.
+       * Le type de média est imposé depuis l'extension : le navigateur annonce
+       * parfois une variante que le stockage refuse (audio/x-m4a contre audio/mp4).
+       */
       async uploadResourceFile(upload: UploadUrlResult, file: File) {
         const { error } = await client.storage
           .from(upload.bucket)
-          .uploadToSignedUrl(upload.objectPath, upload.token, file);
+          .uploadToSignedUrl(upload.objectPath, upload.token, file, {
+            contentType: requireCanonicalMediaType(file.name),
+          });
         assertNoSupabaseError(error);
       },
       async registerAsset(input: RegisterResourceAssetInput): Promise<RegisteredResourceAsset> {
