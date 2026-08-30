@@ -25,7 +25,7 @@ const bytes = (value: string) => encoder.encode(value);
 const slideXml = (texts: readonly string[], withAnimation = false) =>
   `<?xml version="1.0"?><p:sld xmlns:p="p" xmlns:a="a"><p:cSld><p:spTree>${texts
     .map((text) => `<p:sp><p:txBody><a:p><a:r><a:t>${text}</a:t></a:r></a:p></p:txBody></p:sp>`)
-    .join("")}</p:spTree></p:cSld>${withAnimation ? "<p:timing/>" : ""}</p:sld>`;
+    .join("")}</p:spTree></p:cSld>${withAnimation ? "<p:timing><p:bldP/></p:timing>" : "<p:timing/>"}</p:sld>`;
 
 const notesXml = (text: string) =>
   `<?xml version="1.0"?><p:notes xmlns:p="p" xmlns:a="a"><a:p><a:r><a:t>${text}</a:t></a:r></a:p><a:p><a:r><a:t>2</a:t></a:r></a:p></p:notes>`;
@@ -88,6 +88,9 @@ describe("lecture réelle d'un paquet .pptx", () => {
     expect(first.audio.map((file) => file.fileName)).toEqual(["audio1.mp3"]);
     expect(first.images.map((file) => file.fileName)).toEqual(["image1.png"]);
     expect(inventory.slides[1]!.hasAnimations).toBe(true);
+    // Une diapositive sans animation porte quand meme <p:timing/> :
+    // le confondre avec une animation etait le bug corrige le 30/08.
+    expect(first.hasAnimations).toBe(false);
     expect(inventory.fontsEmbedded).toBe(false);
   });
 });

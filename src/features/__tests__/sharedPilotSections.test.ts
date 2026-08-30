@@ -28,7 +28,10 @@ describe("blocs partagés du pilotage", () => {
 describe("boucle apprenant et encadrant", () => {
   it("le passeport apprenant fusionne les créations d'administration", () => {
     const hook = read("src/features/dashboard/useLearnerPassport.ts");
-    expect(hook).toContain("mergeOutcomes(storedOutcomes");
+    // Les acquis ne sont plus fusionnes depuis un store local : ils viennent
+    // reellement de Supabase depuis le chantier #3. Les terrains de stage, eux,
+    // sont encore crees en session, d'ou la fusion qui subsiste.
+    expect(hook).toContain("data.outcomes.listOutcomes(activeProgram.id)");
     expect(hook).toContain("mergePlacements(storedPlacements");
   });
 

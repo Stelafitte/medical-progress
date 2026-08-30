@@ -5,6 +5,7 @@ const read = (path: string) => readFileSync(path, "utf8");
 
 const player = read("src/features/resources/NarratedSlidesPlayer.tsx");
 const dialog = read("src/features/administration/AddMediaDialog.tsx");
+const converter = read("src/features/administration/PptxConverterDialog.tsx");
 const panel = read("src/features/administration/NarratedConversionPanel.tsx");
 const librarySection = read("src/features/administration/MediaLibrarySection.tsx");
 const detail = read("src/features/administration/MediaDetailDialog.tsx");
@@ -106,11 +107,14 @@ describe("écran de lecture dédié", () => {
 
 describe("parcours administrateur", () => {
   it("propose le dépôt PPTX et les options de conversion", () => {
-    expect(dialog).toContain("NARRATED_UPLOAD_LABEL_FR");
-    expect(dialog).toContain('accept: ".pptx"');
-    expect(dialog).toContain("CONVERSION_TARGET_LABELS_FR");
-    expect(dialog).toContain("checkPptxUpload");
-    expect(dialog).toContain("exposeTranscript");
+    // Le dépôt d'un PPTX a son écran dédié : « Ajouter un support » couvre le
+    // PDF, la vidéo et le lien, la conversion d'un diaporama commenté passe par
+    // PptxConverterDialog. Un seul chemin par type de support.
+    expect(converter).toContain('accept=".pptx');
+    expect(converter).toContain("exposeTranscript");
+    expect(converter).toContain("autoChapters");
+    expect(converter).toContain("convertPptx");
+    expect(dialog).not.toContain(".pptx");
   });
 
   it("affiche le journal des étapes et les alertes de conversion", () => {

@@ -59,6 +59,15 @@ const MIME_BY_EXTENSION: Record<string, string> = {
   wmf: "image/wmf",
 };
 
+/**
+ * Noeuds d'animation reels. `<p:timing>` en est volontairement absent :
+ * PowerPoint l'ecrit sur presque toutes les diapositives, animees ou non, et
+ * le prendre pour un signe d'animation faisait signaler "animation non
+ * convertible" sur des diapositives qui n'en portent aucune.
+ */
+const ANIMATION_NODE =
+  /<p:(?:animEffect|animMotion|animRot|animScale|animClr|bldP|bldGraphic|anim\b)/;
+
 const AUDIO_EXTENSIONS = new Set(["mp3", "m4a", "wav", "wma"]);
 const IMAGE_EXTENSIONS = new Set(["png", "jpg", "jpeg", "gif", "svg"]);
 
@@ -231,7 +240,7 @@ export function readPptxPackage(fileName: string, data: Uint8Array): PptxInvento
       notes,
       audio,
       images,
-      hasAnimations: /<p:(?:timing|animEffect|anim\b)/.test(xml),
+      hasAnimations: ANIMATION_NODE.test(xml),
     };
   });
 

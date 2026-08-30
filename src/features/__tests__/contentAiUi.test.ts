@@ -33,21 +33,25 @@ describe("administration — exploitation IA", () => {
   });
 });
 
-describe("dépôt d'une page web HTML", () => {
-  it("propose URL, accès, fréquence et profondeur", () => {
-    expect(ADD_MEDIA).toContain("WEB_ACCESS_MODE_LABELS_FR");
-    expect(ADD_MEDIA).toContain("WEB_CHECK_FREQUENCY_LABELS_FR");
-    expect(ADD_MEDIA).toContain("WEB_CRAWL_DEPTH_LABELS_FR");
-    expect(ADD_MEDIA).toContain("checkWebPageUrl");
+/**
+ * Le dépôt d'une page web extraite (capture, instantané versionné, profondeur
+ * de parcours) est HORS PÉRIMÈTRE v1 : l'audit Médiathèque du 29/08 ne retient
+ * que le lien web simple. Le modèle de domaine `webPage.ts` reste en place,
+ * inutilisé, en vue d'une reprise ultérieure — ce que ce test verrouille, pour
+ * qu'une suppression involontaire se voie.
+ */
+describe("dépôt d'un support — périmètre v1", () => {
+  it("ne propose que PDF, vidéo et lien externe", () => {
+    expect(ADD_MEDIA).toContain('type NewResourceKind = "pdf" | "video" | "link"');
+    expect(ADD_MEDIA).not.toContain("WEB_ACCESS_MODE_LABELS_FR");
+    expect(ADD_MEDIA).not.toContain("checkWebPageUrl");
   });
 
-  it("rappelle que l'IA n'exploite que l'instantané validé", () => {
-    expect(ADD_MEDIA).toContain("WEB_SNAPSHOT_NOTICE_FR");
-    expect(ADD_MEDIA).toContain("WEB_PRECHECK_NOTICE_FR");
-  });
-
-  it("exige une décision pour un lien externe simple", () => {
-    expect(ADD_MEDIA).toContain("hors du corpus IA");
+  it("conserve le modèle de la page web extraite pour plus tard", () => {
+    const domain = read("src/domain/webPage.ts");
+    expect(domain).toContain("WEB_ACCESS_MODE_LABELS_FR");
+    expect(domain).toContain("WEB_SNAPSHOT_NOTICE_FR");
+    expect(domain).toContain("checkWebPageUrl");
   });
 });
 
