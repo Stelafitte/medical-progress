@@ -33,6 +33,14 @@ import type {
 } from "@/domain/types";
 import type { AssessmentModality } from "@/domain/assessmentModality";
 import type {
+  MediaAsset,
+  MediaKind,
+  MediaResource,
+  MediaResourceId,
+  MediaStatus,
+  MediaVisibility,
+} from "@/domain/mediaLibrary";
+import type {
   CreatePendingPersonInput,
   PendingPerson,
   PendingPersonId,
@@ -340,6 +348,32 @@ type LearningResourceRow = {
   is_published: boolean;
   created_at: string;
   updated_at: string;
+  external_url?: string | null;
+  created_by?: string | null;
+};
+
+const learningResourceColumns =
+  "id,program_id,title,description,format,visibility,is_published,created_at,updated_at,external_url,created_by";
+
+/**
+ * Correspondance format technique -> vocabulaire de la grille médiathèque.
+ * `other` n'a pas d'équivalent : il retombe sur "lien externe simple", le
+ * type le moins engageant de la maquette.
+ */
+const MEDIA_KIND_BY_FORMAT: Record<LearningResource["format"], MediaKind> = {
+  html: "web_page",
+  pdf: "pdf",
+  video: "video",
+  narrated_slides: "slides_audio",
+  link: "link",
+  other: "link",
+};
+
+/** `staff_only` (base) n'a pas d'équivalent exact : "équipe pédagogique uniquement". */
+const MEDIA_VISIBILITY_BY_RESOURCE_VISIBILITY: Record<ResourceVisibility, MediaVisibility> = {
+  staff_only: "private",
+  cohort: "cohort",
+  program: "program",
 };
 
 function mapLearningResource(
@@ -357,6 +391,101 @@ function mapLearningResource(
     outcomeIds,
     estimatedMinutes: 0,
   };
+}
+
+/**
+ * Projection best-effort d'un support réel vers le type riche `MediaResource`
+ * de la maquette, que la grille d'administration consomme encore. Les champs
+ * sans équivalent en base sont neutres et assumés comme tels : pas de module,
+ * pas d'historique de versions, pas de marquage "à réviser" (le modèle réel
+ * publie immédiatement, cf. chantier Médiathèque). À supprimer le jour où
+ * `MediaLibrarySection` consommera directement `LearningResource`.
+ */
+function mapMediaResource(
+  row: LearningResourceRow,
+  outcomeIds: readonly OutcomeId[],
+  asset: ResourceAssetSummary | undefined,
+): MediaResource {
+  const mediaAsset: MediaAsset = row.external_url
+    ? { kind: "url", label: row.external_url, storageActivated: false }
+    : {
+        kind: "file",
+        label: asset?.original_file_name ?? asset?.object_path ?? "Fichier téléversé",
+        storageActivated: false,
+      };
+  return {
+    id: row.id as MediaResourceId,
+    programId: row.program_id as ProgramId,
+    title: row.title,
+    kind: MEDIA_KIND_BY_FORMAT[row.format],
+    module: MEDIA_MODULE_UNCLASSIFIED,
+    description: row.description,
+    outcomeIds,
+    version: "1",
+    status: (row.is_published ? "published" : "draft") satisfies MediaStatus,
+    visibility: MEDIA_VISIBILITY_BY_RESOURCE_VISIBILITY[row.visibility],
+    authorPersonId: (row.created_by ?? "") as MediaResource["authorPersonId"],
+    updatedAt: row.updated_at,
+    needsReview: false,
+    asset: mediaAsset,
+    versions: [],
+    provenance: nativeProvenance,
+  };
+}
+
+type ResourceAssetSummary = {
+  resource_id: string;
+  original_file_name: string | null;
+  object_path: string;
+};
+
+/** Libellé de regroupement par défaut : la base ne porte pas encore de module. */
+const MEDIA_MODULE_UNCLASSIFIED = "Non classé";
+
+/**
+ * Objectifs rattachés à un lot de supports, en une seule requête.
+ * Renvoie une table vide plutôt que d'échouer si aucun support n'est fourni.
+ */
+async function loadOutcomeIdsByResource(
+  client: SupabaseClient,
+  resourceIds: readonly string[],
+): Promise<Map<string, OutcomeId[]>> {
+  const byResource = new Map<string, OutcomeId[]>();
+  if (resourceIds.length === 0) return byResource;
+  const { data, error } = await client
+    .from("learning_resource_outcomes")
+    .select("resource_id,outcome_id")
+    .in("resource_id", [...resourceIds]);
+  assertNoSupabaseError(error);
+  for (const link of (data ?? []) as { resource_id: string; outcome_id: string }[]) {
+    const current = byResource.get(link.resource_id) ?? [];
+    current.push(link.outcome_id as OutcomeId);
+    byResource.set(link.resource_id, current);
+  }
+  return byResource;
+}
+
+/**
+ * Fichier source représentatif de chaque support (le plus ancien enregistré).
+ * Les assets dérivés (images/audio de diapositives) ne servent pas ici.
+ */
+async function loadSourceAssetsByResource(
+  client: SupabaseClient,
+  resourceIds: readonly string[],
+): Promise<Map<string, ResourceAssetSummary>> {
+  const byResource = new Map<string, ResourceAssetSummary>();
+  if (resourceIds.length === 0) return byResource;
+  const { data, error } = await client
+    .from("learning_resource_assets")
+    .select("resource_id,original_file_name,object_path,created_at")
+    .in("resource_id", [...resourceIds])
+    .eq("kind", "source")
+    .order("created_at", { ascending: true });
+  assertNoSupabaseError(error);
+  for (const asset of (data ?? []) as ResourceAssetSummary[]) {
+    if (!byResource.has(asset.resource_id)) byResource.set(asset.resource_id, asset);
+  }
+  return byResource;
 }
 
 const pendingPersonColumns =
@@ -638,14 +767,26 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
       },
     },
     /**
-     * Chantier Médiathèque (A) : seule la création réelle est câblée ici
-     * (création du support, upload signé, enregistrement d'asset,
-     * publication d'un diaporama sonorisé). `listResources` reste délégué
-     * au mock — le refactor de l'écran de catalogue est un chantier séparé
-     * (voir chantier_mediatheque_backend_29aout.md).
+     * Chantier Médiathèque (A), câblage complet : lecture et écriture réelles.
+     * Le filtrage staff / apprenant n'est PAS refait ici — il est assuré par
+     * la RLS (`learning_resources_select_scoped` -> `can_read_resource`), qui
+     * ne laisse voir à un apprenant que les supports publiés et visibles.
      */
     resources: {
-      ...mockDataAccess.resources,
+      async listResources(programId: ProgramId) {
+        const { data, error } = await client
+          .from("learning_resources")
+          .select(learningResourceColumns)
+          .eq("program_id", programId)
+          .order("created_at", { ascending: false });
+        assertNoSupabaseError(error);
+        const rows = (data ?? []) as LearningResourceRow[];
+        const outcomeIds = await loadOutcomeIdsByResource(
+          client,
+          rows.map((row) => row.id),
+        );
+        return rows.map((row) => mapLearningResource(row, outcomeIds.get(row.id) ?? []));
+      },
       async createResource(input: CreateLearningResourceInput) {
         const { data, error } = await client.rpc("create_learning_resource", {
           p_program_id: input.programId,
@@ -746,6 +887,47 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
           version: row.version,
           status: row.status,
         };
+      },
+    },
+    /**
+     * Grille médiathèque : lecture réelle, projetée sur le type riche de la
+     * maquette (voir `mapMediaResource`). `listLearnerNarratedDecks` reste
+     * délégué au mock tant que la lecture des diaporamas sonorisés côté
+     * apprenant n'est pas câblée — c'est le prochain morceau du chantier.
+     */
+    media: {
+      ...mockDataAccess.media,
+      async listMedia(programId: ProgramId) {
+        const { data, error } = await client
+          .from("learning_resources")
+          .select(learningResourceColumns)
+          .eq("program_id", programId)
+          .order("updated_at", { ascending: false });
+        assertNoSupabaseError(error);
+        const rows = (data ?? []) as LearningResourceRow[];
+        const ids = rows.map((row) => row.id);
+        const [outcomeIds, assets] = await Promise.all([
+          loadOutcomeIdsByResource(client, ids),
+          loadSourceAssetsByResource(client, ids),
+        ]);
+        return rows.map((row) =>
+          mapMediaResource(row, outcomeIds.get(row.id) ?? [], assets.get(row.id)),
+        );
+      },
+      async getMedia(id: string) {
+        const { data, error } = await client
+          .from("learning_resources")
+          .select(learningResourceColumns)
+          .eq("id", id)
+          .maybeSingle();
+        assertNoSupabaseError(error);
+        if (!data) return undefined;
+        const row = data as LearningResourceRow;
+        const [outcomeIds, assets] = await Promise.all([
+          loadOutcomeIdsByResource(client, [row.id]),
+          loadSourceAssetsByResource(client, [row.id]),
+        ]);
+        return mapMediaResource(row, outcomeIds.get(row.id) ?? [], assets.get(row.id));
       },
     },
   };

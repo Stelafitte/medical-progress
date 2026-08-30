@@ -1,11 +1,11 @@
 /**
- * Ressources théoriques (MAQUETTE pour le catalogue existant).
- * Le catalogue affiché ici reste la maquette `MediaResource` : son refactor
- * vers le modèle réel `LearningResource` est un chantier séparé (voir
- * chantier_mediatheque_backend_29aout.md). Seules les deux actions de
- * création ci-dessous (AddMediaDialog, PptxConverterDialog) sont réelles :
- * elles créent effectivement un support dans le catalogue du programme,
- * mais celui-ci n'apparaît pas encore dans la liste ci-dessous.
+ * Catalogue des supports du programme — LECTURE RÉELLE depuis Supabase.
+ * Les supports affichés viennent de `learning_resources` ; ils sont projetés
+ * sur le type riche `MediaResource` de la maquette (module, historique de
+ * versions et marquage "à réviser" restent donc neutres tant que la base ne
+ * les porte pas). La création d'un support (AddMediaDialog) est réelle.
+ * Reste à câbler : la publication d'un PPTX sonorisé depuis
+ * PptxConverterDialog (la conversion est réelle, la mise en ligne non).
  */
 import { useMemo, useState } from "react";
 import {
@@ -39,7 +39,6 @@ import {
 } from "@/components/ui/table";
 import {
   EmptyState,
-  MockBadge,
   PanelCard,
   ScopeNotice,
   StatCard,
@@ -139,15 +138,15 @@ export function MediaLibrarySection({
         description={`${visible.length} support(s) affiché(s) sur ${indicators.total}`}
         action={
           <div className="flex flex-wrap items-center gap-2">
-            <MockBadge />
             {curriculumVersionId ? (
               <>
-                <PptxConverterDialog
-                  programId={programId}
-                  curriculumVersionId={curriculumVersionId}
-                  outcomes={outcomes}
-                  onConverted={setLastAction}
-                />
+                {/*
+                 * La conversion PPTX -> lecteur web est réelle et locale, mais
+                 * sa publication (RPC `publish_narrated_deck`) n'est pas encore
+                 * branchée : ce dialogue ne reçoit donc pas encore le contexte
+                 * programme/version/objectifs.
+                 */}
+                <PptxConverterDialog onConverted={setLastAction} />
                 <AddMediaDialog
                   programName={programName}
                   programId={programId}
