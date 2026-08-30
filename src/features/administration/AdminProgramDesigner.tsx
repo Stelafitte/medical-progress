@@ -345,34 +345,99 @@ export function AdminProgramDesigner() {
     const programId = data?.program?.id;
     if (!programId || draftLoadedForProgramId === programId) return;
     const draft = data?.program?.designDraft as Record<string, unknown> | null | undefined;
-    if (draft) {
-      const draftModelId = "modelId" in draft ? (draft["modelId"] as string | null) : null;
-      if ("modelId" in draft) setModelId(draftModelId);
-      const draftModelName = typeof draft["modelName"] === "string" ? draft["modelName"] : "";
-      if (draftModelName) {
-        setModelName(draftModelName);
-      } else if (draftModelId) {
-        // Brouillons enregistrés avant que ce champ ne soit alimenté : on
-        // affiche a minima le nom de la version sélectionnée, modifiable.
-        const selected = data?.versions.find((v) => v.id === draftModelId);
-        if (selected) setModelName(selected.label);
-      }
-      if (typeof draft["objectives"] === "string") setObjectives(draft["objectives"]);
-      if (draft["resources"]) setResources(draft["resources"] as typeof resources);
-      if (draft["cohortMode"] === "existing" || draft["cohortMode"] === "new") {
-        setCohortMode(draft["cohortMode"]);
-      }
-      if ("selectedCohortId" in draft) {
-        setSelectedCohortId(draft["selectedCohortId"] as string | null);
-      }
-      if (typeof draft["programStartsOn"] === "string") {
-        setProgramStartsOn(draft["programStartsOn"]);
-      }
-      if (typeof draft["programEndsOn"] === "string") setProgramEndsOn(draft["programEndsOn"]);
-      if (draft["schedule"]) setSchedule(draft["schedule"] as typeof schedule);
+
+    // CHAQUE champ est réécrit, y compris quand le brouillon est absent ou
+    // incomplet. Auparavant seuls les champs présents dans le brouillon
+    // étaient posés : passer d'un programme conçu à un programme vierge
+    // laissait à l'écran les objectifs du précédent. Pire, la sauvegarde
+    // automatique les enregistrait alors comme brouillon du nouveau
+    // programme, sans que rien ne le signale.
+    const draftModelId =
+      draft && "modelId" in draft ? (draft["modelId"] as string | null) : null;
+    setModelId(draftModelId);
+
+    const draftModelName =
+      draft && typeof draft["modelName"] === "string" ? draft["modelName"] : "";
+    if (draftModelName) {
+      setModelName(draftModelName);
+    } else if (draftModelId) {
+      // Brouillons enregistrés avant que ce champ ne soit alimenté : on
+      // affiche a minima le nom de la version sélectionnée, modifiable.
+      const selected = data?.versions.find((v) => v.id === draftModelId);
+      setModelName(selected ? selected.label : "");
+    } else {
+      setModelName("");
     }
+
+    setObjectives(draft && typeof draft["objectives"] === "string" ? draft["objectives"] : "");
+    setResources(
+      draft && draft["resources"]
+        ? (draft["resources"] as typeof resources)
+        : {
+            knowledge: INITIAL_RESOURCE,
+            competences: INITIAL_RESOURCE,
+            assessments: INITIAL_RESOURCE,
+            stage: INITIAL_RESOURCE,
+            documents: INITIAL_RESOURCE,
+          },
+    );
+    setCohortMode(
+      draft && (draft["cohortMode"] === "existing" || draft["cohortMode"] === "new")
+        ? draft["cohortMode"]
+        : "existing",
+    );
+    setSelectedCohortId(
+      draft && "selectedCohortId" in draft ? (draft["selectedCohortId"] as string | null) : null,
+    );
+    setProgramStartsOn(
+      draft && typeof draft["programStartsOn"] === "string" ? draft["programStartsOn"] : "",
+    );
+    setProgramEndsOn(
+      draft && typeof draft["programEndsOn"] === "string" ? draft["programEndsOn"] : "",
+    );
+    setSchedule(draft && draft["schedule"] ? (draft["schedule"] as typeof schedule) : {});
+
+    // Repères d'écran propres au programme quitté.
+    setImportedFile(null);
+    setAssociated(null);
+    setDraftSavedAt(null);
+    setDraftError(null);
+
+    persistedDraftRef.current = null;
     setDraftLoadedForProgramId(programId);
   }, [data?.program?.id, data?.program?.designDraft, draftLoadedForProgramId]);
+
+  const draftPayload = useMemo(
+    () => ({
+      modelId,
+      modelName,
+      objectives,
+      resources,
+      cohortMode,
+      selectedCohortId,
+      programStartsOn,
+      programEndsOn,
+      schedule,
+    }),
+    [
+      modelId,
+      modelName,
+      objectives,
+      resources,
+      cohortMode,
+      selectedCohortId,
+      programStartsOn,
+      programEndsOn,
+      schedule,
+    ],
+  );
+
+  /**
+   * Dernier état réellement enregistré pour ce programme. Sert de repère à la
+   * sauvegarde automatique : sans lui, la simple visite d'un programme vierge
+   * y écrirait un brouillon vide.
+   */
+  const persistedDraftRef = useRef<string | null>(null);
 
   const handleSaveDraft = async () => {
     const programId = data?.program?.id;
@@ -380,17 +445,8 @@ export function AdminProgramDesigner() {
     setSavingDraft(true);
     setDraftError(null);
     try {
-      await dataAccess.programs.saveProgramDesignDraft(programId, {
-        modelId,
-        modelName,
-        objectives,
-        resources,
-        cohortMode,
-        selectedCohortId,
-        programStartsOn,
-        programEndsOn,
-        schedule,
-      });
+      await dataAccess.programs.saveProgramDesignDraft(programId, draftPayload);
+      persistedDraftRef.current = JSON.stringify(draftPayload);
       setDraftSavedAt(new Date().toISOString());
     } catch (err) {
       setDraftError(
@@ -556,6 +612,16 @@ export function AdminProgramDesigner() {
   // programme afin de ne pas réécrire par-dessus lui au montage.
   useEffect(() => {
     if (draftLoadedForProgramId !== data?.program?.id) return;
+    const current = JSON.stringify(draftPayload);
+    // Premier passage après le chargement : on note l'état de départ sans rien
+    // enregistrer. Sinon, ouvrir un programme vierge suffirait à lui créer un
+    // brouillon vide.
+    if (persistedDraftRef.current === null) {
+      persistedDraftRef.current = current;
+      return;
+    }
+    // Rien n'a bougé depuis le dernier enregistrement : ne pas réécrire.
+    if (persistedDraftRef.current === current) return;
     if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
     autosaveTimer.current = setTimeout(() => {
       void handleSaveDraft();
