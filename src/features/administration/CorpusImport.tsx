@@ -33,6 +33,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useDataAccess } from "@/application/session";
+import { requireCanonicalMediaType } from "@/infrastructure/storage/mediaTypes";
 import type { ResourceVisibility } from "@/application/ports/repositories";
 import {
   ASSESSMENT_SUBTYPE_LABELS_FR,
@@ -213,6 +214,18 @@ export function CorpusImport({
   const [ignoredFiles, setIgnoredFiles] = useState<readonly string[]>([]);
   const [rows, setRows] = useState<readonly DocumentRow[]>([]);
   const [visibility, setVisibility] = useState<ResourceVisibility>("staff_only");
+  /**
+   * Déposer aussi les figures référencées par les documents.
+   *
+   * Décoché par défaut, et c'est délibéré : un site enregistré embarque des
+   * centaines d'images dont la plupart sont de l'habillage (logos, icônes,
+   * puces). Seules celles qu'une page référence vraiment sont candidates,
+   * mais le tri fin reste à l'oeil du concepteur.
+   *
+   * Aucun appel IA n'est fait sur les images : elles sont conservées, pas
+   * décrites. La description automatique reste à construire.
+   */
+  const [depositImages, setDepositImages] = useState(false);
 
   const [analyzing, setAnalyzing] = useState(false);
   const [analyzeProgress, setAnalyzeProgress] = useState<{ done: number; total: number } | null>(
@@ -231,6 +244,10 @@ export function CorpusImport({
   const documentsToDeposit = rows.filter((row) => row.keepDocument).length;
   const documentsToAnalyze = rows.filter((row) => row.analyze).length;
   const truncatedCount = rows.filter((row) => row.truncated).length;
+  const imagesAvailable = rows.reduce((total, row) => total + row.document.images.length, 0);
+  const imagesToDeposit = depositImages
+    ? rows.reduce((total, row) => total + (row.keepDocument ? row.document.images.length : 0), 0)
+    : 0;
   const busy = reading || analyzing || creating;
 
   const handleFile = async (file: File) => {
@@ -444,6 +461,7 @@ export function CorpusImport({
     const failures: string[] = [];
     let createdItems = 0;
     let createdResources = 0;
+    let createdImages = 0;
 
     // Détection locale des collisions de code AVANT tout appel réseau : la
     // contrainte SQL les rejetterait une par une, avec un message Postgres
@@ -550,11 +568,46 @@ export function CorpusImport({
           kind: "source",
           bucketName: upload.bucket,
           objectPath: upload.objectPath,
-          mediaType: row.document.file.type || "application/octet-stream",
+          // Type déduit de l'extension, jamais de `File.type` : un fichier
+          // sorti d'une archive n'a pas de type MIME, et le bucket refuserait
+          // `application/octet-stream`.
+          mediaType: requireCanonicalMediaType(row.document.file.name),
           originalFileName: row.document.file.name,
           byteSize: row.document.file.size,
         });
         createdResources += 1;
+
+        // Les figures sont déposées comme assets du MÊME support : elles
+        // restent auprès du document dont elles proviennent. L'échec d'une
+        // image n'annule pas le dépôt du document — on le signale et on
+        // continue, sinon une seule figure illisible ferait perdre le
+        // chapitre entier.
+        if (depositImages) {
+          for (const image of row.document.images) {
+            try {
+              const imageUpload = await dataAccess.resources.requestUploadUrl({
+                programId,
+                bucket: "course-sources",
+                fileName: image.file.name,
+              });
+              await dataAccess.resources.uploadResourceFile(imageUpload, image.file);
+              await dataAccess.resources.registerAsset({
+                resourceId: resource.id,
+                kind: "illustration",
+                bucketName: imageUpload.bucket,
+                objectPath: imageUpload.objectPath,
+                mediaType: requireCanonicalMediaType(image.file.name),
+                originalFileName: image.file.name,
+                byteSize: image.file.size,
+              });
+              createdImages += 1;
+            } catch (err) {
+              failures.push(
+                `Figure « ${image.path} » : ${err instanceof Error ? err.message : "échec du dépôt"}`,
+              );
+            }
+          }
+        }
       } catch (err) {
         failures.push(
           `Dépôt de « ${row.document.path} » : ${err instanceof Error ? err.message : "échec"}`,
@@ -564,7 +617,7 @@ export function CorpusImport({
 
     if (createdItems > 0 || createdResources > 0) {
       setSummary(
-        `${createdItems} ${TARGET_LABELS[target]} créée(s) et ${createdResources} document(s) déposé(s) dans la médiathèque${
+        `${createdItems} ${TARGET_LABELS[target]} créée(s), ${createdResources} document(s) et ${createdImages} figure(s) déposés dans la médiathèque${
           failures.length > 0 ? " — voir les échecs ci-dessous" : "."
         }`,
       );
@@ -691,6 +744,23 @@ export function CorpusImport({
             </select>
           </div>
 
+          {imagesAvailable > 0 ? (
+            <label className="flex items-start gap-2 text-sm">
+              <Checkbox
+                checked={depositImages}
+                disabled={busy}
+                onCheckedChange={(checked) => setDepositImages(checked === true)}
+              />
+              <span>
+                Déposer aussi les {imagesAvailable} figure(s) référencées par ces documents
+                <span className="text-muted-foreground block text-xs">
+                  Les figures sont conservées auprès de leur document, jamais analysées : aucun
+                  appel IA, aucun coût. Leur description automatique reste à construire.
+                </span>
+              </span>
+            </label>
+          ) : null}
+
           <ul className="space-y-3">
             {rows.map((row) => (
               <li key={row.key} className="border-border space-y-2 rounded-md border p-3">
@@ -701,6 +771,11 @@ export function CorpusImport({
                   </Badge>
                   {row.status === "analyzing" ? (
                     <Loader2 className="size-4 animate-spin" aria-hidden />
+                  ) : null}
+                  {row.document.images.length > 0 ? (
+                    <Badge variant="outline" className="font-normal">
+                      {row.document.images.length} figure(s)
+                    </Badge>
                   ) : null}
                   {row.truncated ? (
                     <Badge variant="outline" className="text-destructive font-normal">
@@ -875,6 +950,7 @@ export function CorpusImport({
               )}
               Créer {selectedCount} {TARGET_LABELS[target]} et déposer {documentsToDeposit}{" "}
               document(s)
+              {imagesToDeposit > 0 ? ` et ${imagesToDeposit} figure(s)` : ""}
             </Button>
             <span className="text-muted-foreground text-xs">
               Rien n'est écrit avant ce clic.{" "}

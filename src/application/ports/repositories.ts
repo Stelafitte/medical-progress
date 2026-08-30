@@ -334,7 +334,9 @@ export type ResourceAssetKind =
   | "thumbnail"
   | "fallback_video"
   /** Clip d'une diapositive, rendu par PowerPoint avec ses animations. */
-  | "slide_video";
+  | "slide_video"
+  /** Figure d'un document importé (ECG, schéma, coupe), déposée à côté de lui. */
+  | "illustration";
 
 /** Saisie du port `registerAsset` : enregistre en base un fichier déjà téléversé via une URL signée. */
 export interface RegisterResourceAssetInput {

@@ -12,6 +12,15 @@
 const MEDIA_TYPE_BY_EXTENSION: Record<string, string> = {
   png: "image/png",
   webp: "image/webp",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  gif: "image/gif",
+  svg: "image/svg+xml",
+  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  txt: "text/plain",
+  md: "text/markdown",
+  html: "text/html",
+  htm: "text/html",
   mp4: "video/mp4",
   m4a: "audio/mp4",
   mp3: "audio/mpeg",
@@ -33,7 +42,8 @@ export function requireCanonicalMediaType(fileName: string): string {
   if (!mediaType) {
     throw new Error(
       `Type de fichier non pris en charge : « ${fileName} ». ` +
-        "Formats acceptés : PNG, WebP, MP4, WebM, MOV, M4A, MP3, VTT, JSON, PDF, PPTX.",
+        "Formats acceptés : PDF, DOCX, TXT, MD, HTML, PNG, JPEG, GIF, WebP, SVG, " +
+        "MP4, WebM, MOV, M4A, MP3, VTT, JSON, PPTX.",
     );
   }
   return mediaType;

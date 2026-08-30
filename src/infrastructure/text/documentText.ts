@@ -134,6 +134,77 @@ export async function extractText(file: File): Promise<string> {
   throw new Error(`Format non pris en charge : ${file.name}`);
 }
 
+const IMAGE_EXTENSIONS = ["png", "jpg", "jpeg", "gif", "webp", "svg"] as const;
+
+export function isImagePath(path: string): boolean {
+  const lower = path.toLowerCase();
+  return IMAGE_EXTENSIONS.some((extension) => lower.endsWith(`.${extension}`));
+}
+
+/** Résout `.` et `..` dans un chemin d'archive. */
+function normalizeSegments(path: string): string {
+  const out: string[] = [];
+  for (const segment of path.split("/")) {
+    if (segment === "" || segment === ".") continue;
+    if (segment === "..") out.pop();
+    else out.push(segment);
+  }
+  return out.join("/");
+}
+
+/**
+ * Chemin, DANS L'ARCHIVE, d'une ressource référencée par une page.
+ *
+ * Un site enregistré mélange les formes : chemin relatif à la page, chemin
+ * absolu depuis la racine du site, URL complète vers un autre domaine. On
+ * essaie les résolutions plausibles et on ne retient que celles qui désignent
+ * un fichier réellement présent — une image restée sur le web n'est pas dans
+ * l'archive, et inventer son chemin produirait un dépôt vide.
+ */
+function resolveArchivePath(
+  pagePath: string,
+  source: string,
+  available: ReadonlySet<string>,
+): string | null {
+  const clean = (source.split("#")[0] ?? "").split("?")[0]?.trim() ?? "";
+  if (!clean || /^(https?:|data:|mailto:|javascript:)/i.test(clean)) return null;
+
+  const baseDir = pagePath.includes("/") ? pagePath.slice(0, pagePath.lastIndexOf("/")) : "";
+  const siteRoot = pagePath.split("/")[0];
+  const candidates = clean.startsWith("/")
+    ? [`${siteRoot}${clean}`, clean.slice(1)]
+    : [`${baseDir}/${clean}`, clean];
+
+  for (const candidate of candidates) {
+    const normalized = normalizeSegments(candidate);
+    if (available.has(normalized)) return normalized;
+  }
+  return null;
+}
+
+/** Chemins des images référencées par une page HTML, tels qu'ils existent dans
+ * l'archive. Les `<img>` sans `src` utilisable, et ceux qui pointent hors de
+ * l'archive, sont ignorés. */
+function referencedImages(
+  html: string,
+  pagePath: string,
+  available: ReadonlySet<string>,
+): string[] {
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  const found = new Set<string>();
+  doc.querySelectorAll("img[src]").forEach((element) => {
+    const resolved = resolveArchivePath(pagePath, element.getAttribute("src") ?? "", available);
+    if (resolved && isImagePath(resolved)) found.add(resolved);
+  });
+  return [...found].sort((a, b) => a.localeCompare(b, "fr"));
+}
+
+/** Une figure d'un document : conservée pour être déposée à côté de lui. */
+export interface CorpusImage {
+  readonly path: string;
+  readonly file: File;
+}
+
 /** Un document du corpus : son chemin d'origine, le fichier lui-même (conservé
  * pour être déposé dans la médiathèque) et son texte. */
 export interface CorpusDocument {
@@ -142,6 +213,12 @@ export interface CorpusDocument {
   readonly format: ReadableFormat;
   readonly file: File;
   readonly text: string;
+  /**
+   * Figures que cette page référence et qui sont présentes dans l'archive.
+   * Vide hors HTML : les images d'un PDF ou d'un .docx sont enfouies dans le
+   * fichier, on ne les en extrait pas — le document lui-même les porte déjà.
+   */
+  readonly images: readonly CorpusImage[];
 }
 
 export interface CorpusReadResult {
@@ -167,7 +244,7 @@ export async function readDocumentCorpus(file: File): Promise<CorpusReadResult> 
     if (!format) return { documents: [], ignored: [file.name] };
     const text = await extractText(file);
     if (!text) return { documents: [], ignored: [file.name] };
-    return { documents: [{ path: file.name, format, file, text }], ignored: [] };
+    return { documents: [{ path: file.name, format, file, text, images: [] }], ignored: [] };
   }
 
   const { unzipSync } = await import("fflate");
@@ -178,6 +255,10 @@ export async function readDocumentCorpus(file: File): Promise<CorpusReadResult> 
     .filter((name) => !name.startsWith("__MACOSX/")) // métadonnées macOS
     .filter((name) => !(name.split("/").pop() ?? "").startsWith(".")) // fichiers cachés
     .sort((a, b) => a.localeCompare(b, "fr"));
+
+  // Index des fichiers réellement présents : il sert à ne retenir, parmi les
+  // images qu'une page référence, que celles que l'archive contient.
+  const available = new Set(names);
 
   const documents: CorpusDocument[] = [];
   const ignored: string[] = [];
@@ -191,8 +272,14 @@ export async function readDocumentCorpus(file: File): Promise<CorpusReadResult> 
     }
     const inner = new File([bytes.slice()], name.split("/").pop() ?? name);
     let text = "";
+    let raw = "";
     try {
-      text = await extractText(inner);
+      if (format === "html") {
+        raw = await inner.text();
+        text = await extractHtmlText(inner);
+      } else {
+        text = await extractText(inner);
+      }
     } catch {
       ignored.push(name);
       continue;
@@ -201,7 +288,22 @@ export async function readDocumentCorpus(file: File): Promise<CorpusReadResult> 
       ignored.push(name);
       continue;
     }
-    documents.push({ path: name, format, file: inner, text });
+
+    const images: CorpusImage[] =
+      format === "html"
+        ? referencedImages(raw, name, available)
+            .map((imagePath) => {
+              const imageBytes = entries[imagePath];
+              if (!imageBytes || imageBytes.length === 0) return null;
+              return {
+                path: imagePath,
+                file: new File([imageBytes.slice()], imagePath.split("/").pop() ?? imagePath),
+              };
+            })
+            .filter((image): image is CorpusImage => image !== null)
+        : [];
+
+    documents.push({ path: name, format, file: inner, text, images });
   }
 
   return { documents, ignored };
