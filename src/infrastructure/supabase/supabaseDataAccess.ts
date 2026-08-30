@@ -849,6 +849,16 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
         assertNoSupabaseError(error);
         return ((data ?? []) as OutcomeRow[]).map(mapOutcome);
       },
+      /** Sans filtre sur `archived_at`, contrairement à `listOutcomes` : un
+       * code archivé reste pris du point de vue de la contrainte d'unicité. */
+      async listTakenOutcomeCodes(programId: ProgramId) {
+        const { data, error } = await client
+          .from("outcomes")
+          .select("code")
+          .eq("program_id", programId);
+        assertNoSupabaseError(error);
+        return ((data ?? []) as { code: string }[]).map((row) => row.code);
+      },
       // `listOutcomeRelations` reste délégué au mock : hors périmètre de ce
       // chantier (voir chantier3_outcomes_28aout.md), aucune UI ne les édite.
       /**

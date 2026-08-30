@@ -191,6 +191,15 @@ export interface CreateOutcomeInput {
  */
 export interface OutcomeRepository {
   listOutcomes(programId: ProgramId): Promise<readonly Outcome[]>;
+  /**
+   * TOUS les codes déjà pris dans ce programme, archivés compris.
+   *
+   * `listOutcomes` masque les acquis archivés, mais la contrainte
+   * `unique (program_id, code)` ne les oublie pas : un code archivé reste
+   * réservé. Générer un code à partir des seules listes visibles produit donc
+   * des collisions que rien à l'écran ne laissait prévoir.
+   */
+  listTakenOutcomeCodes(programId: ProgramId): Promise<readonly string[]>;
   listOutcomeRelations(programId: ProgramId): Promise<readonly OutcomeRelation[]>;
   /** Crée une compétence ou une connaissance. Autorisation vérifiée côté serveur. */
   createOutcome(input: CreateOutcomeInput): Promise<Outcome>;

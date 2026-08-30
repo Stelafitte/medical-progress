@@ -156,6 +156,8 @@ export const mockDataAccess: DataAccess = {
         outcomes = [...outcomes, created];
         return ok(created);
       },
+      listTakenOutcomeCodes: (programId) =>
+        ok(outcomes.filter((o) => o.programId === programId).map((o) => o.code)),
       archiveOutcome: (outcomeId) => {
         outcomes = outcomes.filter((o) => o.id !== outcomeId);
         return ok(undefined);

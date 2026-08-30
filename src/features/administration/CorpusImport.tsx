@@ -465,9 +465,21 @@ export function CorpusImport({
       (entry): entry is { rowIndex: number; item: OutcomeSuggestion } =>
         entry.item.kind === "outcome",
     );
+    // Les codes déjà pris sont relus EN BASE, pas déduits de la liste
+    // affichée : celle-ci masque les acquis archivés, dont le code reste
+    // pourtant réservé par la contrainte d'unicité.
+    let takenCodes = existingCodeSet;
+    try {
+      const taken = await dataAccess.outcomes.listTakenOutcomeCodes(programId);
+      takenCodes = new Set(taken.map((code) => code.trim().toUpperCase()));
+    } catch {
+      // La génération retombe sur la liste affichée ; une collision reste
+      // possible et sera signalée à la création.
+    }
+
     const codes = buildCorpusCodes(
       outcomeEntries.map((entry) => entry.item.domain),
-      existingCodeSet,
+      takenCodes,
     );
     outcomeEntries.forEach((entry, position) => {
       entry.item.code = codes[position] ?? `REF-${String(position + 1).padStart(2, "0")}`;
@@ -537,7 +549,17 @@ export function CorpusImport({
     // Détection locale des collisions de code AVANT tout appel réseau : la
     // contrainte SQL les rejetterait une par une, avec un message Postgres
     // brut et une création à moitié faite.
-    const seenCodes = new Set(existingCodeSet);
+    // Relu maintenant, et pas au chargement de l'écran : entre l'analyse et
+    // ce clic, des acquis ont pu être créés ailleurs — ou l'analyse précédente
+    // a pu en créer une partie avant d'échouer.
+    let seenCodes = new Set(existingCodeSet);
+    try {
+      const taken = await dataAccess.outcomes.listTakenOutcomeCodes(programId);
+      seenCodes = new Set(taken.map((code) => code.trim().toUpperCase()));
+    } catch {
+      // On garde la liste affichée : la contrainte SQL reste le dernier
+      // rempart, et l'échec sera signalé ligne par ligne.
+    }
     const seenNames = new Set(existingNameSet);
 
     for (const row of visibleRows) {
@@ -587,7 +609,7 @@ export function CorpusImport({
         }
         if (seenCodes.has(code)) {
           failures.push(
-            `« ${suggestion.label} » : le code « ${code} » est déjà utilisé dans ce programme — modifiez-le ou décochez cette ligne.`,
+            `« ${suggestion.label} » : le code « ${code} » est déjà pris dans ce programme, peut-être par un acquis archivé qui n'apparaît plus dans les listes — modifiez le code ou décochez cette ligne.`,
           );
           continue;
         }
