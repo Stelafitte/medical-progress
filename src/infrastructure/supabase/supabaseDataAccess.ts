@@ -828,15 +828,20 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
       },
       /**
        * Téléversement réel vers le stockage privé, via le token de l'URL signée.
-       * Le type de média est imposé depuis l'extension : le navigateur annonce
-       * parfois une variante que le stockage refuse (audio/x-m4a contre audio/mp4).
+       *
+       * Le fichier est réétiqueté avant l'envoi : Chrome annonce un .m4a en
+       * audio/x-m4a, que le stockage refuse. L'option `contentType` de
+       * supabase-js ne sert à rien ici — quand on lui passe un Blob, elle
+       * construit un envoi multipart et laisse le type du Blob décider. Seul
+       * un réétiquetage du fichier lui-même est pris en compte.
        */
       async uploadResourceFile(upload: UploadUrlResult, file: File) {
+        const mediaType = requireCanonicalMediaType(file.name);
+        const body =
+          file.type === mediaType ? file : new File([file], file.name, { type: mediaType });
         const { error } = await client.storage
           .from(upload.bucket)
-          .uploadToSignedUrl(upload.objectPath, upload.token, file, {
-            contentType: requireCanonicalMediaType(file.name),
-          });
+          .uploadToSignedUrl(upload.objectPath, upload.token, body, { contentType: mediaType });
         assertNoSupabaseError(error);
       },
       async registerAsset(input: RegisterResourceAssetInput): Promise<RegisteredResourceAsset> {
