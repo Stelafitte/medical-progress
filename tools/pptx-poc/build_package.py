@@ -80,6 +80,47 @@ def relationships(zf: zipfile.ZipFile, index: int) -> list[dict[str, str]]:
     return result
 
 
+VIDEO_EXTENSIONS = {".mp4", ".mov", ".avi", ".wmv", ".m4v", ".mkv", ".webm"}
+
+
+def click_triggered_videos(xml: str, targets: dict[str, str]) -> list[str]:
+    """Vidéos de la diapositive qui attendent un clic pour démarrer.
+
+    Une vidéo réglée « au clic » ne part jamais dans un export automatique :
+    PowerPoint rend la diapositive avec l'image figée du premier plan. Le
+    diaporama reste correct en présentation, mais le cours converti perd la
+    boucle. Mieux vaut le dire pendant la conversion que le découvrir à la
+    lecture.
+
+    Dans l'OOXML, « au clic » s'écrit `<p:cond delay="indefinite"/>` en tête
+    des conditions de départ du nœud média.
+    """
+    shape_media: dict[str, str] = {}
+    for match in re.finditer(r"<p:nvPicPr>(.*?)</p:nvPicPr>", xml, re.S):
+        block = match.group(1)
+        shape = re.search(r'<p:cNvPr id="(\d+)"', block)
+        if not shape:
+            continue
+        # La référence au fichier peut être portée par a:videoFile (lien ou
+        # incorporation) ou par p14:media selon la version de PowerPoint.
+        for rel_id in re.findall(r'<(?:a:videoFile|p14:media)[^>]*r:(?:link|embed)="([^"]+)"', block):
+            target = targets.get(rel_id, "")
+            if PurePosixPath(target).suffix.lower() in VIDEO_EXTENSIONS:
+                shape_media[shape.group(1)] = PurePosixPath(target).name
+                break
+
+    waiting: list[str] = []
+    for match in re.finditer(r"<p:cMediaNode[^>]*>(.{0,900}?)</p:cMediaNode>", xml, re.S):
+        block = match.group(1)
+        shape = re.search(r'<p:spTgt spid="(\d+)"', block)
+        start = re.search(r"<p:stCondLst>\s*<p:cond([^>]*)>", block)
+        if not shape or not start:
+            continue
+        if shape.group(1) in shape_media and 'delay="indefinite"' in start.group(1):
+            waiting.append(shape_media[shape.group(1)])
+    return waiting
+
+
 def slide_advance_ms(xml: str) -> int | None:
     """Duree d'affichage de la diapositive, telle que PowerPoint l'a enregistree.
 
@@ -297,6 +338,14 @@ def build(args: argparse.Namespace) -> None:
                     video_url = f"video/{candidate.name}"
                 else:
                     warnings.append(f"slide {index}: no video clip found")
+
+            targets = {rel["id"]: rel["target"] for rel in relationships(zf, index)}
+            for media_name in click_triggered_videos(xml, targets):
+                warnings.append(
+                    f"slide {index}: la video {media_name} est reglee sur un demarrage au clic, "
+                    "elle restera figee dans le cours converti "
+                    "(dans PowerPoint, onglet Lecture : Demarrer = Avec le precedent, avec un delai)"
+                )
 
             title = slide_title(xml_bytes)
             texts = text_nodes(xml_bytes)

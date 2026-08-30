@@ -12,4 +12,19 @@ export default defineConfig({
     // nitro/vite builds from this
     server: { entry: "server" },
   },
+  vite: {
+    server: {
+      // Port fixe et STRICT, volontairement.
+      //
+      // Par défaut Vite prend le premier port libre à partir de 8080 : lancer
+      // le serveur deux fois, ou depuis deux copies du dépôt, produit
+      // silencieusement deux applications sur deux ports. On finit par
+      // regarder une version périmée en croyant que le code ne s'applique pas.
+      // Avec strictPort, un second démarrage échoue franchement au lieu de
+      // glisser sur le port suivant.
+      port: 8080,
+      strictPort: true,
+      host: true,
+    },
+  },
 });
