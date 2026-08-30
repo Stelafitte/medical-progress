@@ -35,9 +35,23 @@ export const mockDataAccess: DataAccess = {
   programs: (() => {
     let cohorts: Cohort[] = [...fx.cohorts];
     let counter = 0;
+    const designDrafts = new Map<string, Record<string, unknown>>();
     return {
       listPrograms: () => ok(fx.programs),
-      getProgram: (id) => ok(fx.programs.find((p) => p.id === id)),
+      getProgram: (id) => {
+        const found = fx.programs.find((p) => p.id === id);
+        if (!found) return ok(undefined);
+        const draft = designDrafts.get(id);
+        return ok(draft ? { ...found, designDraft: draft } : found);
+      },
+      saveProgramDesignDraft: (programId, draft) => {
+        if (draft) designDrafts.set(programId, draft);
+        else designDrafts.delete(programId);
+        return ok(undefined);
+      },
+      // Aucun appel IA réel en mock : pas d'infrastructure serveur ici.
+      analyzeObjectivesForReferential: () =>
+        ok({ knowledgeItems: [], assessmentModalities: [], truncated: false }),
       listCurriculumVersions: (programId) =>
         ok(fx.curriculumVersions.filter((c) => c.programId === programId)),
       listCohorts: (programId) =>
@@ -140,6 +154,10 @@ export const mockDataAccess: DataAccess = {
         };
         outcomes = [...outcomes, created];
         return ok(created);
+      },
+      archiveOutcome: (outcomeId) => {
+        outcomes = outcomes.filter((o) => o.id !== outcomeId);
+        return ok(undefined);
       },
     };
   })(),
@@ -253,6 +271,10 @@ export const mockDataAccess: DataAccess = {
         };
         modalities = [...modalities, created];
         return ok(created);
+      },
+      archiveAssessmentModality: (assessmentModalityId) => {
+        modalities = modalities.filter((m) => m.id !== assessmentModalityId);
+        return ok(undefined);
       },
     };
   })(),

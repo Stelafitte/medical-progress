@@ -6,6 +6,7 @@ import type {
   CreateOutcomeInput,
   DataAccess,
   GrantRoleAssignmentInput,
+  ProgramAiAnalysisResult,
   PublishNarratedDeckInput,
   PublishedNarratedDeck,
   RegisterResourceAssetInput,
@@ -58,6 +59,7 @@ type ProgramRow = {
   dpc_enabled: boolean;
   target_mastery: Program["config"]["targetMastery"];
   locale: string;
+  design_draft: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
 };
@@ -103,6 +105,7 @@ export function mapProgram(row: ProgramRow): Program {
     kind: row.kind,
     institution: row.institution,
     annualLearnerEstimate: row.annual_learner_estimate,
+    designDraft: row.design_draft,
     config: {
       placementsEnabled: row.placements_enabled,
       simulationEnabled: row.simulation_enabled,
@@ -363,7 +366,7 @@ const pendingPersonColumns =
   "id,program_id,first_name,last_name,login_email,institutional_id,origin,intended_cohort_id,status,invited_at,cancelled_at,activated_profile_id,created_at,updated_at";
 
 const programColumns =
-  "id,code,name,kind,institution,annual_learner_estimate,placements_enabled,simulation_enabled,audits_enabled,pre_post_tests_enabled,sessions_enabled,dpc_enabled,target_mastery,locale,created_at,updated_at";
+  "id,code,name,kind,institution,annual_learner_estimate,placements_enabled,simulation_enabled,audits_enabled,pre_post_tests_enabled,sessions_enabled,dpc_enabled,target_mastery,locale,design_draft,created_at,updated_at";
 
 const assessmentModalityColumns =
   "id,program_id,name,mode,subtype,usage,notes,created_at,updated_at";
@@ -394,6 +397,40 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
           .maybeSingle();
         assertNoSupabaseError(error);
         return data ? mapProgram(data as ProgramRow) : undefined;
+      },
+      async saveProgramDesignDraft(programId: ProgramId, draft: Record<string, unknown> | null) {
+        const { error } = await client.rpc("save_program_design_draft", {
+          p_program_id: programId,
+          p_draft: draft,
+        });
+        assertNoSupabaseError(error);
+      },
+      async analyzeObjectivesForReferential(programId: ProgramId, text: string) {
+        const { data, error } = await client.functions.invoke("analyze-program-objectives", {
+          body: { programId, text },
+        });
+        if (error) {
+          let message = error instanceof Error ? error.message : "Analyse IA impossible.";
+          // FunctionsHttpError expose la réponse brute dans `context` : on y
+          // récupère le message métier précis (droits, quota, erreur OpenAI…)
+          // plutôt que le générique "non-2xx status code".
+          const context = (error as { context?: Response }).context;
+          if (context) {
+            try {
+              const body = (await context.clone().json()) as { error?: string };
+              if (body.error) message = body.error;
+            } catch {
+              // corps non-JSON : on garde le message générique.
+            }
+          }
+          throw new Error(message);
+        }
+        const payload = data as Partial<ProgramAiAnalysisResult> | null;
+        return {
+          knowledgeItems: payload?.knowledgeItems ?? [],
+          assessmentModalities: payload?.assessmentModalities ?? [],
+          truncated: payload?.truncated ?? false,
+        };
       },
       async listCurriculumVersions(programId: ProgramId) {
         const { data, error } = await client
@@ -583,6 +620,7 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
           .from("assessment_modalities")
           .select(assessmentModalityColumns)
           .eq("program_id", programId)
+          .is("archived_at", null)
           .order("created_at");
         assertNoSupabaseError(error);
         return ((data ?? []) as AssessmentModalityRow[]).map(mapAssessmentModality);
@@ -603,6 +641,16 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
         assertNoSupabaseError(error);
         return mapAssessmentModality(data as AssessmentModalityRow);
       },
+      /**
+       * Archivage réversible (pas de suppression) : voir
+       * supabase/migrations/20260829200000_archive_outcomes_and_assessment_modalities.sql.
+       */
+      async archiveAssessmentModality(assessmentModalityId: string) {
+        const { error } = await client.rpc("archive_assessment_modality", {
+          p_modality_id: assessmentModalityId,
+        });
+        assertNoSupabaseError(error);
+      },
     },
     outcomes: {
       ...mockDataAccess.outcomes,
@@ -611,6 +659,7 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
           .from("outcomes")
           .select(outcomeColumns)
           .eq("program_id", programId)
+          .is("archived_at", null)
           .order("code");
         assertNoSupabaseError(error);
         return ((data ?? []) as OutcomeRow[]).map(mapOutcome);
@@ -635,6 +684,14 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
         });
         assertNoSupabaseError(error);
         return mapOutcome(data as OutcomeRow);
+      },
+      /**
+       * Archivage réversible (pas de suppression) : voir
+       * supabase/migrations/20260829200000_archive_outcomes_and_assessment_modalities.sql.
+       */
+      async archiveOutcome(outcomeId) {
+        const { error } = await client.rpc("archive_outcome", { p_outcome_id: outcomeId });
+        assertNoSupabaseError(error);
       },
     },
     /**
@@ -691,7 +748,7 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
         assertNoSupabaseError(error);
       },
       async registerAsset(input: RegisterResourceAssetInput): Promise<RegisteredResourceAsset> {
-+        const { data, error } = await client.rpc("register_learning_resource_asset", {
+        const { data, error } = await client.rpc("register_learning_resource_asset", {
           p_resource_id: input.resourceId,
           p_kind: input.kind,
           p_bucket_name: input.bucketName,

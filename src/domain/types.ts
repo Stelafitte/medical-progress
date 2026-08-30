@@ -83,6 +83,12 @@ export interface Program extends Entity<ProgramId> {
   readonly institution: string;
   readonly annualLearnerEstimate: number;
   readonly config: ProgramConfig;
+  /**
+   * Etat en cours de conception (« Concepteur de programme »), avant
+   * finalisation et passage au pilotage. Objet libre serialise en JSON ;
+   * absent/null tant qu'aucun brouillon n'a ete enregistre.
+   */
+  readonly designDraft?: Record<string, unknown> | null;
 }
 
 export interface CurriculumVersion extends Entity<CurriculumVersionId> {
