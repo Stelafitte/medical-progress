@@ -103,6 +103,51 @@ export interface ProgramRepository {
   getCohort(id: CohortId): Promise<Cohort | undefined>;
   /** Crée une classe (promotion). Autorisation et unicité vérifiées côté serveur. */
   createCohort(input: CreateCohortInput): Promise<Cohort>;
+  /**
+   * Enregistre l'état en cours de conception du programme (« Concepteur de
+   * programme »), avant finalisation et passage au pilotage. `draft` est un
+   * objet libre sérialisable en JSON ; `null` efface le brouillon.
+   */
+  saveProgramDesignDraft(programId: ProgramId, draft: Record<string, unknown> | null): Promise<void>;
+  /**
+   * Analyse IA (Edge Function `analyze-program-objectives`) d'un texte
+   * d'objectifs pédagogiques : propose un référentiel candidat (connaissances
+   * & compétences + modalités d'évaluation). Ne crée RIEN — la validation et
+   * l'édition par le concepteur, puis la création effective, passent par
+   * `OutcomeRepository.createOutcome` / `AssessmentRepository.createAssessmentModality`,
+   * exactement comme un ajout manuel.
+   */
+  analyzeObjectivesForReferential(
+    programId: ProgramId,
+    text: string,
+  ): Promise<ProgramAiAnalysisResult>;
+}
+
+/** Un item de connaissance/compétence candidat, proposé par l'analyse IA. */
+export interface ProgramAiOutcomeSuggestion {
+  readonly label: string;
+  readonly domain: string;
+  readonly description: string;
+  readonly nature: OutcomeNature;
+  readonly targetMastery: MasteryLevel;
+  /** Passage du document source qui justifie cette proposition. */
+  readonly sourceExcerpt: string;
+}
+
+/** Une modalité d'évaluation candidate, proposée par l'analyse IA. */
+export interface ProgramAiAssessmentSuggestion {
+  readonly name: string;
+  readonly mode: AssessmentMode;
+  readonly subtype: AssessmentSubtype;
+  readonly usage: AssessmentUsage;
+  readonly notes: string;
+}
+
+export interface ProgramAiAnalysisResult {
+  readonly knowledgeItems: readonly ProgramAiOutcomeSuggestion[];
+  readonly assessmentModalities: readonly ProgramAiAssessmentSuggestion[];
+  /** true si le texte fourni dépassait la limite analysée (tronqué côté serveur). */
+  readonly truncated: boolean;
 }
 
 export interface PeopleRepository {
@@ -146,6 +191,12 @@ export interface OutcomeRepository {
   listOutcomeRelations(programId: ProgramId): Promise<readonly OutcomeRelation[]>;
   /** Crée une compétence ou une connaissance. Autorisation vérifiée côté serveur. */
   createOutcome(input: CreateOutcomeInput): Promise<Outcome>;
+  /**
+   * Retire une compétence/connaissance du programme sans la supprimer
+   * (archivage réversible) : elle disparaît des listes actives mais reste
+   * récupérable. Autorisation vérifiée côté serveur.
+   */
+  archiveOutcome(outcomeId: OutcomeId): Promise<void>;
 }
 
 export interface EvidenceRepository {
@@ -170,6 +221,11 @@ export interface CreateAssessmentModalityInput {
 export interface AssessmentRepository {
   listAssessmentModalities(programId: ProgramId): Promise<readonly AssessmentModality[]>;
   createAssessmentModality(input: CreateAssessmentModalityInput): Promise<AssessmentModality>;
+  /**
+   * Retire une modalité d'évaluation du programme sans la supprimer
+   * (archivage réversible). Autorisation vérifiée côté serveur.
+   */
+  archiveAssessmentModality(assessmentModalityId: string): Promise<void>;
 }
 
 export interface PlacementRepository {

@@ -46,6 +46,7 @@ describe("mapping du socle Supabase", () => {
       dpc_enabled: false,
       target_mastery: "proficient",
       locale: "fr-FR",
+      design_draft: null,
       created_at: "2026-01-01T00:00:00Z",
       updated_at: "2026-01-02T00:00:00Z",
     });
