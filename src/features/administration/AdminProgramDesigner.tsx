@@ -568,45 +568,6 @@ export function AdminProgramDesigner() {
   };
 
   /**
-   * Raccourci d'import réutilisé dans chaque bloc « ressource » du
-   * concepteur (connaissances, compétences, évaluations) : permet de
-   * réimporter un nouveau fichier à tout moment sans remonter en haut de
-   * page. Le texte extrait s'ajoute aux objectifs déjà présents.
-   */
-  const renderObjectivesImportShortcut = () => (
-    <div className="bg-muted/30 flex flex-wrap items-center gap-2 rounded-md border border-dashed p-2">
-      <Button
-        asChild
-        variant="outline"
-        size="sm"
-        className="min-h-9"
-        disabled={importingObjectives}
-      >
-        <label>
-          {importingObjectives ? (
-            <Loader2 className="me-1 size-4 animate-spin" aria-hidden />
-          ) : (
-            <FileUp className="me-1 size-4" aria-hidden />
-          )}
-          Importer un fichier (PDF, Word, texte ou archive ZIP)
-          <input
-            type="file"
-            accept=".pdf,application/pdf,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.txt,.md,text/plain,.zip,application/zip,application/x-zip-compressed"
-            className="sr-only"
-            disabled={importingObjectives}
-            onChange={(event) => void handleObjectivesFileChange(event)}
-          />
-        </label>
-      </Button>
-      <span className="text-muted-foreground text-xs">
-        {importingObjectives
-          ? "Lecture du fichier en cours…"
-          : "Le texte est ajouté aux objectifs pédagogiques ; relancez ensuite l'analyse IA du référentiel ci-dessus."}
-      </span>
-    </div>
-  );
-
-  /**
    * Retirer du programme les éléments sélectionnés. L'archivage est
    * réversible : ils disparaissent des listes actives mais restent
    * récupérables, aucune suppression définitive.
@@ -1089,7 +1050,6 @@ export function AdminProgramDesigner() {
                                   }}
                                 />
                               </div>
-                              {renderObjectivesImportShortcut()}
                               <div className="space-y-1.5">
                                 <p className="text-sm font-medium">Ajouter une compétence</p>
                                 <CompetenceCreationForm
@@ -1150,7 +1110,7 @@ export function AdminProgramDesigner() {
                               {renderAssociationsFor("knowledge")}
                               <div className="space-y-1.5">
                                 <p className="text-sm font-medium">
-                                  Importer une base de connaissances
+                                  Importer un corpus de connaissances
                                 </p>
                                 <CorpusImport
                                   target="knowledge"
@@ -1163,7 +1123,6 @@ export function AdminProgramDesigner() {
                                   }}
                                 />
                               </div>
-                              {renderObjectivesImportShortcut()}
                               <div className="space-y-1.5">
                                 <p className="text-sm font-medium">Ajouter une connaissance</p>
                                 <KnowledgeCreationForm
@@ -1204,7 +1163,6 @@ export function AdminProgramDesigner() {
                               }}
                             />
                           </div>
-                          {renderObjectivesImportShortcut()}
                           <div className="space-y-1.5">
                             <p className="text-sm font-medium">Ajouter une modalité d'évaluation</p>
                             <AssessmentModalityForm

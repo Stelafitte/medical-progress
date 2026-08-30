@@ -728,7 +728,7 @@ export function CorpusImport({
             ) : (
               <FileUp className="me-1 size-4" aria-hidden />
             )}
-            Importer un corpus (document ou archive ZIP)
+            Importer un corpus de {TARGET_LABELS[target]} (document ou archive ZIP)
             <input
               type="file"
               accept={ACCEPT}
