@@ -295,9 +295,51 @@ export const mockDataAccess: DataAccess = {
    */
   resources: (() => {
     let resources: LearningResource[] = [...fx.learningResources];
+    let texts: {
+      resourceId: string;
+      sourcePath: string;
+      segmentIndex: number;
+      content: string;
+    }[] = [];
     let counter = 0;
     return {
       listResources: (programId) => ok(resources.filter((r) => r.programId === programId)),
+      storeResourceText: (resourceId, sourcePath, segments) => {
+        // Remplacement, comme le RPC réel : un réimport ne doit pas empiler
+        // les segments d'une version précédente.
+        texts = texts.filter((t) => !(t.resourceId === resourceId && t.sourcePath === sourcePath));
+        const kept = segments.filter((segment) => segment.trim().length > 0);
+        texts = [
+          ...texts,
+          ...kept.map((content, index) => ({
+            resourceId,
+            sourcePath,
+            segmentIndex: index + 1,
+            content,
+          })),
+        ];
+        return ok(kept.length);
+      },
+      searchResourceTexts: (programId, query, limit) => {
+        // Recherche naïve : la maquette ne reproduit ni la racinisation ni la
+        // désaccentuation du serveur, elle sert à faire tourner l'écran.
+        const needle = query.trim().toLowerCase();
+        const byId = new Map(resources.map((r) => [r.id as string, r]));
+        return ok(
+          texts
+            .filter((t) => byId.get(t.resourceId)?.programId === programId)
+            .filter((t) => needle.length > 0 && t.content.toLowerCase().includes(needle))
+            .slice(0, limit ?? 10)
+            .map((t) => ({
+              resourceId: t.resourceId as LearningResource["id"],
+              resourceTitle: byId.get(t.resourceId)?.title ?? "",
+              sourcePath: t.sourcePath,
+              segmentIndex: t.segmentIndex,
+              content: t.content,
+              rank: 1,
+            })),
+        );
+      },
       createResource: (input) => {
         counter += 1;
         const created: LearningResource = {

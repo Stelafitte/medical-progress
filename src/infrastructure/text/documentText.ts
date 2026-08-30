@@ -317,3 +317,56 @@ export function corpusToText(documents: readonly CorpusDocument[]): string {
     .join("\n\n")
     .trim();
 }
+
+/**
+ * Découpe un texte en morceaux d'au plus `maxChars`, sur des frontières de
+ * phrase quand c'est possible.
+ *
+ * On coupe à la phrase, jamais au milieu d'un mot : un segment qui commence
+ * par une demi-phrase est illisible pour un lecteur comme pour un modèle, et
+ * une réponse citée depuis ce segment commencerait au milieu d'une idée.
+ *
+ * Sert deux usages avec la même fonction, à deux tailles différentes : de
+ * petits segments pour retrouver un passage, de grandes tranches pour tenir
+ * sous la limite d'entrée du service d'analyse.
+ */
+export function splitText(text: string, maxChars: number): string[] {
+  const clean = text.trim();
+  if (clean.length === 0) return [];
+  if (clean.length <= maxChars) return [clean];
+
+  // Frontières de phrase, en gardant la ponctuation avec la phrase qu'elle
+  // termine. Un texte sans ponctuation retombe sur une coupe par longueur.
+  const sentences = clean.match(/[^.!?]+[.!?]+[\s]*|[^.!?]+$/g) ?? [clean];
+
+  const chunks: string[] = [];
+  let current = "";
+  for (const sentence of sentences) {
+    if (sentence.length > maxChars) {
+      if (current.trim()) {
+        chunks.push(current.trim());
+        current = "";
+      }
+      for (let start = 0; start < sentence.length; start += maxChars) {
+        chunks.push(sentence.slice(start, start + maxChars).trim());
+      }
+      continue;
+    }
+    if (current.length + sentence.length > maxChars) {
+      if (current.trim()) chunks.push(current.trim());
+      current = sentence;
+    } else {
+      current += sentence;
+    }
+  }
+  if (current.trim()) chunks.push(current.trim());
+  return chunks.filter((chunk) => chunk.length > 0);
+}
+
+/** Taille des segments conservés en base : assez court pour qu'un passage
+ * retrouvé soit citable tel quel, assez long pour garder son contexte. */
+export const STORAGE_SEGMENT_CHARS = 4000;
+
+/** Taille des tranches envoyées à l'analyse : sous la limite d'entrée du
+ * service (20 000 caractères), avec de la marge. */
+export const ANALYSIS_SLICE_CHARS = 18000;

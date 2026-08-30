@@ -34,7 +34,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useDataAccess } from "@/application/session";
 import { requireCanonicalMediaType } from "@/infrastructure/storage/mediaTypes";
-import type { ResourceVisibility } from "@/application/ports/repositories";
+import type { ProgramAiAnalysisResult, ResourceVisibility } from "@/application/ports/repositories";
 import {
   ASSESSMENT_SUBTYPE_LABELS_FR,
   ASSESSMENT_USAGE_LABELS_FR,
@@ -48,8 +48,11 @@ import {
   COMPETENCE_NATURE_LABELS_FR,
 } from "@/domain/competenceDraft";
 import {
+  ANALYSIS_SLICE_CHARS,
+  STORAGE_SEGMENT_CHARS,
   isLegacyDoc,
   readDocumentCorpus,
+  splitText,
   type CorpusDocument,
 } from "@/infrastructure/text/documentText";
 import type {
@@ -131,6 +134,19 @@ function buildCorpusCodes(domains: readonly string[], alreadyUsed: ReadonlySet<s
     taken.add(code);
     return code;
   });
+}
+
+/** Clé de comparaison de deux propositions : minuscules, sans accents ni
+ * ponctuation. Un même concept revient d'une tranche à l'autre quand il est à
+ * cheval sur la coupure ; sans dédoublonnage, le concepteur relirait deux fois
+ * la même ligne. */
+function comparisonKey(label: string): string {
+  return label
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
 }
 
 let rowKeySeq = 0;
@@ -262,6 +278,12 @@ export function CorpusImport({
   );
   const documentsToDeposit = visibleRows.filter((row) => row.keepDocument).length;
   const documentsToAnalyze = visibleRows.filter((row) => row.analyze).length;
+  /** Un appel par TRANCHE, pas par document : un chapitre de 110 000
+   * caractères en demande sept. Annoncer le nombre de documents laisserait
+   * croire à un coût sept fois moindre. */
+  const analysisCalls = visibleRows
+    .filter((row) => row.analyze)
+    .reduce((total, row) => total + splitText(row.document.text, ANALYSIS_SLICE_CHARS).length, 0);
   const truncatedCount = visibleRows.filter((row) => row.truncated).length;
   const imagesAvailable = visibleRows.reduce((total, row) => total + row.document.images.length, 0);
   const imagesToDeposit = depositImages
@@ -351,10 +373,27 @@ export function CorpusImport({
         prev.map((r) => (r.key === row.key ? { ...r, status: "analyzing", error: null } : r)),
       );
       try {
-        const result = await dataAccess.programs.analyzeObjectivesForReferential(
-          programId,
-          row.document.text,
-        );
+        // La totalité du texte est analysée, tranche par tranche. Le service
+        // coupe au-delà de 20 000 caractères ; lui envoyer un chapitre entier
+        // revenait à n'analyser que son début, sans que rien ne le dise.
+        const slices = splitText(row.document.text, ANALYSIS_SLICE_CHARS);
+        const result = {
+          knowledgeItems: [] as ProgramAiAnalysisResult["knowledgeItems"][number][],
+          assessmentModalities: [] as ProgramAiAnalysisResult["assessmentModalities"][number][],
+          truncated: false,
+        };
+        for (const slice of slices) {
+          const partial = await dataAccess.programs.analyzeObjectivesForReferential(
+            programId,
+            slice,
+          );
+          result.knowledgeItems.push(...partial.knowledgeItems);
+          result.assessmentModalities.push(...partial.assessmentModalities);
+          // Une tranche calibrée sous la limite ne devrait jamais être
+          // tronquée ; si ça arrive, la limite du service a changé et il faut
+          // le voir plutôt que de perdre du texte en silence.
+          if (partial.truncated) result.truncated = true;
+        }
         analyzedRows.push({
           ...row,
           status: "analyzed",
@@ -362,8 +401,13 @@ export function CorpusImport({
           truncated: result.truncated,
           suggestions: [],
         });
+        // Dédoublonnage à l'échelle du document : un concept à cheval sur
+        // deux tranches est proposé deux fois par le service.
+        const seenInDocument = new Set<string>();
         if (target === "assessments") {
           result.assessmentModalities.forEach((item) => {
+            if (seenInDocument.has(comparisonKey(item.name))) return;
+            seenInDocument.add(comparisonKey(item.name));
             collected.push({
               rowIndex: index,
               item: {
@@ -387,6 +431,8 @@ export function CorpusImport({
               target === "knowledge" ? item.nature === "knowledge" : item.nature !== "knowledge",
             )
             .forEach((item) => {
+              if (seenInDocument.has(comparisonKey(item.label))) return;
+              seenInDocument.add(comparisonKey(item.label));
               collected.push({
                 rowIndex: index,
                 item: {
@@ -486,6 +532,7 @@ export function CorpusImport({
     let createdItems = 0;
     let createdResources = 0;
     let createdImages = 0;
+    let storedSegments = 0;
 
     // Détection locale des collisions de code AVANT tout appel réseau : la
     // contrainte SQL les rejetterait une par une, avec un message Postgres
@@ -601,6 +648,25 @@ export function CorpusImport({
         });
         createdResources += 1;
 
+        // Le TEXTE INTÉGRAL, découpé en segments, est conservé en base. Sans
+        // lui, exploiter un cours plus tard supposerait de retélécharger le
+        // binaire et de refaire l'extraction à chaque usage. Un échec ici ne
+        // remet pas en cause le dépôt du document : on le signale et on
+        // continue.
+        try {
+          const segments = splitText(row.document.text, STORAGE_SEGMENT_CHARS);
+          const stored = await dataAccess.resources.storeResourceText(
+            resource.id,
+            row.document.path,
+            segments,
+          );
+          storedSegments += stored;
+        } catch (err) {
+          failures.push(
+            `Texte de « ${row.document.path} » : ${err instanceof Error ? err.message : "échec de l'enregistrement"}`,
+          );
+        }
+
         // Les figures sont déposées comme assets du MÊME support : elles
         // restent auprès du document dont elles proviennent. L'échec d'une
         // image n'annule pas le dépôt du document — on le signale et on
@@ -639,9 +705,9 @@ export function CorpusImport({
       }
     }
 
-    if (createdItems > 0 || createdResources > 0) {
+    if (createdItems > 0 || createdResources > 0 || storedSegments > 0) {
       setSummary(
-        `${createdItems} ${TARGET_LABELS[target]} créée(s), ${createdResources} document(s) et ${createdImages} figure(s) déposés dans la médiathèque${
+        `${createdItems} ${TARGET_LABELS[target]} créée(s), ${createdResources} document(s) et ${createdImages} figure(s) déposés, ${storedSegments} segment(s) de texte conservés${
           failures.length > 0 ? " — voir les échecs ci-dessous" : "."
         }`,
       );
@@ -712,7 +778,7 @@ export function CorpusImport({
               )}
               {analyzing && analyzeProgress
                 ? `Analyse ${analyzeProgress.done}/${analyzeProgress.total}…`
-                : `Analyser ${documentsToAnalyze} document(s) avec l'IA`}
+                : `Analyser ${documentsToAnalyze} document(s) — ${analysisCalls} appel(s) IA`}
             </Button>
             <Button
               type="button"
@@ -752,9 +818,11 @@ export function CorpusImport({
             </Button>
           </div>
           <p className="text-muted-foreground text-xs">
-            Un appel d'analyse — donc un coût — par document coché. Les documents de moins de{" "}
-            {MIN_CHARS_FOR_ANALYSIS.toLocaleString("fr-FR")} caractères sont décochés d'office :
-            dans un site enregistré, ce sont presque toujours des pages d'index ou de navigation.
+            La totalité du texte est analysée, par tranches de{" "}
+            {ANALYSIS_SLICE_CHARS.toLocaleString("fr-FR")} caractères — un appel, donc un coût, par
+            tranche. Les documents de moins de {MIN_CHARS_FOR_ANALYSIS.toLocaleString("fr-FR")}{" "}
+            caractères sont décochés d'office : dans un site enregistré, ce sont presque toujours
+            des pages d'index ou de navigation.
           </p>
 
           <div className="space-y-1.5">
@@ -848,7 +916,7 @@ export function CorpusImport({
                         patchRow(row.key, { keepDocument: checked === true })
                       }
                     />
-                    Déposer ce document dans la médiathèque
+                    Déposer ce document et conserver son texte
                   </label>
                 </div>
 
@@ -1010,9 +1078,9 @@ export function CorpusImport({
 
       {truncatedCount > 0 ? (
         <p className="text-destructive text-xs">
-          {truncatedCount} document(s) dépassaient la limite de texte du service d'analyse et ont
-          été coupés : seul leur début a été analysé. Les connaissances de la fin du document
-          manquent donc.
+          {truncatedCount} document(s) ont été coupés par le service d'analyse alors que les
+          tranches sont calibrées pour tenir sous sa limite. Cela signifie que cette limite a changé
+          côté serveur : signalez-le, du texte est perdu.
         </p>
       ) : null}
 

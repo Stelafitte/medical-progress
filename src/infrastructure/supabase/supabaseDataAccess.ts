@@ -272,6 +272,15 @@ export function mapAssessmentModality(row: AssessmentModalityRow): AssessmentMod
   };
 }
 
+type ResourceTextRow = {
+  resource_id: string;
+  resource_title: string;
+  source_path: string;
+  segment_index: number;
+  content: string;
+  rank: number;
+};
+
 type OutcomeRow = {
   id: string;
   program_id: string;
@@ -1088,6 +1097,31 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
             startsAtSlide: chapter.starts_at_slide,
           })),
         };
+      },
+      async storeResourceText(resourceId, sourcePath, segments) {
+        const { data, error } = await client.rpc("store_learning_resource_text", {
+          p_resource_id: resourceId,
+          p_source_path: sourcePath,
+          p_segments: segments,
+        });
+        assertNoSupabaseError(error);
+        return typeof data === "number" ? data : 0;
+      },
+      async searchResourceTexts(programId, query, limit) {
+        const { data, error } = await client.rpc("search_learning_resource_texts", {
+          p_program_id: programId,
+          p_query: query,
+          p_limit: limit ?? 10,
+        });
+        assertNoSupabaseError(error);
+        return ((data ?? []) as ResourceTextRow[]).map((row) => ({
+          resourceId: row.resource_id as LearningResourceId,
+          resourceTitle: row.resource_title,
+          sourcePath: row.source_path,
+          segmentIndex: row.segment_index,
+          content: row.content,
+          rank: row.rank,
+        }));
       },
       async publishNarratedDeck(input: PublishNarratedDeckInput): Promise<PublishedNarratedDeck> {
         const { data, error } = await client.rpc("publish_narrated_deck", {

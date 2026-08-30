@@ -435,6 +435,16 @@ export interface TranscriptionProgress {
   readonly done: boolean;
 }
 
+/** Un passage retrouvé dans le texte intégral d'un support. */
+export interface ResourceTextMatch {
+  readonly resourceId: LearningResourceId;
+  readonly resourceTitle: string;
+  readonly sourcePath: string;
+  readonly segmentIndex: number;
+  readonly content: string;
+  readonly rank: number;
+}
+
 export interface LearningResourceRepository {
   listResources(programId: ProgramId): Promise<readonly LearningResource[]>;
   /** Crée un support (publication immédiate en v1). Autorisation vérifiée côté serveur. */
@@ -445,6 +455,32 @@ export interface LearningResourceRepository {
   uploadResourceFile(upload: UploadUrlResult, file: File): Promise<void>;
   /** Enregistre en base un fichier déjà téléversé via une URL signée. */
   registerAsset(input: RegisterResourceAssetInput): Promise<RegisteredResourceAsset>;
+  /**
+   * Conserve le TEXTE INTÉGRAL d'un document source, découpé en segments.
+   *
+   * C'est la matière des usages qui viennent après l'import : l'apprenant qui
+   * interroge un cours, l'interrogation automatique, la production de QCM.
+   * Ces usages lisent des passages — d'où le découpage, et non un bloc.
+   *
+   * Remplace ce qui existait pour ce `sourcePath` : un réimport doit donner le
+   * même état qu'un premier import.
+   */
+  storeResourceText(
+    resourceId: LearningResourceId,
+    sourcePath: string,
+    segments: readonly string[],
+  ): Promise<number>;
+  /**
+   * Passages du programme correspondant à une recherche. La normalisation
+   * (accents, racines) vit côté serveur, pour qu'elle soit exactement celle de
+   * l'index — sinon la recherche rendrait moins que ce qu'elle contient, sans
+   * erreur, ce qui est le pire des cas.
+   */
+  searchResourceTexts(
+    programId: ProgramId,
+    query: string,
+    limit?: number,
+  ): Promise<readonly ResourceTextMatch[]>;
   /** Publie un diaporama sonorisé complet (diapositives + chapitres). */
   publishNarratedDeck(input: PublishNarratedDeckInput): Promise<PublishedNarratedDeck>;
   /**
