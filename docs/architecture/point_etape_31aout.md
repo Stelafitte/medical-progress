@@ -249,12 +249,32 @@ avait tort, le code aussi — les alias ont été élargis (`terrain`, `lieu de 
 `service`, `affectation`) et le test renforcé pour vérifier les deux moitiés de
 l'échappement plutôt qu'une seule.
 
+## 11. La première classe, et une dette qu'elle révèle
+
+Créée dans le Concepteur : **« Promotion 2026-2027 : centurie A »**, DFASM-CARDIO, du
+**mardi 1ᵉʳ septembre au vendredi 20 novembre 2026** — 81 jours, 11,6 semaines.
+
+La date de fin initiale (1ᵉʳ novembre) ne couvrait que 8,9 semaines pour un stage annoncé à
+douze. Elle a été corrigée **par un `update` en base**, faute d'interface : le port ne porte
+que `createCohort`, ni modification ni suppression. Avec quatre promotions par an et des
+dates qui bougent, cette dette deviendra courante — `updateCohort` est à prévoir.
+
+La correction était sans risque, et le dry-run le disait : il comptait non seulement la
+ligne visée mais **ce qui en dépend** — zéro jalon, zéro carnet, zéro inscription. C'est la
+forme à garder pour un dry-run : compter les dépendances, pas seulement la cible. Une même
+modification faite après l'ouverture d'un carnet aurait laissé sa période figée à l'ancienne
+date, puisqu'elle est recopiée à la création.
+
+Le rétroplanning à venir se calera sur ces onze semaines et demie : un jalon « semaine 4 »
+tombe au 29 septembre, un « semaine 11 » au 17 novembre.
+
 ## Ce que la journée laisse ouvert
 
 1. Bloc **Rétroplanning** du Concepteur — c'est là que la conception se pilotera.
 3. Écran mobile de l'étudiant.
 4. Rattacher les groupes d'encadrement à l'import (colonnes Groupe et Terrain lues, non appliquées).
 5. Doublon « Éducation thérapeutique », à trancher puis archiver.
+6. `updateCohort` : modifier ou supprimer une classe depuis l'interface.
 6. Relance de transcription sur un cours déjà publié : promise à l'écran, absente du code.
 7. Module 6 à republier avec le rognage vidéo corrigé — **mis en pause par Stef**.
 8. Bruit CRLF/LF : `git status` montre 41 fichiers et 8866 lignes +/− identiques.
