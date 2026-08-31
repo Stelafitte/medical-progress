@@ -52,10 +52,11 @@ import {
   ScopeNotice,
   StatCard,
 } from "@/features/professional/mock-ui";
+import { RealRosterImportPanel } from "@/features/administration/RealRosterImportPanel";
 import { useDataAccess, useSession } from "@/application/session";
 import { setDirectoryState, useDirectoryState } from "@/application/directoryStore";
 import { ROLE_LABELS_FR } from "@/domain/roles";
-import type { RoleName } from "@/domain/types";
+import type { Cohort, CohortId, RoleName } from "@/domain/types";
 import {
   ROSTER_COLUMNS,
   ROSTER_COLUMN_LABELS_FR,
@@ -198,6 +199,7 @@ function RealPeopleEnrollmentsView() {
   const dataAccess = useDataAccess();
 
   const [people, setPeople] = useState<readonly PendingPerson[]>([]);
+  const [cohorts, setCohorts] = useState<readonly Cohort[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [sendingId, setSendingId] = useState<PendingPersonId | null>(null);
@@ -206,8 +208,12 @@ function RealPeopleEnrollmentsView() {
     setLoading(true);
     setLoadError(null);
     try {
-      const rows = await dataAccess.peopleStaging.listPendingPeople(activeProgram.id);
+      const [rows, cohortRows] = await Promise.all([
+        dataAccess.peopleStaging.listPendingPeople(activeProgram.id),
+        dataAccess.programs.listCohorts(activeProgram.id),
+      ]);
       setPeople(rows);
+      setCohorts(cohortRows);
     } catch (reason) {
       setLoadError(reason instanceof Error ? reason.message : "Chargement impossible.");
     } finally {
@@ -250,9 +256,11 @@ function RealPeopleEnrollmentsView() {
 
       <ScopeNotice>
         Périmètre : {activeProgram.name}. Cette vue lit et écrit pour de vrai dans Supabase (table{" "}
-        <code>people</code>, décision D94). L'import groupé, l'affectation à une cohorte, le retrait
-        et l'archivage ne sont pas encore raccordés en mode réel : aucune cohorte n'existe encore
-        pour ce programme, ils suivront une fois ce prérequis créé.
+        <code>people</code>, décision D94). <strong>La promotion choisie ici décide de tout</strong>{" "}
+        : à la première connexion de la personne, elle seule déclenche la création de l'inscription
+        et du rôle apprenant. Sans elle, le compte s'active mais l'étudiant ne voit aucun programme.
+        L'import groupé lit désormais pour de vrai un CSV ou un classeur Excel. Le retrait et
+        l'archivage ne sont pas encore raccordés en mode réel.
       </ScopeNotice>
 
       {loadError ? (
@@ -268,8 +276,16 @@ function RealPeopleEnrollmentsView() {
         <StatCard label="Activées" value={activatedCount} hint="première connexion effectuée" />
       </div>
 
+      <RealRosterImportPanel
+        programId={activeProgram.id}
+        cohorts={cohorts}
+        existingEmails={people.map((p) => p.loginEmail)}
+        onImported={refresh}
+      />
+
       <RealIndividualForm
         programId={activeProgram.id}
+        cohorts={cohorts}
         dataAccess={dataAccess}
         onCreated={refresh}
       />
@@ -290,6 +306,7 @@ function RealPeopleEnrollmentsView() {
                 <TableRow>
                   <TableHead>Nom</TableHead>
                   <TableHead>E-mail</TableHead>
+                  <TableHead>Promotion</TableHead>
                   <TableHead>Statut</TableHead>
                   <TableHead>Créée le</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -300,6 +317,19 @@ function RealPeopleEnrollmentsView() {
                   <TableRow key={person.id}>
                     <TableCell className="font-medium">{fullNameOfPendingPerson(person)}</TableCell>
                     <TableCell className="break-all">{person.loginEmail}</TableCell>
+                    <TableCell>
+                      {person.intendedCohortId ? (
+                        cohorts.find((c) => c.id === person.intendedCohortId)?.label ??
+                        person.intendedCohortId
+                      ) : (
+                        <span
+                          className="text-destructive"
+                          title="Sans promotion, l'activation ne créera ni inscription ni rôle apprenant : la personne ne verra aucun programme."
+                        >
+                          aucune
+                        </span>
+                      )}
+                    </TableCell>
                     <TableCell>
                       <Badge
                         variant={person.status === "cancelled" ? "destructive" : "outline"}
@@ -339,12 +369,16 @@ function RealPeopleEnrollmentsView() {
   );
 }
 
+const NO_COHORT = "__none__";
+
 function RealIndividualForm({
   programId,
+  cohorts,
   dataAccess,
   onCreated,
 }: {
   programId: string;
+  cohorts: readonly Cohort[];
   dataAccess: ReturnType<typeof useDataAccess>;
   onCreated: () => void | Promise<void>;
 }) {
@@ -352,6 +386,7 @@ function RealIndividualForm({
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [institutionalId, setInstitutionalId] = useState("");
+  const [cohortId, setCohortId] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -367,14 +402,24 @@ function RealIndividualForm({
         lastName,
         loginEmail: email,
         ...(institutionalId ? { institutionalId } : {}),
+        ...(cohortId && cohortId !== NO_COHORT
+          ? { intendedCohortId: cohortId as CohortId }
+          : {}),
       });
+      const cohortLabel =
+        cohortId && cohortId !== NO_COHORT
+          ? cohorts.find((c) => c.id === cohortId)?.label
+          : undefined;
       setSuccess(
-        `Personne créée pour de vrai (statut « en attente d'envoi ») : ${created.firstName} ${created.lastName}.`,
+        cohortLabel
+          ? `${created.firstName} ${created.lastName} est créée dans le sas, rattachée à « ${cohortLabel} ». Son inscription et son rôle apprenant seront créés à sa première connexion.`
+          : `${created.firstName} ${created.lastName} est créée dans le sas, SANS promotion : à sa première connexion, son compte s'activera mais aucune inscription ne sera créée et elle ne verra aucun programme.`,
       );
       setFirstName("");
       setLastName("");
       setEmail("");
       setInstitutionalId("");
+      setCohortId("");
       await onCreated();
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Création impossible.");
@@ -427,6 +472,36 @@ function RealIndividualForm({
             onChange={(e) => setInstitutionalId(e.target.value)}
           />
         </div>
+        <div className="space-y-2 sm:col-span-2">
+          <Label htmlFor="real-dir-cohort">Promotion</Label>
+          <Select value={cohortId} onValueChange={setCohortId}>
+            <SelectTrigger id="real-dir-cohort" className="min-h-11">
+              <SelectValue placeholder="Choisir une promotion…" />
+            </SelectTrigger>
+            <SelectContent>
+              {cohorts.map((cohort) => (
+                <SelectItem key={cohort.id} value={cohort.id}>
+                  {cohort.label}
+                </SelectItem>
+              ))}
+              <SelectItem value={NO_COHORT}>
+                Aucune — membre de l'équipe, pas un étudiant
+              </SelectItem>
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">
+            C'est la promotion qui fait l'étudiant : à la première connexion, elle seule déclenche
+            la création de l'inscription et du rôle apprenant. « Aucune » crée bien le compte, mais
+            la personne ne verra aucun programme tant qu'un rôle ne lui aura pas été accordé
+            autrement.
+          </p>
+          {cohorts.length === 0 ? (
+            <p className="text-xs text-destructive">
+              Aucune promotion n'existe pour ce programme : créez-en une avant d'ajouter des
+              étudiants, sinon leur compte s'activera dans le vide.
+            </p>
+          ) : null}
+        </div>
       </div>
 
       {error ? (
@@ -442,7 +517,7 @@ function RealIndividualForm({
         type="button"
         size="sm"
         className="min-h-11"
-        disabled={submitting || !firstName || !lastName || !email}
+        disabled={submitting || !firstName || !lastName || !email || !cohortId}
         onClick={() => void submit()}
       >
         <UserPlus className="mr-2 size-4" aria-hidden />

@@ -11,6 +11,13 @@
 export const ROSTER_COLUMNS = [
   "lastName",
   "firstName",
+  /**
+   * Nom et prénom réunis dans une seule colonne — cas très fréquent des
+   * exports de scolarité (« DUPONT Jean », « Dupont, Jean »). Reconnue à la
+   * lecture et découpée ; jamais proposée dans le modèle de fichier, où l'on
+   * préfère deux colonnes distinctes.
+   */
+  "fullName",
   "email",
   "studentNumber",
   "group",
@@ -22,6 +29,7 @@ export type RosterColumn = (typeof ROSTER_COLUMNS)[number];
 export const ROSTER_COLUMN_LABELS_FR: Record<RosterColumn, string> = {
   lastName: "Nom",
   firstName: "Prénom",
+  fullName: "Nom complet (nom et prénom réunis)",
   email: "Email",
   studentNumber: "N° étudiant",
   group: "Groupe",
@@ -33,10 +41,36 @@ export const ROSTER_REQUIRED_COLUMNS: readonly RosterColumn[] = ["lastName", "fi
 
 /** En-têtes acceptés pour la reconnaissance automatique des colonnes. */
 const HEADER_ALIASES: Record<RosterColumn, readonly string[]> = {
-  lastName: ["nom", "nom de famille", "lastname", "last name", "name"],
+  lastName: ["nom", "nom de famille", "lastname", "last name", "nom usuel"],
   firstName: ["prenom", "prénom", "firstname", "first name"],
-  email: ["email", "e-mail", "mail", "courriel", "adresse email"],
+  fullName: [
+    "nom complet",
+    "nom et prenom",
+    "nom prenom",
+    "prenom nom",
+    "etudiant",
+    "nom de l etudiant",
+    "identite",
+    "full name",
+    "name",
+  ],
+  email: [
+    "email",
+    "e-mail",
+    "mail",
+    "courriel",
+    "adresse email",
+    "adresse electronique",
+    "adresse mail",
+    "mail institutionnel",
+    "email institutionnel",
+    "login",
+    "identifiant",
+  ],
   studentNumber: [
+    "numero d etudiant",
+    "numero d etudiant ine",
+    "n° d'etudiant",
     "n etudiant",
     "n° etudiant",
     "numero etudiant",
@@ -46,8 +80,13 @@ const HEADER_ALIASES: Record<RosterColumn, readonly string[]> = {
     "ine",
     "student number",
   ],
-  group: ["groupe", "group", "sous-groupe", "td", "classe"],
+  group: ["groupe", "group", "sous groupe", "sous-groupe", "td", "classe", "brigade"],
   placementWish: [
+    "terrain",
+    "terrain de stage",
+    "lieu de stage",
+    "service",
+    "affectation",
     "terrain de stage souhaite",
     "terrain de stage souhaité",
     "stage souhaite",
@@ -63,6 +102,8 @@ export interface ParsedRosterFile {
   readonly delimiter: string;
   readonly headers: readonly string[];
   readonly rows: readonly (readonly string[])[];
+  /** Ligne du fichier où l'en-tête a été reconnu (1 = première ligne). */
+  readonly headerLine: number;
 }
 
 export type RosterIssueLevel = "error" | "warning";
@@ -80,6 +121,10 @@ export interface RosterCandidate {
   readonly lastName: string;
   readonly firstName: string;
   readonly email: string;
+  /** Adresse composée par le motif, absente du fichier : à faire vérifier. */
+  readonly emailDerived?: boolean;
+  /** Nom et prénom déduits d'une colonne unique, sans signal d'ordre sûr. */
+  readonly nameOrderAssumed?: boolean;
   readonly studentNumber?: string | undefined;
   readonly group?: string | undefined;
   readonly placementWish?: string | undefined;
@@ -90,6 +135,13 @@ export interface RosterCandidate {
 export interface RosterImportPreview {
   readonly mapping: RosterColumnMapping;
   readonly missingRequiredColumns: readonly RosterColumn[];
+  /** Ce que la lecture a décidé toute seule, à montrer pour qu'on puisse la corriger. */
+  readonly delimiter: string;
+  readonly headerLine: number;
+  /** Adresses fabriquées par le motif : l'import doit les faire confirmer. */
+  readonly derivedEmailCount: number;
+  /** Au moins une ligne dont l'ordre nom/prénom a été supposé. */
+  readonly nameOrderAssumed: boolean;
   readonly candidates: readonly RosterCandidate[];
   readonly readyCount: number;
   readonly duplicateCount: number;
@@ -102,6 +154,100 @@ export interface RosterImportPreview {
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
+export interface SplitName {
+  readonly lastName: string;
+  readonly firstName: string;
+  /** Vrai quand l'ordre nom/prénom a été supposé faute de signal. */
+  readonly assumed: boolean;
+}
+
+/**
+ * Sépare « nom » et « prénom » d'une colonne unique.
+ *
+ * Trois signaux, du plus sûr au plus faible :
+ *   1. une virgule — « Dupont, Jean » : avant = nom, après = prénom ;
+ *   2. des CAPITALES — « DUPONT Jean » ou « Jean DUPONT » : le bloc en
+ *      capitales est le nom, où qu'il soit ;
+ *   3. rien de tout cela — on suppose l'ordre administratif français
+ *      « NOM Prénom » et on le SIGNALE, plutôt que de deviner en silence.
+ *
+ * Les particules (de, du, van, le…) restent collées au nom qui suit.
+ */
+export function splitFullName(value: string): SplitName {
+  const raw = value.trim().replace(/\s+/g, " ");
+  if (raw === "") return { lastName: "", firstName: "", assumed: false };
+
+  const comma = raw.indexOf(",");
+  if (comma >= 0) {
+    return {
+      lastName: raw.slice(0, comma).trim(),
+      firstName: raw.slice(comma + 1).trim(),
+      assumed: false,
+    };
+  }
+
+  const tokens = raw.split(" ");
+  if (tokens.length === 1) return { lastName: raw, firstName: "", assumed: false };
+
+  const isUpper = (t: string) => t.length > 1 && t === t.toLocaleUpperCase("fr-FR") && /\p{L}/u.test(t);
+  const upper = tokens.filter(isUpper);
+  if (upper.length > 0 && upper.length < tokens.length) {
+    return {
+      lastName: tokens.filter(isUpper).join(" "),
+      firstName: tokens.filter((t) => !isUpper(t)).join(" "),
+      assumed: false,
+    };
+  }
+
+  // Aucun signal : ordre administratif français, et on le dit.
+  const PARTICLES = new Set(["de", "du", "des", "le", "la", "van", "von", "d", "di", "el"]);
+  let cut = 1;
+  while (cut < tokens.length && PARTICLES.has(tokens[cut - 1]!.toLowerCase().replace(/'$/, ""))) {
+    cut += 1;
+  }
+  return {
+    lastName: tokens.slice(0, cut).join(" "),
+    firstName: tokens.slice(cut).join(" "),
+    assumed: true,
+  };
+}
+
+/** Réduit un nom à ce qui peut entrer dans une adresse e-mail. */
+function emailSlug(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/['’]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+/**
+ * Compose une adresse à partir d'un motif, quand le fichier n'en porte pas.
+ * Jetons reconnus : {prenom} {nom} {p} (initiale du prénom) {numero}.
+ *
+ * Une adresse ainsi fabriquée n'est JAMAIS une adresse vérifiée : elle est
+ * marquée comme déduite pour que l'interface la fasse valider avant l'import.
+ */
+export function applyEmailPattern(
+  pattern: string,
+  parts: { firstName: string; lastName: string; studentNumber?: string | undefined },
+): string {
+  const first = emailSlug(parts.firstName);
+  const last = emailSlug(parts.lastName);
+  return pattern
+    .trim()
+    .replace(/\{prenom\}/gi, first)
+    .replace(/\{nom\}/gi, last)
+    .replace(/\{p\}/gi, first.slice(0, 1))
+    .replace(/\{numero\}/gi, emailSlug(parts.studentNumber ?? ""))
+    .toLowerCase();
+}
+
+export const EMAIL_PATTERN_PLACEHOLDER = "{prenom}.{nom}@etu.u-bordeaux.fr";
+
 function normaliseHeader(value: string): string {
   return value
     .trim()
@@ -112,18 +258,48 @@ function normaliseHeader(value: string): string {
     .replace(/\s+/g, " ");
 }
 
-function detectDelimiter(headerLine: string): string {
+/**
+ * Séparateur décidé sur PLUSIEURS lignes, pas sur la seule première.
+ *
+ * Une ligne d'en-tête courte (« Nom;Prénom ») suivie de données contenant des
+ * virgules dans un libellé suffisait à faire choisir la virgule. On retient
+ * donc le séparateur qui découpe le plus de colonnes ET le plus régulièrement :
+ * un vrai séparateur donne le même nombre de cellules à chaque ligne.
+ */
+function detectDelimiter(lines: readonly string[]): string {
   const candidates = [";", "\t", ",", "|"];
+  const sample = lines.slice(0, 8);
   let best = ";";
-  let bestCount = -1;
+  let bestScore = -1;
   for (const c of candidates) {
-    const count = headerLine.split(c).length - 1;
-    if (count > bestCount) {
+    const counts = sample.map((l) => splitLine(l, c).length);
+    const columns = Math.max(...counts, 0);
+    if (columns < 2) continue;
+    const regular = counts.filter((n) => n === columns).length;
+    // La régularité prime : mieux vaut 3 colonnes sur toutes les lignes que 7
+    // sur une seule.
+    const score = regular * 100 + columns;
+    if (score > bestScore) {
       best = c;
-      bestCount = count;
+      bestScore = score;
     }
   }
-  return bestCount <= 0 ? ";" : best;
+  return bestScore < 0 ? ";" : best;
+}
+
+/**
+ * Combien de colonnes de cette ligne ressemblent à des en-têtes connus ?
+ * Sert à trouver la vraie ligne d'en-tête quand le fichier commence par un
+ * titre, une date d'export ou une ligne vide — le cas ordinaire des exports
+ * de scolarité.
+ */
+function headerScore(cells: readonly string[]): number {
+  const normalised = cells.map(normaliseHeader);
+  let score = 0;
+  for (const column of ROSTER_COLUMNS) {
+    if (normalised.some((h) => HEADER_ALIASES[column].includes(h))) score += 1;
+  }
+  return score;
 }
 
 /** Découpe une ligne en respectant les guillemets doubles. */
@@ -153,18 +329,37 @@ function splitLine(line: string, delimiter: string): string[] {
   return cells;
 }
 
+/** Nombre de lignes examinées pour retrouver l'en-tête. */
+const HEADER_SEARCH_DEPTH = 10;
+
 export function parseDelimitedRoster(text: string): ParsedRosterFile {
   const lines = text
     .replace(/^\uFEFF/, "")
     .split(/\r\n|\r|\n/)
     .filter((l) => l.trim().length > 0);
 
-  if (lines.length === 0) return { delimiter: ";", headers: [], rows: [] };
+  if (lines.length === 0) return { delimiter: ";", headers: [], rows: [], headerLine: 1 };
 
-  const delimiter = detectDelimiter(lines[0]!);
-  const headers = splitLine(lines[0]!, delimiter);
-  const rows = lines.slice(1).map((l) => splitLine(l, delimiter));
-  return { delimiter, headers, rows };
+  const delimiter = detectDelimiter(lines);
+
+  // L'en-tête n'est pas toujours la première ligne : un export commence
+  // souvent par un titre, un horodatage ou une ligne de service. On retient,
+  // parmi les premières lignes, celle qui reconnaît le plus de colonnes. À
+  // égalité, la plus haute gagne — donc le comportement d'origine quand rien
+  // ne se distingue.
+  let headerIndex = 0;
+  let bestScore = -1;
+  for (let i = 0; i < Math.min(lines.length, HEADER_SEARCH_DEPTH); i += 1) {
+    const score = headerScore(splitLine(lines[i]!, delimiter));
+    if (score > bestScore) {
+      bestScore = score;
+      headerIndex = i;
+    }
+  }
+
+  const headers = splitLine(lines[headerIndex]!, delimiter);
+  const rows = lines.slice(headerIndex + 1).map((l) => splitLine(l, delimiter));
+  return { delimiter, headers, rows, headerLine: headerIndex + 1 };
 }
 
 export function detectColumnMapping(headers: readonly string[]): RosterColumnMapping {
@@ -183,13 +378,30 @@ export interface BuildRosterPreviewInput {
   readonly mapping?: RosterColumnMapping;
   /** Emails déjà inscrits dans le programme, pour signaler les doublons. */
   readonly existingEmails?: readonly string[];
+  /**
+   * Motif de composition des adresses, utilisé UNIQUEMENT quand le fichier
+   * n'en fournit pas. Exemple : « {prenom}.{nom}@etu.u-bordeaux.fr ».
+   */
+  readonly emailPattern?: string;
 }
 
 export function buildRosterPreview(input: BuildRosterPreviewInput): RosterImportPreview {
   const parsed = parseDelimitedRoster(input.text);
   const mapping = { ...detectColumnMapping(parsed.headers), ...(input.mapping ?? {}) };
-  const missingRequiredColumns = ROSTER_REQUIRED_COLUMNS.filter((c) => mapping[c] === undefined);
+  const emailPattern = (input.emailPattern ?? "").trim();
   const existing = new Set((input.existingEmails ?? []).map((e) => e.trim().toLowerCase()));
+
+  // Deux assouplissements par rapport à la règle « ces trois colonnes ou rien » :
+  //   * une colonne « nom complet » remplace nom + prénom ;
+  //   * un motif d'adresse remplace la colonne e-mail.
+  const hasName =
+    mapping.fullName !== undefined ||
+    (mapping.lastName !== undefined && mapping.firstName !== undefined);
+  const hasEmail = mapping.email !== undefined || emailPattern !== "";
+  const missingRequiredColumns = ROSTER_REQUIRED_COLUMNS.filter((c) => {
+    if (c === "email") return !hasEmail;
+    return !hasName;
+  });
 
   const issues: RosterIssue[] = [];
   if (parsed.headers.length === 0) {
@@ -215,23 +427,58 @@ export function buildRosterPreview(input: BuildRosterPreviewInput): RosterImport
     };
 
     const rowIssues: RosterIssue[] = [];
-    const lastName = cell("lastName");
-    const firstName = cell("firstName");
-    const email = cell("email");
-    const emailKey = email.toLowerCase();
 
-    for (const column of ROSTER_REQUIRED_COLUMNS) {
-      if (mapping[column] !== undefined && cell(column) === "") {
+    // Nom et prénom : deux colonnes si elles existent, sinon découpage de la
+    // colonne unique.
+    let lastName = cell("lastName");
+    let firstName = cell("firstName");
+    let nameOrderAssumed = false;
+    if (mapping.fullName !== undefined && (lastName === "" || firstName === "")) {
+      const split = splitFullName(cell("fullName"));
+      if (lastName === "") lastName = split.lastName;
+      if (firstName === "") firstName = split.firstName;
+      nameOrderAssumed = split.assumed;
+    }
+
+    // Adresse : celle du fichier si elle existe, sinon celle que compose le
+    // motif. Une adresse composée est marquée, jamais confondue avec une vraie.
+    let email = cell("email");
+    let emailDerived = false;
+    if (email === "" && emailPattern !== "") {
+      email = applyEmailPattern(emailPattern, {
+        firstName,
+        lastName,
+        studentNumber: cell("studentNumber") || undefined,
+      });
+      emailDerived = email !== "";
+      if (emailDerived) {
         rowIssues.push({
           line,
-          column,
-          level: "error",
-          message: `${ROSTER_COLUMN_LABELS_FR[column]} manquant.`,
+          column: "email",
+          level: "warning",
+          message: "Adresse composée par le motif : à vérifier avant l'import.",
         });
       }
     }
-    if (email !== "" && !EMAIL_RE.test(email)) {
-      rowIssues.push({ line, column: "email", level: "error", message: "Email invalide." });
+    const emailKey = email.toLowerCase();
+
+    if (lastName === "") {
+      rowIssues.push({ line, column: "lastName", level: "error", message: "Nom manquant." });
+    }
+    if (firstName === "") {
+      rowIssues.push({ line, column: "firstName", level: "error", message: "Prénom manquant." });
+    }
+    if (email === "") {
+      rowIssues.push({ line, column: "email", level: "error", message: "Email manquant." });
+    } else if (!EMAIL_RE.test(email)) {
+      rowIssues.push({
+        line,
+        column: "email",
+        level: "error",
+        message: emailDerived
+          ? "Adresse composée invalide : vérifiez le motif."
+          : "Email invalide.",
+      });
     }
 
     let status: RosterCandidate["status"] = "ready";
@@ -265,6 +512,8 @@ export function buildRosterPreview(input: BuildRosterPreviewInput): RosterImport
       studentNumber: cell("studentNumber") || undefined,
       group: cell("group") || undefined,
       placementWish: cell("placementWish") || undefined,
+      ...(emailDerived ? { emailDerived: true } : {}),
+      ...(nameOrderAssumed ? { nameOrderAssumed: true } : {}),
       status,
       issues: rowIssues,
     });
@@ -272,9 +521,23 @@ export function buildRosterPreview(input: BuildRosterPreviewInput): RosterImport
 
   const readyCount = candidates.filter((c) => c.status === "ready").length;
 
+  if (candidates.some((c) => c.nameOrderAssumed)) {
+    issues.push({
+      line: parsed.headerLine,
+      level: "warning",
+      message:
+        "Nom et prénom lus dans une seule colonne, sans majuscules ni virgule pour trancher : " +
+        "l'ordre « NOM Prénom » a été supposé. Vérifiez la prévisualisation.",
+    });
+  }
+
   return {
     mapping,
     missingRequiredColumns,
+    delimiter: parsed.delimiter,
+    headerLine: parsed.headerLine,
+    derivedEmailCount: candidates.filter((c) => c.emailDerived).length,
+    nameOrderAssumed: candidates.some((c) => c.nameOrderAssumed),
     candidates,
     readyCount,
     duplicateCount: candidates.filter((c) => c.status === "duplicate_in_file").length,
@@ -286,8 +549,17 @@ export function buildRosterPreview(input: BuildRosterPreviewInput): RosterImport
 }
 
 /** Modèle de fichier proposé au téléchargement dans l'interface. */
+const TEMPLATE_COLUMNS: readonly RosterColumn[] = [
+  "lastName",
+  "firstName",
+  "email",
+  "studentNumber",
+  "group",
+  "placementWish",
+];
+
 export const ROSTER_TEMPLATE_CSV = [
-  ROSTER_COLUMNS.map((c) => ROSTER_COLUMN_LABELS_FR[c]).join(";"),
+  TEMPLATE_COLUMNS.map((c) => ROSTER_COLUMN_LABELS_FR[c]).join(";"),
   "Benali;Karim;karim.benali@example.org;20250114;Groupe A;CHU Nord — Cardiologie",
   "Duval;Léa;lea.duval@example.org;20250115;Groupe B;CHU Sud — Échocardiographie",
 ].join("\n");
