@@ -178,11 +178,82 @@ Une dette assumée : la validation porte désormais une période, que `StageLogV
 n'a pas encore dans le domaine ; et `listLogsToValidate(placementAssignmentIds)` ne
 correspond plus au modèle par groupes. Deux ajustements à faire au câblage.
 
+## 9. Le verrou d'inscription, et ce qu'il cachait
+
+Le goulot identifié au §3 : `PeopleEnrollmentsView` appelait `createPendingPerson` **sans
+`intendedCohortId`**, donc aucun étudiant n'était créable par l'interface. Le champ existait
+partout — port, adaptateur, colonne, déclencheur — sauf à l'écran.
+
+**Corrigé** : un champ « Promotion » obligatoire, avec une option explicite « Aucune —
+membre de l'équipe, pas un étudiant » ; le bouton reste désactivé tant que rien n'est
+tranché ; le message de succès annonce ce qui va se passer, y compris dans le cas sans
+promotion ; et une colonne « Promotion » dans la liste, en rouge quand elle manque, pour
+repérer les personnes déjà créées dans le vide.
+
+**Ce que la vérification a révélé, et qui comptait plus** : la table `cohorts` était
+**vide pour toute la base**. Aucune promotion, aucun programme. Le champ aurait affiché une
+liste vide. Or le rétroplanning est ancré sur `cohorts.starts_on`, les groupes
+d'encadrement appartiennent à une cohorte, l'inscription d'un étudiant aussi : **sans
+promotion, rien de ce qui a été construit aujourd'hui ne peut exister**. Le formulaire de
+création existait déjà, monté dans le Concepteur ; il n'avait simplement jamais servi.
+
+Leçon de méthode : le champ manquant était visible en lisant le code, la table vide ne
+l'était qu'en interrogeant la base. Les deux étaient bloquants ; seul le second était
+invisible.
+
+## 10. L'import d'une liste d'étudiants, adapté au fichier réel
+
+Stef ne sait pas encore sous quel format la scolarité enverra sa liste. Le lecteur a donc
+été rendu tolérant, en trois morceaux.
+
+**A — La lecture adaptative** (`src/domain/cohortRoster.ts`, domaine pur)
+
+- **l'en-tête est cherché** dans les dix premières lignes, celle qui reconnaît le plus de
+  colonnes gagne : un fichier commençant par un titre et un horodatage ne casse plus rien ;
+- **le séparateur est choisi sur la régularité**, pas sur le nombre brut d'occurrences — un
+  libellé de terrain plein de virgules ne fait plus élire la virgule ;
+- **nom et prénom dans une colonne unique** : la virgule tranche, sinon les capitales
+  (« DUPONT Jean » comme « Léa DUVAL »), sinon l'ordre « NOM Prénom » est supposé **et
+  signalé**. Les particules restent avec le nom ;
+- **motif d'adresse** quand le fichier n'en porte pas : `{prenom}`, `{nom}`, `{p}`,
+  `{numero}`. Décision de Stef, prise contre la recommandation de refuser — donc encadrée :
+  chaque adresse composée porte un avertissement, est comptée à part
+  (`derivedEmailCount`), et l'import exige une confirmation explicite. Une adresse présente
+  dans le fichier n'est jamais remplacée.
+
+**B — Excel sans nouvelle dépendance** (`src/infrastructure/text/rosterFile.ts`)
+
+Un `.xlsx` est une archive ZIP de XML, et **`fflate` est déjà une dépendance** (elle sert au
+`.docx` et au `.pptx`). Chaînes partagées résolues, cellules vides remises à leur colonne
+d'après leur référence — une ligne ne se décale pas parce qu'un numéro manque.
+
+S'y ajoute **l'encodage** : un CSV exporté d'un Excel français est en Windows-1252, et lu en
+UTF-8 « Benoît » devient illisible sans que rien ne prévienne. Le fichier est décodé en
+UTF-8 strict, puis redécodé en Windows-1252 si ça échoue. On ne répare jamais un texte déjà
+décodé — on repart des octets.
+
+**C — L'écran réel** (`RealRosterImportPanel.tsx`)
+
+Il **montre ce qu'il a deviné** — « Lu comme classeur Excel, séparateur « ; », en-tête ligne
+3 » — et laisse corriger la correspondance des colonnes. La vraie garantie n'est pas la
+détection, qui ne couvrira jamais tous les cas, mais ce tableau de correspondance manuel.
+
+Limite connue : les colonnes **Groupe** et **Terrain** sont lues et affichées mais **pas
+appliquées**. Un étudiant du sas n'a pas encore d'inscription — il n'en aura une qu'à sa
+première connexion — et un groupe d'encadrement se rattache à une inscription. Le
+rattachement se fera depuis le bloc Stage du Concepteur.
+
+**657 tests au vert**, dont 24 nouveaux. Un échec au premier passage, instructif : il
+portait sur une colonne d'en-tête « Terrain » que les alias ne reconnaissaient pas. Le test
+avait tort, le code aussi — les alias ont été élargis (`terrain`, `lieu de stage`,
+`service`, `affectation`) et le test renforcé pour vérifier les deux moitiés de
+l'échappement plutôt qu'une seule.
+
 ## Ce que la journée laisse ouvert
 
 1. Bloc **Rétroplanning** du Concepteur — c'est là que la conception se pilotera.
 3. Écran mobile de l'étudiant.
-4. Verrou 1 : `intended_cohort_id` jamais renseigné, aucun étudiant créable par l'interface.
+4. Rattacher les groupes d'encadrement à l'import (colonnes Groupe et Terrain lues, non appliquées).
 5. Doublon « Éducation thérapeutique », à trancher puis archiver.
 6. Relance de transcription sur un cours déjà publié : promise à l'écran, absente du code.
 7. Module 6 à republier avec le rognage vidéo corrigé — **mis en pause par Stef**.
