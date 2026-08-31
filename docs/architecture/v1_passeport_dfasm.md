@@ -26,8 +26,11 @@ passeport doit rester utile sans elle.
 
 - Les connaissances **ne sont pas testées**. Pas de QCM, pas d'épreuve.
 - Les compétences **ne sont pas testées** non plus.
-- **Pas de carnet de stage.**
 - **Pas d'évaluation.**
+
+> **Révision du 31/08 (même jour).** Le carnet de stage, d'abord exclu, est **réintégré au
+> périmètre** à la demande de Stef, activable programme par programme. Voir la section
+> « Le carnet de stage » plus bas. Le reste du hors-périmètre est inchangé.
 
 Conséquences à assumer : `assessment_modalities` n'a pas à être ouvert aux apprenants ; la
 génération de QCM et l'interrogation de l'apprenant sortent de cette version ; le lecteur de
@@ -112,6 +115,65 @@ Invariant : **changer son niveau efface la validation**. Sans cela, un senior au
 déplacé un jalon ; en son absence, la date de la cohorte s'applique.
 
 Invariant : **un jalon officiel refuse le décalage**, en base.
+
+## Le carnet de stage
+
+Réintégré au périmètre le 31/08. Activable **programme par programme** : l'interrupteur
+existe déjà, `programs.placements_enabled`, et l'écran Stage y est déjà conditionné.
+
+Ce qu'il fait : l'étudiant **coche ses jours de présence** dans le service, note **en texte
+libre** ce qu'il a fait, et l'encadrant **valide par bloc** — une semaine ou plus.
+
+### Trois décisions
+
+**Le vocal ne se code pas.** Un champ de texte long, et l'étudiant dicte avec la touche
+micro de son propre clavier — natif sur iPhone et Android, gratuit, sans réseau. On ne
+conserve que le texte. Écartés : l'enregistrement audio transcrit par Edge Function (un
+aller-retour que l'hôpital n'offre pas toujours) et l'API de reconnaissance vocale du
+navigateur (peu fiable sur Safari iOS).
+
+**Une entrée = un jour présent.** La présence n'est pas une colonne, c'est l'existence de
+la ligne ; supprimer une journée déclare l'absence. Un geste, pas deux.
+
+**La validation porte une période**, pas une journée : `covers_from` / `covers_to`. C'est
+ce qui permet de valider une semaine, trois, ou tout le stage sans qu'un découpage soit
+imposé à l'avance. L'historique est conservé — une demande de correction puis une
+validation sont deux lignes.
+
+### Le terrain réel, et ce qu'on n'a pas sur-modélisé
+
+Un seul service (celui de Stef ; les cinq autres du CHU sont hors périmètre), plusieurs
+encadrants, et des **groupes d'étudiants** à l'intérieur — un encadrant peut suivre
+plusieurs groupes, un groupe avoir plusieurs encadrants. Les cohortes tournent toutes les
+12 semaines, quatre par an : c'est exactement la table `cohorts`, celle qui ancre déjà le
+rétroplanning.
+
+Le rôle `placement_supervisor` porte une contrainte SQL dure — il exige une portée
+`placement` — et la table `placements` n'existait pas : **aucun encadrant n'était créable
+en base**. D'où une seule ligne dans `placements` (le service), et les groupes gérés à
+part : `supervision_groups`, `supervision_group_members`, `supervision_group_supervisors`.
+
+**Le rôle dit ce qu'un senior a le droit de faire ; le groupe dit sur quels étudiants.**
+Séparer les deux évite de toucher à l'énumération `role_scope_kind` et à ses contraintes.
+
+Conséquence directe dans le code : `supervises_enrollment()` **n'utilise pas**
+`is_program_staff()`. Cette dernière est vraie pour tout `placement_supervisor` du
+programme, ce qui donnerait à l'encadrant du groupe A les carnets du groupe B. Seule
+l'administration du programme voit tout.
+
+### Ce qui reste à faire côté code
+
+`src/domain/stageLog.ts` fait autorité et n'a pas été réécrit — la migration lui donne un
+stockage. Deux ajustements restent nécessaires au câblage :
+
+- `StageLogValidation` doit recevoir `coversFrom` / `coversTo` : le type n'a pas de période.
+- `listLogsToValidate(placementAssignmentIds)` ne correspond plus au modèle par groupes ;
+  sa signature devra changer.
+
+Ses trois règles non négociables restent entières : la photo est un fragment explicitement
+autorisé, **aucune acquisition n'est jamais dérivée d'une photo**, aucun champ patient
+nominatif n'existe. La V1 ne construit pas les photos — la politique est stockée, rien de
+plus.
 
 ## Ce que la V1 n'active pas
 

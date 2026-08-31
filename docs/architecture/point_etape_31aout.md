@@ -141,10 +141,46 @@ puis en testant les fonctions sur des données jouets. Ce que le test a confirm�
   existants étaient intacts après l'échec. C'est le point qui comptait, la fonction faisant
   `delete` puis `insert`.
 
+## 8. Le carnet de stage, réintégré au périmètre
+
+Stef est revenu en cours de journée sur le « pas de carnet de stage » : il en faut un,
+activable programme par programme. Trois découvertes ont rendu l'ajout tenable au lieu de
+coûteux.
+
+**C'était déjà conçu.** `src/domain/stageLog.ts` existe, avec ses modèles de carnet, ses
+champs, ses objectifs à quotas, ses entrées datées et ses validations — et ses trois règles
+non négociables. La migration lui donne un stockage, elle ne réécrit rien.
+
+**L'interrupteur existait.** `programs.placements_enabled` est une colonne, et l'écran
+Stage y est déjà conditionné.
+
+**Le blocage était ailleurs.** Le rôle `placement_supervisor` exige une portée `placement`
+(contrainte SQL de `20260821090000`), et la table `placements` n'existait pas : aucun
+encadrant n'était créable en base. Une seule ligne dans `placements` — le service — suffit
+à lever ça, sans construire la gestion des cinq autres services du CHU.
+
+Le terrain réel de Stef : un service, plusieurs encadrants, des groupes d'étudiants,
+plusieurs-à-plusieurs dans les deux sens, et des cohortes qui tournent **toutes les 12
+semaines, quatre par an** — c'est-à-dire exactement la table `cohorts` sur laquelle le
+rétroplanning est déjà ancré.
+
+Le piège évité, et il était sérieux : `supervises_enrollment()` **n'utilise pas**
+`is_program_staff()`, qui est vraie pour tout `placement_supervisor` du programme. L'utiliser
+aurait donné à l'encadrant du groupe A tous les carnets du groupe B et vidé les groupes de
+leur sens. Le test n° 4 vérifie précisément ce refus.
+
+`20260831093000_stage_logbook.sql` : 8 tables, 9 fonctions, 8 policies. Rejouée sur
+PostgreSQL neuf, puis **onze tests fonctionnels** sur un scénario à deux groupes et deux
+seniors croisés — dont le refus de valider hors de son groupe, la journée hors période, la
+validation qui déborde du stage, et le mélange de deux promos dans un même groupe.
+
+Une dette assumée : la validation porte désormais une période, que `StageLogValidation`
+n'a pas encore dans le domaine ; et `listLogsToValidate(placementAssignmentIds)` ne
+correspond plus au modèle par groupes. Deux ajustements à faire au câblage.
+
 ## Ce que la journée laisse ouvert
 
-1. Seconde moitié de la migration : `outcome_self_reports`, `learner_milestone_shifts`.
-2. Bloc **Rétroplanning** du Concepteur — c'est là que la conception se pilotera.
+1. Bloc **Rétroplanning** du Concepteur — c'est là que la conception se pilotera.
 3. Écran mobile de l'étudiant.
 4. Verrou 1 : `intended_cohort_id` jamais renseigné, aucun étudiant créable par l'interface.
 5. Doublon « Éducation thérapeutique », à trancher puis archiver.
