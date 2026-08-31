@@ -4,7 +4,13 @@
  */
 import type { DataAccess } from "@/application/ports/repositories";
 import type { PendingPerson } from "@/domain/peopleStaging";
-import type { Cohort, LearningResource, Outcome, RoleAssignment } from "@/domain/types";
+import type {
+  Cohort,
+  LearningResource,
+  Outcome,
+  OutcomeTheme,
+  RoleAssignment,
+} from "@/domain/types";
 import { scopeFromGrantFields } from "@/domain/accessGrant";
 import type { AssessmentModality } from "@/domain/assessmentModality";
 import type { ProgramId } from "@/domain/types";
@@ -128,7 +134,9 @@ export const mockDataAccess: DataAccess = {
    */
   outcomes: (() => {
     let outcomes: Outcome[] = [...fx.outcomes];
+    let themes: OutcomeTheme[] = [];
     let counter = 0;
+    let themeCounter = 0;
     return {
       listOutcomes: (programId) => ok(outcomes.filter((o) => o.programId === programId)),
       listOutcomeRelations: (programId) => {
@@ -167,6 +175,38 @@ export const mockDataAccess: DataAccess = {
         outcomes = outcomes.map((o) =>
           targets.has(o.id) ? { ...o, retainedAt: retained ? new Date().toISOString() : null } : o,
         );
+        return ok(undefined);
+      },
+      listOutcomeThemes: (programId) =>
+        ok(
+          themes
+            .filter((t) => t.programId === programId)
+            .sort((a, b) => a.position - b.position),
+        ),
+      createOutcomeTheme: (input) => {
+        themeCounter += 1;
+        const created: OutcomeTheme = {
+          id: `mock-theme-${themeCounter}` as OutcomeTheme["id"],
+          createdAt: new Date().toISOString(),
+          provenance: { sourceSystem: "native" },
+          programId: input.programId,
+          label: input.label,
+          description: input.description ?? "",
+          position: input.position ?? themeCounter,
+        };
+        themes = [...themes, created];
+        return ok(created);
+      },
+      setOutcomesTheme: (outcomeIds, themeId) => {
+        const order = new Map(outcomeIds.map((id, index) => [id as string, index + 1]));
+        outcomes = outcomes.map((o) => {
+          const position = order.get(o.id);
+          if (position === undefined) return o;
+          // `exactOptionalPropertyTypes` interdit `themeId: undefined` : pour
+          // retirer un acquis de son thème, on enlève la clé.
+          const { themeId: _previous, ...rest } = o;
+          return themeId ? { ...rest, themeId, position } : { ...rest, position };
+        });
         return ok(undefined);
       },
     };

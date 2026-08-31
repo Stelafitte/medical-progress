@@ -66,6 +66,8 @@ import type {
   LearningResourceId,
   MasteryLevel,
   Outcome,
+  OutcomeTheme,
+  OutcomeThemeId,
   OutcomeId,
   OutcomeNature,
   OutcomeRelation,
@@ -216,6 +218,32 @@ export interface OutcomeRepository {
    * pas diverger sur une bascule partielle.
    */
   setOutcomesRetained(outcomeIds: readonly OutcomeId[], retained: boolean): Promise<void>;
+
+  /* ---------------------------------------------------------------- */
+  /* Thèmes : le chapitre au-dessus des acquis                        */
+  /* ---------------------------------------------------------------- */
+
+  listOutcomeThemes(programId: ProgramId): Promise<readonly OutcomeTheme[]>;
+  /** Crée un chapitre. Un thème n'est pas un acquis : ni nature, ni niveau. */
+  createOutcomeTheme(input: CreateOutcomeThemeInput): Promise<OutcomeTheme>;
+  /**
+   * Range un lot d'acquis sous un thème, dans l'ordre donné — `undefined` les
+   * en retire sans les archiver. Un seul appel pour tout le lot : l'écran
+   * enregistre l'état complet d'une liste, et une bascule partielle laisserait
+   * l'écran et la base en désaccord.
+   */
+  setOutcomesTheme(
+    outcomeIds: readonly OutcomeId[],
+    themeId: OutcomeThemeId | undefined,
+  ): Promise<void>;
+}
+
+/** Saisie du port `createOutcomeTheme` : champs plats, prêts pour le RPC. */
+export interface CreateOutcomeThemeInput {
+  readonly programId: ProgramId;
+  readonly label: string;
+  readonly description?: string;
+  readonly position?: number;
 }
 
 export interface EvidenceRepository {

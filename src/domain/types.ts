@@ -187,6 +187,29 @@ export interface Outcome extends Entity<OutcomeId> {
    * l'archivage, qui le sort des listes actives.
    */
   readonly retainedAt: string | null;
+  /**
+   * Chapitre auquel l'acquis appartient. Absent = non rangé, ce qui reste un
+   * état valide : le référentiel d'un programme peut vivre à plat.
+   */
+  readonly themeId?: OutcomeThemeId;
+  /** Ordre à l'intérieur du thème. Absent = non ordonné (un référentiel à plat). */
+  readonly position?: number;
+}
+
+export type OutcomeThemeId = Id<"OutcomeTheme">;
+
+/**
+ * Un chapitre au-dessus des acquis.
+ *
+ * Ce n'est PAS un acquis : il ne porte ni nature ni niveau cible, et personne
+ * n'y déclare un niveau. C'est un rangement, qui permet à l'étudiant de voir
+ * sept titres plutôt que cinquante-sept lignes.
+ */
+export interface OutcomeTheme extends Entity<OutcomeThemeId> {
+  readonly programId: ProgramId;
+  readonly label: string;
+  readonly description: string;
+  readonly position: number;
 }
 
 export type OutcomeRelationKind = "prerequisite_of" | "part_of" | "aligned_with" | "migrated_from";

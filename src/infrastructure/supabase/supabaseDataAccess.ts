@@ -27,6 +27,8 @@ import type {
   LearningResource,
   LearningResourceId,
   Outcome,
+  OutcomeTheme,
+  OutcomeThemeId,
   OutcomeId,
   Person,
   Program,
@@ -292,8 +294,31 @@ type OutcomeRow = {
   domain: string;
   target_mastery: Outcome["targetMastery"];
   retained_at: string | null;
+  theme_id: string | null;
+  position: number;
   created_at: string;
 };
+
+type OutcomeThemeRow = {
+  id: string;
+  program_id: string;
+  label: string;
+  description: string;
+  position: number;
+  created_at: string;
+};
+
+export function mapOutcomeTheme(row: OutcomeThemeRow): OutcomeTheme {
+  return {
+    id: row.id as OutcomeThemeId,
+    createdAt: row.created_at,
+    provenance: nativeProvenance,
+    programId: row.program_id as ProgramId,
+    label: row.label,
+    description: row.description,
+    position: row.position,
+  };
+}
 
 export function mapOutcome(row: OutcomeRow): Outcome {
   return {
@@ -309,6 +334,8 @@ export function mapOutcome(row: OutcomeRow): Outcome {
     domain: row.domain,
     targetMastery: row.target_mastery,
     retainedAt: row.retained_at,
+    ...(row.theme_id ? { themeId: row.theme_id as OutcomeThemeId } : {}),
+    position: row.position ?? 0,
   };
 }
 
@@ -517,7 +544,9 @@ const assessmentModalityColumns =
   "id,program_id,name,mode,subtype,usage,notes,created_at,updated_at";
 
 const outcomeColumns =
-  "id,program_id,curriculum_version_id,code,label,description,nature,domain,target_mastery,retained_at,created_at";
+  "id,program_id,curriculum_version_id,code,label,description,nature,domain,target_mastery,retained_at,theme_id,position,created_at";
+
+const outcomeThemeColumns = "id,program_id,label,description,position,created_at";
 
 /**
  * Lien signé pour chaque fichier demandé, groupé par bucket. Un fichier dont
@@ -897,6 +926,38 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
         const { error } = await client.rpc("set_outcomes_retained", {
           p_outcome_ids: outcomeIds,
           p_retained: retained,
+        });
+        assertNoSupabaseError(error);
+      },
+
+      /* -------------------------------------------------------------- */
+      /* Thèmes (20260831094000_outcome_themes.sql)                      */
+      /* -------------------------------------------------------------- */
+
+      async listOutcomeThemes(programId: ProgramId) {
+        const { data, error } = await client
+          .from("outcome_themes")
+          .select(outcomeThemeColumns)
+          .eq("program_id", programId)
+          .order("position", { ascending: true });
+        assertNoSupabaseError(error);
+        return ((data ?? []) as OutcomeThemeRow[]).map(mapOutcomeTheme);
+      },
+      async createOutcomeTheme(input) {
+        const { data, error } = await client.rpc("create_outcome_theme", {
+          p_program_id: input.programId,
+          p_label: input.label,
+          p_description: input.description ?? "",
+          p_position: input.position ?? 0,
+        });
+        assertNoSupabaseError(error);
+        return mapOutcomeTheme(data as OutcomeThemeRow);
+      },
+      async setOutcomesTheme(outcomeIds, themeId) {
+        if (outcomeIds.length === 0) return;
+        const { error } = await client.rpc("set_outcomes_theme", {
+          p_outcome_ids: outcomeIds,
+          p_theme_id: themeId ?? null,
         });
         assertNoSupabaseError(error);
       },
