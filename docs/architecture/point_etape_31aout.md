@@ -268,6 +268,42 @@ date, puisqu'elle est recopiée à la création.
 Le rétroplanning à venir se calera sur ces onze semaines et demie : un jalon « semaine 4 »
 tombe au 29 septembre, un « semaine 11 » au 17 novembre.
 
+## 12. Les thèmes : le chapitre au-dessus des acquis
+
+Demande de Stef : sur un téléphone, l'étudiant doit voir **les titres de chapitre**, pas les
+57 lignes du référentiel. Sept lignes qui se déplient, pas cinquante-sept à plat.
+
+**Le choix de modèle, et pourquoi ce n'est pas `parent_outcome_id`.** Un acquis porte
+obligatoirement une nature (connaissance, compétence simulée, compétence réelle) et un
+niveau cible. Or « Relationnel avec l'équipe soignante » n'est ni l'une ni l'autre, et
+l'étudiant n'y déclarera jamais un niveau — il déclare sur les cinq compétences en dessous,
+et le thème affiche l'agrégat. Lui inventer une nature serait un mensonge de modèle.
+**Un thème n'est pas un acquis, c'est un rangement** : d'où une table à part,
+`outcome_themes`, et deux colonnes sur `outcomes` (`theme_id`, `position`).
+
+Conséquence assumée : la hiérarchie est à **deux niveaux**. Le référentiel de myDFASM
+(7 thèmes, 57 compétences) et celui du collège sont plats sous leurs chapitres ; trois
+niveaux ne serviraient à rien aujourd'hui.
+
+Les acquis existants ne sont pas touchés : `theme_id` est nul par défaut, et « non rangé »
+reste un état valide.
+
+**Un défaut trouvé par le test, et instructif.** La clé étrangère est composite
+`(theme_id, program_id)` → `(id, program_id)`, ce qui interdit de ranger un acquis sous le
+thème d'un autre programme. Mais un `on delete set null` nu met **les deux** colonnes à
+null — donc `program_id`, qui est `not null` : supprimer un thème échouait avec un message
+incompréhensible. La liste de colonnes introduite par PostgreSQL 15,
+`on delete set null (theme_id)`, ne vide que ce qu'il faut. La base est en 17.6, vérifié
+avant d'appliquer.
+
+Sans le test fonctionnel, ce défaut serait apparu le jour où Stef aurait supprimé un thème
+— c'est-à-dire longtemps après, et sans lien apparent avec cette migration.
+
+**Six vérifications** sur PostgreSQL neuf : création d'un thème, rangement d'un lot dans
+l'ordre donné, vue agrégée thème → acquis, refus d'un acquis d'un autre programme par la
+fonction, refus du même rangement écrit **directement dans la table**, et suppression d'un
+thème qui détache ses acquis sans les perdre.
+
 ## Ce que la journée laisse ouvert
 
 1. Bloc **Rétroplanning** du Concepteur — c'est là que la conception se pilotera.

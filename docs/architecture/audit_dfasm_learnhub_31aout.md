@@ -61,39 +61,49 @@ Deux points saillants :
 - **`specialty`** distingue déjà le générique du spécialisé — la question que Stef pose ce
   soir sur les compétences DFASM générales et cardiologiques.
 
-## Les vidéos : intégrables, et sans rien inventer
+## Les vidéos : introuvables pour l'instant
 
-`pedagogical_content` porte un `content_type` dont les valeurs incluent `video`, `pdf`,
-`document` et `Lien`, plus les colonnes `video_url` et `file_url`. Les vidéos sont donc des
-**liens externes** (le formulaire propose `https://www.youtube.com/watch?v=…` comme
-exemple), pas des fichiers déposés — le seau `pedagogical-documents` sert aux PDF.
+**Correction du 31/08, après lecture des données.** J'avais affirmé que les vidéos de Stef
+étaient des liens externes stockés dans `pedagogical_content`. C'était une déduction tirée
+de la **forme du formulaire** lue dans le paquet JavaScript — `content_type` accepte
+`video`, et le champ propose `https://www.youtube.com/watch?v=…` en exemple — et non des
+données. Lecture faite, la table contient **18 lignes : 11 `text`, 7 `link`, zéro `video`**.
 
-**Conséquence : l'intégration est une simple reprise de données, pas un chantier.** La
-Médiathèque de Campus Santé Augmenté porte déjà ce qu'il faut depuis le 29/08 —
-`resource_format` accepte `video` et `link`, et `external_url` existe
-(`20260829090000_mediatheque_external_url_and_links`). Une vidéo de myDFASM devient une
-`learning_resource` de format `video` avec son `external_url`, rattachable ensuite aux
-acquis comme n'importe quel support.
+Leçon : le paquet public donne la forme, jamais le contenu. Ne pas conclure de l'un à
+l'autre.
 
-Ce qui manque pour le faire : **l'accès en lecture au Supabase de myDFASM**. Le paquet
-public donne la forme, pas le contenu.
+Pistes restantes, par ordre de vraisemblance :
 
-## Ce que cet audit change
+1. **Les 7 lignes `link`** — une vidéo YouTube saisie dans un champ « Lien » ressort en
+   `link`, pas en `video`. À lire en premier, avec leurs URL complètes.
+2. **Le seau `pedagogical-documents`**, qui peut contenir des fichiers vidéo malgré son nom.
+3. **Les ECOS**, qui emploient de l'avatar animé (`useLiveAvatarSandbox`,
+   `liveavatar-session`) — peut-être ce dont Stef se souvient.
+4. **Une autre plateforme** : Stef en a plusieurs.
 
-1. **Ne pas chercher un référentiel de compétences sur internet avant d'avoir lu la table
-   `competencies`.** Stef avait oublié les vidéos ; il a peut-être aussi déjà une liste de
-   compétences construite et éprouvée. Lui rendre une liste trouvée ailleurs alors que la
-   sienne existe serait du travail perdu, et pire, une source de confusion.
-2. **La hiérarchie `block` / `category` conforte le besoin d'un `parent_outcome_id`** côté
-   Campus — c'est exactement ce que Stef demande pour n'afficher que les titres de chapitres
-   à l'étudiant.
-3. **`student_competencies` est un précédent à lire** avant de finir le passeport : cet
-   écran a déjà été utilisé par de vrais étudiants. Ce qui y a marché et ce qui n'y a pas
-   marché vaut plus qu'une intuition.
+Si des vidéos existent sous forme de liens, leur intégration reste triviale : la Médiathèque
+de Campus porte `resource_format` = `video` / `link` et `external_url` depuis le 29/08. Mais
+c'est à vérifier, plus à supposer.
 
-## Étape suivante proposée
+## Comment lire ces données — et comment NE PAS s'y prendre
 
-Ouvrir le tableau de bord Supabase du projet myDFASM et lire trois choses :
-`competencies` (combien, quelle forme, générique ou spécialisé), `pedagogical_content`
-filtré sur `content_type = 'video'` (combien de vidéos, quelles URL), et `student_competencies`
-(l'échelle réellement employée). Une demi-heure, et elle évite des semaines de reconstruction.
+**myDFASM a été construit dans Lovable et son backend est géré par Lovable : ces tables
+n'existent pas dans l'organisation Supabase de Stef.** Il n'y a donc pas d'éditeur SQL à
+ouvrir comme pour Campus. Précision donnée par Stef le 31/08, après une première proposition
+erronée de ma part.
+
+La voie praticable est **l'application elle-même** : elle sait lire ses tables, et Stef y est
+administrateur. Il se connecte — jamais Claude, qui ne manipule aucun identifiant — puis les
+écrans `/admin/competencies` et `/content-management` affichent respectivement le référentiel
+de compétences et les contenus, vidéos comprises. Le contenu se lit alors depuis la page.
+
+Deux autres voies, si celle-là ne suffit pas : demander à Lovable, dans son propre fil de
+conversation, d'exporter une table en CSV ; ou brancher le dépôt GitHub du projet, s'il est
+synchronisé, pour lire les migrations et les données de départ.
+
+## Ce qu'il faut en tirer
+
+Trois choses : `competencies` (combien, quelle forme, générique ou spécialisé),
+`pedagogical_content` filtré sur les vidéos (combien, quelles URL), et l'échelle réellement
+employée dans `student_competencies`. Une demi-heure, et elle évite des semaines de
+reconstruction.
