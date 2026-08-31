@@ -33,6 +33,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useDataAccess } from "@/application/session";
+import { OutcomeRosterImportPanel } from "@/features/administration/OutcomeRosterImportPanel";
 import { requireCanonicalMediaType } from "@/infrastructure/storage/mediaTypes";
 import type { ProgramAiAnalysisResult, ResourceVisibility } from "@/application/ports/repositories";
 import {
@@ -255,6 +256,19 @@ export function CorpusImport({
    * serait quand même traité serait le pire des deux mondes.
    */
   const [pathFilter, setPathFilter] = useState("");
+
+  /**
+   * Les deux voies d'entrée d'un référentiel, sous le même bouton.
+   *
+   * « documents » part de fichiers et fait travailler l'IA ; « table » part
+   * d'un référentiel déjà structuré et n'invente rien. Deux boutons séparés
+   * donneraient deux chemins d'écriture vers la même liste unique d'acquis,
+   * qui finiraient par diverger. Les modalités d'évaluation n'ont pas de
+   * référentiel tabulé : l'onglet ne leur est pas proposé.
+   */
+  const rosterAvailable = target !== "assessments";
+  const [mode, setMode] = useState<"documents" | "table">("documents");
+  const showRoster = rosterAvailable && mode === "table";
 
   const [analyzing, setAnalyzing] = useState(false);
   const [analyzeProgress, setAnalyzeProgress] = useState<{ done: number; total: number } | null>(
@@ -742,378 +756,420 @@ export function CorpusImport({
 
   return (
     <div className="space-y-3">
-      <div className="bg-muted/30 flex flex-wrap items-center gap-2 rounded-md border border-dashed p-2">
-        <Button asChild variant="outline" size="sm" className="min-h-9" disabled={busy}>
-          <label>
-            {reading ? (
-              <Loader2 className="me-1 size-4 animate-spin" aria-hidden />
-            ) : (
-              <FileUp className="me-1 size-4" aria-hidden />
-            )}
-            Importer un corpus de {TARGET_LABELS[target]} (document ou archive ZIP)
-            <input
-              type="file"
-              accept={ACCEPT}
-              className="sr-only"
+      {rosterAvailable ? (
+        <div className="border-border flex flex-wrap gap-1 border-b pb-1">
+          {(
+            [
+              ["documents", "Documents et archives (analyse IA)"],
+              ["table", "Tableau déjà structuré (sans IA)"],
+            ] as const
+          ).map(([value, label]) => (
+            <Button
+              key={value}
+              type="button"
+              size="sm"
+              variant={mode === value ? "secondary" : "ghost"}
+              className="min-h-9"
               disabled={busy}
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                event.target.value = "";
-                if (file) void handleFile(file);
-              }}
-            />
-          </label>
-        </Button>
-        <span className="text-muted-foreground text-xs">
-          Les fichiers sont déposés dans la médiathèque du programme, et les propositions extraites
-          restent rattachées au document dont elles viennent.
-        </span>
-      </div>
-
-      {readError ? <p className="text-destructive text-sm">{readError}</p> : null}
-
-      {ignoredFiles.length > 0 ? (
-        <p className="text-muted-foreground text-xs">
-          {ignoredFiles.length} fichier(s) écartés (format non lisible ou sans texte) :{" "}
-          {ignoredFiles.slice(0, 5).join(", ")}
-          {ignoredFiles.length > 5 ? "…" : ""}
-        </p>
+              onClick={() => setMode(value)}
+            >
+              {label}
+            </Button>
+          ))}
+        </div>
       ) : null}
 
-      {rows.length > 0 ? (
+      {showRoster ? (
+        <OutcomeRosterImportPanel
+          programId={programId}
+          curriculumVersionId={curriculumVersionId}
+          defaultNature={target === "knowledge" ? "knowledge" : "real_competence"}
+          existingOutcomeCodes={existingOutcomeCodes}
+          {...(onCreated ? { onCreated } : {})}
+        />
+      ) : (
         <>
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="outline" className="font-normal">
-              {rows.length} document(s) lus
-            </Badge>
-            <Button
-              type="button"
-              size="sm"
-              className="min-h-11"
-              disabled={busy || analyzed || documentsToAnalyze === 0}
-              onClick={() => void runAnalysis()}
-            >
-              {analyzing ? (
-                <Loader2 className="me-1 size-4 animate-spin" aria-hidden />
-              ) : (
-                <Sparkles className="me-1 size-4" aria-hidden />
-              )}
-              {analyzing && analyzeProgress
-                ? `Analyse ${analyzeProgress.done}/${analyzeProgress.total}…`
-                : `Analyser ${documentsToAnalyze} document(s) — ${analysisCalls} appel(s) IA`}
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              className="min-h-11"
-              disabled={busy || analyzed}
-              onClick={() =>
-                setRows((prev) => {
-                  const shown = prev.filter((row) => visibleRows.includes(row));
-                  const allOn = shown.every((row) => row.analyze);
-                  return prev.map((row) =>
-                    visibleRows.includes(row) ? { ...row, analyze: !allOn } : row,
-                  );
-                })
-              }
-            >
-              Tout cocher / décocher (analyse)
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              className="min-h-11"
-              disabled={busy}
-              onClick={() =>
-                setRows((prev) => {
-                  const shown = prev.filter((row) => visibleRows.includes(row));
-                  const allOn = shown.every((row) => row.keepDocument);
-                  return prev.map((row) =>
-                    visibleRows.includes(row) ? { ...row, keepDocument: !allOn } : row,
-                  );
-                })
-              }
-            >
-              Tout cocher / décocher (dépôt)
-            </Button>
-          </div>
-          <p className="text-muted-foreground text-xs">
-            La totalité du texte est analysée, par tranches de{" "}
-            {ANALYSIS_SLICE_CHARS.toLocaleString("fr-FR")} caractères — un appel, donc un coût, par
-            tranche. Les documents de moins de {MIN_CHARS_FOR_ANALYSIS.toLocaleString("fr-FR")}{" "}
-            caractères sont décochés d'office : dans un site enregistré, ce sont presque toujours
-            des pages d'index ou de navigation.
-          </p>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="corpus-path-filter">Ne garder que les chemins contenant</Label>
-            <Input
-              id="corpus-path-filter"
-              value={pathFilter}
-              disabled={busy}
-              placeholder="chapitre"
-              onChange={(event) => setPathFilter(event.target.value)}
-            />
-            <p className="text-muted-foreground text-xs">
-              {hiddenCount > 0
-                ? `${hiddenCount} document(s) masqués — ils ne seront ni analysés, ni déposés, ni créés.`
-                : "Laissez vide pour tout garder. Sur un site enregistré, « chapitre » suffit le plus souvent à écarter actualités, mentions légales et pages de compte."}
-            </p>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="corpus-visibility">Visibilité des documents déposés</Label>
-            <select
-              id="corpus-visibility"
-              className={SELECT_CLASS}
-              value={visibility}
-              disabled={busy}
-              onChange={(event) => setVisibility(event.target.value as ResourceVisibility)}
-            >
-              {(Object.keys(VISIBILITY_LABELS_FR) as ResourceVisibility[]).map((value) => (
-                <option key={value} value={value}>
-                  {VISIBILITY_LABELS_FR[value]}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {imagesAvailable > 0 ? (
-            <label className="flex items-start gap-2 text-sm">
-              <Checkbox
-                checked={depositImages}
-                disabled={busy}
-                onCheckedChange={(checked) => setDepositImages(checked === true)}
-              />
-              <span>
-                Déposer aussi les {imagesAvailable} figure(s) référencées par ces documents
-                <span className="text-muted-foreground block text-xs">
-                  Les figures sont conservées auprès de leur document, jamais analysées : aucun
-                  appel IA, aucun coût. Leur description automatique reste à construire.
-                </span>
-              </span>
-            </label>
-          ) : null}
-
-          <ul className="space-y-3">
-            {visibleRows.map((row) => (
-              <li key={row.key} className="border-border space-y-2 rounded-md border p-3">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-sm font-medium">{row.document.path}</span>
-                  <Badge variant="outline" className="font-normal">
-                    {row.document.text.length.toLocaleString("fr-FR")} caractères
-                  </Badge>
-                  {row.status === "analyzing" ? (
-                    <Loader2 className="size-4 animate-spin" aria-hidden />
-                  ) : null}
-                  {row.document.images.length > 0 ? (
-                    <Badge variant="outline" className="font-normal">
-                      {row.document.images.length} figure(s)
-                    </Badge>
-                  ) : null}
-                  {row.truncated ? (
-                    <Badge variant="outline" className="text-destructive font-normal">
-                      texte tronqué à l'analyse
-                    </Badge>
-                  ) : null}
-                </div>
-                <div className="flex flex-wrap gap-4">
-                  <label className="flex items-center gap-2 text-sm">
-                    <Checkbox
-                      checked={row.analyze}
-                      disabled={busy || analyzed}
-                      onCheckedChange={(checked) =>
-                        patchRow(row.key, { analyze: checked === true })
-                      }
-                    />
-                    Analyser ce document
-                  </label>
-                  <label className="flex items-center gap-2 text-sm">
-                    <Checkbox
-                      checked={row.keepDocument}
-                      disabled={busy}
-                      onCheckedChange={(checked) =>
-                        patchRow(row.key, { keepDocument: checked === true })
-                      }
-                    />
-                    Déposer ce document et conserver son texte
-                  </label>
-                </div>
-
-                {row.error ? <p className="text-destructive text-xs">{row.error}</p> : null}
-
-                {row.suggestions.length > 0 ? (
-                  <ul className="space-y-2">
-                    {row.suggestions.map((suggestion) =>
-                      suggestion.kind === "assessment" ? (
-                        <li
-                          key={suggestion.key}
-                          className="grid gap-2 sm:grid-cols-[auto_1fr_10rem_10rem]"
-                        >
-                          <Checkbox
-                            checked={suggestion.selected}
-                            disabled={busy}
-                            aria-label={`Retenir ${suggestion.name}`}
-                            onCheckedChange={(checked) =>
-                              patchSuggestion(row.key, suggestion.key, {
-                                selected: checked === true,
-                              })
-                            }
-                          />
-                          <Input
-                            value={suggestion.name}
-                            disabled={busy}
-                            aria-label="Nom de la modalité"
-                            onChange={(event) =>
-                              patchSuggestion(row.key, suggestion.key, { name: event.target.value })
-                            }
-                          />
-                          <select
-                            className={SELECT_CLASS}
-                            value={suggestion.subtype}
-                            disabled={busy}
-                            aria-label="Sous-type"
-                            onChange={(event) =>
-                              patchSuggestion(row.key, suggestion.key, {
-                                subtype: event.target.value as AssessmentSubtype,
-                              })
-                            }
-                          >
-                            {(Object.keys(ASSESSMENT_SUBTYPE_LABELS_FR) as AssessmentSubtype[]).map(
-                              (value) => (
-                                <option key={value} value={value}>
-                                  {ASSESSMENT_SUBTYPE_LABELS_FR[value]}
-                                </option>
-                              ),
-                            )}
-                          </select>
-                          <select
-                            className={SELECT_CLASS}
-                            value={suggestion.usage}
-                            disabled={busy}
-                            aria-label="Usage"
-                            onChange={(event) =>
-                              patchSuggestion(row.key, suggestion.key, {
-                                usage: event.target.value as AssessmentUsage,
-                              })
-                            }
-                          >
-                            {(Object.keys(ASSESSMENT_USAGE_LABELS_FR) as AssessmentUsage[]).map(
-                              (value) => (
-                                <option key={value} value={value}>
-                                  {ASSESSMENT_USAGE_LABELS_FR[value]}
-                                </option>
-                              ),
-                            )}
-                          </select>
-                        </li>
-                      ) : (
-                        <li
-                          key={suggestion.key}
-                          className="grid gap-2 sm:grid-cols-[auto_12rem_1fr_10rem]"
-                        >
-                          <Checkbox
-                            checked={suggestion.selected}
-                            disabled={busy}
-                            aria-label={`Retenir ${suggestion.label}`}
-                            onCheckedChange={(checked) =>
-                              patchSuggestion(row.key, suggestion.key, {
-                                selected: checked === true,
-                              })
-                            }
-                          />
-                          <Input
-                            value={suggestion.code}
-                            disabled={busy}
-                            aria-label="Code"
-                            onChange={(event) =>
-                              patchSuggestion(row.key, suggestion.key, { code: event.target.value })
-                            }
-                          />
-                          <Input
-                            value={suggestion.label}
-                            disabled={busy}
-                            aria-label="Intitulé"
-                            onChange={(event) =>
-                              patchSuggestion(row.key, suggestion.key, {
-                                label: event.target.value,
-                              })
-                            }
-                          />
-                          <select
-                            className={SELECT_CLASS}
-                            value={suggestion.nature}
-                            disabled={busy}
-                            aria-label="Nature"
-                            onChange={(event) =>
-                              patchSuggestion(row.key, suggestion.key, {
-                                nature: event.target.value as OutcomeNature,
-                              })
-                            }
-                          >
-                            {(Object.keys(OUTCOME_NATURE_LABELS_FR) as OutcomeNature[]).map((n) => (
-                              <option key={n} value={n}>
-                                {OUTCOME_NATURE_LABELS_FR[n]}
-                              </option>
-                            ))}
-                          </select>
-                        </li>
-                      ),
-                    )}
-                  </ul>
-                ) : row.status === "analyzed" ? (
-                  <p className="text-muted-foreground text-xs">
-                    Aucune proposition pour ce document.
-                  </p>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              type="button"
-              className="min-h-11"
-              disabled={busy || (selectedCount === 0 && documentsToDeposit === 0)}
-              onClick={() => void createSelected()}
-            >
-              {creating ? (
-                <Loader2 className="me-1 size-4 animate-spin" aria-hidden />
-              ) : (
-                <Check className="me-1 size-4" aria-hidden />
-              )}
-              Créer {selectedCount} {TARGET_LABELS[target]} et déposer {documentsToDeposit}{" "}
-              document(s)
-              {imagesToDeposit > 0 ? ` et ${imagesToDeposit} figure(s)` : ""}
+          <div className="bg-muted/30 flex flex-wrap items-center gap-2 rounded-md border border-dashed p-2">
+            <Button asChild variant="outline" size="sm" className="min-h-9" disabled={busy}>
+              <label>
+                {reading ? (
+                  <Loader2 className="me-1 size-4 animate-spin" aria-hidden />
+                ) : (
+                  <FileUp className="me-1 size-4" aria-hidden />
+                )}
+                Importer un corpus de {TARGET_LABELS[target]} (document ou archive ZIP)
+                <input
+                  type="file"
+                  accept={ACCEPT}
+                  className="sr-only"
+                  disabled={busy}
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    event.target.value = "";
+                    if (file) void handleFile(file);
+                  }}
+                />
+              </label>
             </Button>
             <span className="text-muted-foreground text-xs">
-              Rien n'est écrit avant ce clic.{" "}
-              {target === "assessments"
-                ? "Le mode (présentiel ou en ligne) est déduit du sous-type."
-                : `Le niveau cible par défaut est « ${COMPETENCE_MASTERY_LABELS_FR.proficient} » et reste modifiable ensuite dans l'onglet dédié.`}
+              Les fichiers sont déposés dans la médiathèque du programme, et les propositions
+              extraites restent rattachées au document dont elles viennent.
             </span>
           </div>
+
+          {readError ? <p className="text-destructive text-sm">{readError}</p> : null}
+
+          {ignoredFiles.length > 0 ? (
+            <p className="text-muted-foreground text-xs">
+              {ignoredFiles.length} fichier(s) écartés (format non lisible ou sans texte) :{" "}
+              {ignoredFiles.slice(0, 5).join(", ")}
+              {ignoredFiles.length > 5 ? "…" : ""}
+            </p>
+          ) : null}
+
+          {rows.length > 0 ? (
+            <>
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant="outline" className="font-normal">
+                  {rows.length} document(s) lus
+                </Badge>
+                <Button
+                  type="button"
+                  size="sm"
+                  className="min-h-11"
+                  disabled={busy || analyzed || documentsToAnalyze === 0}
+                  onClick={() => void runAnalysis()}
+                >
+                  {analyzing ? (
+                    <Loader2 className="me-1 size-4 animate-spin" aria-hidden />
+                  ) : (
+                    <Sparkles className="me-1 size-4" aria-hidden />
+                  )}
+                  {analyzing && analyzeProgress
+                    ? `Analyse ${analyzeProgress.done}/${analyzeProgress.total}…`
+                    : `Analyser ${documentsToAnalyze} document(s) — ${analysisCalls} appel(s) IA`}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  className="min-h-11"
+                  disabled={busy || analyzed}
+                  onClick={() =>
+                    setRows((prev) => {
+                      const shown = prev.filter((row) => visibleRows.includes(row));
+                      const allOn = shown.every((row) => row.analyze);
+                      return prev.map((row) =>
+                        visibleRows.includes(row) ? { ...row, analyze: !allOn } : row,
+                      );
+                    })
+                  }
+                >
+                  Tout cocher / décocher (analyse)
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  className="min-h-11"
+                  disabled={busy}
+                  onClick={() =>
+                    setRows((prev) => {
+                      const shown = prev.filter((row) => visibleRows.includes(row));
+                      const allOn = shown.every((row) => row.keepDocument);
+                      return prev.map((row) =>
+                        visibleRows.includes(row) ? { ...row, keepDocument: !allOn } : row,
+                      );
+                    })
+                  }
+                >
+                  Tout cocher / décocher (dépôt)
+                </Button>
+              </div>
+              <p className="text-muted-foreground text-xs">
+                La totalité du texte est analysée, par tranches de{" "}
+                {ANALYSIS_SLICE_CHARS.toLocaleString("fr-FR")} caractères — un appel, donc un coût,
+                par tranche. Les documents de moins de{" "}
+                {MIN_CHARS_FOR_ANALYSIS.toLocaleString("fr-FR")} caractères sont décochés d'office :
+                dans un site enregistré, ce sont presque toujours des pages d'index ou de
+                navigation.
+              </p>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="corpus-path-filter">Ne garder que les chemins contenant</Label>
+                <Input
+                  id="corpus-path-filter"
+                  value={pathFilter}
+                  disabled={busy}
+                  placeholder="chapitre"
+                  onChange={(event) => setPathFilter(event.target.value)}
+                />
+                <p className="text-muted-foreground text-xs">
+                  {hiddenCount > 0
+                    ? `${hiddenCount} document(s) masqués — ils ne seront ni analysés, ni déposés, ni créés.`
+                    : "Laissez vide pour tout garder. Sur un site enregistré, « chapitre » suffit le plus souvent à écarter actualités, mentions légales et pages de compte."}
+                </p>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="corpus-visibility">Visibilité des documents déposés</Label>
+                <select
+                  id="corpus-visibility"
+                  className={SELECT_CLASS}
+                  value={visibility}
+                  disabled={busy}
+                  onChange={(event) => setVisibility(event.target.value as ResourceVisibility)}
+                >
+                  {(Object.keys(VISIBILITY_LABELS_FR) as ResourceVisibility[]).map((value) => (
+                    <option key={value} value={value}>
+                      {VISIBILITY_LABELS_FR[value]}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {imagesAvailable > 0 ? (
+                <label className="flex items-start gap-2 text-sm">
+                  <Checkbox
+                    checked={depositImages}
+                    disabled={busy}
+                    onCheckedChange={(checked) => setDepositImages(checked === true)}
+                  />
+                  <span>
+                    Déposer aussi les {imagesAvailable} figure(s) référencées par ces documents
+                    <span className="text-muted-foreground block text-xs">
+                      Les figures sont conservées auprès de leur document, jamais analysées : aucun
+                      appel IA, aucun coût. Leur description automatique reste à construire.
+                    </span>
+                  </span>
+                </label>
+              ) : null}
+
+              <ul className="space-y-3">
+                {visibleRows.map((row) => (
+                  <li key={row.key} className="border-border space-y-2 rounded-md border p-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-sm font-medium">{row.document.path}</span>
+                      <Badge variant="outline" className="font-normal">
+                        {row.document.text.length.toLocaleString("fr-FR")} caractères
+                      </Badge>
+                      {row.status === "analyzing" ? (
+                        <Loader2 className="size-4 animate-spin" aria-hidden />
+                      ) : null}
+                      {row.document.images.length > 0 ? (
+                        <Badge variant="outline" className="font-normal">
+                          {row.document.images.length} figure(s)
+                        </Badge>
+                      ) : null}
+                      {row.truncated ? (
+                        <Badge variant="outline" className="text-destructive font-normal">
+                          texte tronqué à l'analyse
+                        </Badge>
+                      ) : null}
+                    </div>
+                    <div className="flex flex-wrap gap-4">
+                      <label className="flex items-center gap-2 text-sm">
+                        <Checkbox
+                          checked={row.analyze}
+                          disabled={busy || analyzed}
+                          onCheckedChange={(checked) =>
+                            patchRow(row.key, { analyze: checked === true })
+                          }
+                        />
+                        Analyser ce document
+                      </label>
+                      <label className="flex items-center gap-2 text-sm">
+                        <Checkbox
+                          checked={row.keepDocument}
+                          disabled={busy}
+                          onCheckedChange={(checked) =>
+                            patchRow(row.key, { keepDocument: checked === true })
+                          }
+                        />
+                        Déposer ce document et conserver son texte
+                      </label>
+                    </div>
+
+                    {row.error ? <p className="text-destructive text-xs">{row.error}</p> : null}
+
+                    {row.suggestions.length > 0 ? (
+                      <ul className="space-y-2">
+                        {row.suggestions.map((suggestion) =>
+                          suggestion.kind === "assessment" ? (
+                            <li
+                              key={suggestion.key}
+                              className="grid gap-2 sm:grid-cols-[auto_1fr_10rem_10rem]"
+                            >
+                              <Checkbox
+                                checked={suggestion.selected}
+                                disabled={busy}
+                                aria-label={`Retenir ${suggestion.name}`}
+                                onCheckedChange={(checked) =>
+                                  patchSuggestion(row.key, suggestion.key, {
+                                    selected: checked === true,
+                                  })
+                                }
+                              />
+                              <Input
+                                value={suggestion.name}
+                                disabled={busy}
+                                aria-label="Nom de la modalité"
+                                onChange={(event) =>
+                                  patchSuggestion(row.key, suggestion.key, {
+                                    name: event.target.value,
+                                  })
+                                }
+                              />
+                              <select
+                                className={SELECT_CLASS}
+                                value={suggestion.subtype}
+                                disabled={busy}
+                                aria-label="Sous-type"
+                                onChange={(event) =>
+                                  patchSuggestion(row.key, suggestion.key, {
+                                    subtype: event.target.value as AssessmentSubtype,
+                                  })
+                                }
+                              >
+                                {(
+                                  Object.keys(ASSESSMENT_SUBTYPE_LABELS_FR) as AssessmentSubtype[]
+                                ).map((value) => (
+                                  <option key={value} value={value}>
+                                    {ASSESSMENT_SUBTYPE_LABELS_FR[value]}
+                                  </option>
+                                ))}
+                              </select>
+                              <select
+                                className={SELECT_CLASS}
+                                value={suggestion.usage}
+                                disabled={busy}
+                                aria-label="Usage"
+                                onChange={(event) =>
+                                  patchSuggestion(row.key, suggestion.key, {
+                                    usage: event.target.value as AssessmentUsage,
+                                  })
+                                }
+                              >
+                                {(Object.keys(ASSESSMENT_USAGE_LABELS_FR) as AssessmentUsage[]).map(
+                                  (value) => (
+                                    <option key={value} value={value}>
+                                      {ASSESSMENT_USAGE_LABELS_FR[value]}
+                                    </option>
+                                  ),
+                                )}
+                              </select>
+                            </li>
+                          ) : (
+                            <li
+                              key={suggestion.key}
+                              className="grid gap-2 sm:grid-cols-[auto_12rem_1fr_10rem]"
+                            >
+                              <Checkbox
+                                checked={suggestion.selected}
+                                disabled={busy}
+                                aria-label={`Retenir ${suggestion.label}`}
+                                onCheckedChange={(checked) =>
+                                  patchSuggestion(row.key, suggestion.key, {
+                                    selected: checked === true,
+                                  })
+                                }
+                              />
+                              <Input
+                                value={suggestion.code}
+                                disabled={busy}
+                                aria-label="Code"
+                                onChange={(event) =>
+                                  patchSuggestion(row.key, suggestion.key, {
+                                    code: event.target.value,
+                                  })
+                                }
+                              />
+                              <Input
+                                value={suggestion.label}
+                                disabled={busy}
+                                aria-label="Intitulé"
+                                onChange={(event) =>
+                                  patchSuggestion(row.key, suggestion.key, {
+                                    label: event.target.value,
+                                  })
+                                }
+                              />
+                              <select
+                                className={SELECT_CLASS}
+                                value={suggestion.nature}
+                                disabled={busy}
+                                aria-label="Nature"
+                                onChange={(event) =>
+                                  patchSuggestion(row.key, suggestion.key, {
+                                    nature: event.target.value as OutcomeNature,
+                                  })
+                                }
+                              >
+                                {(Object.keys(OUTCOME_NATURE_LABELS_FR) as OutcomeNature[]).map(
+                                  (n) => (
+                                    <option key={n} value={n}>
+                                      {OUTCOME_NATURE_LABELS_FR[n]}
+                                    </option>
+                                  ),
+                                )}
+                              </select>
+                            </li>
+                          ),
+                        )}
+                      </ul>
+                    ) : row.status === "analyzed" ? (
+                      <p className="text-muted-foreground text-xs">
+                        Aucune proposition pour ce document.
+                      </p>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  type="button"
+                  className="min-h-11"
+                  disabled={busy || (selectedCount === 0 && documentsToDeposit === 0)}
+                  onClick={() => void createSelected()}
+                >
+                  {creating ? (
+                    <Loader2 className="me-1 size-4 animate-spin" aria-hidden />
+                  ) : (
+                    <Check className="me-1 size-4" aria-hidden />
+                  )}
+                  Créer {selectedCount} {TARGET_LABELS[target]} et déposer {documentsToDeposit}{" "}
+                  document(s)
+                  {imagesToDeposit > 0 ? ` et ${imagesToDeposit} figure(s)` : ""}
+                </Button>
+                <span className="text-muted-foreground text-xs">
+                  Rien n'est écrit avant ce clic.{" "}
+                  {target === "assessments"
+                    ? "Le mode (présentiel ou en ligne) est déduit du sous-type."
+                    : `Le niveau cible par défaut est « ${COMPETENCE_MASTERY_LABELS_FR.proficient} » et reste modifiable ensuite dans l'onglet dédié.`}
+                </span>
+              </div>
+            </>
+          ) : null}
+
+          {truncatedCount > 0 ? (
+            <p className="text-destructive text-xs">
+              {truncatedCount} document(s) ont été coupés par le service d'analyse alors que les
+              tranches sont calibrées pour tenir sous sa limite. Cela signifie que cette limite a
+              changé côté serveur : signalez-le, du texte est perdu.
+            </p>
+          ) : null}
+
+          {summary ? <p className="text-sm">{summary}</p> : null}
+          {errors.length > 0 ? (
+            <ul className="text-destructive space-y-1 text-xs">
+              {errors.map((message) => (
+                <li key={message}>{message}</li>
+              ))}
+            </ul>
+          ) : null}
         </>
-      ) : null}
-
-      {truncatedCount > 0 ? (
-        <p className="text-destructive text-xs">
-          {truncatedCount} document(s) ont été coupés par le service d'analyse alors que les
-          tranches sont calibrées pour tenir sous sa limite. Cela signifie que cette limite a changé
-          côté serveur : signalez-le, du texte est perdu.
-        </p>
-      ) : null}
-
-      {summary ? <p className="text-sm">{summary}</p> : null}
-      {errors.length > 0 ? (
-        <ul className="text-destructive space-y-1 text-xs">
-          {errors.map((message) => (
-            <li key={message}>{message}</li>
-          ))}
-        </ul>
-      ) : null}
+      )}
     </div>
   );
 }

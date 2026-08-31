@@ -8,6 +8,14 @@
  * données n'est pas activée.
  */
 
+import {
+  detectMapping,
+  parseDelimitedTable,
+  type ColumnMapping,
+  type HeaderAliases,
+  type ParsedTable,
+} from "./delimitedTable";
+
 export const ROSTER_COLUMNS = [
   "lastName",
   "firstName",
@@ -40,7 +48,7 @@ export const ROSTER_COLUMN_LABELS_FR: Record<RosterColumn, string> = {
 export const ROSTER_REQUIRED_COLUMNS: readonly RosterColumn[] = ["lastName", "firstName", "email"];
 
 /** En-têtes acceptés pour la reconnaissance automatique des colonnes. */
-const HEADER_ALIASES: Record<RosterColumn, readonly string[]> = {
+const HEADER_ALIASES: HeaderAliases<RosterColumn> = {
   lastName: ["nom", "nom de famille", "lastname", "last name", "nom usuel"],
   firstName: ["prenom", "prénom", "firstname", "first name"],
   fullName: [
@@ -96,15 +104,9 @@ const HEADER_ALIASES: Record<RosterColumn, readonly string[]> = {
   ],
 };
 
-export type RosterColumnMapping = Partial<Record<RosterColumn, number>>;
+export type RosterColumnMapping = ColumnMapping<RosterColumn>;
 
-export interface ParsedRosterFile {
-  readonly delimiter: string;
-  readonly headers: readonly string[];
-  readonly rows: readonly (readonly string[])[];
-  /** Ligne du fichier où l'en-tête a été reconnu (1 = première ligne). */
-  readonly headerLine: number;
-}
+export type ParsedRosterFile = ParsedTable;
 
 export type RosterIssueLevel = "error" | "warning";
 
@@ -248,128 +250,13 @@ export function applyEmailPattern(
 
 export const EMAIL_PATTERN_PLACEHOLDER = "{prenom}.{nom}@etu.u-bordeaux.fr";
 
-function normaliseHeader(value: string): string {
-  return value
-    .trim()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[_.]/g, " ")
-    .replace(/\s+/g, " ");
-}
-
-/**
- * Séparateur décidé sur PLUSIEURS lignes, pas sur la seule première.
- *
- * Une ligne d'en-tête courte (« Nom;Prénom ») suivie de données contenant des
- * virgules dans un libellé suffisait à faire choisir la virgule. On retient
- * donc le séparateur qui découpe le plus de colonnes ET le plus régulièrement :
- * un vrai séparateur donne le même nombre de cellules à chaque ligne.
- */
-function detectDelimiter(lines: readonly string[]): string {
-  const candidates = [";", "\t", ",", "|"];
-  const sample = lines.slice(0, 8);
-  let best = ";";
-  let bestScore = -1;
-  for (const c of candidates) {
-    const counts = sample.map((l) => splitLine(l, c).length);
-    const columns = Math.max(...counts, 0);
-    if (columns < 2) continue;
-    const regular = counts.filter((n) => n === columns).length;
-    // La régularité prime : mieux vaut 3 colonnes sur toutes les lignes que 7
-    // sur une seule.
-    const score = regular * 100 + columns;
-    if (score > bestScore) {
-      best = c;
-      bestScore = score;
-    }
-  }
-  return bestScore < 0 ? ";" : best;
-}
-
-/**
- * Combien de colonnes de cette ligne ressemblent à des en-têtes connus ?
- * Sert à trouver la vraie ligne d'en-tête quand le fichier commence par un
- * titre, une date d'export ou une ligne vide — le cas ordinaire des exports
- * de scolarité.
- */
-function headerScore(cells: readonly string[]): number {
-  const normalised = cells.map(normaliseHeader);
-  let score = 0;
-  for (const column of ROSTER_COLUMNS) {
-    if (normalised.some((h) => HEADER_ALIASES[column].includes(h))) score += 1;
-  }
-  return score;
-}
-
-/** Découpe une ligne en respectant les guillemets doubles. */
-function splitLine(line: string, delimiter: string): string[] {
-  const cells: string[] = [];
-  let current = "";
-  let quoted = false;
-  for (let i = 0; i < line.length; i += 1) {
-    const char = line[i];
-    if (char === '"') {
-      if (quoted && line[i + 1] === '"') {
-        current += '"';
-        i += 1;
-      } else {
-        quoted = !quoted;
-      }
-      continue;
-    }
-    if (!quoted && char === delimiter) {
-      cells.push(current.trim());
-      current = "";
-      continue;
-    }
-    current += char;
-  }
-  cells.push(current.trim());
-  return cells;
-}
-
-/** Nombre de lignes examinées pour retrouver l'en-tête. */
-const HEADER_SEARCH_DEPTH = 10;
-
-export function parseDelimitedRoster(text: string): ParsedRosterFile {
-  const lines = text
-    .replace(/^\uFEFF/, "")
-    .split(/\r\n|\r|\n/)
-    .filter((l) => l.trim().length > 0);
-
-  if (lines.length === 0) return { delimiter: ";", headers: [], rows: [], headerLine: 1 };
-
-  const delimiter = detectDelimiter(lines);
-
-  // L'en-tête n'est pas toujours la première ligne : un export commence
-  // souvent par un titre, un horodatage ou une ligne de service. On retient,
-  // parmi les premières lignes, celle qui reconnaît le plus de colonnes. À
-  // égalité, la plus haute gagne — donc le comportement d'origine quand rien
-  // ne se distingue.
-  let headerIndex = 0;
-  let bestScore = -1;
-  for (let i = 0; i < Math.min(lines.length, HEADER_SEARCH_DEPTH); i += 1) {
-    const score = headerScore(splitLine(lines[i]!, delimiter));
-    if (score > bestScore) {
-      bestScore = score;
-      headerIndex = i;
-    }
-  }
-
-  const headers = splitLine(lines[headerIndex]!, delimiter);
-  const rows = lines.slice(headerIndex + 1).map((l) => splitLine(l, delimiter));
-  return { delimiter, headers, rows, headerLine: headerIndex + 1 };
-}
-
 export function detectColumnMapping(headers: readonly string[]): RosterColumnMapping {
-  const mapping: RosterColumnMapping = {};
-  const normalised = headers.map(normaliseHeader);
-  for (const column of ROSTER_COLUMNS) {
-    const index = normalised.findIndex((h) => HEADER_ALIASES[column].includes(h));
-    if (index >= 0) (mapping as Record<string, number>)[column] = index;
-  }
-  return mapping;
+  return detectMapping(headers, HEADER_ALIASES);
+}
+
+/** Lecture d'une liste de promotion : le tableau générique, avec nos alias. */
+export function parseDelimitedRoster(text: string): ParsedRosterFile {
+  return parseDelimitedTable(text, HEADER_ALIASES);
 }
 
 export interface BuildRosterPreviewInput {
