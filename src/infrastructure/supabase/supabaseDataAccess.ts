@@ -1241,6 +1241,32 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
         assertNoSupabaseError(error);
         return typeof data === "number" ? data : 0;
       },
+      /**
+       * Lecture DIRECTE de la table, sans RPC.
+       *
+       * `learning_resource_texts` accorde déjà `select` à `authenticated`, et sa
+       * policy `learning_resource_texts_select_scoped` restreint à
+       * `can_read_resource(resource_id)` — la même portée que le support
+       * lui-même. Ajouter une fonction `security definer` pour lire ce que la
+       * policy autorise déjà reviendrait à écrire une seconde règle de lecture
+       * à côté de la première, avec la certitude qu'elles divergent un jour.
+       */
+      async listResourceTexts(resourceId) {
+        const { data, error } = await client
+          .from("learning_resource_texts")
+          .select("source_path,segment_index,content")
+          .eq("resource_id", resourceId)
+          .order("source_path")
+          .order("segment_index");
+        assertNoSupabaseError(error);
+        return (
+          (data ?? []) as { source_path: string; segment_index: number; content: string }[]
+        ).map((row) => ({
+          sourcePath: row.source_path,
+          segmentIndex: row.segment_index,
+          content: row.content,
+        }));
+      },
       async searchResourceTexts(programId, query, limit) {
         const { data, error } = await client.rpc("search_learning_resource_texts", {
           p_program_id: programId,

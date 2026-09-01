@@ -537,6 +537,13 @@ export interface ResourceTextMatch {
   readonly rank: number;
 }
 
+/** Un segment du texte conservé d'un support, dans son ordre d'origine. */
+export interface ResourceTextSegment {
+  readonly sourcePath: string;
+  readonly segmentIndex: number;
+  readonly content: string;
+}
+
 export interface LearningResourceRepository {
   listResources(programId: ProgramId): Promise<readonly LearningResource[]>;
   /** Crée un support (publication immédiate en v1). Autorisation vérifiée côté serveur. */
@@ -590,6 +597,16 @@ export interface LearningResourceRepository {
     query: string,
     limit?: number,
   ): Promise<readonly ResourceTextMatch[]>;
+  /**
+   * Le texte conservé d'UN support, dans l'ordre.
+   *
+   * `searchResourceTexts` cherche à travers tout le programme et rend des
+   * extraits classés par pertinence ; ce port-ci rend le contenu d'un seul
+   * support, du premier segment au dernier. Sans lui, on peut écrire un texte
+   * et le chercher, mais pas le relire — c'est-à-dire pas vérifier qu'il est
+   * correct, ce qui est la première chose qu'on veut faire après un import.
+   */
+  listResourceTexts(resourceId: LearningResourceId): Promise<readonly ResourceTextSegment[]>;
   /** Publie un diaporama sonorisé complet (diapositives + chapitres). */
   publishNarratedDeck(input: PublishNarratedDeckInput): Promise<PublishedNarratedDeck>;
   /**

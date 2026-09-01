@@ -398,6 +398,22 @@ export const mockDataAccess: DataAccess = {
         ];
         return ok(kept.length);
       },
+      listResourceTexts: (resourceId) =>
+        ok(
+          texts
+            .filter((t) => t.resourceId === resourceId)
+            .slice()
+            .sort((a, b) =>
+              a.sourcePath === b.sourcePath
+                ? a.segmentIndex - b.segmentIndex
+                : a.sourcePath.localeCompare(b.sourcePath),
+            )
+            .map((t) => ({
+              sourcePath: t.sourcePath,
+              segmentIndex: t.segmentIndex,
+              content: t.content,
+            })),
+        ),
       searchResourceTexts: (programId, query, limit) => {
         // Recherche naïve : la maquette ne reproduit ni la racinisation ni la
         // désaccentuation du serveur, elle sert à faire tourner l'écran.

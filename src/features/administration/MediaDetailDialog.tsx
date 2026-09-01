@@ -3,6 +3,7 @@
  * SIMULÉES (modifier, nouvelle version, publier/dépublier, archiver, prévisualiser).
  * Aucune écriture, aucun binaire, aucune requête réseau.
  */
+import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,6 +27,9 @@ import {
 import { NarratedConversionPanel } from "@/features/administration/NarratedConversionPanel";
 import type { Outcome } from "@/domain/types";
 import { NarratedDeckPreviewDialog } from "@/features/administration/NarratedDeckPreviewDialog";
+import { useDataAccess } from "@/application/session";
+import type { ResourceTextSegment } from "@/application/ports/repositories";
+import type { LearningResourceId } from "@/domain/types";
 
 const formatDate = (iso?: string) => (iso ? new Date(iso).toLocaleDateString("fr-FR") : "—");
 
@@ -40,8 +44,51 @@ export function MediaDetailDialog({
   authorName: string;
   onAction: (label: string) => void;
 }) {
+  const dataAccess = useDataAccess();
+  /**
+   * Le texte conservé du support, lu à l'OUVERTURE du dialogue.
+   *
+   * Pas au montage de la ligne : le catalogue affiche des dizaines de supports,
+   * et charger le texte de chacun pour n'en ouvrir qu'un serait une requête par
+   * ligne pour rien.
+   */
+  const [open, setOpen] = useState(false);
+  const [segments, setSegments] = useState<readonly ResourceTextSegment[] | null>(null);
+  const [textError, setTextError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    setTextError(null);
+    void (async () => {
+      try {
+        /*
+         * `MediaResource` est la projection « maquette » de `learning_resources` :
+         * l'identifiant est la MÊME valeur, portée par deux marques de type
+         * différentes. Le double passage par `unknown` est donc un changement
+         * d'étiquette, pas une conversion — et il est écrit ici, à un seul
+         * endroit, plutôt que dissimulé dans le port.
+         */
+        const found = await dataAccess.resources.listResourceTexts(
+          resource.id as unknown as LearningResourceId,
+        );
+        if (!cancelled) setSegments(found);
+      } catch (err) {
+        if (!cancelled) {
+          setSegments([]);
+          setTextError(err instanceof Error ? err.message : "Texte illisible.");
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, dataAccess, resource.id]);
+
+  const totalChars = (segments ?? []).reduce((n, s) => n + s.content.length, 0);
+
   return (
-    <Dialog>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button
           type="button"
@@ -88,6 +135,43 @@ export function MediaDetailDialog({
         </dl>
 
         <p className="text-sm text-muted-foreground">{resource.description}</p>
+
+        {/*
+          Le texte conservé. C'est ce qui rend l'import VÉRIFIABLE : jusqu'ici
+          on pouvait écrire ce texte et le chercher, pas le relire — donc pas
+          constater qu'il est correct. Replié par défaut : un chapitre fait
+          50 000 caractères et n'a pas à pousser les métadonnées hors de l'écran.
+        */}
+        <div className="space-y-1 text-sm">
+          <p className="font-medium">Contenu conservé</p>
+          {segments === null ? (
+            <p className="text-muted-foreground">Lecture…</p>
+          ) : textError ? (
+            <p className="text-destructive text-xs">{textError}</p>
+          ) : segments.length === 0 ? (
+            <p className="text-muted-foreground">
+              Aucun texte conservé pour ce support. Les cours déposés avant la conservation du
+              texte, et les diaporamas sonorisés, sont dans ce cas.
+            </p>
+          ) : (
+            <details className="border-border rounded-md border px-3 py-2">
+              <summary className="cursor-pointer">
+                {segments.length} segment(s) — {totalChars.toLocaleString("fr-FR")} caractères
+              </summary>
+              <div className="mt-2 space-y-3">
+                {segments.map((segment) => (
+                  <div key={`${segment.sourcePath}-${segment.segmentIndex}`} className="space-y-1">
+                    <p className="text-muted-foreground text-xs">
+                      Segment {segment.segmentIndex}
+                      {segment.sourcePath ? ` · ${segment.sourcePath}` : ""}
+                    </p>
+                    <p className="whitespace-pre-wrap break-words text-xs">{segment.content}</p>
+                  </div>
+                ))}
+              </div>
+            </details>
+          )}
+        </div>
 
         <div className="space-y-1 text-sm">
           <p className="font-medium">Objectifs liés</p>
