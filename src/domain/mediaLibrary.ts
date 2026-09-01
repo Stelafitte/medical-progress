@@ -141,6 +141,28 @@ export function filterMedia(
   });
 }
 
+/**
+ * L'ordre du catalogue : « chapitre 2 » avant « chapitre 10 ».
+ *
+ * Un tri alphabétique brut range `chapitre-10` avant `chapitre-2`, parce qu'il
+ * compare des caractères et que « 1 » précède « 2 ». Sur les 22 items du
+ * référentiel importé, la liste devient illisible. `Intl.Collator` avec
+ * `numeric: true` compare les suites de chiffres comme des NOMBRES — c'est le
+ * tri naturel, il est dans la plateforme, et il n'exige aucune convention de
+ * nommage : un support qui ne porte pas de numéro se range alphabétiquement
+ * parmi les autres, sans cas particulier à maintenir.
+ *
+ * `sensitivity: "base"` ignore la casse et les accents, pour que « Échographie »
+ * ne parte pas après « Zonage ».
+ */
+const CATALOGUE_COLLATOR = new Intl.Collator("fr", { numeric: true, sensitivity: "base" });
+
+export function sortMediaForCatalogue(
+  resources: readonly MediaResource[],
+): readonly MediaResource[] {
+  return [...resources].sort((a, b) => CATALOGUE_COLLATOR.compare(a.title, b.title));
+}
+
 export interface MediaIndicators {
   readonly total: number;
   readonly published: number;

@@ -6,6 +6,7 @@ import {
   mediaModules,
   MEDIA_STORAGE_NOTICE_FR,
   type MediaResource,
+  sortMediaForCatalogue,
 } from "@/domain/mediaLibrary";
 import { mediaResources } from "@/infrastructure/mock/mediaFixtures";
 
@@ -84,5 +85,44 @@ describe("médiathèque — indicateurs et actions", () => {
 
   it("affiche la mention de non-activation du stockage", () => {
     expect(MEDIA_STORAGE_NOTICE_FR).toContain("Stockage non activé");
+  });
+});
+
+describe("ordre du catalogue", () => {
+  const support = (title: string) => ({ title }) as never;
+
+  it("range « chapitre 2 » avant « chapitre 10 »", () => {
+    // Un tri alphabétique brut ferait l'inverse : il compare « 1 » et « 2 »
+    // caractère par caractère. Sur 22 items, la liste devient illisible.
+    const titres = sortMediaForCatalogue([
+      support("chapitre-10-item-153-surveillance"),
+      support("chapitre-2-item-222-facteurs-de-risque"),
+      support("chapitre-1-item-221-atherome"),
+      support("chapitre-22-item-330-prescription"),
+    ]).map((r) => r.title);
+    expect(titres).toEqual([
+      "chapitre-1-item-221-atherome",
+      "chapitre-2-item-222-facteurs-de-risque",
+      "chapitre-10-item-153-surveillance",
+      "chapitre-22-item-330-prescription",
+    ]);
+  });
+
+  it("range un support sans numéro parmi les autres, sans cas particulier", () => {
+    const titres = sortMediaForCatalogue([
+      support("chapitre-2-item-222"),
+      support("Échocardiographie normale"),
+      support("chapitre-1-item-221"),
+    ]).map((r) => r.title);
+    expect(titres[0]).toBe("chapitre-1-item-221");
+    expect(titres[1]).toBe("chapitre-2-item-222");
+    expect(titres[2]).toBe("Échocardiographie normale");
+  });
+
+  it("ne modifie pas le tableau reçu", () => {
+    const source = [support("b"), support("a")];
+    const copie = [...source];
+    sortMediaForCatalogue(source);
+    expect(source).toEqual(copie);
   });
 });

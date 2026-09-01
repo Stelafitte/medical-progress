@@ -51,6 +51,7 @@ import {
   MEDIA_VISIBILITY_LABELS_FR,
   conversionStatusOf,
   filterMedia,
+  sortMediaForCatalogue,
   mediaIndicators,
   mediaModules,
   type MediaKind,
@@ -101,7 +102,10 @@ export function MediaLibrarySection({
   const indicators = useMemo(() => mediaIndicators(media), [media]);
   const modules = useMemo(() => mediaModules(media), [media]);
   const visible = useMemo(
-    () => filterMedia(media, { search, kind, status, module: moduleName, onlyUnlinked }),
+    () =>
+      sortMediaForCatalogue(
+        filterMedia(media, { search, kind, status, module: moduleName, onlyUnlinked }),
+      ),
     [media, search, kind, status, moduleName, onlyUnlinked],
   );
 
