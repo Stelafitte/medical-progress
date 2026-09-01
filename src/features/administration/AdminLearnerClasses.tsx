@@ -164,6 +164,7 @@ export function AdminLearnerClasses() {
                   {isImporting && data.program ? (
                     <div className="bg-muted/30 rounded-md border border-dashed p-4">
                       <RealRosterImportPanel
+                        idPrefix={`roster-${cohort.id}`}
                         programId={data.program.id}
                         cohorts={[cohort]}
                         defaultCohortId={cohort.id}

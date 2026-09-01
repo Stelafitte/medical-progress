@@ -72,6 +72,7 @@ export function RealRosterImportPanel({
   defaultCohortId,
   lockCohort = false,
   title = "Importer une liste d'étudiants",
+  idPrefix = "real-roster",
 }: {
   programId: string;
   cohorts: readonly Cohort[];
@@ -87,6 +88,13 @@ export function RealRosterImportPanel({
   /** Monté sous une classe : la destination n'est plus un choix, elle s'affiche. */
   lockCohort?: boolean;
   title?: string;
+  /**
+   * Préfixe des identifiants de champs. Indispensable depuis que le panneau est
+   * monté DEUX FOIS sur le même écran (sous une classe et dans le bloc général) :
+   * deux `id` identiques dans une page font pointer les deux `label` vers le
+   * même champ, et cliquer sur l'un déplace le curseur dans l'autre.
+   */
+  idPrefix?: string;
 }) {
   const dataAccess = useDataAccess();
 
@@ -243,9 +251,9 @@ export function RealRosterImportPanel({
       ) : null}
 
       <div className="space-y-2">
-        <Label htmlFor="real-roster-paste">Ou coller la liste</Label>
+        <Label htmlFor={`${idPrefix}-paste`}>Ou coller la liste</Label>
         <Textarea
-          id="real-roster-paste"
+          id={`${idPrefix}-paste`}
           rows={5}
           value={rawText}
           placeholder={ROSTER_TEMPLATE_CSV}
@@ -278,11 +286,11 @@ export function RealRosterImportPanel({
           ) : null}
 
           <div className="space-y-2">
-            <Label htmlFor="real-roster-pattern">
+            <Label htmlFor={`${idPrefix}-pattern`}>
               Motif d'adresse e-mail (si le fichier n'en contient pas)
             </Label>
             <Input
-              id="real-roster-pattern"
+              id={`${idPrefix}-pattern`}
               value={emailPattern}
               className="min-h-11"
               placeholder={EMAIL_PATTERN_PLACEHOLDER}
@@ -400,14 +408,14 @@ export function RealRosterImportPanel({
           ) : null}
 
           <div className="space-y-2">
-            <Label htmlFor="real-roster-cohort">Classe de destination</Label>
+            <Label htmlFor={`${idPrefix}-cohort`}>Classe de destination</Label>
             {lockCohort ? (
               <p className="border-border rounded-md border px-3 py-2 text-sm">
                 {cohorts.find((c) => c.id === cohortId)?.label ?? "—"}
               </p>
             ) : (
               <Select value={cohortId} onValueChange={setCohortId}>
-                <SelectTrigger id="real-roster-cohort" className="min-h-11">
+                <SelectTrigger id={`${idPrefix}-cohort`} className="min-h-11">
                   <SelectValue placeholder="Choisir la classe…" />
                 </SelectTrigger>
                 <SelectContent>
