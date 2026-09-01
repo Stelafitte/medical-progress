@@ -43,6 +43,7 @@ import {
   readableFormat,
 } from "@/infrastructure/text/documentText";
 import { CohortForm } from "@/features/administration/CohortForm";
+import { ProgramAssociationList } from "@/features/administration/ProgramAssociationList";
 import { PlacementCreationForm } from "@/features/administration/PlacementCreationForm";
 import { CompetenceCreationForm } from "@/features/administration/CompetenceCreationForm";
 import { DocumentRequirementForm } from "@/features/administration/DocumentRequirementForm";
@@ -211,141 +212,6 @@ const SCHEDULE_TEMPLATE: Record<ResourceKind, readonly { id: string; label: stri
  * `onSetRetained` est facultatif : les modalités d'évaluation n'ont pas
  * d'état « retenue », leur liste n'affiche donc que le second bouton.
  */
-function ProgramAssociationList({
-  title,
-  items,
-  busyIds,
-  removeLabel,
-  onRemove,
-  onSetRetained,
-}: {
-  title: string;
-  items: readonly { readonly id: string; readonly label: string; readonly retained?: boolean }[];
-  busyIds: ReadonlySet<string>;
-  removeLabel: string;
-  onRemove: (ids: readonly string[]) => void;
-  onSetRetained?: (ids: readonly string[], retained: boolean) => Promise<void>;
-}) {
-  const retainable = onSetRetained !== undefined;
-
-  // État enregistré en base, tel que le parent vient de le relire.
-  const persisted = useMemo(
-    () => new Set(items.filter((item) => item.retained === true).map((item) => item.id)),
-    [items],
-  );
-  // Signature de l'état enregistré : elle change quand le parent recharge la
-  // liste après une écriture, et c'est le seul moment où l'on a le droit
-  // d'écraser les cases que l'utilisateur est en train de manipuler.
-  const persistedSignature = items.map((item) => `${item.id}:${item.retained === true}`).join("|");
-
-  const [selected, setSelected] = useState<ReadonlySet<string>>(persisted);
-  const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
-
-  useEffect(() => {
-    setSelected(persisted);
-    setSaveError(null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [persistedSignature]);
-
-  if (items.length === 0) return null;
-
-  const toggle = (id: string, checked: boolean) =>
-    setSelected((previous) => {
-      const next = new Set(previous);
-      if (checked) next.add(id);
-      else next.delete(id);
-      return next;
-    });
-
-  const selectedIds = items.filter((item) => selected.has(item.id)).map((item) => item.id);
-  const busy = selectedIds.some((id) => busyIds.has(id));
-
-  const toRetain = items
-    .filter((item) => selected.has(item.id) && item.retained !== true)
-    .map((item) => item.id);
-  const toRelease = items
-    .filter((item) => !selected.has(item.id) && item.retained === true)
-    .map((item) => item.id);
-  const dirty = toRetain.length > 0 || toRelease.length > 0;
-
-  const save = async () => {
-    if (!onSetRetained || !dirty) return;
-    setSaving(true);
-    setSaveError(null);
-    try {
-      if (toRetain.length > 0) await onSetRetained(toRetain, true);
-      if (toRelease.length > 0) await onSetRetained(toRelease, false);
-    } catch (err) {
-      setSaveError(
-        err instanceof Error ? err.message : "Échec de l'enregistrement des sélections.",
-      );
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <div className="space-y-1.5">
-      <p className="text-sm font-medium">{title}</p>
-      <ul className="space-y-1.5">
-        {items.map((item) => (
-          <li key={item.id} className="flex items-center gap-2">
-            <Checkbox
-              checked={selected.has(item.id)}
-              disabled={busyIds.has(item.id) || saving}
-              onCheckedChange={(checked) => toggle(item.id, checked === true)}
-              aria-label={
-                retainable ? `Retenir ${item.label} pour le parcours` : `Sélectionner ${item.label}`
-              }
-            />
-            <span className="text-sm">{item.label}</span>
-            {retainable && item.retained !== true ? (
-              <span className="text-muted-foreground rounded border px-1.5 py-0.5 text-xs">
-                hors parcours
-              </span>
-            ) : null}
-          </li>
-        ))}
-      </ul>
-      <div className="flex flex-wrap items-center gap-2 pt-1">
-        {retainable ? (
-          <Button
-            type="button"
-            size="sm"
-            className="min-h-11"
-            disabled={!dirty || saving || busy}
-            onClick={() => void save()}
-          >
-            {saving ? "Enregistrement…" : "Activer les sélections pour intégration au programme"}
-          </Button>
-        ) : null}
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="min-h-11"
-          disabled={selectedIds.length === 0 || busy || saving}
-          onClick={() => {
-            onRemove(selectedIds);
-            setSelected(new Set());
-          }}
-        >
-          {busy
-            ? "Retrait en cours…"
-            : `${removeLabel}${selectedIds.length > 0 ? ` (${selectedIds.length})` : ""}`}
-        </Button>
-      </div>
-      <p className="text-muted-foreground text-xs">
-        {retainable
-          ? "Cocher ne change rien tant que vous n'avez pas utilisé un bouton. Décocher puis activer sort l'élément du parcours sans le supprimer : il reste dans cette liste. Le retrait, lui, archive l'élément — réversible, jamais supprimé."
-          : "Cocher ne retire rien : la sélection reste jusqu'à ce que vous utilisiez ce bouton. Le retrait est réversible — l'élément est archivé, jamais supprimé."}
-      </p>
-      {saveError ? <p className="text-destructive text-xs">{saveError}</p> : null}
-    </div>
-  );
-}
-
 export function AdminProgramDesigner() {
   const { data, isPending, refetch } = useProgramAdmin();
 

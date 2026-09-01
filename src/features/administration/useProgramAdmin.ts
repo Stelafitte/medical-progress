@@ -17,6 +17,7 @@ export function useProgramAdmin() {
         versions,
         cohorts,
         outcomes,
+        outcomeThemes,
         assessmentModalities,
         resources,
         media,
@@ -44,6 +45,9 @@ export function useProgramAdmin() {
         data.programs.listCurriculumVersions(activeProgram.id),
         data.programs.listCohorts(activeProgram.id),
         data.outcomes.listOutcomes(activeProgram.id),
+        // Les thèmes servent à REPLIER les listes d'acquis : 327 connaissances
+        // à plat ne se lisent pas, 22 chapitres qui s'ouvrent si.
+        data.outcomes.listOutcomeThemes(activeProgram.id),
         data.assessments.listAssessmentModalities(activeProgram.id),
         data.resources.listResources(activeProgram.id),
         data.media.listMedia(activeProgram.id),
@@ -73,6 +77,7 @@ export function useProgramAdmin() {
         versions,
         cohorts,
         outcomes,
+        outcomeThemes,
         assessmentModalities,
         resources,
         media,

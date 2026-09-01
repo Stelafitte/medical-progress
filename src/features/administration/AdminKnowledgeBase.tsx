@@ -38,7 +38,8 @@ import { assessmentFixturesFor } from "@/infrastructure/mock/assessmentFixtures"
 import { NATURE_LABELS_FR } from "@/domain/mastery";
 import { COMPETENCE_MASTERY_LABELS_FR } from "@/domain/competenceDraft";
 import { useDataAccess } from "@/application/session";
-import type { ProgramId } from "@/domain/types";
+import { ProgramAssociationList } from "@/features/administration/ProgramAssociationList";
+import type { OutcomeId, ProgramId } from "@/domain/types";
 
 export function AdminKnowledgeBase() {
   const { data, isPending, refetch } = useProgramAdmin();
@@ -48,6 +49,8 @@ export function AdminKnowledgeBase() {
   const [imported, setImported] = useState<number | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
+  /** Acquis en cours d'archivage : leurs cases sont figées le temps de l'appel. */
+  const [archivingIds, setArchivingIds] = useState<ReadonlySet<string>>(new Set());
 
   const cohorts = data?.cohorts ?? [];
   const selectedId = cohortId ?? defaultPilotCohortId(cohorts);
@@ -120,22 +123,47 @@ export function AdminKnowledgeBase() {
         {knowledge.length === 0 ? (
           <EmptyState>Aucune connaissance définie.</EmptyState>
         ) : (
-          <ul className="space-y-1 text-sm">
-            {knowledge.map((outcome) => (
-              <li key={outcome.id} className="flex flex-wrap items-center gap-2">
-                <Badge variant="secondary" className="font-mono text-[10px]">
-                  {outcome.code}
-                </Badge>
-                <span>{outcome.label}</span>
-                <span className="text-muted-foreground text-xs">
-                  cible {COMPETENCE_MASTERY_LABELS_FR[outcome.targetMastery]}
-                </span>
-                <span className="text-muted-foreground text-xs">
-                  {data.media.filter((m) => m.outcomeIds.includes(outcome.id)).length} support(s)
-                </span>
-              </li>
-            ))}
-          </ul>
+          /*
+            Même composant que dans le Concepteur : cocher ici décide de ce que
+            le programme EXIGE, donc de ce que l'étudiant verra dans son
+            passeport. Deux écrans, un seul mécanisme — sans quoi on pourrait
+            cocher dans l'un ce qu'on ne peut pas décocher dans l'autre.
+          */
+          <ProgramAssociationList
+            title="Connaissances de ce programme"
+            items={knowledge.map((outcome) => ({
+              id: outcome.id,
+              label: `${outcome.code} — ${outcome.label}`,
+              retained: outcome.retainedAt !== null,
+              ...(outcome.knowledgeRank ? { rank: outcome.knowledgeRank } : {}),
+              ...(outcome.themeId
+                ? {
+                    groupLabel:
+                      data.outcomeThemes.find((t) => t.id === outcome.themeId)?.label ??
+                      "Chapitre inconnu",
+                  }
+                : {}),
+            }))}
+            busyIds={archivingIds}
+            removeLabel="Retirer du programme"
+            onRemove={(ids) => {
+              setArchivingIds(new Set(ids));
+              void (async () => {
+                try {
+                  for (const id of ids) {
+                    await dataAccess.outcomes.archiveOutcome(id as OutcomeId);
+                  }
+                  await refetch();
+                } finally {
+                  setArchivingIds(new Set());
+                }
+              })();
+            }}
+            onSetRetained={async (ids, retained) => {
+              await dataAccess.outcomes.setOutcomesRetained(ids as readonly OutcomeId[], retained);
+              await refetch();
+            }}
+          />
         )}
       </PanelCard>
 

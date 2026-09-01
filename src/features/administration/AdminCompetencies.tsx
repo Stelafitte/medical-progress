@@ -36,11 +36,14 @@ import { NATURE_LABELS_FR } from "@/domain/mastery";
 import { CorpusImport } from "@/features/administration/CorpusImport";
 import { CompetenceCreationForm } from "@/features/administration/CompetenceCreationForm";
 import { useDataAccess } from "@/application/session";
+import { ProgramAssociationList } from "@/features/administration/ProgramAssociationList";
 import { COMPETENCE_MASTERY_LABELS_FR, type CompetenceNature } from "@/domain/competenceDraft";
-import type { ProgramId } from "@/domain/types";
+import type { OutcomeId, ProgramId } from "@/domain/types";
 
 export function AdminCompetencies() {
   const { data, isPending, refetch } = useProgramAdmin();
+  /** Compétences en cours d'archivage : leurs cases sont figées le temps de l'appel. */
+  const [archivingIds, setArchivingIds] = useState<ReadonlySet<string>>(new Set());
   const dataAccess = useDataAccess();
   const [cohortId, setCohortId] = useState<string | null>(null);
   const [importText, setImportText] = useState("");
@@ -131,6 +134,54 @@ export function AdminCompetencies() {
           );
         })}
       </div>
+
+      {/*
+        Ce que le programme EXIGE. Même composant que dans le Concepteur et
+        dans l'onglet Connaissances : cocher ici décide de ce qui remplit le
+        passeport de l'étudiant. Les deux cartes ci-dessus montrent, celle-ci
+        décide.
+      */}
+      <PanelCard
+        title="Compétences retenues pour le parcours"
+        description="Décocher une compétence la sort du passeport de l'étudiant sans la supprimer : elle reste dans le référentiel du programme."
+      >
+        <ProgramAssociationList
+          title="Compétences de ce programme"
+          items={scoped
+            .filter((o) => o.nature !== "knowledge")
+            .map((outcome) => ({
+              id: outcome.id,
+              label: `${outcome.code} — ${outcome.label}`,
+              retained: outcome.retainedAt !== null,
+              ...(outcome.themeId
+                ? {
+                    groupLabel:
+                      data.outcomeThemes.find((t) => t.id === outcome.themeId)?.label ??
+                      "Chapitre inconnu",
+                  }
+                : {}),
+            }))}
+          busyIds={archivingIds}
+          removeLabel="Retirer du programme"
+          onRemove={(ids) => {
+            setArchivingIds(new Set(ids));
+            void (async () => {
+              try {
+                for (const id of ids) {
+                  await dataAccess.outcomes.archiveOutcome(id as OutcomeId);
+                }
+                await refetch();
+              } finally {
+                setArchivingIds(new Set());
+              }
+            })();
+          }}
+          onSetRetained={async (ids, retained) => {
+            await dataAccess.outcomes.setOutcomesRetained(ids as readonly OutcomeId[], retained);
+            await refetch();
+          }}
+        />
+      </PanelCard>
 
       {/* 2. Création : l'import passe AVANT la saisie manuelle, dans le même bloc. */}
       <SectionHeading
