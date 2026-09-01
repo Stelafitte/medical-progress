@@ -39,6 +39,7 @@ import { NATURE_LABELS_FR } from "@/domain/mastery";
 import { COMPETENCE_MASTERY_LABELS_FR } from "@/domain/competenceDraft";
 import { useDataAccess } from "@/application/session";
 import { ProgramAssociationList } from "@/features/administration/ProgramAssociationList";
+import { outcomeAssociationItems } from "@/domain/outcomeAssociation";
 import type { OutcomeId, ProgramId } from "@/domain/types";
 
 export function AdminKnowledgeBase() {
@@ -131,19 +132,7 @@ export function AdminKnowledgeBase() {
           */
           <ProgramAssociationList
             title="Connaissances de ce programme"
-            items={knowledge.map((outcome) => ({
-              id: outcome.id,
-              label: `${outcome.code} — ${outcome.label}`,
-              retained: outcome.retainedAt !== null,
-              ...(outcome.knowledgeRank ? { rank: outcome.knowledgeRank } : {}),
-              ...(outcome.themeId
-                ? {
-                    groupLabel:
-                      data.outcomeThemes.find((t) => t.id === outcome.themeId)?.label ??
-                      "Chapitre inconnu",
-                  }
-                : {}),
-            }))}
+            items={outcomeAssociationItems(knowledge, data.outcomeThemes)}
             busyIds={archivingIds}
             removeLabel="Retirer du programme"
             onRemove={(ids) => {

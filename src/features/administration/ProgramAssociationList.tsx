@@ -26,21 +26,14 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import type { AssociationItem } from "@/domain/outcomeAssociation";
 
-export interface AssociationItem {
-  readonly id: string;
-  readonly label: string;
-  /** Retenu pour le parcours. `undefined` = la notion ne s'applique pas. */
-  readonly retained?: boolean;
-  /**
-   * Chapitre sous lequel replier cet élément. Quand au moins un item en porte
-   * un, la liste devient une pile de dépliants — 327 lignes à plat ne se lisent
-   * pas, 22 titres qui s'ouvrent si.
-   */
-  readonly groupLabel?: string;
-  /** Rang R2C, pour filtrer. Affiché tel quel. */
-  readonly rank?: string;
-}
+/**
+ * Le type de ligne vit dans le domaine, avec la fonction qui les construit
+ * (`outcomeAssociationItems`). Les écrans ne fabriquent plus leurs lignes à la
+ * main : c'est ce qui les faisait diverger.
+ */
+export type { AssociationItem } from "@/domain/outcomeAssociation";
 
 export function ProgramAssociationList({
   title,

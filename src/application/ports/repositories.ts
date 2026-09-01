@@ -5,7 +5,7 @@
  * sélectif depuis un système historique) devra respecter ces interfaces sans
  * modifier l'UI ni la logique métier.
  */
-import type { PlanScheduleEntry } from "@/domain/acquisitionPlan";
+import type { PlanMilestone, PlanMilestoneId, PlanScheduleEntry } from "@/domain/acquisitionPlan";
 import type {
   AssessmentMode,
   AssessmentModality,
@@ -665,9 +665,63 @@ export interface EcosMigrationRepository {
   listScenarios(programId: ProgramId): Promise<readonly EcosScenarioMock[]>;
 }
 
+/**
+ * Entrée d'un jalon. `weekOffsetEnd` absent = jalon ponctuel.
+ *
+ * `outcomeIds` n'est PAS ici : la composition d'un jalon se pose en un appel
+ * distinct (`setMilestoneOutcomes`), pour la même raison que
+ * `setOutcomesRetained` — l'écran enregistre l'état complet d'une liste, et une
+ * bascule partielle laisserait l'écran et la base en désaccord.
+ */
+export interface CreatePlanMilestoneInput {
+  readonly cohortId: CohortId;
+  readonly label: string;
+  readonly weekOffset: number;
+  readonly weekOffsetEnd?: number;
+  readonly official?: boolean;
+  readonly position?: number;
+}
+
+/**
+ * Reprise d'un jalon. Chaque champ absent reste inchangé — SAUF la fin de
+ * période, qui a besoin d'un geste explicite pour être effacée.
+ *
+ * `clearWeekOffsetEnd` existe parce que `null` veut dire deux choses
+ * différentes sur cette colonne : « ne touche pas » et « ce jalon redevient
+ * ponctuel ». Sans ce drapeau, étaler un jalon serait un aller sans retour.
+ */
+export interface UpdatePlanMilestoneInput {
+  readonly milestoneId: PlanMilestoneId;
+  readonly label?: string;
+  readonly weekOffset?: number;
+  readonly weekOffsetEnd?: number;
+  readonly clearWeekOffsetEnd?: boolean;
+  readonly official?: boolean;
+  readonly position?: number;
+}
+
 export interface AcquisitionPlanRepository {
   /** Calendrier de référence des acquis d'un programme. */
   listPlanSchedule(programId: ProgramId): Promise<readonly PlanScheduleEntry[]>;
+  /**
+   * Le rétroplanning d'une PROMOTION, avec la composition de chaque jalon.
+   *
+   * Par cohorte et non par programme : un jalon « semaine 4 » n'a de sens que
+   * pour un stage donné, et le même programme porte un rétroplanning différent
+   * d'une promotion à l'autre.
+   */
+  listMilestones(cohortId: CohortId): Promise<readonly PlanMilestone[]>;
+  createMilestone(input: CreatePlanMilestoneInput): Promise<PlanMilestone>;
+  updateMilestone(input: UpdatePlanMilestoneInput): Promise<PlanMilestone>;
+  deleteMilestone(milestoneId: PlanMilestoneId): Promise<void>;
+  /**
+   * Remplace la composition d'un jalon par la liste fournie. Rend le nombre
+   * d'acquis rattachés. Un acquis d'un autre programme est refusé côté serveur.
+   */
+  setMilestoneOutcomes(
+    milestoneId: PlanMilestoneId,
+    outcomeIds: readonly OutcomeId[],
+  ): Promise<number>;
 }
 
 export interface StageLogRepository {

@@ -542,6 +542,21 @@ export const mockDataAccess: DataAccess = {
       const ids = new Set(fx.outcomes.filter((o) => o.programId === programId).map((o) => o.id));
       return ok(fx.planSchedule.filter((s) => ids.has(s.outcomeId)));
     },
+    /*
+     * Le rétroplanning n'a pas de jeu de démonstration : la maquette du
+     * Concepteur montrait des échéances qui n'existaient nulle part, et c'est
+     * précisément ce qu'on est en train de corriger. Rendre une liste vide dit
+     * la vérité — aucune promotion n'a encore de jalon.
+     */
+    listMilestones: () => ok([]),
+    createMilestone: () =>
+      Promise.reject(new Error("Le rétroplanning exige une connexion à la base.")),
+    updateMilestone: () =>
+      Promise.reject(new Error("Le rétroplanning exige une connexion à la base.")),
+    deleteMilestone: () =>
+      Promise.reject(new Error("Le rétroplanning exige une connexion à la base.")),
+    setMilestoneOutcomes: () =>
+      Promise.reject(new Error("Le rétroplanning exige une connexion à la base.")),
   },
   stageLogs: {
     listTemplates: (programId) =>

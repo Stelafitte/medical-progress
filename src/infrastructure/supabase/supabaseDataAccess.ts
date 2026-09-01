@@ -1318,6 +1318,157 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
       },
     },
     /**
+     * Rétroplanning réel d'une promotion.
+     *
+     * `listPlanSchedule` reste délégué au mock : c'est le calendrier de
+     * démonstration du passeport, qui n'a pas encore été rebranché sur les
+     * jalons. Les cinq autres écrivent et lisent la vraie table.
+     */
+    plan: {
+      ...mockDataAccess.plan,
+      async listMilestones(cohortId) {
+        /*
+         * Deux lectures directes plutôt qu'une jointure imbriquée : la policy
+         * `plan_milestones_select` couvre déjà les deux tables, et une jointure
+         * PostgREST rendrait la composition sous une clé imbriquée qu'il
+         * faudrait déplier à la main de toute façon.
+         */
+        const { data, error } = await client
+          .from("plan_milestones")
+          .select("id,cohort_id,program_id,label,week_offset,week_offset_end,official,position")
+          .eq("cohort_id", cohortId)
+          .order("position")
+          .order("week_offset");
+        assertNoSupabaseError(error);
+        const rows = (data ?? []) as {
+          id: string;
+          cohort_id: string;
+          program_id: string;
+          label: string;
+          week_offset: number;
+          week_offset_end: number | null;
+          official: boolean;
+          position: number;
+        }[];
+        if (rows.length === 0) return [];
+
+        const { data: links, error: linkError } = await client
+          .from("plan_milestone_outcomes")
+          .select("milestone_id,outcome_id,position")
+          .in(
+            "milestone_id",
+            rows.map((row) => row.id),
+          )
+          .order("position");
+        assertNoSupabaseError(linkError);
+        const byMilestone = new Map<string, OutcomeId[]>();
+        for (const link of (links ?? []) as { milestone_id: string; outcome_id: string }[]) {
+          const list = byMilestone.get(link.milestone_id) ?? [];
+          list.push(link.outcome_id as OutcomeId);
+          byMilestone.set(link.milestone_id, list);
+        }
+
+        return rows.map((row) => ({
+          id: row.id,
+          cohortId: row.cohort_id,
+          programId: row.program_id,
+          label: row.label,
+          weekOffset: row.week_offset,
+          // Clé ABSENTE et non `undefined` : `exactOptionalPropertyTypes`.
+          ...(row.week_offset_end === null ? {} : { weekOffsetEnd: row.week_offset_end }),
+          official: row.official,
+          position: row.position,
+          outcomeIds: byMilestone.get(row.id) ?? [],
+        }));
+      },
+      async createMilestone(input) {
+        const { data, error } = await client.rpc("create_plan_milestone", {
+          p_cohort_id: input.cohortId,
+          p_label: input.label,
+          p_week_offset: input.weekOffset,
+          p_official: input.official ?? false,
+          p_position: input.position ?? 0,
+          p_week_offset_end: input.weekOffsetEnd ?? null,
+        });
+        assertNoSupabaseError(error);
+        const row = data as {
+          id: string;
+          cohort_id: string;
+          program_id: string;
+          label: string;
+          week_offset: number;
+          week_offset_end: number | null;
+          official: boolean;
+          position: number;
+        };
+        return {
+          id: row.id,
+          cohortId: row.cohort_id,
+          programId: row.program_id,
+          label: row.label,
+          weekOffset: row.week_offset,
+          ...(row.week_offset_end === null ? {} : { weekOffsetEnd: row.week_offset_end }),
+          official: row.official,
+          position: row.position,
+          outcomeIds: [],
+        };
+      },
+      async updateMilestone(input) {
+        /*
+         * `null` = inchangé pour tous les champs, SAUF la fin de période :
+         * là, `null` est aussi une valeur légitime (« jalon ponctuel »), et
+         * c'est `p_clear_week_offset_end` qui l'exprime. Sans ce drapeau,
+         * étaler un jalon serait un aller sans retour.
+         */
+        const { data, error } = await client.rpc("update_plan_milestone", {
+          p_milestone_id: input.milestoneId,
+          p_label: input.label ?? null,
+          p_week_offset: input.weekOffset ?? null,
+          p_official: input.official ?? null,
+          p_position: input.position ?? null,
+          p_week_offset_end: input.weekOffsetEnd ?? null,
+          p_clear_week_offset_end: input.clearWeekOffsetEnd ?? false,
+        });
+        assertNoSupabaseError(error);
+        const row = data as {
+          id: string;
+          cohort_id: string;
+          program_id: string;
+          label: string;
+          week_offset: number;
+          week_offset_end: number | null;
+          official: boolean;
+          position: number;
+        };
+        return {
+          id: row.id,
+          cohortId: row.cohort_id,
+          programId: row.program_id,
+          label: row.label,
+          weekOffset: row.week_offset,
+          ...(row.week_offset_end === null ? {} : { weekOffsetEnd: row.week_offset_end }),
+          official: row.official,
+          position: row.position,
+          outcomeIds: [],
+        };
+      },
+      async deleteMilestone(milestoneId) {
+        const { error } = await client.rpc("delete_plan_milestone", {
+          p_milestone_id: milestoneId,
+        });
+        assertNoSupabaseError(error);
+      },
+      async setMilestoneOutcomes(milestoneId, outcomeIds) {
+        const { data, error } = await client.rpc("set_milestone_outcomes", {
+          p_milestone_id: milestoneId,
+          p_outcome_ids: [...outcomeIds],
+        });
+        assertNoSupabaseError(error);
+        return ((data ?? []) as unknown[]).length;
+      },
+    },
+
+    /**
      * Grille médiathèque : lecture réelle, projetée sur le type riche de la
      * maquette (voir `mapMediaResource`). `listLearnerNarratedDecks` reste
      * délégué au mock tant que la lecture des diaporamas sonorisés côté

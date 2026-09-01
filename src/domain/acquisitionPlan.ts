@@ -6,7 +6,7 @@
  * (`PlanScheduleEntry`). Les quatre vues du Passeport (Liste, Kanban, Gantt,
  * Calendrier) consomment ce même modèle.
  */
-import type { IsoDateTime, OutcomeId, OutcomeNature } from "./types";
+import type { CohortId, IsoDateTime, OutcomeId, OutcomeNature, ProgramId } from "./types";
 import type { MasteryLevel } from "./types";
 import { masteryRank, type OutcomeProgress } from "./mastery";
 
@@ -24,6 +24,202 @@ export interface PlanScheduleEntry {
   readonly milestoneLabel: string;
   /** Échéance institutionnelle (non déplaçable sans validation). */
   readonly official: boolean;
+}
+
+/* ------------------------------------------------------------------ */
+/* Rétroplanning réel d'une promotion                                  */
+/* ------------------------------------------------------------------ */
+
+export type PlanMilestoneId = string & { readonly __brand?: "PlanMilestone" };
+
+/**
+ * Un jalon du rétroplanning d'une PROMOTION.
+ *
+ * Trois choses à ne pas perdre de vue, toutes portées par la table :
+ *
+ * 1. **Des rangs de semaine, jamais des dates.** `weekOffset` compte les
+ *    semaines depuis le début du stage (0 = semaine d'accueil). Rejouer le même
+ *    rétroplanning l'année suivante ne demande donc que de changer la date de la
+ *    promotion, pas de ressaisir six échéances.
+ * 2. **Une période est facultative.** `weekOffsetEnd` absent = jalon ponctuel
+ *    (« semaine 4 ») ; présent = jalon étalé (« semaines 4 à 6 »).
+ * 3. **`official` n'est pas décoratif.** Il décide si l'étudiant peut déplacer
+ *    ce jalon : c'est exactement `approvalRuleForImpact` — `official_deadline`
+ *    exige un enseignant, `personal_pace` est accepté d'office.
+ *
+ * Un jalon appartient à une cohorte, pas à un programme : « semaine 4 » n'a de
+ * sens que pour un stage donné.
+ */
+export interface PlanMilestone {
+  readonly id: PlanMilestoneId;
+  readonly cohortId: CohortId;
+  readonly programId: ProgramId;
+  readonly label: string;
+  readonly weekOffset: number;
+  readonly weekOffsetEnd?: number;
+  readonly official: boolean;
+  readonly position: number;
+  /** Acquis attendus à ce jalon. Ils héritent de sa date. */
+  readonly outcomeIds: readonly OutcomeId[];
+}
+
+/**
+ * Bornes acceptées par la base (`check (week_offset between 0 and 104)`).
+ * Reprises ici pour que l'écran refuse AVANT l'aller-retour, sans pour autant
+ * être la seule barrière : la contrainte SQL reste l'autorité.
+ */
+export const PLAN_MILESTONE_MIN_WEEK = 0;
+export const PLAN_MILESTONE_MAX_WEEK = 104;
+
+export type PlanMilestoneIssue =
+  "label_manquant" | "semaine_hors_bornes" | "fin_hors_bornes" | "fin_avant_debut";
+
+export const PLAN_MILESTONE_ISSUE_LABELS_FR: Record<PlanMilestoneIssue, string> = {
+  label_manquant: "Le jalon doit porter un intitulé.",
+  semaine_hors_bornes: `La semaine de début doit être comprise entre ${PLAN_MILESTONE_MIN_WEEK} et ${PLAN_MILESTONE_MAX_WEEK}.`,
+  fin_hors_bornes: `La semaine de fin doit être comprise entre ${PLAN_MILESTONE_MIN_WEEK} et ${PLAN_MILESTONE_MAX_WEEK}.`,
+  fin_avant_debut: "La fin de la période précède son début.",
+};
+
+/**
+ * Ce qui empêche d'enregistrer un jalon. Liste vide = enregistrable.
+ *
+ * Même règle que partout ailleurs dans ce projet : l'écran vérifie pour
+ * expliquer, la base vérifie pour garantir. On ne remplace pas l'une par
+ * l'autre.
+ */
+export function validatePlanMilestone(input: {
+  readonly label: string;
+  readonly weekOffset: number;
+  readonly weekOffsetEnd?: number;
+}): readonly PlanMilestoneIssue[] {
+  const issues: PlanMilestoneIssue[] = [];
+  if (input.label.trim() === "") issues.push("label_manquant");
+  if (
+    !Number.isInteger(input.weekOffset) ||
+    input.weekOffset < PLAN_MILESTONE_MIN_WEEK ||
+    input.weekOffset > PLAN_MILESTONE_MAX_WEEK
+  ) {
+    issues.push("semaine_hors_bornes");
+  }
+  if (input.weekOffsetEnd !== undefined) {
+    if (
+      !Number.isInteger(input.weekOffsetEnd) ||
+      input.weekOffsetEnd < PLAN_MILESTONE_MIN_WEEK ||
+      input.weekOffsetEnd > PLAN_MILESTONE_MAX_WEEK
+    ) {
+      issues.push("fin_hors_bornes");
+    } else if (input.weekOffsetEnd < input.weekOffset) {
+      issues.push("fin_avant_debut");
+    }
+  }
+  return issues;
+}
+
+/**
+ * La date réelle d'un rang de semaine, pour une promotion donnée.
+ *
+ * C'est la seule fonction qui transforme un rang en date, et elle est ici —
+ * dans le domaine — plutôt que dans un écran : le passeport de l'étudiant, le
+ * pilotage et le Concepteur doivent tous les trois lire la même date.
+ */
+export function milestoneDateFor(cohortStartsOn: IsoDateTime, weekOffset: number): IsoDateTime {
+  const start = new Date(cohortStartsOn);
+  start.setUTCDate(start.getUTCDate() + weekOffset * 7);
+  return start.toISOString().slice(0, 10);
+}
+
+/* ------------------------------------------------------------------ */
+/* Ce qu'un enregistrement de rétroplanning va faire                   */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Ce que le concepteur a décidé pour un chapitre, tel qu'il est saisi.
+ *
+ * Les semaines sont des CHAÎNES parce qu'elles viennent d'un champ de saisie :
+ * « » (vide) et « 4 » ne sont pas la même chose, et convertir trop tôt ferait
+ * passer un champ vide pour la semaine 0 — soit la semaine d'accueil, ce qui
+ * est une vraie valeur.
+ */
+export type MilestoneTiming =
+  | { readonly kind: "undated" }
+  | { readonly kind: "week"; readonly from: string }
+  | { readonly kind: "period"; readonly from: string; readonly to: string };
+
+export interface MilestoneWrite {
+  readonly themeId: string;
+  readonly label: string;
+  readonly weekOffset: number;
+  readonly weekOffsetEnd?: number;
+  /** Jalon déjà enregistré à reprendre. Absent = création. */
+  readonly milestoneId?: PlanMilestoneId;
+}
+
+export interface MilestonePlanIntent {
+  /** Jalons à créer ou à reprendre, dans l'ordre des chapitres. */
+  readonly toWrite: readonly MilestoneWrite[];
+  /** Jalons enregistrés que le concepteur vient de repasser en « non daté ». */
+  readonly toDelete: readonly PlanMilestone[];
+  /** Jalons enregistrés qu'aucun chapitre ne réclame — un chapitre renommé. */
+  readonly orphans: readonly PlanMilestone[];
+}
+
+function parsedWeek(value: string): number | undefined {
+  if (value.trim() === "") return undefined;
+  const parsed = Number(value);
+  return Number.isInteger(parsed) ? parsed : undefined;
+}
+
+/**
+ * Ce qu'un clic sur « Enregistrer » va réellement faire.
+ *
+ * Cette fonction est ici, et pas dans l'écran, pour une raison précise : elle
+ * décide de SUPPRESSIONS. Un chapitre repassé en « non daté » doit voir son
+ * jalon disparaître — sinon « non daté » mentirait, l'échéance resterait dans
+ * le passeport de l'étudiant, et rien à l'écran ne le dirait. Mais une
+ * suppression qu'on ne peut pas rejouer dans un test est une suppression qu'on
+ * ne peut pas garantir.
+ *
+ * Ce qu'elle ne fait JAMAIS : supprimer un jalon orphelin. Un chapitre renommé
+ * laisse derrière lui un jalon que plus aucun libellé ne réclame ; l'effacer
+ * d'office ferait perdre un travail de planification sur un simple renommage.
+ * Il est rendu à part, pour que l'écran le montre et laisse décider.
+ */
+export function planMilestoneIntent(
+  themes: readonly { readonly id: string; readonly label: string }[],
+  timings: Readonly<Record<string, MilestoneTiming>>,
+  existing: readonly PlanMilestone[],
+): MilestonePlanIntent {
+  const toWrite: MilestoneWrite[] = [];
+  const toDelete: PlanMilestone[] = [];
+
+  for (const theme of themes) {
+    const timing = timings[theme.id] ?? { kind: "undated" };
+    const saved = existing.find((milestone) => milestone.label === theme.label);
+    const from = timing.kind === "undated" ? undefined : parsedWeek(timing.from);
+
+    if (from === undefined) {
+      // « Non daté », ou une semaine pas encore saisie : dans les deux cas le
+      // chapitre ne porte pas d'échéance. S'il en avait une, elle s'en va.
+      if (saved) toDelete.push(saved);
+      continue;
+    }
+
+    const to = timing.kind === "period" ? parsedWeek(timing.to) : undefined;
+    toWrite.push({
+      themeId: theme.id,
+      label: theme.label,
+      weekOffset: from,
+      ...(to === undefined ? {} : { weekOffsetEnd: to }),
+      ...(saved ? { milestoneId: saved.id } : {}),
+    });
+  }
+
+  const orphans = existing.filter(
+    (milestone) => !themes.some((theme) => theme.label === milestone.label),
+  );
+
+  return { toWrite, toDelete, orphans };
 }
 
 export interface AcquisitionPlanItem {

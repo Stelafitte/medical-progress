@@ -341,7 +341,12 @@ export function MediaLibrarySection({
                     <TableHead>Titre</TableHead>
                     <TableHead>Type</TableHead>
                     <TableHead>Module</TableHead>
-                    <TableHead>Objectifs</TableHead>
+                    {/*
+                      Pas de colonne « Objectifs » : un chapitre en porte jusqu'à
+                      26, la cellule faisait trois lignes de codes et écrasait le
+                      reste du tableau. Le détail les liste avec leur intitulé,
+                      ce qu'une colonne de codes ne fera jamais.
+                    */}
                     <TableHead>Version</TableHead>
                     <TableHead>Statut</TableHead>
                     <TableHead>Conversion</TableHead>
@@ -357,7 +362,6 @@ export function MediaLibrarySection({
                       <TableCell className="max-w-56 font-medium">{resource.title}</TableCell>
                       <TableCell>{MEDIA_KIND_LABELS_FR[resource.kind]}</TableCell>
                       <TableCell>{resource.module}</TableCell>
-                      <TableCell className="text-xs">{outcomeCodes(resource) || "—"}</TableCell>
                       <TableCell className="font-mono text-xs">{resource.version}</TableCell>
                       <TableCell>
                         <Badge variant={statusVariant(resource.status)} className="font-normal">

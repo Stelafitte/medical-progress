@@ -37,6 +37,7 @@ import { CorpusImport } from "@/features/administration/CorpusImport";
 import { CompetenceCreationForm } from "@/features/administration/CompetenceCreationForm";
 import { useDataAccess } from "@/application/session";
 import { ProgramAssociationList } from "@/features/administration/ProgramAssociationList";
+import { outcomeAssociationItems } from "@/domain/outcomeAssociation";
 import { COMPETENCE_MASTERY_LABELS_FR, type CompetenceNature } from "@/domain/competenceDraft";
 import type { OutcomeId, ProgramId } from "@/domain/types";
 
@@ -147,20 +148,10 @@ export function AdminCompetencies() {
       >
         <ProgramAssociationList
           title="Compétences de ce programme"
-          items={scoped
-            .filter((o) => o.nature !== "knowledge")
-            .map((outcome) => ({
-              id: outcome.id,
-              label: `${outcome.code} — ${outcome.label}`,
-              retained: outcome.retainedAt !== null,
-              ...(outcome.themeId
-                ? {
-                    groupLabel:
-                      data.outcomeThemes.find((t) => t.id === outcome.themeId)?.label ??
-                      "Chapitre inconnu",
-                  }
-                : {}),
-            }))}
+          items={outcomeAssociationItems(
+            scoped.filter((o) => o.nature !== "knowledge"),
+            data.outcomeThemes,
+          )}
           busyIds={archivingIds}
           removeLabel="Retirer du programme"
           onRemove={(ids) => {

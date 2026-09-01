@@ -44,6 +44,8 @@ import {
 } from "@/infrastructure/text/documentText";
 import { CohortForm } from "@/features/administration/CohortForm";
 import { ProgramAssociationList } from "@/features/administration/ProgramAssociationList";
+import { ProgramMilestonePlanner } from "@/features/administration/ProgramMilestonePlanner";
+import { outcomeAssociationItems } from "@/domain/outcomeAssociation";
 import { PlacementCreationForm } from "@/features/administration/PlacementCreationForm";
 import { CompetenceCreationForm } from "@/features/administration/CompetenceCreationForm";
 import { DocumentRequirementForm } from "@/features/administration/DocumentRequirementForm";
@@ -143,47 +145,6 @@ const MODE_LABELS: Record<ResourceMode, string> = {
 /* Planning général (étape 3)                                          */
 /* ------------------------------------------------------------------ */
 
-type ScheduleKind = "date" | "period" | "undated";
-
-const SCHEDULE_KIND_LABELS: Record<ScheduleKind, string> = {
-  date: "Date unique",
-  period: "Période",
-  undated: "Non daté",
-};
-
-interface ScheduleEntry {
-  readonly kind: ScheduleKind;
-  readonly from: string;
-  readonly to: string;
-}
-
-const INITIAL_SCHEDULE: ScheduleEntry = { kind: "date", from: "", to: "" };
-
-/** Échéances proposées pour chaque ressource retenue à l'étape 1. */
-const SCHEDULE_TEMPLATE: Record<ResourceKind, readonly { id: string; label: string }[]> = {
-  knowledge: [
-    { id: "knowledge-release", label: "Mise à disposition des supports pédagogiques" },
-    { id: "knowledge-quiz", label: "Ouverture des QCM de connaissance" },
-  ],
-  competences: [
-    { id: "competences-expected", label: "Attendus des compétences" },
-    { id: "competences-review", label: "Bilan de validation des compétences" },
-  ],
-  assessments: [
-    { id: "assessments-continuous", label: "Évaluations en cours de programme" },
-    { id: "assessments-exam", label: "Examen final" },
-  ],
-  stage: [
-    { id: "stage-start", label: "Début de stage" },
-    { id: "stage-logbook-send", label: "Envoi des carnets de stage" },
-    { id: "stage-logbook-return", label: "Retour des carnets de stage validés" },
-  ],
-  documents: [
-    { id: "documents-deposit", label: "Dépôt des pièces administratives" },
-    { id: "documents-certificate", label: "Délivrance du certificat de complétude" },
-  ],
-};
-
 /* ------------------------------------------------------------------ */
 /* Import de fichiers d'objectifs (PDF / Word / texte)                */
 /* ------------------------------------------------------------------ */
@@ -234,7 +195,6 @@ export function AdminProgramDesigner() {
   const [associated, setAssociated] = useState<string | null>(null);
   const [programStartsOn, setProgramStartsOn] = useState("");
   const [programEndsOn, setProgramEndsOn] = useState("");
-  const [schedule, setSchedule] = useState<Record<string, ScheduleEntry>>({});
   const localPlacements = useLocalPlacements(data?.program?.id);
   const localRequirements = useLocalDocumentRequirements(data?.program?.id);
   const dataAccess = useDataAccess();
@@ -314,7 +274,6 @@ export function AdminProgramDesigner() {
     setProgramEndsOn(
       draft && typeof draft["programEndsOn"] === "string" ? draft["programEndsOn"] : "",
     );
-    setSchedule(draft && draft["schedule"] ? (draft["schedule"] as typeof schedule) : {});
 
     // Repères d'écran propres au programme quitté.
     setImportedFile(null);
@@ -336,7 +295,6 @@ export function AdminProgramDesigner() {
       selectedCohortId,
       programStartsOn,
       programEndsOn,
-      schedule,
     }),
     [
       modelId,
@@ -347,7 +305,6 @@ export function AdminProgramDesigner() {
       selectedCohortId,
       programStartsOn,
       programEndsOn,
-      schedule,
     ],
   );
 
@@ -482,13 +439,18 @@ export function AdminProgramDesigner() {
               ? "Liste des connaissances déjà associées à ce programme"
               : "Liste des compétences déjà associées à ce programme"
           }
-          items={data.outcomes
-            .filter((o) => (isKnowledge ? o.nature === "knowledge" : o.nature !== "knowledge"))
-            .map((outcome) => ({
-              id: outcome.id,
-              label: `${outcome.code} — ${outcome.label}`,
-              retained: outcome.retainedAt !== null,
-            }))}
+          /*
+           * Les MÊMES lignes que dans l'onglet dédié : repliées par chapitre,
+           * filtrables par rang, dans l'ordre du référentiel. Le Concepteur les
+           * construisait à part, et rendait donc 327 connaissances à plat — même
+           * stock, deux visages, et personne ne s'y retrouvait.
+           */
+          items={outcomeAssociationItems(
+            data.outcomes.filter((o) =>
+              isKnowledge ? o.nature === "knowledge" : o.nature !== "knowledge",
+            ),
+            data.outcomeThemes,
+          )}
           busyIds={archivingIds}
           removeLabel="Retirer du programme"
           onRemove={(ids) =>
@@ -568,7 +530,6 @@ export function AdminProgramDesigner() {
     selectedCohortId,
     programStartsOn,
     programEndsOn,
-    schedule,
   ]);
 
   if (isPending || !data) return <Skeleton className="h-80 w-full" />;
@@ -591,31 +552,19 @@ export function AdminProgramDesigner() {
   );
   const designReady = modelReady && chosenResources.length > 0 && pendingResources.length === 0;
 
-  /** Échéances à programmer : dérivées des ressources retenues à l'étape 1. */
-  const scheduleItems = chosenResources.flatMap((resource) =>
-    SCHEDULE_TEMPLATE[resource.id].map((item) => ({
-      id: item.id,
-      label: item.label,
-      originLabel: resource.label,
-    })),
-  );
-
   const boundsInvalid =
     programStartsOn !== "" && programEndsOn !== "" && programEndsOn < programStartsOn;
 
-  const scheduleReady =
-    !boundsInvalid &&
-    scheduleItems.every((item) => {
-      const entry = schedule[item.id] ?? INITIAL_SCHEDULE;
-      if (entry.kind === "undated") return true;
-      if (entry.kind === "date") return entry.from !== "";
-      return entry.from !== "" && entry.to !== "" && entry.to >= entry.from;
-    });
-
-  const readyForPilot = designReady && associated !== null && scheduleReady;
-
-  const patchSchedule = (id: string, next: Partial<ScheduleEntry>) =>
-    setSchedule((prev) => ({ ...prev, [id]: { ...(prev[id] ?? INITIAL_SCHEDULE), ...next } }));
+  /**
+   * Le rétroplanning ne conditionne PAS le passage au pilotage.
+   *
+   * Avant, il le conditionnait — mais sur des échéances de maquette qui
+   * n'allaient nulle part. Maintenant qu'elles sont réelles, elles sont aussi
+   * facultatives : un chapitre « non daté » reste un état valide et durable, et
+   * une promotion peut démarrer avant que tous ses jalons soient posés. Bloquer
+   * le pilotage sur un planning complet interdirait de commencer.
+   */
+  const readyForPilot = designReady && associated !== null && !boundsInvalid;
 
   const patch = (id: ResourceKind, next: Partial<ResourceState>) =>
     setResources((prev) => ({ ...prev, [id]: { ...prev[id], ...next } }));
@@ -1219,10 +1168,10 @@ export function AdminProgramDesigner() {
       {/* ---------------- Étape 3 : planning général ---------------- */}
       <PanelCard
         title="3. Programmer le planning général du programme"
-        description="Le concepteur décide : chaque élément retenu à l'étape 1 peut recevoir une date unique, une période, ou rester non daté."
+        description="Chaque chapitre du programme peut recevoir une semaine, une période, ou rester non daté. Les semaines se comptent depuis le début de la promotion choisie."
         action={
-          <Badge variant={scheduleReady ? "secondary" : "outline"} className="font-normal">
-            {scheduleReady ? "planning cohérent" : "à programmer"}
+          <Badge variant="outline" className="font-normal">
+            enregistré par promotion
           </Badge>
         }
       >
@@ -1256,108 +1205,20 @@ export function AdminProgramDesigner() {
         </fieldset>
 
         <fieldset className="border-border space-y-3 rounded-md border p-4">
-          <legend className="px-1 text-sm font-medium">Échéances des éléments du programme</legend>
-          {scheduleItems.length === 0 ? (
-            <EmptyState>
-              Sélectionnez d'abord des ressources à l'étape 1 : leurs échéances apparaîtront ici.
-            </EmptyState>
-          ) : (
-            <ul className="space-y-3">
-              {scheduleItems.map((item) => {
-                const entry = schedule[item.id] ?? INITIAL_SCHEDULE;
-                const invalid =
-                  entry.kind === "period" &&
-                  entry.from !== "" &&
-                  entry.to !== "" &&
-                  entry.to < entry.from;
-                return (
-                  <li key={item.id} className="border-border rounded-md border p-4">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <CalendarDays className="text-muted-foreground size-4" aria-hidden />
-                      <span className="text-sm font-medium">{item.label}</span>
-                      <Badge variant="outline" className="font-normal">
-                        {item.originLabel}
-                      </Badge>
-                    </div>
-                    <div
-                      role="group"
-                      aria-label={`Programmation — ${item.label}`}
-                      className="mt-3 flex flex-wrap gap-2"
-                    >
-                      {(Object.keys(SCHEDULE_KIND_LABELS) as ScheduleKind[]).map((kind) => (
-                        <Button
-                          key={kind}
-                          type="button"
-                          size="sm"
-                          className="min-h-11"
-                          variant={entry.kind === kind ? "default" : "outline"}
-                          aria-pressed={entry.kind === kind}
-                          onClick={() => patchSchedule(item.id, { kind })}
-                        >
-                          {SCHEDULE_KIND_LABELS[kind]}
-                        </Button>
-                      ))}
-                    </div>
-
-                    {entry.kind === "date" ? (
-                      <div className="mt-3 max-w-xs space-y-1.5">
-                        <Label htmlFor={`sched-${item.id}-date`}>Date</Label>
-                        <Input
-                          id={`sched-${item.id}-date`}
-                          type="date"
-                          value={entry.from}
-                          onChange={(event) => patchSchedule(item.id, { from: event.target.value })}
-                        />
-                      </div>
-                    ) : null}
-
-                    {entry.kind === "period" ? (
-                      <div className="mt-3 grid max-w-lg gap-3 sm:grid-cols-2">
-                        <div className="space-y-1.5">
-                          <Label htmlFor={`sched-${item.id}-from`}>Début</Label>
-                          <Input
-                            id={`sched-${item.id}-from`}
-                            type="date"
-                            value={entry.from}
-                            onChange={(event) =>
-                              patchSchedule(item.id, { from: event.target.value })
-                            }
-                          />
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label htmlFor={`sched-${item.id}-to`}>Fin</Label>
-                          <Input
-                            id={`sched-${item.id}-to`}
-                            type="date"
-                            value={entry.to}
-                            onChange={(event) => patchSchedule(item.id, { to: event.target.value })}
-                          />
-                        </div>
-                      </div>
-                    ) : null}
-
-                    {entry.kind === "undated" ? (
-                      <p className="text-muted-foreground mt-3 text-sm">
-                        Élément retenu sans date : il restera à programmer plus tard, dans le
-                        pilotage.
-                      </p>
-                    ) : null}
-
-                    {invalid ? (
-                      <p className="text-destructive mt-2 text-sm">
-                        La fin de la période précède son début.
-                      </p>
-                    ) : null}
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-          {!scheduleReady && scheduleItems.length > 0 ? (
-            <p className="text-muted-foreground text-sm">
-              Complétez chaque date choisie, ou marquez l'élément « Non daté ».
-            </p>
-          ) : null}
+          <legend className="px-1 text-sm font-medium">Jalons de la promotion</legend>
+          {/*
+            Le VRAI rétroplanning, écrit dans `plan_milestones`. Il remplace la
+            maquette qui listait deux échéances génériques par type de ressource
+            et n'enregistrait que dans le brouillon de conception : un écran qui
+            fait saisir des dates qui ne vont nulle part coûte plus qu'il ne
+            rend.
+          */}
+          <ProgramMilestonePlanner
+            cohorts={cohorts}
+            themes={data.outcomeThemes}
+            outcomes={data.outcomes}
+            {...(selectedCohortId ? { defaultCohortId: selectedCohortId as CohortId } : {})}
+          />
         </fieldset>
       </PanelCard>
 

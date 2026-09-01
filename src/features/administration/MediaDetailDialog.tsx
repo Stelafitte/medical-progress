@@ -139,8 +139,15 @@ export function MediaDetailDialog({
         {/*
           Le texte conservé. C'est ce qui rend l'import VÉRIFIABLE : jusqu'ici
           on pouvait écrire ce texte et le chercher, pas le relire — donc pas
-          constater qu'il est correct. Replié par défaut : un chapitre fait
-          50 000 caractères et n'a pas à pousser les métadonnées hors de l'écran.
+          constater qu'il est correct.
+
+          Il est montré DIRECTEMENT, pas replié. Premier essai : un <details>
+          fermé, dont le résumé annonçait « 7 segments — 25 453 caractères ».
+          Stef a ouvert l'écran et a dit ne pas voir le contenu du cours — et il
+          avait raison : un contenu derrière un clic de plus, sous un résumé qui
+          ressemble à une métadonnée, n'est pas un contenu visible. La hauteur
+          est bornée et la boîte défile : le texte ne pousse donc pas les
+          métadonnées hors de l'écran sans avoir à se cacher pour autant.
         */}
         <div className="space-y-1 text-sm">
           <p className="font-medium">Contenu conservé</p>
@@ -154,22 +161,33 @@ export function MediaDetailDialog({
               texte, et les diaporamas sonorisés, sont dans ce cas.
             </p>
           ) : (
-            <details className="border-border rounded-md border px-3 py-2">
-              <summary className="cursor-pointer">
+            <>
+              <p className="text-muted-foreground text-xs">
                 {segments.length} segment(s) — {totalChars.toLocaleString("fr-FR")} caractères
-              </summary>
-              <div className="mt-2 space-y-3">
-                {segments.map((segment) => (
-                  <div key={`${segment.sourcePath}-${segment.segmentIndex}`} className="space-y-1">
-                    <p className="text-muted-foreground text-xs">
-                      Segment {segment.segmentIndex}
-                      {segment.sourcePath ? ` · ${segment.sourcePath}` : ""}
+              </p>
+              <div className="border-border max-h-96 overflow-y-auto rounded-md border bg-muted/30 px-3 py-2">
+                <div className="space-y-3">
+                  {segments.map((segment) => (
+                    <p
+                      key={`${segment.sourcePath}-${segment.segmentIndex}`}
+                      className="whitespace-pre-wrap break-words text-xs"
+                    >
+                      {segment.content}
                     </p>
-                    <p className="whitespace-pre-wrap break-words text-xs">{segment.content}</p>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </details>
+              {/*
+                Le chemin source est rappelé UNE fois sous la boîte, pas devant
+                chaque segment : il est identique pour les sept, et le répéter
+                coupait le cours en tranches là où il se lit d'un trait.
+              */}
+              {segments[0]?.sourcePath ? (
+                <p className="text-muted-foreground break-all text-xs">
+                  Source : {segments[0].sourcePath}
+                </p>
+              ) : null}
+            </>
           )}
         </div>
 
