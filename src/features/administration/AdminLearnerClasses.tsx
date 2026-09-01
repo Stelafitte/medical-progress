@@ -38,6 +38,7 @@ export function AdminLearnerClasses() {
   const { data, isPending, refetch } = useProgramAdmin();
   const dataAccess = useDataAccess();
   const [editing, setEditing] = useState<CohortId | null>(null);
+  const [importingInto, setImportingInto] = useState<CohortId | null>(null);
   const [busy, setBusy] = useState<CohortId | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -118,6 +119,7 @@ export function AdminLearnerClasses() {
             {cohorts.map((cohort) => {
               const enrolled = data.enrollments.filter((e) => e.cohortId === cohort.id).length;
               const isEditing = editing === cohort.id;
+              const isImporting = importingInto === cohort.id;
               return (
                 <li key={cohort.id} className="border-border space-y-2 rounded-md border p-4">
                   <div className="flex flex-wrap items-center gap-2">
@@ -152,6 +154,27 @@ export function AdminLearnerClasses() {
                     </div>
                   ) : null}
 
+                  {/*
+                    L'import monté SOUS la classe : c'est là que Stef l'a cherché,
+                    et c'est le geste naturel — « ajouter des étudiants à cette
+                    promotion », pas « créer une classe ». Même composant que le
+                    bloc général, avec la destination déjà choisie : un seul
+                    import, deux points de montage.
+                  */}
+                  {isImporting && data.program ? (
+                    <div className="bg-muted/30 rounded-md border border-dashed p-4">
+                      <RealRosterImportPanel
+                        programId={data.program.id}
+                        cohorts={[cohort]}
+                        defaultCohortId={cohort.id}
+                        lockCohort
+                        title={`Importer une liste dans « ${cohort.label} »`}
+                        existingEmails={data.people.map((p) => p.email)}
+                        onImported={() => void refetch()}
+                      />
+                    </div>
+                  ) : null}
+
                   <div className="flex flex-wrap gap-2">
                     <Button
                       size="sm"
@@ -160,6 +183,14 @@ export function AdminLearnerClasses() {
                       onClick={() => setEditing(isEditing ? null : cohort.id)}
                     >
                       {isEditing ? "Fermer" : "Modifier"}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="min-h-11"
+                      onClick={() => setImportingInto(isImporting ? null : cohort.id)}
+                    >
+                      {isImporting ? "Fermer l'import" : "Importer une liste"}
                     </Button>
                     <Button
                       size="sm"

@@ -50,7 +50,7 @@ import type { Cohort, CohortId } from "@/domain/types";
 const AUTO = "__auto__";
 
 function download(filename: string, content: string) {
-  const blob = new Blob([`﻿${content}`], { type: "text/csv;charset=utf-8;" });
+  const blob = new Blob([`\uFEFF${content}`], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
@@ -69,11 +69,24 @@ export function RealRosterImportPanel({
   cohorts,
   existingEmails,
   onImported,
+  defaultCohortId,
+  lockCohort = false,
+  title = "Importer une liste d'étudiants",
 }: {
   programId: string;
   cohorts: readonly Cohort[];
   existingEmails: readonly string[];
   onImported: () => void | Promise<void>;
+  /**
+   * Classe de destination pré-choisie. Le panneau est monté à deux endroits :
+   * dans le bloc général, où l'on choisit la classe dans la liste, et sous une
+   * classe précise, où le choix est déjà fait — c'est la même opération, pas un
+   * second import.
+   */
+  defaultCohortId?: CohortId;
+  /** Monté sous une classe : la destination n'est plus un choix, elle s'affiche. */
+  lockCohort?: boolean;
+  title?: string;
 }) {
   const dataAccess = useDataAccess();
 
@@ -83,7 +96,7 @@ export function RealRosterImportPanel({
   const [readError, setReadError] = useState<string | null>(null);
   const [manualMapping, setManualMapping] = useState<RosterColumnMapping>({});
   const [emailPattern, setEmailPattern] = useState("");
-  const [cohortId, setCohortId] = useState("");
+  const [cohortId, setCohortId] = useState<string>(defaultCohortId ?? "");
   const [derivedAcknowledged, setDerivedAcknowledged] = useState(false);
   const [importing, setImporting] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -104,7 +117,7 @@ export function RealRosterImportPanel({
   );
 
   const headers = useMemo(
-    () => (rawText.trim() === "" ? [] : rawText.split(/\r?\n/)[0]?.split(/[;\t,|]/) ?? []),
+    () => (rawText.trim() === "" ? [] : (rawText.split(/\r?\n/)[0]?.split(/[;\t,|]/) ?? [])),
     [rawText],
   );
 
@@ -128,19 +141,13 @@ export function RealRosterImportPanel({
       }
       reset(read.text, read, file.name);
     } catch (reason) {
-      setReadError(
-        reason instanceof Error ? reason.message : "Ce fichier n'a pas pu être lu.",
-      );
+      setReadError(reason instanceof Error ? reason.message : "Ce fichier n'a pas pu être lu.");
     }
   }
 
   const needsAcknowledgement = (preview?.derivedEmailCount ?? 0) > 0 && !derivedAcknowledged;
   const canImport =
-    preview !== null &&
-    preview.canImport &&
-    cohortId !== "" &&
-    !needsAcknowledgement &&
-    !importing;
+    preview !== null && preview.canImport && cohortId !== "" && !needsAcknowledgement && !importing;
 
   async function runImport() {
     if (!preview) return;
@@ -185,7 +192,7 @@ export function RealRosterImportPanel({
 
   return (
     <PanelCard
-      title="Importer une liste d'étudiants"
+      title={title}
       description="Fichier CSV ou Excel, ou liste collée. Ce qui est deviné reste affiché et corrigeable ; rien n'est écrit avant votre confirmation."
       action={<MockBadge label="Données réelles (Supabase)" />}
     >
@@ -228,7 +235,10 @@ export function RealRosterImportPanel({
         <p className="rounded-md border border-border bg-muted/40 px-3 py-2 text-xs">
           Lu comme {fileRead.source === "xlsx" ? "classeur Excel" : "fichier texte"}
           {fileRead.encoding ? `, encodage ${fileRead.encoding}` : ""}
-          {preview ? `, séparateur « ${preview.delimiter === "\t" ? "tabulation" : preview.delimiter} », en-tête ligne ${preview.headerLine}` : ""}.
+          {preview
+            ? `, séparateur « ${preview.delimiter === "\t" ? "tabulation" : preview.delimiter} », en-tête ligne ${preview.headerLine}`
+            : ""}
+          .
         </p>
       ) : null}
 
@@ -293,9 +303,7 @@ export function RealRosterImportPanel({
               <div key={column} className="space-y-2">
                 <Label htmlFor={`real-map-${column}`}>{ROSTER_COLUMN_LABELS_FR[column]}</Label>
                 <Select
-                  value={
-                    manualMapping[column] === undefined ? AUTO : String(manualMapping[column])
-                  }
+                  value={manualMapping[column] === undefined ? AUTO : String(manualMapping[column])}
                   onValueChange={(value) =>
                     setManualMapping((prev) => {
                       const next = { ...prev };
@@ -393,18 +401,24 @@ export function RealRosterImportPanel({
 
           <div className="space-y-2">
             <Label htmlFor="real-roster-cohort">Classe de destination</Label>
-            <Select value={cohortId} onValueChange={setCohortId}>
-              <SelectTrigger id="real-roster-cohort" className="min-h-11">
-                <SelectValue placeholder="Choisir la classe…" />
-              </SelectTrigger>
-              <SelectContent>
-                {cohorts.map((cohort) => (
-                  <SelectItem key={cohort.id} value={cohort.id}>
-                    {cohort.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {lockCohort ? (
+              <p className="border-border rounded-md border px-3 py-2 text-sm">
+                {cohorts.find((c) => c.id === cohortId)?.label ?? "—"}
+              </p>
+            ) : (
+              <Select value={cohortId} onValueChange={setCohortId}>
+                <SelectTrigger id="real-roster-cohort" className="min-h-11">
+                  <SelectValue placeholder="Choisir la classe…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {cohorts.map((cohort) => (
+                    <SelectItem key={cohort.id} value={cohort.id}>
+                      {cohort.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
             <p className="text-xs text-muted-foreground">
               Sans classe, l'activation d'un compte ne crée ni inscription ni rôle apprenant :
               l'étudiant ne verrait aucun programme.
