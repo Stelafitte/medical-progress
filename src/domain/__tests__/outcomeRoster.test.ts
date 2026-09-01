@@ -128,6 +128,21 @@ describe("doublons et lignes refusées", () => {
     expect(preview.readyCount).toBe(1);
   });
 
+  it("dit qu'un code est PRIS, pas seulement présent : un archivé garde le sien", () => {
+    // Le piège que cette formulation existe pour éviter : on archive un
+    // référentiel pour le réimporter corrigé, les codes restent réservés par
+    // `unique (program_id, code)`, et l'écran annoncerait « à créer » des
+    // lignes que la base refuse une par une. C'est l'appelant qui doit passer
+    // les codes PRIS (listTakenOutcomeCodes), pas les seuls actifs.
+    const preview = buildOutcomeRosterPreview({
+      text: ["code;label", "ECG-01;Lire un ECG"].join("\n"),
+      existingCodes: ["ECG-01"],
+    });
+    expect(preview.readyCount).toBe(0);
+    expect(preview.candidates[0]?.issues[0]?.message).toContain("déjà pris");
+    expect(preview.candidates[0]?.issues[0]?.message).toContain("archivé");
+  });
+
   it("repère un code répété dans le fichier lui-même", () => {
     const preview = buildOutcomeRosterPreview({
       text: ["code;label", "A-01;Un acquis", "A-01;Le même code"].join("\n"),

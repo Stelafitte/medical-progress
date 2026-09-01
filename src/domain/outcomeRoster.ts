@@ -98,7 +98,16 @@ const HEADER_ALIASES: HeaderAliases<OutcomeColumn> = {
     "maitrise",
     "maîtrise",
   ],
-  scope: ["scope", "portee", "portée", "domaine", "domain", "specialite", "spécialité", "transversal"],
+  scope: [
+    "scope",
+    "portee",
+    "portée",
+    "domaine",
+    "domain",
+    "specialite",
+    "spécialité",
+    "transversal",
+  ],
 };
 
 /* ------------------------------------------------------------------ */
@@ -245,7 +254,12 @@ export interface OutcomeRosterPreview {
 export interface BuildOutcomeRosterInput {
   readonly text: string;
   readonly mapping?: ColumnMapping<OutcomeColumn>;
-  /** Codes déjà présents dans le programme, pour ne pas créer de doublon. */
+  /**
+   * Codes déjà PRIS dans le programme, archivés compris — pas seulement les
+   * actifs. `unique (program_id, code)` ne distingue pas les deux : comparer
+   * aux seuls codes visibles annoncerait « à créer » des lignes que la base
+   * refusera une par une.
+   */
   readonly existingCodes?: readonly string[];
   /** Nature retenue quand le tableau n'en porte pas. */
   readonly defaultNature?: OutcomeNature;
@@ -253,26 +267,18 @@ export interface BuildOutcomeRosterInput {
   readonly defaultLevel?: MasteryLevel;
 }
 
-export function detectOutcomeMapping(
-  headers: readonly string[],
-): ColumnMapping<OutcomeColumn> {
+export function detectOutcomeMapping(headers: readonly string[]): ColumnMapping<OutcomeColumn> {
   return detectMapping(headers, HEADER_ALIASES);
 }
 
-export function buildOutcomeRosterPreview(
-  input: BuildOutcomeRosterInput,
-): OutcomeRosterPreview {
+export function buildOutcomeRosterPreview(input: BuildOutcomeRosterInput): OutcomeRosterPreview {
   const parsed = parseDelimitedTable(input.text, HEADER_ALIASES);
   const mapping = { ...detectOutcomeMapping(parsed.headers), ...(input.mapping ?? {}) };
   const defaultNature = input.defaultNature ?? "real_competence";
   const defaultLevel = input.defaultLevel ?? "proficient";
-  const existing = new Set(
-    (input.existingCodes ?? []).map((c) => c.trim().toUpperCase()),
-  );
+  const existing = new Set((input.existingCodes ?? []).map((c) => c.trim().toUpperCase()));
 
-  const missingRequiredColumns = OUTCOME_REQUIRED_COLUMNS.filter(
-    (c) => mapping[c] === undefined,
-  );
+  const missingRequiredColumns = OUTCOME_REQUIRED_COLUMNS.filter((c) => mapping[c] === undefined);
 
   const issues: OutcomeIssue[] = [];
   if (parsed.headers.length === 0) {
@@ -378,7 +384,7 @@ export function buildOutcomeRosterPreview(
         line,
         column: "code",
         level: "warning",
-        message: `Code ${code} déjà présent dans le programme : la ligne sera ignorée.`,
+        message: `Code ${code} déjà pris dans le programme (un acquis archivé garde son code) : la ligne sera ignorée.`,
       });
     }
     if (code !== "") seenCodes.add(code);

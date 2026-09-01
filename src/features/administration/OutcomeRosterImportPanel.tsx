@@ -15,7 +15,7 @@
  * taire ce qu'il a deviné. Séparateur, ligne d'en-tête, colonnes reconnues,
  * codes engendrés, natures supposées — tout est affiché et corrigeable.
  */
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Upload } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -92,6 +92,19 @@ export function OutcomeRosterImportPanel({
 }) {
   const dataAccess = useDataAccess();
 
+  /**
+   * Les codes DÉJÀ PRIS dans le programme, archivés compris.
+   *
+   * L'écran parent ne passe que les codes ACTIFS : ce sont ceux qu'il affiche.
+   * Mais `unique (program_id, code)` n'oublie pas les archivés — archiver un
+   * référentiel pour le réimporter corrigé laisse ses codes réservés, et la
+   * prévisualisation annoncerait « à créer » des lignes que la base refusera
+   * une par une. On interroge donc `listTakenOutcomeCodes`, et on garde les
+   * codes du parent en repli tant que la réponse n'est pas là (ou si elle
+   * échoue) : mieux vaut la vue partielle du parent que plus de vue du tout.
+   */
+  const [takenCodes, setTakenCodes] = useState<readonly string[] | null>(null);
+
   const [rawText, setRawText] = useState("");
   const [fileRead, setFileRead] = useState<RosterFileRead | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
@@ -106,6 +119,32 @@ export function OutcomeRosterImportPanel({
   const [failure, setFailure] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
 
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const codes = await dataAccess.outcomes.listTakenOutcomeCodes(programId);
+        if (!cancelled) setTakenCodes(codes);
+      } catch {
+        // Silencieux À DESSEIN : l'import reste possible sur les seuls codes
+        // actifs du parent. Une erreur bloquante ici empêcherait un import
+        // légitime pour une lecture qui n'est qu'un garde-fou.
+        if (!cancelled) setTakenCodes(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [dataAccess, programId]);
+
+  const comparedCodes = useMemo(
+    () =>
+      takenCodes === null
+        ? existingOutcomeCodes
+        : [...new Set([...takenCodes, ...existingOutcomeCodes])],
+    [takenCodes, existingOutcomeCodes],
+  );
+
   const preview = useMemo(
     () =>
       rawText.trim() === ""
@@ -113,11 +152,11 @@ export function OutcomeRosterImportPanel({
         : buildOutcomeRosterPreview({
             text: rawText,
             mapping: manualMapping,
-            existingCodes: existingOutcomeCodes,
+            existingCodes: comparedCodes,
             defaultNature: nature,
             defaultLevel: level,
           }),
-    [rawText, manualMapping, existingOutcomeCodes, nature, level],
+    [rawText, manualMapping, comparedCodes, nature, level],
   );
 
   const headers = useMemo(
@@ -186,6 +225,10 @@ export function OutcomeRosterImportPanel({
       if (result.createdOutcomes.length > 0) {
         reset("", null, null);
         setReport(result);
+        setTakenCodes((previous) => [
+          ...(previous ?? existingOutcomeCodes),
+          ...result.createdOutcomes.map((o) => o.code),
+        ]);
         onCreated?.();
       }
     } catch (reason) {
@@ -319,6 +362,16 @@ export function OutcomeRosterImportPanel({
               Colonnes obligatoires non reconnues :{" "}
               {preview.missingRequiredColumns.map((c) => OUTCOME_COLUMN_LABELS_FR[c]).join(", ")}.
               Corrigez la correspondance ci-dessous.
+            </p>
+          ) : null}
+
+          {preview.alreadyPresentCount > 0 ? (
+            <p className="border-border bg-muted/40 rounded-md border px-3 py-2 text-xs">
+              {preview.alreadyPresentCount} ligne(s) portent un code déjà pris dans ce programme et
+              seront ignorées.{" "}
+              {takenCodes === null
+                ? "Comparaison faite sur les seuls acquis actifs : la liste complète des codes n'a pas pu être lue."
+                : "Un acquis archivé garde son code : il reste pris, même s'il n'apparaît plus dans les listes."}
             </p>
           ) : null}
 
