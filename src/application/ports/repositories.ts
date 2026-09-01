@@ -64,6 +64,7 @@ import type {
   Evidence,
   LearningResource,
   LearningResourceId,
+  KnowledgeRank,
   MasteryLevel,
   Outcome,
   OutcomeTheme,
@@ -183,6 +184,8 @@ export interface CreateOutcomeInput {
   readonly nature: OutcomeNature;
   readonly domain: string;
   readonly targetMastery: MasteryLevel;
+  /** Rang R2C. La base refuse un rang sur une compétence. */
+  readonly knowledgeRank?: KnowledgeRank;
 }
 
 /**

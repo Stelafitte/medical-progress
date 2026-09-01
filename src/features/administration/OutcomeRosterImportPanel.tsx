@@ -365,6 +365,15 @@ export function OutcomeRosterImportPanel({
             </p>
           ) : null}
 
+          {preview.rankedCount > 0 ? (
+            <p className="border-border bg-muted/40 rounded-md border px-3 py-2 text-xs">
+              {preview.rankedCount} ligne(s) portent un rang R2C. Rappel : le rang dit à quel palier
+              de formation la connaissance devient exigible (A : socle du 2<sup>e</sup> cycle, B :
+              entrée dans le DES, C : 3<sup>e</sup> cycle) — c'est distinct du niveau attendu, et il
+              ne s'applique qu'aux connaissances.
+            </p>
+          ) : null}
+
           {preview.alreadyPresentCount > 0 ? (
             <p className="border-border bg-muted/40 rounded-md border px-3 py-2 text-xs">
               {preview.alreadyPresentCount} ligne(s) portent un code déjà pris dans ce programme et
@@ -427,6 +436,7 @@ export function OutcomeRosterImportPanel({
                   <TableHead>Code</TableHead>
                   <TableHead>Intitulé</TableHead>
                   <TableHead>Nature</TableHead>
+                  <TableHead>Rang</TableHead>
                   <TableHead>Niveau</TableHead>
                   <TableHead>État</TableHead>
                 </TableRow>
@@ -452,6 +462,15 @@ export function OutcomeRosterImportPanel({
                           supposée
                         </Badge>
                       ) : null}
+                    </TableCell>
+                    <TableCell className="text-xs">
+                      {row.knowledgeRank ? (
+                        <Badge variant="outline" className="font-mono font-normal">
+                          {row.knowledgeRank}
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
                     </TableCell>
                     <TableCell className="text-xs">
                       {COMPETENCE_MASTERY_LABELS_FR[row.targetMastery]}

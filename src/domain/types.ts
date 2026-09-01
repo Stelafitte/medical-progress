@@ -163,6 +163,23 @@ export type OutcomeNature =
 
 export type MasteryLevel = "not_started" | "novice" | "intermediate" | "proficient" | "autonomous";
 
+/**
+ * Le rang de la reforme du deuxieme cycle (R2C), qui hierarchise LES
+ * CONNAISSANCES — pas les competences.
+ *
+ * - `A` : indispensables a tout medecin (pratique courante et urgences), a
+ *   maitriser a l'issue du deuxieme cycle ;
+ * - `B` : devant etre acquises a l'entree dans le DES, plus approfondies ;
+ * - `C` : de niveau troisieme cycle, retirees des referentiels de second cycle.
+ *
+ * A ne pas confondre avec `MasteryLevel` : le rang dit A QUEL PALIER DE
+ * FORMATION la connaissance devient exigible, le niveau dit OU EN EST
+ * l'etudiant. Les deux coexistent sur la meme ligne.
+ */
+export type KnowledgeRank = "A" | "B" | "C";
+
+export const KNOWLEDGE_RANKS: readonly KnowledgeRank[] = ["A", "B", "C"];
+
 export const MASTERY_ORDER: readonly MasteryLevel[] = [
   "not_started",
   "novice",
@@ -194,6 +211,13 @@ export interface Outcome extends Entity<OutcomeId> {
   readonly themeId?: OutcomeThemeId;
   /** Ordre à l'intérieur du thème. Absent = non ordonné (un référentiel à plat). */
   readonly position?: number;
+  /**
+   * Rang R2C, pour les connaissances seulement. Absent = non hiérarchisé, ce
+   * qui reste un état valide et durable : une compétence n'en aura jamais, et
+   * un référentiel peut ne pas hiérarchiser. La base le fait respecter
+   * (`check (knowledge_rank is null or nature = 'knowledge')`).
+   */
+  readonly knowledgeRank?: KnowledgeRank;
 }
 
 export type OutcomeThemeId = Id<"OutcomeTheme">;

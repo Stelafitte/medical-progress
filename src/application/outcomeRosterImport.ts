@@ -161,6 +161,9 @@ export async function importOutcomeRoster(
         nature: candidate.nature,
         domain: domainOf(candidate),
         targetMastery: candidate.targetMastery,
+        ...(candidate.knowledgeRank !== undefined
+          ? { knowledgeRank: candidate.knowledgeRank }
+          : {}),
       });
       createdOutcomes.push(created);
       const bucket = madeByThemeKey.get(candidate.themeKey);

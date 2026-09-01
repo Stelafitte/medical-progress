@@ -19,7 +19,7 @@ import {
   type ColumnMapping,
   type HeaderAliases,
 } from "./delimitedTable";
-import type { MasteryLevel, OutcomeNature } from "./types";
+import type { KnowledgeRank, MasteryLevel, OutcomeNature } from "./types";
 
 export const OUTCOME_COLUMNS = [
   "theme",
@@ -31,6 +31,7 @@ export const OUTCOME_COLUMNS = [
   "nature",
   "level",
   "scope",
+  "rank",
 ] as const;
 
 export type OutcomeColumn = (typeof OUTCOME_COLUMNS)[number];
@@ -45,6 +46,7 @@ export const OUTCOME_COLUMN_LABELS_FR: Record<OutcomeColumn, string> = {
   nature: "Nature (connaissance / compétence)",
   level: "Niveau attendu",
   scope: "Portée (générique / spécialisé)",
+  rank: "Rang de connaissance (A / B / C)",
 };
 
 /** Sans intitulé, il n'y a rien à créer. Le reste se déduit ou se choisit. */
@@ -60,16 +62,12 @@ const HEADER_ALIASES: HeaderAliases<OutcomeColumn> = {
     "nom du theme",
     "chapitre libelle",
   ],
-  order: [
-    "order in theme",
-    "ordre",
-    "ordre dans le theme",
-    "rang",
-    "position",
-    "numero",
-    "n",
-    "index",
-  ],
+  // ATTENTION : « rang » n'est PAS ici. Il a longtemps servi d'alias d'`order`,
+  // mais dans un referentiel medical « Rang » designe le rang R2C (A / B / C),
+  // pas un numero d'ordre. Le laisser aux deux endroits ferait lire la colonne
+  // de rang comme un ordre, et « A » n'etant pas un nombre, l'ordre retomberait
+  // en silence sur le rang d'apparition. Un test verrouille ce point.
+  order: ["order in theme", "ordre", "ordre dans le theme", "position", "numero", "n", "index"],
   code: ["code", "reference", "référence", "identifiant", "id item", "item"],
   label: [
     "label",
@@ -107,6 +105,16 @@ const HEADER_ALIASES: HeaderAliases<OutcomeColumn> = {
     "specialite",
     "spécialité",
     "transversal",
+  ],
+  rank: [
+    "rang",
+    "rang de connaissance",
+    "rang r2c",
+    "hierarchisation",
+    "hiérarchisation",
+    "hierarchisation des connaissances",
+    "niveau de connaissance",
+    "knowledge rank",
   ],
 };
 
@@ -184,6 +192,16 @@ export function parseNature(value: string): OutcomeNature | undefined {
 }
 
 /**
+ * Le rang R2C tel qu'il s'ecrit dans les sources reelles : « A », « rang A »,
+ * « Rang B » — et rien d'autre. On refuse de deviner : un rang mal lu se
+ * propagerait silencieusement sur des centaines de lignes.
+ */
+export function parseKnowledgeRank(value: string): KnowledgeRank | undefined {
+  const match = /^(?:rang\s*)?([abc])$/.exec(normaliseWord(value));
+  return match ? (match[1]!.toUpperCase() as KnowledgeRank) : undefined;
+}
+
+/**
  * Un code lisible engendré depuis le thème et le rang, quand la source n'en
  * porte pas — le cas de myDFASM, dont la table n'a pas de code.
  *
@@ -220,6 +238,8 @@ export interface OutcomeCandidate {
   readonly natureAssumed: boolean;
   readonly targetMastery: MasteryLevel;
   readonly scope: string;
+  /** Rang R2C lu dans la source. Absent = non hiérarchisé. */
+  readonly knowledgeRank?: KnowledgeRank;
   readonly order: number;
   readonly status: OutcomeRowStatus;
   readonly issues: readonly OutcomeIssue[];
@@ -247,6 +267,8 @@ export interface OutcomeRosterPreview {
   readonly generatedCodeCount: number;
   /** Natures déduites du défaut, faute de colonne : à faire confirmer. */
   readonly natureAssumedCount: number;
+  /** Lignes qui portent un rang R2C lisible. */
+  readonly rankedCount: number;
   readonly issues: readonly OutcomeIssue[];
   readonly canImport: boolean;
 }
@@ -363,6 +385,33 @@ export function buildOutcomeRosterPreview(input: BuildOutcomeRosterInput): Outco
     }
     const targetMastery = parsedLevel ?? defaultLevel;
 
+    // Le rang R2C. Deux refus explicites plutot qu'une valeur avalee :
+    //  - une valeur illisible n'est PAS ignoree en silence (« A/B », « rang 1 »
+    //    dans une colonne mal choisie) : sur un referentiel de 313 lignes, une
+    //    colonne perdue ne se voit pas a l'oeil ;
+    //  - un rang sur une competence est une ERREUR de ligne, pas un
+    //    avertissement : la base porte
+    //    `check (knowledge_rank is null or nature = 'knowledge')` et refuserait
+    //    l'insertion une par une. Autant le dire avant d'ecrire.
+    const rawRank = cell("rank");
+    const parsedRank = rawRank === "" ? undefined : parseKnowledgeRank(rawRank);
+    if (rawRank !== "" && parsedRank === undefined) {
+      rowIssues.push({
+        line,
+        column: "rank",
+        level: "error",
+        message: `Rang « ${rawRank} » non reconnu : attendu A, B ou C.`,
+      });
+    }
+    if (parsedRank !== undefined && nature !== "knowledge") {
+      rowIssues.push({
+        line,
+        column: "rank",
+        level: "error",
+        message: `Le rang ${parsedRank} ne s'applique qu'aux connaissances, et cette ligne est une compétence (${nature}).`,
+      });
+    }
+
     if (label === "") {
       rowIssues.push({ line, column: "label", level: "error", message: "Intitulé manquant." });
     }
@@ -402,6 +451,7 @@ export function buildOutcomeRosterPreview(input: BuildOutcomeRosterInput): Outco
       natureAssumed,
       targetMastery,
       scope: cell("scope"),
+      ...(parsedRank !== undefined ? { knowledgeRank: parsedRank } : {}),
       order,
       status,
       issues: rowIssues,
@@ -430,6 +480,7 @@ export function buildOutcomeRosterPreview(input: BuildOutcomeRosterInput): Outco
     invalidCount: candidates.filter((c) => c.status === "invalid").length,
     generatedCodeCount: candidates.filter((c) => c.codeGenerated).length,
     natureAssumedCount: candidates.filter((c) => c.natureAssumed).length,
+    rankedCount: candidates.filter((c) => c.knowledgeRank !== undefined).length,
     issues,
     canImport: readyCount > 0 && missingRequiredColumns.length === 0,
   };

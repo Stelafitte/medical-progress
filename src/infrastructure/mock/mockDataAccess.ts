@@ -160,6 +160,7 @@ export const mockDataAccess: DataAccess = {
           domain: input.domain,
           targetMastery: input.targetMastery,
           retainedAt: new Date().toISOString(),
+          ...(input.knowledgeRank ? { knowledgeRank: input.knowledgeRank } : {}),
         };
         outcomes = [...outcomes, created];
         return ok(created);
@@ -178,11 +179,7 @@ export const mockDataAccess: DataAccess = {
         return ok(undefined);
       },
       listOutcomeThemes: (programId) =>
-        ok(
-          themes
-            .filter((t) => t.programId === programId)
-            .sort((a, b) => a.position - b.position),
-        ),
+        ok(themes.filter((t) => t.programId === programId).sort((a, b) => a.position - b.position)),
       createOutcomeTheme: (input) => {
         themeCounter += 1;
         const created: OutcomeTheme = {

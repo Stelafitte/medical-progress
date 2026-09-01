@@ -296,6 +296,7 @@ type OutcomeRow = {
   retained_at: string | null;
   theme_id: string | null;
   position: number;
+  knowledge_rank: Outcome["knowledgeRank"] | null;
   created_at: string;
 };
 
@@ -336,6 +337,7 @@ export function mapOutcome(row: OutcomeRow): Outcome {
     retainedAt: row.retained_at,
     ...(row.theme_id ? { themeId: row.theme_id as OutcomeThemeId } : {}),
     position: row.position ?? 0,
+    ...(row.knowledge_rank ? { knowledgeRank: row.knowledge_rank } : {}),
   };
 }
 
@@ -905,6 +907,10 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
           p_nature: input.nature,
           p_domain: input.domain,
           p_target_mastery: input.targetMastery,
+          // Toujours transmis, meme nul : la fonction a un defaut, mais un
+          // appel explicite evite de dependre de la resolution par defaut de
+          // PostgREST si une seconde signature reapparaissait un jour.
+          p_knowledge_rank: input.knowledgeRank ?? null,
         });
         assertNoSupabaseError(error);
         return mapOutcome(data as OutcomeRow);

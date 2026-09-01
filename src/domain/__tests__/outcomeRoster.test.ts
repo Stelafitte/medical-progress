@@ -6,6 +6,7 @@ import {
   generateCode,
   parseLevel,
   parseNature,
+  parseKnowledgeRank,
 } from "@/domain/outcomeRoster";
 
 /** Le format réel de la table `competencies` de myDFASM. */
@@ -115,6 +116,60 @@ describe("nature et niveau : déduits, mais jamais en silence", () => {
     expect(parseLevel("Découverte")).toBe("novice");
     expect(parseLevel("n'importe quoi")).toBeUndefined();
     expect(parseNature("savoir-faire")).toBe("real_competence");
+  });
+});
+
+describe("rang R2C des connaissances", () => {
+  // Le piege historique : « rang » etait un alias d'`order`. Dans un
+  // referentiel medical, une colonne « Rang » porte A / B / C, pas un numero.
+  it("lit une colonne « Rang » comme un rang R2C, et NON comme un ordre", () => {
+    const preview = buildOutcomeRosterPreview({
+      text: [
+        "Rang;Intitulé;Nature",
+        "A;Connaître la définition de la FA;Connaissance",
+        "B;Connaître la physiopathologie de la FA;Connaissance",
+      ].join("\n"),
+    });
+    expect(preview.mapping.rank).toBe(0);
+    expect(preview.mapping.order).toBeUndefined();
+    expect(preview.candidates[0]?.knowledgeRank).toBe("A");
+    expect(preview.candidates[1]?.knowledgeRank).toBe("B");
+    // L'ordre retombe sur le rang d'apparition, ce qui est le comportement
+    // voulu : la source n'a pas de colonne d'ordre.
+    expect(preview.candidates[0]?.order).toBe(1);
+    expect(preview.candidates[1]?.order).toBe(2);
+    expect(preview.rankedCount).toBe(2);
+    expect(preview.readyCount).toBe(2);
+  });
+
+  it("accepte « A » comme « rang B », refuse le reste sans deviner", () => {
+    expect(parseKnowledgeRank("A")).toBe("A");
+    expect(parseKnowledgeRank("  rang b ")).toBe("B");
+    expect(parseKnowledgeRank("Rang C")).toBe("C");
+    expect(parseKnowledgeRank("D")).toBeUndefined();
+    expect(parseKnowledgeRank("A/B")).toBeUndefined();
+    expect(parseKnowledgeRank("1")).toBeUndefined();
+  });
+
+  it("refuse la ligne quand le rang est illisible, au lieu de l'avaler", () => {
+    const preview = buildOutcomeRosterPreview({
+      text: ["Rang;Intitulé;Nature", "A/B;Un acquis douteux;Connaissance"].join("\n"),
+    });
+    expect(preview.invalidCount).toBe(1);
+    expect(preview.candidates[0]?.issues[0]?.message).toContain("attendu A, B ou C");
+  });
+
+  it("refuse un rang posé sur une compétence : la base le refuserait aussi", () => {
+    // `check (knowledge_rank is null or nature = 'knowledge')`. Laisser passer
+    // ces lignes ferait echouer les insertions une par une, sans que l'ecran
+    // l'ait annonce.
+    const preview = buildOutcomeRosterPreview({
+      text: ["Rang;Intitulé;Nature", "A;Ausculter un souffle;Compétence"].join("\n"),
+    });
+    expect(preview.invalidCount).toBe(1);
+    expect(preview.candidates[0]?.issues[0]?.message).toContain(
+      "ne s'applique qu'aux connaissances",
+    );
   });
 });
 

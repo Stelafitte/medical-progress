@@ -124,6 +124,19 @@ describe("import d'un référentiel d'acquis", () => {
     expect(fake.themeOf.get("o-3")).toEqual({ themeId: rythmologie?.id, position: 1 });
   });
 
+  it("transmet le rang R2C à la création de l'acquis", async () => {
+    const { repository, outcomes } = fakeRepository();
+    const preview = buildOutcomeRosterPreview({
+      text: [
+        "Thème;Rang;Intitulé;Nature",
+        "Item 232;A;Connaître la définition de la FA;Connaissance",
+        "Item 232;B;Connaître la physiopathologie de la FA;Connaissance",
+      ].join("\n"),
+    });
+    await importOutcomeRoster({ outcomes: repository, programId, curriculumVersionId, preview });
+    expect(outcomes.map((o) => o.knowledgeRank)).toEqual(["A", "B"]);
+  });
+
   it("reprend un thème déjà présent au lieu d'en créer un jumeau", async () => {
     const fake = fakeRepository();
     const already: OutcomeTheme = {
