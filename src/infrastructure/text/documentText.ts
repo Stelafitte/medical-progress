@@ -15,6 +15,8 @@
  * bloc de texte perdrait cette traçabilité.
  */
 
+import { annotateRankImages } from "@/domain/corpusChapter";
+
 const loadedScripts = new Set<string>();
 
 /** Charge une bibliothèque UMD depuis un CDN une seule fois (mise en cache par URL). */
@@ -88,7 +90,11 @@ export const extractTxtText = async (file: File): Promise<string> => (await file
  * jamais exécutés, et les images ne sont pas chargées.
  */
 export async function extractHtmlText(file: File): Promise<string> {
-  const raw = await file.text();
+  // Les rangs R2C sont des IMAGES dans les pages de la SFC. On les remplace par
+  // un marqueur AVANT le passage au DOM : `textContent` les effacerait, et le
+  // texte conservé perdrait la hiérarchisation paragraphe par paragraphe qui
+  // fait toute la valeur de ce corpus. Voir `domain/corpusChapter.ts`.
+  const raw = annotateRankImages(await file.text());
   const doc = new DOMParser().parseFromString(raw, "text/html");
   doc
     .querySelectorAll("script, style, noscript, svg, nav, header, footer, aside, form")
