@@ -216,7 +216,46 @@ export function generateCode(themePosition: number, order: number): string {
 /* Prévisualisation                                                    */
 /* ------------------------------------------------------------------ */
 
-export type OutcomeRowStatus = "ready" | "duplicate_in_file" | "already_present" | "invalid";
+export type OutcomeRowStatus =
+  /** Code libre : l'acquis sera créé. */
+  | "ready"
+  /** Code déjà porté par un acquis ACTIF, et quelque chose diffère : révision. */
+  | "to_update"
+  /** Code déjà porté par un acquis actif, rien ne diffère : la ligne est passée. */
+  | "unchanged"
+  | "duplicate_in_file"
+  /** Code pris par un acquis ARCHIVÉ : ni créable, ni révisable. */
+  | "already_present"
+  | "invalid";
+
+/** Ce qu'une révision changerait sur une ligne, champ par champ. */
+export interface OutcomeChange {
+  readonly field: "label" | "description" | "level" | "rank";
+  readonly before: string;
+  readonly after: string;
+}
+
+export const OUTCOME_CHANGE_LABELS_FR: Record<OutcomeChange["field"], string> = {
+  label: "intitulé",
+  description: "description",
+  level: "niveau attendu",
+  rank: "rang",
+};
+
+/**
+ * Un acquis déjà en base, tel qu'il faut le connaître pour décider si une ligne
+ * du fichier le change. Volontairement plus étroit que `Outcome` : le domaine
+ * n'a pas besoin des dates ni de la provenance.
+ */
+export interface ExistingOutcome {
+  readonly id: string;
+  readonly code: string;
+  readonly label: string;
+  readonly description: string;
+  readonly nature: OutcomeNature;
+  readonly targetMastery: MasteryLevel;
+  readonly knowledgeRank?: KnowledgeRank;
+}
 
 export interface OutcomeIssue {
   readonly line: number;
@@ -242,6 +281,10 @@ export interface OutcomeCandidate {
   readonly knowledgeRank?: KnowledgeRank;
   readonly order: number;
   readonly status: OutcomeRowStatus;
+  /** Renseigné pour `to_update` et `unchanged` : l'acquis que cette ligne vise. */
+  readonly outcomeId?: string;
+  /** Ce que la révision changerait. Vide pour toute autre situation. */
+  readonly changes: readonly OutcomeChange[];
   readonly issues: readonly OutcomeIssue[];
 }
 
@@ -269,6 +312,14 @@ export interface OutcomeRosterPreview {
   readonly natureAssumedCount: number;
   /** Lignes qui portent un rang R2C lisible. */
   readonly rankedCount: number;
+  readonly toUpdateCount: number;
+  readonly unchangedCount: number;
+  /**
+   * Acquis du programme, de l'une des natures présentes dans le fichier, dont
+   * le code ne figure PAS dans le fichier. Purement informatif : un fichier
+   * partiel ou tronqué ne doit jamais vider un référentiel tout seul.
+   */
+  readonly missingFromFile: readonly { readonly code: string; readonly label: string }[];
   readonly issues: readonly OutcomeIssue[];
   readonly canImport: boolean;
 }
@@ -283,6 +334,12 @@ export interface BuildOutcomeRosterInput {
    * refusera une par une.
    */
   readonly existingCodes?: readonly string[];
+  /**
+   * Les acquis ACTIFS du programme, pour comparer plutôt que d'ignorer. Une
+   * ligne dont le code s'y trouve devient une révision (`to_update`) ou un
+   * constat d'identité (`unchanged`), au lieu d'être écartée en silence.
+   */
+  readonly existingOutcomes?: readonly ExistingOutcome[];
   /** Nature retenue quand le tableau n'en porte pas. */
   readonly defaultNature?: OutcomeNature;
   /** Niveau retenu quand le tableau n'en porte pas. */
@@ -299,6 +356,9 @@ export function buildOutcomeRosterPreview(input: BuildOutcomeRosterInput): Outco
   const defaultNature = input.defaultNature ?? "real_competence";
   const defaultLevel = input.defaultLevel ?? "proficient";
   const existing = new Set((input.existingCodes ?? []).map((c) => c.trim().toUpperCase()));
+  const byCode = new Map(
+    (input.existingOutcomes ?? []).map((o) => [o.code.trim().toUpperCase(), o]),
+  );
 
   const missingRequiredColumns = OUTCOME_REQUIRED_COLUMNS.filter((c) => mapping[c] === undefined);
 
@@ -417,6 +477,8 @@ export function buildOutcomeRosterPreview(input: BuildOutcomeRosterInput): Outco
     }
 
     let status: OutcomeRowStatus = "ready";
+    const changes: OutcomeChange[] = [];
+    const known = byCode.get(code);
     if (rowIssues.some((i) => i.level === "error") || missingRequiredColumns.length > 0) {
       status = "invalid";
     } else if (seenCodes.has(code)) {
@@ -427,13 +489,49 @@ export function buildOutcomeRosterPreview(input: BuildOutcomeRosterInput): Outco
         level: "warning",
         message: `Code ${code} déjà employé plus haut : la ligne sera ignorée.`,
       });
+    } else if (known) {
+      // Le code désigne un acquis ACTIF : la ligne le RÉVISE au lieu d'être
+      // écartée. La nature, elle, ne se révise pas — des déclarations
+      // d'étudiants et des validations s'y accrochent — donc un désaccord de
+      // nature est une erreur de ligne, jamais une révision silencieuse.
+      if (known.nature !== nature) {
+        status = "invalid";
+        rowIssues.push({
+          line,
+          column: "nature",
+          level: "error",
+          message: `Le code ${code} désigne un acquis de nature « ${known.nature} », et le fichier le donne pour « ${nature} ». La nature ne se change pas : archivez l'acquis et recréez-le sous un autre code.`,
+        });
+      } else {
+        if (label !== known.label) {
+          changes.push({ field: "label", before: known.label, after: label });
+        }
+        if (cell("description") !== known.description) {
+          changes.push({
+            field: "description",
+            before: known.description,
+            after: cell("description"),
+          });
+        }
+        if (targetMastery !== known.targetMastery) {
+          changes.push({ field: "level", before: known.targetMastery, after: targetMastery });
+        }
+        if ((parsedRank ?? "") !== (known.knowledgeRank ?? "")) {
+          changes.push({
+            field: "rank",
+            before: known.knowledgeRank ?? "—",
+            after: parsedRank ?? "—",
+          });
+        }
+        status = changes.length > 0 ? "to_update" : "unchanged";
+      }
     } else if (existing.has(code)) {
       status = "already_present";
       rowIssues.push({
         line,
         column: "code",
         level: "warning",
-        message: `Code ${code} déjà pris dans le programme (un acquis archivé garde son code) : la ligne sera ignorée.`,
+        message: `Code ${code} pris par un acquis ARCHIVÉ : il ne peut être ni créé ni révisé. Désarchivez-le, ou donnez-lui un autre code.`,
       });
     }
     if (code !== "") seenCodes.add(code);
@@ -454,6 +552,8 @@ export function buildOutcomeRosterPreview(input: BuildOutcomeRosterInput): Outco
       ...(parsedRank !== undefined ? { knowledgeRank: parsedRank } : {}),
       order,
       status,
+      ...(known ? { outcomeId: known.id } : {}),
+      changes,
       issues: rowIssues,
     });
   });
@@ -466,6 +566,16 @@ export function buildOutcomeRosterPreview(input: BuildOutcomeRosterInput): Outco
   }));
 
   const readyCount = candidates.filter((c) => c.status === "ready").length;
+  const toUpdateCount = candidates.filter((c) => c.status === "to_update").length;
+
+  // Ce que le programme porte et que le fichier ne mentionne pas — restreint aux
+  // natures présentes dans le fichier : un fichier de connaissances n'a pas à
+  // signaler les 57 compétences comme « manquantes ». Purement informatif.
+  const naturesInFile = new Set(candidates.map((c) => c.nature));
+  const codesInFile = new Set(candidates.map((c) => c.code));
+  const missingFromFile = (input.existingOutcomes ?? [])
+    .filter((o) => naturesInFile.has(o.nature) && !codesInFile.has(o.code.trim().toUpperCase()))
+    .map((o) => ({ code: o.code, label: o.label }));
 
   return {
     mapping,
@@ -481,7 +591,12 @@ export function buildOutcomeRosterPreview(input: BuildOutcomeRosterInput): Outco
     generatedCodeCount: candidates.filter((c) => c.codeGenerated).length,
     natureAssumedCount: candidates.filter((c) => c.natureAssumed).length,
     rankedCount: candidates.filter((c) => c.knowledgeRank !== undefined).length,
+    toUpdateCount,
+    unchangedCount: candidates.filter((c) => c.status === "unchanged").length,
+    missingFromFile,
     issues,
-    canImport: readyCount > 0 && missingRequiredColumns.length === 0,
+    // Rejouer un référentiel révisé dont AUCUNE ligne n'est nouvelle est un cas
+    // normal : l'import doit rester possible s'il n'y a que des révisions.
+    canImport: (readyCount > 0 || toUpdateCount > 0) && missingRequiredColumns.length === 0,
   };
 }

@@ -218,6 +218,24 @@ export interface CreateOutcomeInput {
 }
 
 /**
+ * Révision d'un acquis existant. Le CODE et la NATURE en sont absents et
+ * doivent le rester : le code est l'identité de la ligne (l'unicité et l'import
+ * rejouable en dépendent), et changer la nature laisserait orphelines les
+ * déclarations d'étudiants et les validations par un senior déjà posées dessus.
+ *
+ * Champ absent = inchangé. On ne peut donc pas VIDER un rang par cette voie ;
+ * le jour où il le faudra, ajouter un paramètre explicite plutôt que de donner
+ * un second sens à l'absence.
+ */
+export interface UpdateOutcomeInput {
+  readonly outcomeId: OutcomeId;
+  readonly label?: string;
+  readonly description?: string;
+  readonly targetMastery?: MasteryLevel;
+  readonly knowledgeRank?: KnowledgeRank;
+}
+
+/**
  * Référentiel des compétences et connaissances : un seul objet `Outcome`,
  * distingué par `nature`. Liste + création uniquement — le suivi
  * d'acquisition (Evidence) et les relations entre outcomes restent hors
@@ -237,6 +255,11 @@ export interface OutcomeRepository {
   listOutcomeRelations(programId: ProgramId): Promise<readonly OutcomeRelation[]>;
   /** Crée une compétence ou une connaissance. Autorisation vérifiée côté serveur. */
   createOutcome(input: CreateOutcomeInput): Promise<Outcome>;
+  /**
+   * Révise un acquis : intitulé, description, niveau attendu, rang R2C. Ni le
+   * code ni la nature — voir `UpdateOutcomeInput`. Droits vérifiés côté serveur.
+   */
+  updateOutcome(input: UpdateOutcomeInput): Promise<Outcome>;
   /**
    * Retire une compétence/connaissance du programme sans la supprimer
    * (archivage réversible) : elle disparaît des listes actives mais reste

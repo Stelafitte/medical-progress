@@ -45,6 +45,13 @@ function fakeRepository(options: { failOnLabel?: string; failOnTheme?: string } 
       outcomes.push(created);
       return created;
     },
+    updateOutcome: async (input) => {
+      const index = outcomes.findIndex((o) => o.id === input.outcomeId);
+      if (index < 0) throw new Error("acquis introuvable");
+      const updated = { ...outcomes[index]!, ...input } as Outcome;
+      outcomes[index] = updated;
+      return updated;
+    },
     listOutcomeThemes: async () => themes,
     createOutcomeTheme: async (input) => {
       if (input.label === options.failOnTheme) throw new Error("thème refusé");
@@ -135,6 +142,66 @@ describe("import d'un référentiel d'acquis", () => {
     });
     await importOutcomeRoster({ outcomes: repository, programId, curriculumVersionId, preview });
     expect(outcomes.map((o) => o.knowledgeRank)).toEqual(["A", "B"]);
+  });
+
+  it("révise un acquis existant au lieu de l'écarter, et ne touche pas au reste", async () => {
+    const fake = fakeRepository();
+    const FICHIER = [
+      "Thème;Code;Intitulé;Nature;Niveau;Rang",
+      "Item 232;ECN-232-01;Connaître la définition de la FA;Connaissance;Base;A",
+      "Item 232;ECN-232-02;Connaître la physiopathologie de la FA;Connaissance;Base;B",
+    ].join("\n");
+
+    // Premier passage : les deux sont créées.
+    const premier = await importOutcomeRoster({
+      outcomes: fake.repository,
+      programId,
+      curriculumVersionId,
+      preview: preview(FICHIER),
+    });
+    expect(premier.createdOutcomes).toHaveLength(2);
+    expect(premier.updatedOutcomes).toHaveLength(0);
+
+    // Second passage, référentiel révisé : un intitulé change, un rang passe de
+    // B à A, la première ligne est identique.
+    const REVISE = [
+      "Thème;Code;Intitulé;Nature;Niveau;Rang",
+      "Item 232;ECN-232-01;Connaître la définition de la FA;Connaissance;Base;A",
+      "Item 232;ECN-232-02;Connaître la physiopathologie et les mécanismes de la FA;Connaissance;Base;A",
+    ].join("\n");
+    const vue = buildOutcomeRosterPreview({
+      text: REVISE,
+      existingOutcomes: fake.outcomes.map((o) => ({
+        id: o.id,
+        code: o.code,
+        label: o.label,
+        description: o.description,
+        nature: o.nature,
+        targetMastery: o.targetMastery,
+        ...(o.knowledgeRank ? { knowledgeRank: o.knowledgeRank } : {}),
+      })),
+    });
+    expect(vue.unchangedCount).toBe(1);
+    expect(vue.toUpdateCount).toBe(1);
+    expect(vue.readyCount).toBe(0);
+    // Rien de nouveau à créer, et pourtant l'import reste possible.
+    expect(vue.canImport).toBe(true);
+    expect(vue.candidates[1]?.changes.map((c) => c.field)).toEqual(["label", "rank"]);
+
+    const second = await importOutcomeRoster({
+      outcomes: fake.repository,
+      programId,
+      curriculumVersionId,
+      preview: vue,
+    });
+    expect(second.createdOutcomes).toHaveLength(0);
+    expect(second.updatedOutcomes).toHaveLength(1);
+    expect(fake.outcomes).toHaveLength(2);
+    expect(fake.outcomes[1]?.label).toBe(
+      "Connaître la physiopathologie et les mécanismes de la FA",
+    );
+    expect(fake.outcomes[1]?.knowledgeRank).toBe("A");
+    expect(fake.outcomes[0]?.label).toBe("Connaître la définition de la FA");
   });
 
   it("reprend un thème déjà présent au lieu d'en créer un jumeau", async () => {

@@ -943,6 +943,21 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
         return mapOutcome(data as OutcomeRow);
       },
       /**
+       * Révision d'un acquis. `null` = inchangé côté serveur, d'où les `?? null` :
+       * un champ absent de l'appel ne doit pas effacer la valeur en base.
+       */
+      async updateOutcome(input) {
+        const { data, error } = await client.rpc("update_outcome", {
+          p_outcome_id: input.outcomeId,
+          p_label: input.label ?? null,
+          p_description: input.description ?? null,
+          p_target_mastery: input.targetMastery ?? null,
+          p_knowledge_rank: input.knowledgeRank ?? null,
+        });
+        assertNoSupabaseError(error);
+        return mapOutcome(data as OutcomeRow);
+      },
+      /**
        * Archivage réversible (pas de suppression) : voir
        * supabase/migrations/20260829200000_archive_outcomes_and_assessment_modalities.sql.
        */

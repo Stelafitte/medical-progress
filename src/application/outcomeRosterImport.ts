@@ -51,6 +51,8 @@ export interface ImportOutcomeRosterReport {
   readonly createdThemes: readonly OutcomeTheme[];
   readonly reusedThemes: readonly OutcomeTheme[];
   readonly createdOutcomes: readonly Outcome[];
+  /** Acquis révisés : le fichier portait un code déjà présent et un contenu différent. */
+  readonly updatedOutcomes: readonly Outcome[];
   /** Lignes que la prévisualisation avait écartées : doublons, déjà là, invalides. */
   readonly skippedCount: number;
   readonly failures: readonly OutcomeRosterFailure[];
@@ -71,15 +73,50 @@ export async function importOutcomeRoster(
   const { outcomes: repository, programId, curriculumVersionId, preview } = input;
 
   const ready = preview.candidates.filter((c) => c.status === "ready");
-  const skippedCount = preview.candidates.length - ready.length;
+  const toUpdate = preview.candidates.filter((c) => c.status === "to_update");
+  const skippedCount = preview.candidates.length - ready.length - toUpdate.length;
 
   const createdThemes: OutcomeTheme[] = [];
   const reusedThemes: OutcomeTheme[] = [];
   const createdOutcomes: Outcome[] = [];
+  const updatedOutcomes: Outcome[] = [];
   const failures: OutcomeRosterFailure[] = [];
 
+  /**
+   * Les RÉVISIONS d'abord, et séparément des créations.
+   *
+   * Elles ne dépendent d'aucun thème — l'acquis existe déjà et il est déjà rangé
+   * — donc les traiter en premier fait qu'un échec de création de thème ne peut
+   * pas les empêcher. Comme les créations, elles ne s'arrêtent pas à la première
+   * erreur : rejouer le fichier reprend là où ça s'est cassé.
+   */
+  for (const candidate of toUpdate) {
+    if (candidate.outcomeId === undefined) continue;
+    try {
+      const updated = await repository.updateOutcome({
+        outcomeId: candidate.outcomeId as Outcome["id"],
+        label: candidate.label,
+        description: candidate.description,
+        targetMastery: candidate.targetMastery,
+        ...(candidate.knowledgeRank !== undefined
+          ? { knowledgeRank: candidate.knowledgeRank }
+          : {}),
+      });
+      updatedOutcomes.push(updated);
+    } catch (error) {
+      failures.push({ line: candidate.line, label: candidate.label, message: messageOf(error) });
+    }
+  }
+
   if (ready.length === 0) {
-    return { createdThemes, reusedThemes, createdOutcomes, skippedCount, failures };
+    return {
+      createdThemes,
+      reusedThemes,
+      createdOutcomes,
+      updatedOutcomes,
+      skippedCount,
+      failures,
+    };
   }
 
   /* ---------------------------------------------------------------- */
@@ -204,5 +241,5 @@ export async function importOutcomeRoster(
     }
   }
 
-  return { createdThemes, reusedThemes, createdOutcomes, skippedCount, failures };
+  return { createdThemes, reusedThemes, createdOutcomes, updatedOutcomes, skippedCount, failures };
 }

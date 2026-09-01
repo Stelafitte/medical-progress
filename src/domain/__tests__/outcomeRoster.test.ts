@@ -183,19 +183,42 @@ describe("doublons et lignes refusées", () => {
     expect(preview.readyCount).toBe(1);
   });
 
-  it("dit qu'un code est PRIS, pas seulement présent : un archivé garde le sien", () => {
-    // Le piège que cette formulation existe pour éviter : on archive un
-    // référentiel pour le réimporter corrigé, les codes restent réservés par
-    // `unique (program_id, code)`, et l'écran annoncerait « à créer » des
-    // lignes que la base refuse une par une. C'est l'appelant qui doit passer
-    // les codes PRIS (listTakenOutcomeCodes), pas les seuls actifs.
-    const preview = buildOutcomeRosterPreview({
+  it("distingue un code pris par un ARCHIVÉ d'un code porté par un acquis actif", () => {
+    // Le piège que ces deux cas existent pour séparer : `unique (program_id,
+    // code)` ne distingue pas l'archivé de l'actif, mais l'utilisateur, si.
+    //  * un code porté par un acquis ACTIF est révisable — c'est le cas normal
+    //    quand on rejoue un référentiel révisé ;
+    //  * un code pris par un acquis ARCHIVÉ n'est ni créable ni révisable, et
+    //    l'écran doit le DIRE plutôt que d'annoncer « à créer » des lignes que
+    //    la base refusera une par une.
+    // L'appelant passe donc les codes PRIS (listTakenOutcomeCodes) ET les
+    // acquis actifs ; ce qui est dans le premier sans être dans le second est
+    // forcément archivé.
+    const archive = buildOutcomeRosterPreview({
       text: ["code;label", "ECG-01;Lire un ECG"].join("\n"),
       existingCodes: ["ECG-01"],
     });
-    expect(preview.readyCount).toBe(0);
-    expect(preview.candidates[0]?.issues[0]?.message).toContain("déjà pris");
-    expect(preview.candidates[0]?.issues[0]?.message).toContain("archivé");
+    expect(archive.readyCount).toBe(0);
+    expect(archive.candidates[0]?.status).toBe("already_present");
+    expect(archive.candidates[0]?.issues[0]?.message).toMatch(/archiv/i);
+
+    const actif = buildOutcomeRosterPreview({
+      text: ["code;label;nature", "ECG-01;Lire un ECG autrement;Compétence"].join("\n"),
+      existingCodes: ["ECG-01"],
+      existingOutcomes: [
+        {
+          id: "o-1",
+          code: "ECG-01",
+          label: "Lire un ECG",
+          description: "",
+          nature: "real_competence",
+          targetMastery: "proficient",
+        },
+      ],
+    });
+    expect(actif.candidates[0]?.status).toBe("to_update");
+    expect(actif.toUpdateCount).toBe(1);
+    expect(actif.canImport).toBe(true);
   });
 
   it("repère un code répété dans le fichier lui-même", () => {

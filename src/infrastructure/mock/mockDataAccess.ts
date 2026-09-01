@@ -191,6 +191,19 @@ export const mockDataAccess: DataAccess = {
         outcomes = [...outcomes, created];
         return ok(created);
       },
+      updateOutcome: (input) => {
+        const existing = outcomes.find((o) => o.id === input.outcomeId);
+        if (!existing) return ok(undefined as never);
+        const updated: Outcome = {
+          ...existing,
+          ...(input.label !== undefined ? { label: input.label } : {}),
+          ...(input.description !== undefined ? { description: input.description } : {}),
+          ...(input.targetMastery !== undefined ? { targetMastery: input.targetMastery } : {}),
+          ...(input.knowledgeRank !== undefined ? { knowledgeRank: input.knowledgeRank } : {}),
+        };
+        outcomes = outcomes.map((o) => (o.id === updated.id ? updated : o));
+        return ok(updated);
+      },
       listTakenOutcomeCodes: (programId) =>
         ok(outcomes.filter((o) => o.programId === programId).map((o) => o.code)),
       archiveOutcome: (outcomeId) => {

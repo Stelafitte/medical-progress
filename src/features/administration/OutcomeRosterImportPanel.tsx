@@ -45,9 +45,11 @@ import {
 } from "@/application/outcomeRosterImport";
 import { COMPETENCE_MASTERY_LABELS_FR } from "@/domain/competenceDraft";
 import {
+  OUTCOME_CHANGE_LABELS_FR,
   OUTCOME_COLUMNS,
   OUTCOME_COLUMN_LABELS_FR,
   buildOutcomeRosterPreview,
+  type ExistingOutcome,
 } from "@/domain/outcomeRoster";
 import type { ColumnMapping } from "@/domain/delimitedTable";
 import type { OutcomeColumn } from "@/domain/outcomeRoster";
@@ -64,8 +66,10 @@ const NATURE_LABELS_FR: Record<OutcomeNature, string> = {
 
 const STATUS_LABELS: Record<string, string> = {
   ready: "à créer",
+  to_update: "à réviser",
+  unchanged: "inchangé",
   duplicate_in_file: "doublon",
-  already_present: "déjà présent",
+  already_present: "archivé",
   invalid: "erreur",
 };
 
@@ -105,6 +109,13 @@ export function OutcomeRosterImportPanel({
    */
   const [takenCodes, setTakenCodes] = useState<readonly string[] | null>(null);
 
+  /**
+   * Les acquis ACTIFS du programme, pour comparer plutôt qu'ignorer. Sans eux,
+   * rejouer un référentiel révisé n'aurait rien produit : chaque ligne aurait
+   * été annoncée « déjà prise » et écartée.
+   */
+  const [existingOutcomes, setExistingOutcomes] = useState<readonly ExistingOutcome[]>([]);
+
   const [rawText, setRawText] = useState("");
   const [fileRead, setFileRead] = useState<RosterFileRead | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
@@ -123,8 +134,23 @@ export function OutcomeRosterImportPanel({
     let cancelled = false;
     void (async () => {
       try {
-        const codes = await dataAccess.outcomes.listTakenOutcomeCodes(programId);
-        if (!cancelled) setTakenCodes(codes);
+        const [codes, actifs] = await Promise.all([
+          dataAccess.outcomes.listTakenOutcomeCodes(programId),
+          dataAccess.outcomes.listOutcomes(programId),
+        ]);
+        if (cancelled) return;
+        setTakenCodes(codes);
+        setExistingOutcomes(
+          actifs.map((o) => ({
+            id: o.id,
+            code: o.code,
+            label: o.label,
+            description: o.description,
+            nature: o.nature,
+            targetMastery: o.targetMastery,
+            ...(o.knowledgeRank ? { knowledgeRank: o.knowledgeRank } : {}),
+          })),
+        );
       } catch {
         // Silencieux À DESSEIN : l'import reste possible sur les seuls codes
         // actifs du parent. Une erreur bloquante ici empêcherait un import
@@ -153,10 +179,11 @@ export function OutcomeRosterImportPanel({
             text: rawText,
             mapping: manualMapping,
             existingCodes: comparedCodes,
+            existingOutcomes,
             defaultNature: nature,
             defaultLevel: level,
           }),
-    [rawText, manualMapping, comparedCodes, nature, level],
+    [rawText, manualMapping, comparedCodes, existingOutcomes, nature, level],
   );
 
   const headers = useMemo(
@@ -342,12 +369,14 @@ export function OutcomeRosterImportPanel({
 
       {preview ? (
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 xl:grid-cols-7">
             {[
               ["Thèmes", preview.themes.filter((t) => t.key !== "").length],
               ["À créer", preview.readyCount],
+              ["À réviser", preview.toUpdateCount],
+              ["Inchangés", preview.unchangedCount],
               ["Doublons du fichier", preview.duplicateCount],
-              ["Déjà présents", preview.alreadyPresentCount],
+              ["Codes archivés", preview.alreadyPresentCount],
               ["En erreur", preview.invalidCount],
             ].map(([label, value]) => (
               <div key={String(label)} className="border-border rounded-md border px-3 py-2">
@@ -363,6 +392,39 @@ export function OutcomeRosterImportPanel({
               {preview.missingRequiredColumns.map((c) => OUTCOME_COLUMN_LABELS_FR[c]).join(", ")}.
               Corrigez la correspondance ci-dessous.
             </p>
+          ) : null}
+
+          {preview.toUpdateCount > 0 ? (
+            <p className="rounded-md border border-amber-500/40 bg-amber-500/5 px-3 py-2 text-xs">
+              <strong>{preview.toUpdateCount} acquis déjà présents seront RÉVISÉS</strong> : le
+              fichier porte leur code et un contenu différent. Seuls l'intitulé, la description, le
+              niveau attendu et le rang changent — jamais le code ni la nature. Le détail ligne par
+              ligne est dans la colonne « Révision » ci-dessous.
+            </p>
+          ) : null}
+
+          {preview.missingFromFile.length > 0 ? (
+            <details className="border-border bg-muted/40 rounded-md border px-3 py-2 text-xs">
+              <summary className="cursor-pointer">
+                {preview.missingFromFile.length} acquis du programme ne figurent pas dans ce fichier
+              </summary>
+              <p className="text-muted-foreground mt-2">
+                Rien ne leur arrivera : un fichier partiel ou tronqué ne doit pas vider un
+                référentiel. À vous de les archiver si la source les a supprimés.
+              </p>
+              <ul className="mt-2 space-y-0.5">
+                {preview.missingFromFile.slice(0, 30).map((o) => (
+                  <li key={o.code}>
+                    <code>{o.code}</code> — {o.label}
+                  </li>
+                ))}
+              </ul>
+              {preview.missingFromFile.length > 30 ? (
+                <p className="text-muted-foreground mt-1">
+                  … et {preview.missingFromFile.length - 30} autres.
+                </p>
+              ) : null}
+            </details>
           ) : null}
 
           {preview.rankedCount > 0 ? (
@@ -438,6 +500,7 @@ export function OutcomeRosterImportPanel({
                   <TableHead>Nature</TableHead>
                   <TableHead>Rang</TableHead>
                   <TableHead>Niveau</TableHead>
+                  <TableHead>Révision</TableHead>
                   <TableHead>État</TableHead>
                 </TableRow>
               </TableHeader>
@@ -474,6 +537,23 @@ export function OutcomeRosterImportPanel({
                     </TableCell>
                     <TableCell className="text-xs">
                       {COMPETENCE_MASTERY_LABELS_FR[row.targetMastery]}
+                    </TableCell>
+                    <TableCell className="text-xs">
+                      {row.changes.length === 0 ? (
+                        <span className="text-muted-foreground">—</span>
+                      ) : (
+                        <ul className="space-y-0.5">
+                          {row.changes.map((c) => (
+                            <li key={c.field}>
+                              <span className="text-muted-foreground">
+                                {OUTCOME_CHANGE_LABELS_FR[c.field]} :
+                              </span>{" "}
+                              <s className="text-muted-foreground">{c.before || "—"}</s> →{" "}
+                              <strong>{c.after || "—"}</strong>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
                     </TableCell>
                     <TableCell>
                       <Badge
@@ -539,10 +619,13 @@ export function OutcomeRosterImportPanel({
             onClick={() => void runImport()}
           >
             {importing
-              ? `Création… ${progress}/${preview.readyCount}`
-              : `Créer ${preview.readyCount} acquis dans ${
-                  preview.themes.filter((t) => t.key !== "").length
-                } thème(s)`}
+              ? `Écriture… ${progress}/${preview.readyCount}`
+              : [
+                  preview.readyCount > 0 ? `Créer ${preview.readyCount} acquis` : null,
+                  preview.toUpdateCount > 0 ? `réviser ${preview.toUpdateCount}` : null,
+                ]
+                  .filter(Boolean)
+                  .join(" et ") || "Rien à écrire"}
           </Button>
         </div>
       ) : null}
@@ -556,8 +639,9 @@ export function OutcomeRosterImportPanel({
       {report ? (
         <div className="border-border bg-muted/40 space-y-2 rounded-md border px-3 py-2 text-sm">
           <p>
-            {report.createdOutcomes.length} acquis créés, {report.createdThemes.length} thème(s)
-            créés
+            {report.createdOutcomes.length} acquis créés,{" "}
+            {report.updatedOutcomes.length > 0 ? `${report.updatedOutcomes.length} révisés, ` : ""}
+            {report.createdThemes.length} thème(s) créés
             {report.reusedThemes.length > 0
               ? `, ${report.reusedThemes.length} thème(s) déjà présents réutilisés`
               : ""}
@@ -567,7 +651,8 @@ export function OutcomeRosterImportPanel({
             <div className="text-destructive space-y-1 text-xs">
               <p>
                 {report.failures.length} échec(s). Rejouer le même fichier reprendra uniquement ce
-                qui manque : les acquis déjà créés seront marqués « déjà présents ».
+                qui manque : les acquis déjà créés seront marqués « inchangés », et seuls les
+                manquants ou les révisions restantes seront écrits.
               </p>
               {report.failures.slice(0, 10).map((f, index) => (
                 <p key={index}>
