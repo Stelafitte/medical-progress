@@ -25,7 +25,7 @@
  * vérifications d'autorisation qu'un ajout manuel s'appliquent donc, sans
  * exception à écrire.
  */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Check, FileUp, Loader2, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -35,6 +35,7 @@ import { Label } from "@/components/ui/label";
 import { useDataAccess } from "@/application/session";
 import { OutcomeRosterImportPanel } from "@/features/administration/OutcomeRosterImportPanel";
 import { requireCanonicalMediaType } from "@/infrastructure/storage/mediaTypes";
+import { matchDocumentToTheme, type ThemeCandidate } from "@/domain/corpusChapter";
 import type { ProgramAiAnalysisResult, ResourceVisibility } from "@/application/ports/repositories";
 import {
   ASSESSMENT_SUBTYPE_LABELS_FR,
@@ -58,6 +59,7 @@ import {
 } from "@/infrastructure/text/documentText";
 import type {
   CurriculumVersionId,
+  LearningResource,
   MasteryLevel,
   OutcomeId,
   OutcomeNature,
@@ -190,6 +192,15 @@ const MIN_CHARS_FOR_ANALYSIS = 1500;
 interface DocumentRow {
   readonly key: string;
   readonly document: CorpusDocument;
+  /**
+   * Thème du programme dont ce document traite — donc les acquis DÉJÀ en base
+   * auxquels il sera rattaché. Proposé par `matchDocumentToTheme`, corrigeable,
+   * et `null` veut dire « ne rattacher à rien », jamais « on verra ».
+   */
+  linkThemeId: string | null;
+  /** Pourquoi ce thème a été proposé. Affiché : un rapprochement dont on ne
+   * peut pas dire la raison ne se vérifie pas. */
+  linkVia: string | null;
   /** Envoyer ce document à l'analyse IA — un appel, donc un coût, par document. */
   analyze: boolean;
   /** Déposer ce fichier dans la médiathèque du programme. */
@@ -256,6 +267,49 @@ export function CorpusImport({
    * serait quand même traité serait le pire des deux mondes.
    */
   const [pathFilter, setPathFilter] = useState("");
+
+  /**
+   * Les thèmes du programme et leurs acquis, relus au montage.
+   *
+   * C'est ce qui permet de rattacher un document à des acquis qui EXISTENT au
+   * lieu d'en faire proposer de nouveaux par l'IA : le chapitre de l'item 232
+   * se relie aux quinze `ECN-232-xx` déjà en base, sans appel, sans coût et
+   * sans doublon.
+   */
+  const [themes, setThemes] = useState<readonly ThemeCandidate[]>([]);
+  const [outcomesByTheme, setOutcomesByTheme] = useState<ReadonlyMap<string, readonly OutcomeId[]>>(
+    new Map(),
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const [themeList, outcomes] = await Promise.all([
+          dataAccess.outcomes.listOutcomeThemes(programId),
+          dataAccess.outcomes.listOutcomes(programId),
+        ]);
+        if (cancelled) return;
+        setThemes(themeList.map((t) => ({ id: t.id, label: t.label })));
+        const grouped = new Map<string, OutcomeId[]>();
+        for (const outcome of outcomes) {
+          if (!outcome.themeId) continue;
+          const bucket = grouped.get(outcome.themeId);
+          if (bucket) bucket.push(outcome.id);
+          else grouped.set(outcome.themeId, [outcome.id]);
+        }
+        setOutcomesByTheme(grouped);
+      } catch {
+        // Silencieux : le rattachement automatique est un confort, pas une
+        // condition. Sans thèmes, l'écran reste utilisable — la colonne
+        // « Rattacher à » sera simplement vide.
+        if (!cancelled) setThemes([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [dataAccess, programId]);
 
   /**
    * Les deux voies d'entrée d'un référentiel, sous le même bouton.
@@ -327,19 +381,26 @@ export function CorpusImport({
       const { documents, ignored } = await readDocumentCorpus(file);
       setIgnoredFiles(ignored);
       setRows(
-        documents.map((document) => ({
-          key: nextKey(),
-          document,
-          analyze: document.text.length >= MIN_CHARS_FOR_ANALYSIS,
-          // Une page HTML issue d'un site enregistré est une SOURCE dont on
-          // extrait des connaissances, pas un support à remettre aux
-          // apprenants : elle n'est pas déposée par défaut.
-          keepDocument: document.format !== "html",
-          truncated: false,
-          status: "pending" as const,
-          error: null,
-          suggestions: [],
-        })),
+        documents.map((document) => {
+          // Le rattachement est PROPOSÉ, jamais appliqué en silence : la
+          // colonne « Rattacher à » l'affiche avec sa raison et se corrige.
+          const match = matchDocumentToTheme(document.path, themes);
+          return {
+            key: nextKey(),
+            document,
+            linkThemeId: match?.themeId ?? null,
+            linkVia: match?.via ?? null,
+            analyze: document.text.length >= MIN_CHARS_FOR_ANALYSIS,
+            // Une page HTML issue d'un site enregistré est une SOURCE dont on
+            // extrait des connaissances, pas un support à remettre aux
+            // apprenants : elle n'est pas déposée par défaut.
+            keepDocument: document.format !== "html",
+            truncated: false,
+            status: "pending" as const,
+            error: null,
+            suggestions: [],
+          };
+        }),
       );
       if (documents.length === 0) {
         setReadError(
@@ -559,6 +620,24 @@ export function CorpusImport({
     let createdResources = 0;
     let createdImages = 0;
     let storedSegments = 0;
+    let reusedResources = 0;
+    let linkedOutcomes = 0;
+
+    /**
+     * Les supports DÉJÀ déposés, relus maintenant.
+     *
+     * Sans cette lecture, rejouer un corpus créerait un second support pour le
+     * même document : rien en base ne l'interdit, et la recherche plein texte
+     * rendrait deux fois le même passage. C'est la même leçon que sur les
+     * acquis — sans reconnaissance, un second import duplique.
+     */
+    let existingResources: readonly { id: string; title: string }[] = [];
+    try {
+      const list = await dataAccess.resources.listResources(programId);
+      existingResources = list.map((r) => ({ id: r.id, title: r.title }));
+    } catch {
+      // Tant pis : on créera. Mieux vaut un doublon signalé qu'un import bloqué.
+    }
 
     // Détection locale des collisions de code AVANT tout appel réseau : la
     // contrainte SQL les rejetterait une par une, avec un message Postgres
@@ -648,6 +727,13 @@ export function CorpusImport({
         }
       }
 
+      // Les acquis DÉJÀ en base que ce document couvre, d'après le thème
+      // choisi. Ils s'ajoutent à ceux que l'analyse vient éventuellement de
+      // créer : un chapitre peut à la fois couvrir un référentiel importé et
+      // apporter des connaissances que personne n'avait listées.
+      const themeOutcomeIds = row.linkThemeId ? (outcomesByTheme.get(row.linkThemeId) ?? []) : [];
+      const allOutcomeIds = [...new Set([...outcomeIds, ...themeOutcomeIds])];
+
       if (!row.keepDocument) continue;
 
       try {
@@ -655,15 +741,36 @@ export function CorpusImport({
           /\.[^.]+$/,
           "",
         );
-        const resource = await dataAccess.resources.createResource({
-          programId,
-          curriculumVersionId,
-          title: baseName,
-          description: `Importé depuis ${row.document.path}.`,
-          format: row.document.format === "pdf" ? "pdf" : "other",
-          visibility,
-          outcomeIds,
-        });
+        // Un support portant déjà ce titre est REPRIS, pas dupliqué. Son
+        // binaire n'est pas redéposé — il est là ; en revanche son texte est
+        // rafraîchi et ses rattachements complétés.
+        const already = existingResources.find((r) => r.title === baseName);
+        const resource = already
+          ? { id: already.id as LearningResource["id"] }
+          : await dataAccess.resources.createResource({
+              programId,
+              curriculumVersionId,
+              title: baseName,
+              description: `Importé depuis ${row.document.path}.`,
+              format: row.document.format === "pdf" ? "pdf" : "other",
+              visibility,
+              outcomeIds: allOutcomeIds,
+            });
+        if (already) {
+          reusedResources += 1;
+          try {
+            linkedOutcomes += await dataAccess.resources.linkResourceOutcomes(
+              resource.id,
+              allOutcomeIds,
+            );
+          } catch (err) {
+            failures.push(
+              `« ${baseName} » : rattachement impossible — ${err instanceof Error ? err.message : "échec"}`,
+            );
+          }
+        } else {
+          linkedOutcomes += allOutcomeIds.length;
+        }
         const upload = await dataAccess.resources.requestUploadUrl({
           programId,
           bucket: "course-sources",
@@ -741,9 +848,11 @@ export function CorpusImport({
       }
     }
 
-    if (createdItems > 0 || createdResources > 0 || storedSegments > 0) {
+    if (createdItems > 0 || createdResources > 0 || reusedResources > 0 || storedSegments > 0) {
       setSummary(
-        `${createdItems} ${TARGET_LABELS[target]} créée(s), ${createdResources} document(s) et ${createdImages} figure(s) déposés, ${storedSegments} segment(s) de texte conservés${
+        `${createdItems} ${TARGET_LABELS[target]} créée(s), ${createdResources} document(s) déposés${
+          reusedResources > 0 ? `, ${reusedResources} repris` : ""
+        }, ${createdImages} figure(s), ${storedSegments} segment(s) de texte conservés, ${linkedOutcomes} rattachement(s)${
           failures.length > 0 ? " — voir les échecs ci-dessous" : "."
         }`,
       );
@@ -989,6 +1098,56 @@ export function CorpusImport({
                         Déposer ce document et conserver son texte
                       </label>
                     </div>
+
+                    {/*
+                      Le rattachement à des acquis DÉJÀ en base. C'est ce qui
+                      évite de faire proposer par l'IA des connaissances qui
+                      existent : le chapitre de l'item 232 se relie aux quinze
+                      « ECN-232-xx ». La raison du rapprochement est affichée —
+                      un rattachement qu'on ne peut pas expliquer ne se vérifie
+                      pas — et « Ne rattacher à rien » reste un choix explicite.
+                    */}
+                    {themes.length > 0 ? (
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Label
+                          htmlFor={`corpus-link-${row.key}`}
+                          className="text-muted-foreground text-xs"
+                        >
+                          Rattacher à
+                        </Label>
+                        <select
+                          id={`corpus-link-${row.key}`}
+                          className="border-border bg-background min-h-9 rounded-md border px-2 text-sm"
+                          value={row.linkThemeId ?? ""}
+                          disabled={busy}
+                          onChange={(e) =>
+                            patchRow(row.key, {
+                              linkThemeId: e.target.value === "" ? null : e.target.value,
+                              linkVia: e.target.value === "" ? null : "choix manuel",
+                            })
+                          }
+                        >
+                          <option value="">Ne rattacher à rien</option>
+                          {themes.map((theme) => (
+                            <option key={theme.id} value={theme.id}>
+                              {theme.label}
+                            </option>
+                          ))}
+                        </select>
+                        {row.linkThemeId ? (
+                          <>
+                            <Badge variant="outline" className="font-normal">
+                              {(outcomesByTheme.get(row.linkThemeId) ?? []).length} acquis
+                            </Badge>
+                            {row.linkVia ? (
+                              <span className="text-muted-foreground text-xs">
+                                proposé par {row.linkVia}
+                              </span>
+                            ) : null}
+                          </>
+                        ) : null}
+                      </div>
+                    ) : null}
 
                     {row.error ? <p className="text-destructive text-xs">{row.error}</p> : null}
 
