@@ -1045,6 +1045,21 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
         assertNoSupabaseError(error);
         return mapLearningResource(data as LearningResourceRow, input.outcomeIds);
       },
+      /**
+       * RPC idempotente : `on conflict do nothing` sur
+       * `primary key (resource_id, outcome_id)`. Rejouer le même corpus ne crée
+       * rien de plus et n'échoue pas ; le nombre rendu est celui des liens
+       * RÉELLEMENT ajoutés, pas celui des liens demandés.
+       */
+      async linkResourceOutcomes(resourceId, outcomeIds) {
+        if (outcomeIds.length === 0) return 0;
+        const { data, error } = await client.rpc("link_resource_outcomes", {
+          p_resource_id: resourceId,
+          p_outcome_ids: outcomeIds,
+        });
+        assertNoSupabaseError(error);
+        return (data as number | null) ?? 0;
+      },
       /** Délègue la génération de l'URL signée à l'Edge Function (service_role côté serveur uniquement). */
       async requestUploadUrl(input: RequestUploadUrlInput): Promise<UploadUrlResult> {
         const { data, error } = await client.functions.invoke("create-resource-upload-url", {

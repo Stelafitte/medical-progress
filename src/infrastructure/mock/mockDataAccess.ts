@@ -433,6 +433,18 @@ export const mockDataAccess: DataAccess = {
         resources = [...resources, created];
         return ok(created);
       },
+      linkResourceOutcomes: (resourceId, outcomeIds) => {
+        const existing = resources.find((r) => r.id === resourceId);
+        if (!existing) return ok(0);
+        const deja = new Set(existing.outcomeIds);
+        const nouveaux = outcomeIds.filter((id) => !deja.has(id));
+        const updated: LearningResource = {
+          ...existing,
+          outcomeIds: [...existing.outcomeIds, ...nouveaux],
+        };
+        resources = resources.map((r) => (r.id === updated.id ? updated : r));
+        return ok(nouveaux.length);
+      },
       requestUploadUrl: (input) => {
         counter += 1;
         return ok({

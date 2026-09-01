@@ -541,6 +541,23 @@ export interface LearningResourceRepository {
   listResources(programId: ProgramId): Promise<readonly LearningResource[]>;
   /** Crée un support (publication immédiate en v1). Autorisation vérifiée côté serveur. */
   createResource(input: CreateLearningResourceInput): Promise<LearningResource>;
+  /**
+   * Rattache un support à des acquis DÉJÀ existants, et rend le nombre de liens
+   * réellement ajoutés.
+   *
+   * `createResource` ne sait poser des liens qu'à la création. Rejouer un corpus
+   * sur un programme dont le référentiel existe déjà n'avait donc aucun moyen de
+   * dire « ce chapitre traite de ces connaissances-là » sans les recréer en
+   * double.
+   *
+   * **Elle ajoute, elle ne retire jamais** : un support peut couvrir deux
+   * référentiels qui décrivent la même matière sous deux découpages. Remplacer
+   * le lot entier serait une autre opération, avec un autre nom.
+   */
+  linkResourceOutcomes(
+    resourceId: LearningResource["id"],
+    outcomeIds: readonly OutcomeId[],
+  ): Promise<number>;
   /** Demande une URL d'upload signée pour un fichier source (Edge Function `create-resource-upload-url`). */
   requestUploadUrl(input: RequestUploadUrlInput): Promise<UploadUrlResult>;
   /** Téléverse réellement un fichier vers l'URL signée obtenue via `requestUploadUrl`. */
