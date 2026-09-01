@@ -60,8 +60,10 @@ export const mockDataAccess: DataAccess = {
         ok({ knowledgeItems: [], assessmentModalities: [], truncated: false }),
       listCurriculumVersions: (programId) =>
         ok(fx.curriculumVersions.filter((c) => c.programId === programId)),
-      listCohorts: (programId) =>
-        ok(programId ? cohorts.filter((c) => c.programId === programId) : cohorts),
+      listCohorts: (programId, options) => {
+        const scoped = programId ? cohorts.filter((c) => c.programId === programId) : cohorts;
+        return ok(options?.includeArchived ? scoped : scoped.filter((c) => !c.archivedAt));
+      },
       getCohort: (id) => ok(cohorts.find((c) => c.id === id)),
       createCohort: (input) => {
         counter += 1;
@@ -76,9 +78,33 @@ export const mockDataAccess: DataAccess = {
           startsOn: input.startsOn,
           endsOn: input.endsOn,
           learnerCount: 0,
+          archivedAt: null,
         };
         cohorts = [...cohorts, created];
         return ok(created);
+      },
+      updateCohort: (input) => {
+        const existing = cohorts.find((c) => c.id === input.cohortId);
+        if (!existing) return ok(undefined as never);
+        const updated: Cohort = {
+          ...existing,
+          label: input.label,
+          academicYear: input.academicYear,
+          startsOn: input.startsOn,
+          endsOn: input.endsOn,
+        };
+        cohorts = cohorts.map((c) => (c.id === updated.id ? updated : c));
+        return ok(updated);
+      },
+      setCohortArchived: (cohortId, archived) => {
+        const existing = cohorts.find((c) => c.id === cohortId);
+        if (!existing) return ok(undefined as never);
+        const updated: Cohort = {
+          ...existing,
+          archivedAt: archived ? new Date().toISOString() : null,
+        };
+        cohorts = cohorts.map((c) => (c.id === updated.id ? updated : c));
+        return ok(updated);
       },
     };
   })(),

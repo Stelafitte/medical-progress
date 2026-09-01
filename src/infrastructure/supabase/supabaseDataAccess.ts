@@ -144,6 +144,7 @@ type CohortRow = {
   academic_year: string;
   starts_on: string;
   ends_on: string;
+  archived_at: string | null;
   created_at: string;
 };
 
@@ -185,6 +186,7 @@ export function mapCohort(row: CohortRow, learnerCount: number): Cohort {
     startsOn: normalizeIsoDate(row.starts_on),
     endsOn: normalizeIsoDate(row.ends_on),
     learnerCount,
+    archivedAt: row.archived_at ?? null,
   };
 }
 
@@ -657,14 +659,18 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
         assertNoSupabaseError(error);
         return ((data ?? []) as CurriculumVersionRow[]).map(mapCurriculumVersion);
       },
-      async listCohorts(programId?: ProgramId) {
+      async listCohorts(programId?: ProgramId, options?: { includeArchived?: boolean }) {
         let query = client
           .from("cohorts")
           .select(
-            "id,program_id,curriculum_version_id,label,academic_year,starts_on,ends_on,created_at,enrollments(count)",
+            "id,program_id,curriculum_version_id,label,academic_year,starts_on,ends_on,archived_at,created_at,enrollments(count)",
           )
           .order("starts_on");
         if (programId) query = query.eq("program_id", programId);
+        // Par défaut les classes archivées sont invisibles, exactement comme
+        // les acquis archivés : seul l'écran qui propose de désarchiver les
+        // demande explicitement.
+        if (!options?.includeArchived) query = query.is("archived_at", null);
         const { data, error } = await query;
         assertNoSupabaseError(error);
         return ((data ?? []) as (CohortRow & { enrollments: { count: number }[] })[]).map((row) =>
@@ -675,7 +681,7 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
         const { data, error } = await client
           .from("cohorts")
           .select(
-            "id,program_id,curriculum_version_id,label,academic_year,starts_on,ends_on,created_at,enrollments(count)",
+            "id,program_id,curriculum_version_id,label,academic_year,starts_on,ends_on,archived_at,created_at,enrollments(count)",
           )
           .eq("id", id)
           .maybeSingle();
@@ -697,6 +703,27 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
           p_academic_year: input.academicYear,
           p_starts_on: input.startsOn,
           p_ends_on: input.endsOn,
+        });
+        assertNoSupabaseError(error);
+        return mapCohort(data as CohortRow, 0);
+      },
+      /** Même famille que `create_cohort` : RPC `SECURITY DEFINER`, droits au serveur. */
+      async updateCohort(input) {
+        const { data, error } = await client.rpc("update_cohort", {
+          p_cohort_id: input.cohortId,
+          p_label: input.label,
+          p_academic_year: input.academicYear,
+          p_starts_on: input.startsOn,
+          p_ends_on: input.endsOn,
+        });
+        assertNoSupabaseError(error);
+        const row = data as CohortRow;
+        return mapCohort(row, 0);
+      },
+      async setCohortArchived(cohortId, archived) {
+        const { data, error } = await client.rpc("set_cohort_archived", {
+          p_cohort_id: cohortId,
+          p_archived: archived,
         });
         assertNoSupabaseError(error);
         return mapCohort(data as CohortRow, 0);

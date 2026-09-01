@@ -42,7 +42,7 @@ import {
   readDocumentCorpus,
   readableFormat,
 } from "@/infrastructure/text/documentText";
-import { CohortCreationForm } from "@/features/administration/CohortCreationForm";
+import { CohortForm } from "@/features/administration/CohortForm";
 import { PlacementCreationForm } from "@/features/administration/PlacementCreationForm";
 import { CompetenceCreationForm } from "@/features/administration/CompetenceCreationForm";
 import { DocumentRequirementForm } from "@/features/administration/DocumentRequirementForm";
@@ -1306,7 +1306,7 @@ export function AdminProgramDesigner() {
             </ul>
           )
         ) : realCurriculumVersionId ? (
-          <CohortCreationForm
+          <CohortForm
             idPrefix="designer-cohort"
             programId={activeProgramId}
             curriculumVersionId={realCurriculumVersionId}

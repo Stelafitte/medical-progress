@@ -28,6 +28,34 @@ export const EMPTY_NEW_COHORT_INPUT: NewCohortInput = {
   endsOn: "",
 };
 
+/**
+ * Les valeurs initiales du formulaire quand on REPREND une classe existante.
+ *
+ * Le piège que cette fonction existe pour éviter : `Cohort.startsOn` est
+ * normalisée en date-heure ISO (« 2026-09-01T00:00:00.000Z ») par l'adaptateur,
+ * alors qu'un `<input type="date">` n'accepte que « 2026-09-01 ». Passer la
+ * valeur telle quelle affiche un champ VIDE — sans erreur, sans message — et
+ * l'utilisateur croit que la classe n'a pas de dates.
+ */
+export function cohortFormInputFrom(cohort: {
+  readonly label: string;
+  readonly academicYear: string;
+  readonly startsOn: string;
+  readonly endsOn: string;
+}): NewCohortInput {
+  return {
+    label: cohort.label,
+    academicYear: cohort.academicYear,
+    startsOn: toDateInputValue(cohort.startsOn),
+    endsOn: toDateInputValue(cohort.endsOn),
+  };
+}
+
+/** « 2026-09-01T00:00:00.000Z » ou « 2026-09-01 » → « 2026-09-01 ». */
+export function toDateInputValue(value: string): string {
+  return value.slice(0, 10);
+}
+
 export type NewCohortIssue = "label-required" | "dates-required" | "dates-order";
 
 /** Vérifie la saisie : mêmes règles dans le concepteur et dans l'onglet Classes. */

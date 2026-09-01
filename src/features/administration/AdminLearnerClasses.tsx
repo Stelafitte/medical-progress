@@ -1,14 +1,15 @@
 /**
  * « Classes d'apprenants » — les promotions du programme.
  * Une classe est une cohorte : elle peut être créée manuellement ou importée,
- * et plusieurs classes peuvent vivre en parallèle sur le même programme.
+ * reprise, archivée, et plusieurs classes peuvent vivre en parallèle sur le
+ * même programme.
  */
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { SectionHeading } from "@/components/section-heading";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -20,7 +21,9 @@ import {
 } from "@/features/professional/mock-ui";
 import { CohortRosterSection } from "@/features/administration/CohortRosterSection";
 import { LearnerTrackingSection } from "@/features/administration/LearnerTrackingSection";
+import { RealRosterImportPanel } from "@/features/administration/RealRosterImportPanel";
 import { useProgramAdmin } from "@/features/administration/useProgramAdmin";
+import { useDataAccess } from "@/application/session";
 import {
   COHORT_PHASE_LABELS_FR,
   cohortPhase,
@@ -28,16 +31,53 @@ import {
   formatFrDate,
   sortCohortsForPilot,
 } from "@/features/administration/adminProgramViewModel";
-import { CohortCreationForm } from "@/features/administration/CohortCreationForm";
+import { CohortForm } from "@/features/administration/CohortForm";
+import type { Cohort, CohortId } from "@/domain/types";
 
 export function AdminLearnerClasses() {
   const { data, isPending, refetch } = useProgramAdmin();
+  const dataAccess = useDataAccess();
+  const [editing, setEditing] = useState<CohortId | null>(null);
+  const [busy, setBusy] = useState<CohortId | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+
+  /**
+   * Les classes archivées sont demandées à PART, et seulement ici : partout
+   * ailleurs `listCohorts` ne rend que les actives. Sans cette seconde lecture,
+   * archiver une classe la rendrait irrécupérable par l'interface.
+   */
+  const archivedQuery = useQuery({
+    queryKey: ["cohorts-archived", data?.program?.id],
+    enabled: Boolean(data?.program?.id),
+    queryFn: async () => {
+      const all = await dataAccess.programs.listCohorts(data!.program!.id, {
+        includeArchived: true,
+      });
+      return all.filter((c) => Boolean(c.archivedAt));
+    },
+  });
 
   if (isPending || !data) return <Skeleton className="h-80 w-full" />;
 
   const cohorts = sortCohortsForPilot(data.cohorts);
   const running = cohorts.filter((c) => cohortPhase(c) === "running").length;
   const planned = cohorts.filter((c) => cohortPhase(c) === "planned").length;
+  const archived = archivedQuery.data ?? [];
+
+  async function setArchived(cohort: Cohort, value: boolean) {
+    setActionError(null);
+    setBusy(cohort.id);
+    try {
+      await dataAccess.programs.setCohortArchived(cohort.id, value);
+      await Promise.all([refetch(), archivedQuery.refetch()]);
+    } catch (reason) {
+      setActionError(
+        reason instanceof Error ? reason.message : "L'opération sur la classe a échoué.",
+      );
+    } finally {
+      setBusy(null);
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -61,6 +101,12 @@ export function AdminLearnerClasses() {
         <StatCard label="Inscriptions actives" value={data.enrollments.length} />
       </div>
 
+      {actionError ? (
+        <p className="border-destructive/40 bg-destructive/5 text-destructive rounded-md border px-3 py-2 text-sm">
+          {actionError}
+        </p>
+      ) : null}
+
       <PanelCard
         title="Classes existantes"
         description="Composition de chaque classe. Le suivi de son avancement s'ouvre dans « Pilotage de programme »."
@@ -71,6 +117,7 @@ export function AdminLearnerClasses() {
           <ul className="space-y-3">
             {cohorts.map((cohort) => {
               const enrolled = data.enrollments.filter((e) => e.cohortId === cohort.id).length;
+              const isEditing = editing === cohort.id;
               return (
                 <li key={cohort.id} className="border-border space-y-2 rounded-md border p-4">
                   <div className="flex flex-wrap items-center gap-2">
@@ -86,7 +133,43 @@ export function AdminLearnerClasses() {
                     </span>
                   </div>
                   <Progress value={Math.round(cohortProgressRatio(cohort) * 100)} />
+
+                  {isEditing && data.program && data.versions[0] ? (
+                    <div className="bg-muted/30 rounded-md border border-dashed p-4">
+                      <CohortForm
+                        idPrefix={`edit-${cohort.id}`}
+                        programId={data.program.id}
+                        curriculumVersionId={cohort.curriculumVersionId}
+                        cohort={cohort}
+                        submitLabel="Enregistrer les modifications"
+                        hint="Le programme et la version de curriculum d'une classe ne se changent pas : déplacer une classe laisserait ses inscriptions, ses jalons et ses carnets rattachés à l'ancien programme."
+                        onCreated={() => {
+                          setEditing(null);
+                          void refetch();
+                        }}
+                        onCancel={() => setEditing(null)}
+                      />
+                    </div>
+                  ) : null}
+
                   <div className="flex flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="min-h-11"
+                      onClick={() => setEditing(isEditing ? null : cohort.id)}
+                    >
+                      {isEditing ? "Fermer" : "Modifier"}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="min-h-11"
+                      disabled={busy === cohort.id}
+                      onClick={() => void setArchived(cohort, true)}
+                    >
+                      {busy === cohort.id ? "…" : "Archiver"}
+                    </Button>
                     {/* Lien croisé : le suivi s'ouvre directement sur cette promotion. */}
                     <Button asChild size="sm" variant="outline" className="min-h-11">
                       <Link to="/espace/administration/pilotage" search={{ promotion: cohort.id }}>
@@ -104,6 +187,36 @@ export function AdminLearnerClasses() {
         )}
       </PanelCard>
 
+      {archived.length > 0 ? (
+        <PanelCard
+          title="Classes archivées"
+          description="Sorties des listes actives, sans perte : leurs inscriptions, jalons et carnets de stage restent rattachés. Une classe archivée se désarchive."
+        >
+          <ul className="space-y-2">
+            {archived.map((cohort) => (
+              <li
+                key={cohort.id}
+                className="border-border flex flex-wrap items-center gap-2 rounded-md border p-3"
+              >
+                <span className="font-medium">{cohort.label}</span>
+                <span className="text-muted-foreground text-sm">
+                  {formatFrDate(cohort.startsOn)} → {formatFrDate(cohort.endsOn)}
+                </span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="min-h-11"
+                  disabled={busy === cohort.id}
+                  onClick={() => void setArchived(cohort, false)}
+                >
+                  {busy === cohort.id ? "…" : "Désarchiver"}
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </PanelCard>
+      ) : null}
+
       <PanelCard
         title="Créer une classe"
         description="Deux façons de créer une classe : la saisie manuelle, ou l'import d'une liste d'étudiants. Une classe créée ici est immédiatement disponible dans le « Concepteur de programme »."
@@ -118,7 +231,7 @@ export function AdminLearnerClasses() {
                 </p>
               </div>
               {data.versions[0] ? (
-                <CohortCreationForm
+                <CohortForm
                   idPrefix="classes-cohort"
                   programId={data.program.id}
                   curriculumVersionId={data.versions[0].id}
@@ -134,8 +247,20 @@ export function AdminLearnerClasses() {
               )}
             </div>
 
+            {/*
+              Le VRAI import, celui qui écrit en base — le même composant que dans
+              « Personnes et inscriptions ». Il remplace la maquette qui se trouvait
+              ici : elle lisait le fichier, affichait une prévisualisation et
+              annonçait la création sans rien enregistrer. Un écran qui annonce un
+              import réussi sans écrire est pire qu'une fonctionnalité absente.
+            */}
             <div className="border-border border-t pt-6">
-              <CohortRosterSection data={data} section="import" />
+              <RealRosterImportPanel
+                programId={data.program.id}
+                cohorts={cohorts}
+                existingEmails={data.people.map((p) => p.email)}
+                onImported={() => void refetch()}
+              />
             </div>
           </div>
         ) : (

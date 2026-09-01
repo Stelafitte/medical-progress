@@ -98,14 +98,43 @@ export interface CreateCohortInput {
   readonly endsOn: string;
 }
 
+/**
+ * Saisie du port `updateCohort`. `programId` et `curriculumVersionId` en sont
+ * volontairement ABSENTS : déplacer une classe d'un programme à l'autre
+ * laisserait ses inscriptions, ses jalons et ses carnets rattachés à l'ancien.
+ * Ce n'est pas une modification, c'est une migration de données.
+ */
+export interface UpdateCohortInput {
+  readonly cohortId: CohortId;
+  readonly label: string;
+  readonly academicYear: string;
+  readonly startsOn: string;
+  readonly endsOn: string;
+}
+
 export interface ProgramRepository {
   listPrograms(): Promise<readonly Program[]>;
   getProgram(id: ProgramId): Promise<Program | undefined>;
   listCurriculumVersions(programId: ProgramId): Promise<readonly CurriculumVersion[]>;
-  listCohorts(programId?: ProgramId): Promise<readonly Cohort[]>;
+  /**
+   * Les classes ACTIVES du programme. `includeArchived` les rend toutes, pour
+   * le seul écran qui propose de désarchiver — partout ailleurs, une classe
+   * archivée doit être invisible, comme un acquis archivé.
+   */
+  listCohorts(
+    programId?: ProgramId,
+    options?: { readonly includeArchived?: boolean },
+  ): Promise<readonly Cohort[]>;
   getCohort(id: CohortId): Promise<Cohort | undefined>;
   /** Crée une classe (promotion). Autorisation et unicité vérifiées côté serveur. */
   createCohort(input: CreateCohortInput): Promise<Cohort>;
+  /** Reprend une classe existante : nom, année, dates. Droits vérifiés côté serveur. */
+  updateCohort(input: UpdateCohortInput): Promise<Cohort>;
+  /**
+   * Archive ou désarchive une classe. Réversible et sans perte — la suppression
+   * n'existe pas : cinq tables pointent vers `cohorts`.
+   */
+  setCohortArchived(cohortId: CohortId, archived: boolean): Promise<Cohort>;
   /**
    * Enregistre l'état en cours de conception du programme (« Concepteur de
    * programme »), avant finalisation et passage au pilotage. `draft` est un

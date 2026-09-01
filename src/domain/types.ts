@@ -106,6 +106,12 @@ export interface Cohort extends Entity<CohortId> {
   readonly startsOn: IsoDateTime;
   readonly endsOn: IsoDateTime;
   readonly learnerCount: number;
+  /**
+   * Archivage réversible. Non nul = sortie des listes actives, sans perte :
+   * inscriptions, jalons et carnets de stage restent rattachés. Absent sur les
+   * classes lues avant cette colonne, d'où l'optionnalité.
+   */
+  readonly archivedAt?: string | null;
 }
 
 /* ------------------------------------------------------------------ */

@@ -1,9 +1,17 @@
 /**
- * Outil UNIQUE de création de classe (promotion).
+ * Outil UNIQUE de création ET de reprise d'une classe (promotion).
  *
- * Le même composant est utilisé dans le « Concepteur de programme » et dans
- * l'onglet « Classes d'apprenants ». Dans les deux cas la classe créée est
- * rattachée au programme courant et rejoint la liste unique des classes.
+ * Le même composant sert dans le « Concepteur de programme » et dans l'onglet
+ * « Classes d'apprenants », et pour les deux gestes : créer une classe, ou
+ * reprendre une classe existante. C'est délibéré — un formulaire d'édition
+ * jumeau finirait par diverger du formulaire de création, et on se retrouverait
+ * avec un champ modifiable à la création mais pas à la reprise, ce que rien à
+ * l'écran n'expliquerait.
+ *
+ * `cohort` absent = création. `cohort` fourni = reprise de cette classe :
+ * `program_id` et `curriculum_version_id` ne sont alors PAS modifiables, parce
+ * que déplacer une classe d'un programme à l'autre laisserait ses inscriptions,
+ * ses jalons et ses carnets rattachés à l'ancien.
  */
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -11,6 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   academicYearFor,
+  cohortFormInputFrom,
   EMPTY_NEW_COHORT_INPUT,
   NEW_COHORT_ISSUE_LABELS_FR,
   type NewCohortInput,
@@ -19,36 +28,44 @@ import {
 import { useDataAccess } from "@/application/session";
 import type { Cohort, CurriculumVersionId, ProgramId } from "@/domain/types";
 
-interface CohortCreationFormProps {
+interface CohortFormProps {
   readonly programId: ProgramId;
   readonly curriculumVersionId: CurriculumVersionId;
   /** Libellé du bouton, adapté au contexte d'appel. */
   readonly submitLabel: string;
   /** Phrase expliquant où la classe apparaîtra ensuite. */
   readonly hint: string;
+  /** Classe à reprendre. Absente = création. */
+  readonly cohort?: Cohort;
   readonly onCreated?: (cohort: Cohort) => void;
+  readonly onCancel?: () => void;
   readonly idPrefix?: string;
 }
 
-export function CohortCreationForm({
+export function CohortForm({
   programId,
   curriculumVersionId,
   submitLabel,
   hint,
+  cohort,
   onCreated,
+  onCancel,
   idPrefix = "cohort",
-}: CohortCreationFormProps) {
+}: CohortFormProps) {
   const dataAccess = useDataAccess();
-  const [input, setInput] = useState<NewCohortInput>(EMPTY_NEW_COHORT_INPUT);
+  const editing = cohort !== undefined;
+  const [input, setInput] = useState<NewCohortInput>(
+    cohort ? cohortFormInputFrom(cohort) : EMPTY_NEW_COHORT_INPUT,
+  );
   const [showIssues, setShowIssues] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [created, setCreated] = useState<string | null>(null);
+  const [done, setDone] = useState<string | null>(null);
 
   const issues = validateNewCohort(input);
   const patch = (next: Partial<NewCohortInput>) => {
     setInput((prev) => ({ ...prev, ...next }));
-    setCreated(null);
+    setDone(null);
     setSubmitError(null);
   };
 
@@ -60,21 +77,37 @@ export function CohortCreationForm({
     setSubmitError(null);
     setIsSubmitting(true);
     try {
-      const cohort = await dataAccess.programs.createCohort({
-        programId,
-        curriculumVersionId,
-        label: input.label.trim(),
-        academicYear: input.academicYear.trim() || academicYearFor(input.startsOn),
-        startsOn: input.startsOn,
-        endsOn: input.endsOn,
-      });
-      setInput(EMPTY_NEW_COHORT_INPUT);
+      const academicYear = input.academicYear.trim() || academicYearFor(input.startsOn);
+      const saved = editing
+        ? await dataAccess.programs.updateCohort({
+            cohortId: cohort.id,
+            label: input.label.trim(),
+            academicYear,
+            startsOn: input.startsOn,
+            endsOn: input.endsOn,
+          })
+        : await dataAccess.programs.createCohort({
+            programId,
+            curriculumVersionId,
+            label: input.label.trim(),
+            academicYear,
+            startsOn: input.startsOn,
+            endsOn: input.endsOn,
+          });
+      // À la création on repart d'un formulaire vide pour enchaîner ; à la
+      // reprise on garde les valeurs à l'écran, qui sont désormais celles de la
+      // base — les vider donnerait l'impression d'avoir perdu la classe.
+      if (!editing) setInput(EMPTY_NEW_COHORT_INPUT);
       setShowIssues(false);
-      setCreated(cohort.label);
-      onCreated?.(cohort);
+      setDone(saved.label);
+      onCreated?.(saved);
     } catch (reason) {
       setSubmitError(
-        reason instanceof Error ? reason.message : "Création de la classe impossible.",
+        reason instanceof Error
+          ? reason.message
+          : editing
+            ? "Modification de la classe impossible."
+            : "Création de la classe impossible.",
       );
     } finally {
       setIsSubmitting(false);
@@ -133,12 +166,24 @@ export function CohortCreationForm({
           onClick={() => void submit()}
           disabled={isSubmitting}
         >
-          {isSubmitting ? "Création en cours…" : submitLabel}
+          {isSubmitting ? (editing ? "Enregistrement…" : "Création en cours…") : submitLabel}
         </Button>
-        {created ? (
+        {onCancel ? (
+          <Button
+            type="button"
+            variant="ghost"
+            className="min-h-11"
+            onClick={onCancel}
+            disabled={isSubmitting}
+          >
+            Annuler
+          </Button>
+        ) : null}
+        {done ? (
           <span className="text-muted-foreground text-sm">
-            « {created} » est créée et visible dans le concepteur comme dans « Classes d'apprenants
-            ».
+            {editing
+              ? `« ${done} » est enregistrée.`
+              : `« ${done} » est créée et visible dans le concepteur comme dans « Classes d'apprenants ».`}
           </span>
         ) : null}
       </div>
