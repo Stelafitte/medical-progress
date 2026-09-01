@@ -411,6 +411,44 @@ export function ProgramMilestonePlanner({
                   ))}
                 </ul>
               ) : null}
+
+              {/*
+                Le contenu du jalon, dépliable pour VÉRIFIER — sans cases.
+                Décision de Stef : on veut voir ce que le jalon emporte, pas
+                trier acquis par acquis. Un jalon prend TOUS les acquis retenus
+                de son chapitre, et cette liste est le seul moyen de s'en
+                assurer autrement que sur parole.
+
+                Replié par défaut : le but du rangement par chapitre est de
+                montrer 29 titres plutôt que 390 lignes, et un dépliant ouvert
+                d'office le défait.
+              */}
+              {retained > 0 ? (
+                <details className="mt-2">
+                  <summary className="text-muted-foreground cursor-pointer text-xs">
+                    Voir les {retained} acquis que ce jalon emporte
+                  </summary>
+                  <ul className="mt-2 space-y-1 ps-4">
+                    {(outcomesByTheme.get(theme.id) ?? []).map((outcome) => (
+                      <li key={outcome.id} className="flex flex-wrap items-center gap-2 text-xs">
+                        {outcome.knowledgeRank ? (
+                          <Badge variant="outline" className="font-mono text-[10px] font-normal">
+                            {outcome.knowledgeRank}
+                          </Badge>
+                        ) : null}
+                        <span className="text-muted-foreground">
+                          {outcome.code} — {outcome.label}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              ) : (
+                <p className="text-muted-foreground mt-2 text-xs">
+                  Aucun acquis retenu dans ce chapitre : le dater ne changerait rien au passeport de
+                  l'étudiant.
+                </p>
+              )}
             </li>
           );
         })}
