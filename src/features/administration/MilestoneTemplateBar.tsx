@@ -176,6 +176,23 @@ export function MilestoneTemplateBar({
 
   const noCohort = cohortId === "";
 
+  /*
+   * POURQUOI le bouton « Relever le modèle » est éteint, dit à voix haute.
+   *
+   * Il l'était en silence tant que le nom n'était pas saisi : rien ne
+   * distinguait « il vous manque un nom » de « ce geste est impossible ici ».
+   * Stef, le 02/09, sur un bouton grisé sans motif — deux fois dans la même
+   * journée, sur deux écrans différents. Un bouton désactivé sans raison
+   * affichée est un cul-de-sac.
+   */
+  const saveBlockedReason = noCohort
+    ? "Choisissez d'abord une promotion."
+    : name.trim() === ""
+      ? "Donnez un nom au modèle pour pouvoir le relever."
+      : saveIssues.length > 0
+        ? saveIssues.map((issue) => MILESTONE_TEMPLATE_ISSUE_LABELS_FR[issue]).join(" ")
+        : "";
+
   return (
     <section
       className="border-border space-y-3 rounded-md border p-3"
@@ -208,11 +225,9 @@ export function MilestoneTemplateBar({
         >
           {saving ? "Enregistrement…" : "Relever le modèle"}
         </Button>
-        {saveIssues.length > 0 && name.trim() !== "" ? (
-          <p className="text-destructive w-full text-xs">
-            {saveIssues.map((issue) => MILESTONE_TEMPLATE_ISSUE_LABELS_FR[issue]).join(" ")}
-          </p>
-        ) : null}
+        {saveBlockedReason === "" ? null : (
+          <p className="text-muted-foreground w-full text-xs">{saveBlockedReason}</p>
+        )}
       </div>
 
       {/* ---------------- reposer ---------------- */}
