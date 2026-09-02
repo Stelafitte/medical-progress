@@ -349,101 +349,115 @@ export function ProgramMilestonePlanner({
           const retained = outcomesByTheme.get(theme.id)?.length ?? 0;
           const from = timing.kind === "undated" ? undefined : weekNumber(timing.from);
           return (
-            <li key={theme.id} className="border-border rounded-md border p-3">
-              <div className="flex flex-wrap items-center gap-2">
-                <CalendarDays className="text-muted-foreground size-4" aria-hidden />
+            <li key={theme.id} className="border-border rounded-md border px-3 py-2">
+              {/*
+                UNE SEULE RANGÉE par chapitre.
+                Le chapitre à gauche, sa programmation à droite. Auparavant les
+                deux occupaient deux rangées superposées, et les 29 chapitres
+                faisaient une section qu'on parcourait à l'ascenseur sans jamais
+                voir deux jalons voisins en même temps. Les champs n'ont plus de
+                libellé visible — c'est ce qui coûtait la hauteur — mais gardent
+                leur `aria-label` : ce qui disparaît est le texte, pas le nom du
+                champ.
+              */}
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <CalendarDays className="text-muted-foreground size-4 shrink-0" aria-hidden />
                 <span className="text-sm font-medium">{theme.label}</span>
-                <Badge variant="outline" className="font-normal">
-                  {retained} acquis retenu(s)
+                <Badge variant="outline" className="shrink-0 font-normal">
+                  {retained} acquis
                 </Badge>
-                {/*
-                  La date réelle, affichée à côté de la semaine saisie. C'est ce
-                  qui rend « semaine 4 » vérifiable sans compter sur ses doigts,
-                  tout en gardant la semaine comme donnée enregistrée.
-                */}
                 {doomed.has(theme.id) ? (
                   <span className="text-destructive text-xs">
                     son jalon sera supprimé à l'enregistrement
                   </span>
                 ) : null}
-                {cohort && from !== undefined ? (
-                  <span className="text-muted-foreground text-xs">
-                    → {formatFrDate(milestoneDateFor(cohort.startsOn, from))}
-                    {timing.kind === "period" && weekNumber(timing.to) !== undefined
-                      ? ` au ${formatFrDate(milestoneDateFor(cohort.startsOn, weekNumber(timing.to)!))}`
-                      : ""}
-                  </span>
-                ) : null}
-              </div>
 
-              <div
-                role="group"
-                aria-label={`Programmation — ${theme.label}`}
-                className="mt-2 flex flex-wrap items-end gap-2"
-              >
-                {(Object.keys(TIMING_LABELS) as MilestoneTiming["kind"][]).map((kind) => (
-                  <Button
-                    key={kind}
-                    type="button"
-                    size="sm"
-                    className="min-h-11"
-                    variant={timing.kind === kind ? "default" : "outline"}
-                    aria-pressed={timing.kind === kind}
-                    onClick={() =>
-                      patch(
-                        theme.id,
-                        kind === "undated"
-                          ? { kind: "undated" }
-                          : kind === "week"
-                            ? { kind: "week", from: timing.kind === "undated" ? "" : timing.from }
-                            : {
-                                kind: "period",
-                                from: timing.kind === "undated" ? "" : timing.from,
-                                to: timing.kind === "period" ? timing.to : "",
-                              },
-                      )
-                    }
-                  >
-                    {TIMING_LABELS[kind]}
-                  </Button>
-                ))}
-
-                {timing.kind !== "undated" ? (
-                  <div className="space-y-1">
-                    <Label
-                      htmlFor={`ms-${theme.id}-from`}
-                      className="text-muted-foreground text-xs"
+                <div
+                  role="group"
+                  aria-label={`Programmation — ${theme.label}`}
+                  className="ms-auto flex flex-wrap items-center gap-1"
+                >
+                  {(Object.keys(TIMING_LABELS) as MilestoneTiming["kind"][]).map((kind) => (
+                    <Button
+                      key={kind}
+                      type="button"
+                      size="sm"
+                      className="min-h-11"
+                      variant={timing.kind === kind ? "default" : "outline"}
+                      aria-pressed={timing.kind === kind}
+                      onClick={() =>
+                        patch(
+                          theme.id,
+                          kind === "undated"
+                            ? { kind: "undated" }
+                            : kind === "week"
+                              ? { kind: "week", from: timing.kind === "undated" ? "" : timing.from }
+                              : {
+                                  kind: "period",
+                                  from: timing.kind === "undated" ? "" : timing.from,
+                                  to: timing.kind === "period" ? timing.to : "",
+                                },
+                        )
+                      }
                     >
-                      {timing.kind === "period" ? "Semaine de début" : "Semaine"}
-                    </Label>
-                    <Input
-                      id={`ms-${theme.id}-from`}
-                      type="number"
-                      min={0}
-                      max={weeks?.lastWeek ?? PLAN_MILESTONE_MAX_WEEK}
-                      value={timing.from}
-                      className="min-h-11 w-24"
-                      onChange={(event) => patch(theme.id, { ...timing, from: event.target.value })}
-                    />
-                  </div>
-                ) : null}
+                      {TIMING_LABELS[kind]}
+                    </Button>
+                  ))}
 
-                {timing.kind === "period" ? (
-                  <div className="space-y-1">
-                    <Label htmlFor={`ms-${theme.id}-to`} className="text-muted-foreground text-xs">
-                      Semaine de fin
-                    </Label>
-                    <Input
-                      id={`ms-${theme.id}-to`}
-                      type="number"
-                      min={0}
-                      max={weeks?.lastWeek ?? PLAN_MILESTONE_MAX_WEEK}
-                      value={timing.to}
-                      className="min-h-11 w-24"
-                      onChange={(event) => patch(theme.id, { ...timing, to: event.target.value })}
-                    />
-                  </div>
-                ) : null}
+                  {timing.kind !== "undated" ? (
+                    <>
+                      <span className="text-muted-foreground ms-1 text-xs">
+                        {timing.kind === "period" ? "de S" : "S"}
+                      </span>
+                      <Input
+                        id={`ms-${theme.id}-from`}
+                        aria-label={
+                          timing.kind === "period"
+                            ? `Semaine de début — ${theme.label}`
+                            : `Semaine — ${theme.label}`
+                        }
+                        type="number"
+                        min={0}
+                        max={weeks?.lastWeek ?? PLAN_MILESTONE_MAX_WEEK}
+                        value={timing.from}
+                        className="min-h-11 w-16"
+                        onChange={(event) =>
+                          patch(theme.id, { ...timing, from: event.target.value })
+                        }
+                      />
+                    </>
+                  ) : null}
+
+                  {timing.kind === "period" ? (
+                    <>
+                      <span className="text-muted-foreground text-xs">à S</span>
+                      <Input
+                        id={`ms-${theme.id}-to`}
+                        aria-label={`Semaine de fin — ${theme.label}`}
+                        type="number"
+                        min={0}
+                        max={weeks?.lastWeek ?? PLAN_MILESTONE_MAX_WEEK}
+                        value={timing.to}
+                        className="min-h-11 w-16"
+                        onChange={(event) => patch(theme.id, { ...timing, to: event.target.value })}
+                      />
+                    </>
+                  ) : null}
+
+                  {/*
+                    La date réelle, collée à la semaine saisie plutôt qu'au titre :
+                    c'est ce qui rend « semaine 4 » vérifiable sans compter sur ses
+                    doigts, et elle se lit là où on vient de taper.
+                  */}
+                  {cohort && from !== undefined ? (
+                    <span className="text-muted-foreground w-28 text-end text-xs">
+                      {formatFrDate(milestoneDateFor(cohort.startsOn, from))}
+                      {timing.kind === "period" && weekNumber(timing.to) !== undefined
+                        ? ` → ${formatFrDate(milestoneDateFor(cohort.startsOn, weekNumber(timing.to)!))}`
+                        : ""}
+                    </span>
+                  ) : null}
+                </div>
               </div>
 
               {issues.length > 0 ? (
