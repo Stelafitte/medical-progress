@@ -222,6 +222,99 @@ export function planMilestoneIntent(
   return { toWrite, toDelete, orphans };
 }
 
+/**
+ * L'ordre dans lequel l'écran présente les chapitres : chronologique.
+ *
+ * Il se calcule sur les jalons ENREGISTRÉS, jamais sur la saisie en cours.
+ * C'est la raison d'être de cette fonction : trier au fil de la frappe ferait
+ * sauter les lignes sous le doigt — on tape « 9 » dans un chapitre, il part
+ * douze lignes plus bas, et le champ suivant n'est plus là où on le cherchait.
+ * L'ordre ne bouge donc qu'au chargement et après un enregistrement, ce qui
+ * est exactement ce que demande Stef le 02/09.
+ *
+ * Les chapitres SANS jalon enregistré vont à la fin, dans l'ordre du
+ * référentiel : ils n'ont pas de place dans une chronologie, et les
+ * intercaler à l'ordre du référentiel mêlerait deux logiques de tri dans une
+ * même liste.
+ */
+export function chronologicalThemeOrder<
+  T extends { readonly id: string; readonly label: string; readonly position: number },
+>(themes: readonly T[], existing: readonly PlanMilestone[]): readonly T[] {
+  const weekOf = new Map<string, number>();
+  for (const milestone of existing) weekOf.set(milestone.label, milestone.weekOffset);
+
+  return [...themes].sort((a, b) => {
+    const wa = weekOf.get(a.label);
+    const wb = weekOf.get(b.label);
+    if (wa === undefined && wb === undefined) return a.position - b.position;
+    if (wa === undefined) return 1;
+    if (wb === undefined) return -1;
+    if (wa !== wb) return wa - wb;
+    return a.position - b.position;
+  });
+}
+
+export interface MilestoneGanttBar {
+  readonly id: PlanMilestoneId;
+  readonly label: string;
+  readonly weekStart: number;
+  /** Égale `weekStart` pour un jalon ponctuel : une barre a toujours une fin. */
+  readonly weekEnd: number;
+  readonly startsOn: IsoDateTime;
+  readonly endsOn: IsoDateTime;
+  readonly official: boolean;
+  readonly outcomeCount: number;
+}
+
+export interface MilestoneGantt {
+  /** Dernière semaine de l'échelle. L'échelle part toujours de la semaine 0. */
+  readonly lastWeek: number;
+  readonly bars: readonly MilestoneGanttBar[];
+}
+
+/**
+ * Le rétroplanning vu comme des barres sur une échelle de semaines.
+ *
+ * L'échelle part de la semaine 0 — le début du stage — et non de la première
+ * semaine occupée : un rétroplanning qui ne commence qu'en semaine 3 doit se
+ * VOIR comme tel, et une échelle qui se recale sur son contenu effacerait
+ * précisément ce qu'on cherche à lire.
+ *
+ * Elle s'arrête au dernier jalon. Ce sera la fin réelle de la promotion quand
+ * le nombre de semaines d'apprentissage sera calculé (point 1 du 02/09) ;
+ * aujourd'hui rien en base ne dit où le stage s'arrête, donc l'échelle ne
+ * peut pas le prétendre.
+ */
+export function milestoneGantt(
+  milestones: readonly PlanMilestone[],
+  cohortStartsOn: IsoDateTime,
+): MilestoneGantt {
+  const bars = [...milestones]
+    .map((milestone) => {
+      const weekEnd = milestone.weekOffsetEnd ?? milestone.weekOffset;
+      return {
+        id: milestone.id,
+        label: milestone.label,
+        weekStart: milestone.weekOffset,
+        weekEnd,
+        startsOn: milestoneDateFor(cohortStartsOn, milestone.weekOffset),
+        endsOn: milestoneDateFor(cohortStartsOn, weekEnd),
+        official: milestone.official,
+        outcomeCount: milestone.outcomeIds.length,
+      };
+    })
+    .sort((a, b) => {
+      if (a.weekStart !== b.weekStart) return a.weekStart - b.weekStart;
+      if (a.weekEnd !== b.weekEnd) return a.weekEnd - b.weekEnd;
+      return a.label.localeCompare(b.label, "fr");
+    });
+
+  // Une échelle de largeur nulle rendrait des barres invisibles : au moins une
+  // semaine, même quand tout est posé en semaine 0.
+  const lastWeek = Math.max(1, ...bars.map((bar) => bar.weekEnd));
+  return { lastWeek, bars };
+}
+
 export interface AcquisitionPlanItem {
   readonly id: OutcomeId;
   readonly code: string;

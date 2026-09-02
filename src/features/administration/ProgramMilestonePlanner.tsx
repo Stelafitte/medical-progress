@@ -36,6 +36,7 @@ import { useDataAccess } from "@/application/session";
 import {
   PLAN_MILESTONE_ISSUE_LABELS_FR,
   PLAN_MILESTONE_MAX_WEEK,
+  chronologicalThemeOrder,
   milestoneDateFor,
   planMilestoneIntent,
   validatePlanMilestone,
@@ -44,6 +45,7 @@ import {
   type PlanMilestoneId,
 } from "@/domain/acquisitionPlan";
 import { formatFrDate } from "@/features/administration/adminProgramViewModel";
+import { ProgramMilestoneGantt } from "@/features/administration/ProgramMilestoneGantt";
 import type { Cohort, CohortId, Outcome, OutcomeTheme } from "@/domain/types";
 
 const TIMING_LABELS: Record<MilestoneTiming["kind"], string> = {
@@ -112,6 +114,19 @@ export function ProgramMilestonePlanner({
   }, [outcomes]);
 
   const ordered = useMemo(() => [...themes].sort((a, b) => a.position - b.position), [themes]);
+
+  /**
+   * L'ordre d'AFFICHAGE, chronologique — distinct de `ordered`, qui reste
+   * l'ordre du référentiel.
+   *
+   * Les deux ne peuvent pas être confondus : `ordered` alimente
+   * `planMilestoneIntent` et la `position` écrite en base, qui doit rester
+   * celle du référentiel. Trier la liste ne doit pas renuméroter les jalons.
+   */
+  const displayed = useMemo(
+    () => chronologicalThemeOrder(ordered, existing ?? []),
+    [ordered, existing],
+  );
 
   const load = useCallback(async () => {
     if (cohortId === "") return;
@@ -301,7 +316,7 @@ export function ProgramMilestonePlanner({
       </div>
 
       <ul className="space-y-2">
-        {ordered.map((theme) => {
+        {displayed.map((theme) => {
           const timing = timings[theme.id] ?? EMPTY;
           const issues = issuesFor(theme.id);
           const retained = outcomesByTheme.get(theme.id)?.length ?? 0;
@@ -502,6 +517,10 @@ export function ProgramMilestonePlanner({
       </div>
 
       {error ? <p className="text-destructive text-sm">{error}</p> : null}
+
+      {cohort && existing ? (
+        <ProgramMilestoneGantt milestones={existing} cohortStartsOn={cohort.startsOn} />
+      ) : null}
 
       <p className="text-muted-foreground text-xs">
         Repasser un chapitre en « non daté », ou vider sa semaine, SUPPRIME son jalon à
