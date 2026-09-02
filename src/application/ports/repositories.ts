@@ -86,6 +86,7 @@ import type {
   PendingPerson,
   PendingPersonId,
   SendInvitationOutcome,
+  UpdatePendingPersonInput,
 } from "@/domain/peopleStaging";
 
 /** Saisie du port `createCohort` : champs plats, prêts pour le RPC serveur. */
@@ -201,6 +202,16 @@ export interface PeopleStagingRepository {
   createPendingPerson(input: CreatePendingPersonInput): Promise<PendingPerson>;
   /** Déclenche l'envoi réel des invitations (Edge Function invite-person). */
   sendInvitations(personIds: readonly PendingPersonId[]): Promise<readonly SendInvitationOutcome[]>;
+  /** Corrige une ligne du sas : nom, adresse, identifiant, promotion visée. */
+  updatePendingPerson(input: UpdatePendingPersonInput): Promise<PendingPerson>;
+  /**
+   * Retire une personne de la liste, ou l'y remet.
+   *
+   * Retirer n'EFFACE pas : la ligne passe en « annulée » et se restaure. Une
+   * suppression ferait disparaître qui avait été inscrit et par qui, et la
+   * base ne l'accorde d'ailleurs pas (aucun `delete` sur `people`).
+   */
+  setPendingPersonCancelled(personId: PendingPersonId, cancelled: boolean): Promise<PendingPerson>;
 }
 
 /** Saisie du port `createOutcome` : champs plats, prêts pour le RPC serveur. */

@@ -45,12 +45,15 @@ import type {
   MediaStatus,
   MediaVisibility,
 } from "@/domain/mediaLibrary";
-import type {
-  CreatePendingPersonInput,
-  PendingPerson,
-  PendingPersonId,
-  PendingPersonStatus,
-  SendInvitationOutcome,
+import {
+  normalizeLoginEmail,
+  statusAfterRestore,
+  type CreatePendingPersonInput,
+  type PendingPerson,
+  type PendingPersonId,
+  type PendingPersonStatus,
+  type SendInvitationOutcome,
+  type UpdatePendingPersonInput,
 } from "@/domain/peopleStaging";
 import { mockDataAccess } from "@/infrastructure/mock/mockDataAccess";
 import { requireCanonicalMediaType } from "@/infrastructure/storage/mediaTypes";
@@ -787,6 +790,77 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
             origin: "individual",
             created_by: userData.user.id,
           })
+          .select(pendingPersonColumns)
+          .single();
+        assertNoSupabaseError(error);
+        return mapPendingPerson(data as PendingPersonRow);
+      },
+      /**
+       * Écriture DIRECTE sur la table, sans RPC : la policy
+       * `people_update_staff` autorise déjà le staff du programme, et le
+       * `grant update` est posé. Ajouter une fonction serveur ici ne
+       * garantirait rien de plus que ce que la RLS garantit.
+       */
+      async updatePendingPerson(input: UpdatePendingPersonInput) {
+        const patch: Record<string, unknown> = {};
+        if (input.firstName !== undefined) patch["first_name"] = input.firstName.trim();
+        if (input.lastName !== undefined) patch["last_name"] = input.lastName.trim();
+        if (input.loginEmail !== undefined) {
+          patch["login_email"] = normalizeLoginEmail(input.loginEmail);
+        }
+        // Les deux drapeaux d'abord : « vider » l'emporte sur « ne pas toucher ».
+        if (input.clearInstitutionalId === true) patch["institutional_id"] = null;
+        else if (input.institutionalId !== undefined) {
+          patch["institutional_id"] = input.institutionalId.trim();
+        }
+        if (input.clearIntendedCohortId === true) patch["intended_cohort_id"] = null;
+        else if (input.intendedCohortId !== undefined) {
+          patch["intended_cohort_id"] = input.intendedCohortId;
+        }
+
+        if (Object.keys(patch).length === 0) {
+          // Rien à écrire : on relit plutôt que d'envoyer un update vide, qui
+          // ferait quand même avancer `updated_at`.
+          const { data, error } = await client
+            .from("people")
+            .select(pendingPersonColumns)
+            .eq("id", input.personId)
+            .single();
+          assertNoSupabaseError(error);
+          return mapPendingPerson(data as PendingPersonRow);
+        }
+
+        const { data, error } = await client
+          .from("people")
+          .update(patch)
+          .eq("id", input.personId)
+          .select(pendingPersonColumns)
+          .single();
+        assertNoSupabaseError(error);
+        return mapPendingPerson(data as PendingPersonRow);
+      },
+      async setPendingPersonCancelled(personId: PendingPersonId, cancelled: boolean) {
+        const { data: current, error: readError } = await client
+          .from("people")
+          .select(pendingPersonColumns)
+          .eq("id", personId)
+          .single();
+        assertNoSupabaseError(readError);
+        const person = mapPendingPerson(current as PendingPersonRow);
+
+        /*
+         * `cancelled_at` accompagne toujours le statut : la contrainte
+         * `people_status_cancelled_coherent` lie les deux, et écrire l'un sans
+         * l'autre ferait échouer l'écriture entière.
+         */
+        const patch = cancelled
+          ? { status: "cancelled", cancelled_at: new Date().toISOString() }
+          : { status: statusAfterRestore(person), cancelled_at: null };
+
+        const { data, error } = await client
+          .from("people")
+          .update(patch)
+          .eq("id", personId)
           .select(pendingPersonColumns)
           .single();
         assertNoSupabaseError(error);

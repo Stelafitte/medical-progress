@@ -3,7 +3,11 @@
  * Remplaçable par une implémentation base de données sans toucher à l'UI.
  */
 import type { DataAccess } from "@/application/ports/repositories";
-import type { PendingPerson } from "@/domain/peopleStaging";
+import {
+  normalizeLoginEmail,
+  statusAfterRestore,
+  type PendingPerson,
+} from "@/domain/peopleStaging";
 import type {
   Cohort,
   LearningResource,
@@ -30,6 +34,22 @@ import * as hvg from "./dpcHvgFixtures";
 
 const clone = <T>(value: T): T => value;
 const ok = <T>(value: T): Promise<T> => Promise.resolve(clone(value));
+
+/**
+ * Recopie une personne du sas SANS certaines de ses clés optionnelles.
+ *
+ * `exactOptionalPropertyTypes` distingue « absente » de « valant undefined » :
+ * poser `{ ...person, cancelledAt: undefined }` ne compile pas, et laisser la
+ * clé ferait survivre une date d'annulation à la restauration.
+ */
+function omitPendingPersonKeys(
+  person: PendingPerson,
+  keys: readonly (keyof PendingPerson)[],
+): PendingPerson {
+  const copy: Record<string, unknown> = { ...person };
+  for (const key of keys) delete copy[key];
+  return copy as unknown as PendingPerson;
+}
 
 export const mockDataAccess: DataAccess = {
   isMock: true,
@@ -150,6 +170,46 @@ export const mockDataAccess: DataAccess = {
           personIds.includes(p.id) ? { ...p, status: "invited", invitedAt: now } : p,
         );
         return ok(personIds.map((personId) => ({ personId, ok: true })));
+      },
+      updatePendingPerson: (input) => {
+        const found = pending.find((p) => p.id === input.personId);
+        if (!found) return Promise.reject(new Error("Personne introuvable."));
+        /*
+         * Les deux champs effaçables se traitent AVANT le reste : les répandre
+         * avec les autres les rendrait indistinguables d'un « ne pas toucher »,
+         * et vider une promotion deviendrait impossible.
+         */
+        const base = omitPendingPersonKeys(found, ["institutionalId", "intendedCohortId"]);
+        const institutionalId =
+          input.clearInstitutionalId === true
+            ? undefined
+            : (input.institutionalId?.trim() ?? found.institutionalId);
+        const intendedCohortId =
+          input.clearIntendedCohortId === true
+            ? undefined
+            : (input.intendedCohortId ?? found.intendedCohortId);
+        const revised: PendingPerson = {
+          ...base,
+          ...(input.firstName === undefined ? {} : { firstName: input.firstName.trim() }),
+          ...(input.lastName === undefined ? {} : { lastName: input.lastName.trim() }),
+          ...(input.loginEmail === undefined
+            ? {}
+            : { loginEmail: normalizeLoginEmail(input.loginEmail) }),
+          ...(institutionalId === undefined ? {} : { institutionalId }),
+          ...(intendedCohortId === undefined ? {} : { intendedCohortId }),
+          updatedAt: new Date().toISOString(),
+        };
+        pending = pending.map((p) => (p.id === input.personId ? revised : p));
+        return ok(revised);
+      },
+      setPendingPersonCancelled: (personId, cancelled) => {
+        const found = pending.find((p) => p.id === personId);
+        if (!found) return Promise.reject(new Error("Personne introuvable."));
+        const next: PendingPerson = cancelled
+          ? { ...found, status: "cancelled", cancelledAt: new Date().toISOString() }
+          : { ...omitPendingPersonKeys(found, ["cancelledAt"]), status: statusAfterRestore(found) };
+        pending = pending.map((p) => (p.id === personId ? next : p));
+        return ok(next);
       },
     };
   })(),
