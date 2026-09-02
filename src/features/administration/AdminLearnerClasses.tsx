@@ -22,6 +22,8 @@ import {
 import { CohortRosterSection } from "@/features/administration/CohortRosterSection";
 import { LearnerTrackingSection } from "@/features/administration/LearnerTrackingSection";
 import { RealRosterImportPanel } from "@/features/administration/RealRosterImportPanel";
+import { PendingPeopleTable } from "@/features/administration/PendingPeopleTable";
+import { RealIndividualPersonForm } from "@/features/administration/RealIndividualPersonForm";
 import { useProgramAdmin } from "@/features/administration/useProgramAdmin";
 import { useDataAccess } from "@/application/session";
 import {
@@ -33,12 +35,15 @@ import {
 } from "@/features/administration/adminProgramViewModel";
 import { CohortForm } from "@/features/administration/CohortForm";
 import type { Cohort, CohortId } from "@/domain/types";
+import type { PendingPersonId, UpdatePendingPersonInput } from "@/domain/peopleStaging";
 
 export function AdminLearnerClasses() {
   const { data, isPending, refetch } = useProgramAdmin();
   const dataAccess = useDataAccess();
   const [editing, setEditing] = useState<CohortId | null>(null);
   const [importingInto, setImportingInto] = useState<CohortId | null>(null);
+  const [openRoster, setOpenRoster] = useState<CohortId | null>(null);
+  const [personBusyId, setPersonBusyId] = useState<PendingPersonId | null>(null);
   const [busy, setBusy] = useState<CohortId | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -58,12 +63,50 @@ export function AdminLearnerClasses() {
     },
   });
 
+  /**
+   * Les personnes du SAS, pas les inscriptions : ce sont elles qu'on corrige,
+   * retire et ajoute avant la première connexion. `useProgramAdmin` rend des
+   * comptes déjà activés, ce qui n'est pas la même population — les 17
+   * étudiants importés le 01/09 n'y figurent pas.
+   */
+  const pendingQuery = useQuery({
+    queryKey: ["pending-people", data?.program?.id],
+    enabled: Boolean(data?.program?.id),
+    queryFn: () => dataAccess.peopleStaging.listPendingPeople(data!.program!.id),
+  });
+
   if (isPending || !data) return <Skeleton className="h-80 w-full" />;
 
   const cohorts = sortCohortsForPilot(data.cohorts);
   const running = cohorts.filter((c) => cohortPhase(c) === "running").length;
   const planned = cohorts.filter((c) => cohortPhase(c) === "planned").length;
   const archived = archivedQuery.data ?? [];
+
+  async function updatePerson(input: UpdatePendingPersonInput) {
+    setActionError(null);
+    setPersonBusyId(input.personId);
+    try {
+      await dataAccess.peopleStaging.updatePendingPerson(input);
+      await pendingQuery.refetch();
+    } catch (reason) {
+      setActionError(reason instanceof Error ? reason.message : "Modification impossible.");
+    } finally {
+      setPersonBusyId(null);
+    }
+  }
+
+  async function setPersonCancelled(personId: PendingPersonId, cancelled: boolean) {
+    setActionError(null);
+    setPersonBusyId(personId);
+    try {
+      await dataAccess.peopleStaging.setPendingPersonCancelled(personId, cancelled);
+      await pendingQuery.refetch();
+    } catch (reason) {
+      setActionError(reason instanceof Error ? reason.message : "Opération impossible.");
+    } finally {
+      setPersonBusyId(null);
+    }
+  }
 
   async function setArchived(cohort: Cohort, value: boolean) {
     setActionError(null);
@@ -176,7 +219,49 @@ export function AdminLearnerClasses() {
                     </div>
                   ) : null}
 
+                  {/*
+                    La COMPOSITION de la classe, dépliée sous elle : la liste
+                    des personnes du sas rattachées à cette promotion, le même
+                    tableau que l'onglet « Personnes et inscriptions » — sans sa
+                    colonne Promotion, qui ne dirait qu'une chose ici.
+                  */}
+                  {openRoster === cohort.id ? (
+                    <div className="bg-muted/30 space-y-4 rounded-md border border-dashed p-4">
+                      <PendingPeopleTable
+                        people={(pendingQuery.data ?? []).filter(
+                          (person) => person.intendedCohortId === cohort.id,
+                        )}
+                        cohorts={cohorts}
+                        showCohortColumn={false}
+                        busyId={personBusyId}
+                        onUpdate={updatePerson}
+                        onSetCancelled={setPersonCancelled}
+                      />
+                      {data.program ? (
+                        <RealIndividualPersonForm
+                          programId={data.program.id}
+                          cohorts={[cohort]}
+                          defaultCohortId={cohort.id}
+                          lockCohort
+                          idPrefix={`add-${cohort.id}`}
+                          title={`Ajouter un apprenant à « ${cohort.label} »`}
+                          onCreated={() => void pendingQuery.refetch()}
+                        />
+                      ) : null}
+                    </div>
+                  ) : null}
+
                   <div className="flex flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="min-h-11"
+                      onClick={() => setOpenRoster(openRoster === cohort.id ? null : cohort.id)}
+                    >
+                      {openRoster === cohort.id
+                        ? "Fermer la composition"
+                        : `Voir la composition (${(pendingQuery.data ?? []).filter((p) => p.intendedCohortId === cohort.id).length})`}
+                    </Button>
                     <Button
                       size="sm"
                       variant="outline"

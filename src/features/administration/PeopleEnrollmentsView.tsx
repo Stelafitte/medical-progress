@@ -53,6 +53,8 @@ import {
   StatCard,
 } from "@/features/professional/mock-ui";
 import { RealRosterImportPanel } from "@/features/administration/RealRosterImportPanel";
+import { PendingPeopleTable } from "@/features/administration/PendingPeopleTable";
+import { RealIndividualPersonForm } from "@/features/administration/RealIndividualPersonForm";
 import { useDataAccess, useSession } from "@/application/session";
 import { setDirectoryState, useDirectoryState } from "@/application/directoryStore";
 import { ROLE_LABELS_FR } from "@/domain/roles";
@@ -90,6 +92,7 @@ import {
   fullNameOfPendingPerson,
   type PendingPerson,
   type PendingPersonId,
+  type UpdatePendingPersonInput,
 } from "@/domain/peopleStaging";
 
 const ROLE_OPTIONS: readonly RoleName[] = ["learner", "teacher", "administrator"];
@@ -202,7 +205,7 @@ function RealPeopleEnrollmentsView() {
   const [cohorts, setCohorts] = useState<readonly Cohort[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [sendingId, setSendingId] = useState<PendingPersonId | null>(null);
+  const [busyId, setBusyId] = useState<PendingPersonId | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -226,7 +229,7 @@ function RealPeopleEnrollmentsView() {
   }, [refresh]);
 
   async function sendInvitation(personId: PendingPersonId) {
-    setSendingId(personId);
+    setBusyId(personId);
     try {
       const outcomes = await dataAccess.peopleStaging.sendInvitations([personId]);
       const outcome = outcomes.find((o) => o.personId === personId);
@@ -237,7 +240,38 @@ function RealPeopleEnrollmentsView() {
     } catch (reason) {
       setLoadError(reason instanceof Error ? reason.message : "Échec de l'envoi de l'invitation.");
     } finally {
-      setSendingId(null);
+      setBusyId(null);
+    }
+  }
+
+  /**
+   * Les deux écritures sont ici, pas dans le tableau : le tableau sert aussi
+   * l'onglet « Classes d'apprenants », qui recharge autre chose. Ce qui se
+   * partage est la projection et le rendu, pas le chargement.
+   */
+  async function updatePerson(input: UpdatePendingPersonInput) {
+    setBusyId(input.personId);
+    setLoadError(null);
+    try {
+      await dataAccess.peopleStaging.updatePendingPerson(input);
+      await refresh();
+    } catch (reason) {
+      setLoadError(reason instanceof Error ? reason.message : "Modification impossible.");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function setCancelled(personId: PendingPersonId, cancelled: boolean) {
+    setBusyId(personId);
+    setLoadError(null);
+    try {
+      await dataAccess.peopleStaging.setPendingPersonCancelled(personId, cancelled);
+      await refresh();
+    } catch (reason) {
+      setLoadError(reason instanceof Error ? reason.message : "Opération impossible.");
+    } finally {
+      setBusyId(null);
     }
   }
 
@@ -259,8 +293,9 @@ function RealPeopleEnrollmentsView() {
         <code>people</code>, décision D94). <strong>La promotion choisie ici décide de tout</strong>{" "}
         : à la première connexion de la personne, elle seule déclenche la création de l'inscription
         et du rôle apprenant. Sans elle, le compte s'active mais l'étudiant ne voit aucun programme.
-        L'import groupé lit désormais pour de vrai un CSV ou un classeur Excel. Le retrait et
-        l'archivage ne sont pas encore raccordés en mode réel.
+        L'import groupé lit désormais pour de vrai un CSV ou un classeur Excel. La correction d'une
+        ligne et son retrait écrivent eux aussi pour de vrai — retirer n'efface pas, la ligne passe
+        en « annulée » et se remet.
       </ScopeNotice>
 
       {loadError ? (
@@ -283,10 +318,9 @@ function RealPeopleEnrollmentsView() {
         onImported={refresh}
       />
 
-      <RealIndividualForm
+      <RealIndividualPersonForm
         programId={activeProgram.id}
         cohorts={cohorts}
-        dataAccess={dataAccess}
         onCreated={refresh}
       />
 
@@ -300,69 +334,14 @@ function RealPeopleEnrollmentsView() {
         ) : people.length === 0 ? (
           <EmptyState>Aucune personne créée pour ce programme pour l'instant.</EmptyState>
         ) : (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nom</TableHead>
-                  <TableHead>E-mail</TableHead>
-                  <TableHead>Promotion</TableHead>
-                  <TableHead>Statut</TableHead>
-                  <TableHead>Créée le</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {people.map((person) => (
-                  <TableRow key={person.id}>
-                    <TableCell className="font-medium">{fullNameOfPendingPerson(person)}</TableCell>
-                    <TableCell className="break-all">{person.loginEmail}</TableCell>
-                    <TableCell>
-                      {person.intendedCohortId ? (
-                        cohorts.find((c) => c.id === person.intendedCohortId)?.label ??
-                        person.intendedCohortId
-                      ) : (
-                        <span
-                          className="text-destructive"
-                          title="Sans promotion, l'activation ne créera ni inscription ni rôle apprenant : la personne ne verra aucun programme."
-                        >
-                          aucune
-                        </span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={person.status === "cancelled" ? "destructive" : "outline"}
-                        className="font-normal"
-                      >
-                        {PENDING_PERSON_STATUS_LABELS_FR[person.status]}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {new Date(person.createdAt).toLocaleDateString("fr-FR")}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {person.status === "pending" || person.status === "invited" ? (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="min-h-11"
-                          disabled={sendingId === person.id}
-                          onClick={() => void sendInvitation(person.id)}
-                        >
-                          {sendingId === person.id
-                            ? "Envoi…"
-                            : person.status === "invited"
-                              ? "Renvoyer l'invitation"
-                              : "Envoyer l'invitation"}
-                        </Button>
-                      ) : null}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+          <PendingPeopleTable
+            people={people}
+            cohorts={cohorts}
+            busyId={busyId}
+            onUpdate={updatePerson}
+            onSetCancelled={setCancelled}
+            onSendInvitation={sendInvitation}
+          />
         )}
       </PanelCard>
     </div>
@@ -370,162 +349,6 @@ function RealPeopleEnrollmentsView() {
 }
 
 const NO_COHORT = "__none__";
-
-function RealIndividualForm({
-  programId,
-  cohorts,
-  dataAccess,
-  onCreated,
-}: {
-  programId: string;
-  cohorts: readonly Cohort[];
-  dataAccess: ReturnType<typeof useDataAccess>;
-  onCreated: () => void | Promise<void>;
-}) {
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [email, setEmail] = useState("");
-  const [institutionalId, setInstitutionalId] = useState("");
-  const [cohortId, setCohortId] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
-
-  async function submit() {
-    setError(null);
-    setSuccess(null);
-    setSubmitting(true);
-    try {
-      const created = await dataAccess.peopleStaging.createPendingPerson({
-        programId,
-        firstName,
-        lastName,
-        loginEmail: email,
-        ...(institutionalId ? { institutionalId } : {}),
-        ...(cohortId && cohortId !== NO_COHORT
-          ? { intendedCohortId: cohortId as CohortId }
-          : {}),
-      });
-      const cohortLabel =
-        cohortId && cohortId !== NO_COHORT
-          ? cohorts.find((c) => c.id === cohortId)?.label
-          : undefined;
-      setSuccess(
-        cohortLabel
-          ? `${created.firstName} ${created.lastName} est créée dans le sas, rattachée à « ${cohortLabel} ». Son inscription et son rôle apprenant seront créés à sa première connexion.`
-          : `${created.firstName} ${created.lastName} est créée dans le sas, SANS promotion : à sa première connexion, son compte s'activera mais aucune inscription ne sera créée et elle ne verra aucun programme.`,
-      );
-      setFirstName("");
-      setLastName("");
-      setEmail("");
-      setInstitutionalId("");
-      setCohortId("");
-      await onCreated();
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Création impossible.");
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  return (
-    <PanelCard
-      title="Ajouter une personne"
-      description="Crée pour de vrai une ligne dans le sas de pré-inscription de ce programme. Aucun e-mail n'est envoyé tant que l'invitation n'est pas déclenchée explicitement."
-      action={<MockBadge label="Données réelles (Supabase)" />}
-    >
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div className="space-y-2">
-          <Label htmlFor="real-dir-firstname">Prénom</Label>
-          <Input
-            id="real-dir-firstname"
-            value={firstName}
-            className="min-h-11"
-            onChange={(e) => setFirstName(e.target.value)}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="real-dir-lastname">Nom</Label>
-          <Input
-            id="real-dir-lastname"
-            value={lastName}
-            className="min-h-11"
-            onChange={(e) => setLastName(e.target.value)}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="real-dir-email">E-mail de connexion</Label>
-          <Input
-            id="real-dir-email"
-            type="email"
-            value={email}
-            className="min-h-11"
-            onChange={(e) => setEmail(e.target.value)}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="real-dir-institutional">Identifiant institutionnel (facultatif)</Label>
-          <Input
-            id="real-dir-institutional"
-            value={institutionalId}
-            className="min-h-11"
-            onChange={(e) => setInstitutionalId(e.target.value)}
-          />
-        </div>
-        <div className="space-y-2 sm:col-span-2">
-          <Label htmlFor="real-dir-cohort">Promotion</Label>
-          <Select value={cohortId} onValueChange={setCohortId}>
-            <SelectTrigger id="real-dir-cohort" className="min-h-11">
-              <SelectValue placeholder="Choisir une promotion…" />
-            </SelectTrigger>
-            <SelectContent>
-              {cohorts.map((cohort) => (
-                <SelectItem key={cohort.id} value={cohort.id}>
-                  {cohort.label}
-                </SelectItem>
-              ))}
-              <SelectItem value={NO_COHORT}>
-                Aucune — membre de l'équipe, pas un étudiant
-              </SelectItem>
-            </SelectContent>
-          </Select>
-          <p className="text-xs text-muted-foreground">
-            C'est la promotion qui fait l'étudiant : à la première connexion, elle seule déclenche
-            la création de l'inscription et du rôle apprenant. « Aucune » crée bien le compte, mais
-            la personne ne verra aucun programme tant qu'un rôle ne lui aura pas été accordé
-            autrement.
-          </p>
-          {cohorts.length === 0 ? (
-            <p className="text-xs text-destructive">
-              Aucune promotion n'existe pour ce programme : créez-en une avant d'ajouter des
-              étudiants, sinon leur compte s'activera dans le vide.
-            </p>
-          ) : null}
-        </div>
-      </div>
-
-      {error ? (
-        <p className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-xs text-destructive">
-          {error}
-        </p>
-      ) : null}
-      {success ? (
-        <p className="rounded-md border border-border bg-muted/40 px-3 py-2 text-xs">{success}</p>
-      ) : null}
-
-      <Button
-        type="button"
-        size="sm"
-        className="min-h-11"
-        disabled={submitting || !firstName || !lastName || !email || !cohortId}
-        onClick={() => void submit()}
-      >
-        <UserPlus className="mr-2 size-4" aria-hidden />
-        {submitting ? "Création…" : "Ajouter à ce programme (réel)"}
-      </Button>
-    </PanelCard>
-  );
-}
 
 /* ------------------------------------------------------------------ */
 /* 3. Ajout individuel (mode simulé)                                   */
