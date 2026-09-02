@@ -29,6 +29,13 @@ interface AdminWorkLevelBannerProps {
   level: AdminWorkLevel;
   programName: string;
   cohortCount?: number;
+  /**
+   * Rendu par l'écran qui pose le bandeau : lui seul sait où mène une étape —
+   * une section de sa propre page ici, un autre écran ailleurs. Sans lui les
+   * quatre puces restent de simples repères, ce qu'elles étaient à l'origine ;
+   * mieux vaut une puce inerte qu'une puce qui ne mène nulle part.
+   */
+  onSelect?: (level: AdminWorkLevel) => void;
 }
 
 /**
@@ -40,6 +47,7 @@ export function AdminWorkLevelBanner({
   level,
   programName,
   cohortCount,
+  onSelect,
 }: AdminWorkLevelBannerProps) {
   return (
     <section
@@ -59,18 +67,28 @@ export function AdminWorkLevelBanner({
       <ol className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
         {LEVELS.map((item) => {
           const active = item.id === level;
-          return (
-            <li
-              key={item.id}
-              aria-current={active ? "step" : undefined}
-              className={
-                active
-                  ? "rounded-md border border-primary bg-background p-3 shadow-sm"
-                  : "rounded-md border border-transparent p-3 text-muted-foreground"
-              }
-            >
+          const shell = active
+            ? "border-primary bg-background shadow-sm"
+            : "border-transparent text-muted-foreground";
+          const body = (
+            <>
               <span className="block text-sm font-semibold">{item.label}</span>
               <span className="block text-xs">{item.detail}</span>
+            </>
+          );
+          return (
+            <li key={item.id} aria-current={active ? "step" : undefined}>
+              {onSelect === undefined ? (
+                <div className={`rounded-md border p-3 ${shell}`}>{body}</div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => onSelect(item.id)}
+                  className={`hover:border-primary/60 hover:bg-background min-h-11 w-full rounded-md border p-3 text-left transition ${shell}`}
+                >
+                  {body}
+                </button>
+              )}
             </li>
           );
         })}

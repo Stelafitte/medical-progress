@@ -31,7 +31,10 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { EmptyState, MockBadge, PanelCard, ScopeNotice } from "@/features/professional/mock-ui";
-import { AdminWorkLevelBanner } from "@/features/administration/AdminWorkLevel";
+import {
+  AdminWorkLevelBanner,
+  type AdminWorkLevel,
+} from "@/features/administration/AdminWorkLevel";
 import { useProgramAdmin } from "@/features/administration/useProgramAdmin";
 import { CorpusImport } from "@/features/administration/CorpusImport";
 import { useDataAccess } from "@/application/session";
@@ -173,6 +176,32 @@ const MODE_LABELS: Record<ResourceMode, string> = {
  * `onSetRetained` est facultatif : les modalités d'évaluation n'ont pas
  * d'état « retenue », leur liste n'affiche donc que le second bouton.
  */
+const STEP_ANCHORS: Record<AdminWorkLevel, string> = {
+  program: "concepteur-etape-1",
+  promotion: "concepteur-etape-2",
+  schedule: "concepteur-etape-3",
+  operations: "concepteur-etape-4",
+};
+
+/**
+ * Les quatre étapes vivent dans la même page : y « naviguer » veut donc dire
+ * faire défiler. Le focus suit le défilement, sinon la navigation n'existerait
+ * qu'à l'œil et pas au clavier.
+ *
+ * Défilement immédiat, et non `behavior: "smooth"` : mesuré le 02/09, le
+ * défilement doux ne bouge pas d'un pixel sur cette page — la hauteur du
+ * document change encore pendant l'animation, et Chrome l'abandonne en
+ * silence. Un saut direct est de toute façon plus lisible sur téléphone, où
+ * les 5 600 pixels qui séparent l'étape 1 de l'étape 3 défileraient pendant
+ * plusieurs secondes.
+ */
+function scrollToStep(step: AdminWorkLevel) {
+  const target = document.getElementById(STEP_ANCHORS[step]);
+  if (target === null) return;
+  target.scrollIntoView({ block: "start" });
+  target.focus({ preventScroll: true });
+}
+
 export function AdminProgramDesigner() {
   const { data, isPending, refetch } = useProgramAdmin();
 
@@ -614,6 +643,7 @@ export function AdminProgramDesigner() {
       </div>
 
       <AdminWorkLevelBanner
+        onSelect={scrollToStep}
         level="program"
         programName={data.program?.name ?? "Programme sélectionné"}
         cohortCount={data.cohorts.length}
@@ -627,6 +657,7 @@ export function AdminProgramDesigner() {
 
       {/* ---------------- Étape 1 : concevoir ---------------- */}
       <PanelCard
+        id={STEP_ANCHORS.program}
         title="1. Concevoir le programme"
         description="Partez d'un modèle existant ou créez-en un, puis laissez l'analyse proposer les ressources."
         action={
@@ -1062,6 +1093,7 @@ export function AdminProgramDesigner() {
 
       {/* ---------------- Étape 2 : promotion ---------------- */}
       <PanelCard
+        id={STEP_ANCHORS.promotion}
         title="2. Préparer et associer la promotion"
         description="Créez la classe ici avec le même outil que l'onglet « Classes d'apprenants », ou réutilisez une classe déjà créée, puis associez-la au programme conçu."
         action={
@@ -1167,6 +1199,7 @@ export function AdminProgramDesigner() {
 
       {/* ---------------- Étape 3 : planning général ---------------- */}
       <PanelCard
+        id={STEP_ANCHORS.schedule}
         title="3. Programmer le planning général du programme"
         description="Chaque chapitre du programme peut recevoir une semaine, une période, ou rester non daté. Les semaines se comptent depuis le début de la promotion choisie."
         action={
@@ -1223,7 +1256,11 @@ export function AdminProgramDesigner() {
       </PanelCard>
 
       {/* ---------------- Étape 4 : bascule dans le pilotage ---------------- */}
-      <section className="border-border bg-card flex flex-wrap items-center justify-between gap-3 rounded-lg border p-5">
+      <section
+        id={STEP_ANCHORS.operations}
+        tabIndex={-1}
+        className="border-border bg-card flex scroll-mt-20 flex-wrap items-center justify-between gap-3 rounded-lg border p-5"
+      >
         <div className="min-w-0">
           <h2 className="text-base font-semibold">4. Basculer dans le pilotage</h2>
           <p className="text-muted-foreground text-sm">

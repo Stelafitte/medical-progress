@@ -56,18 +56,30 @@ export function EmptyState({ children }: { children: ReactNode }) {
 }
 
 export function PanelCard({
+  id,
   title,
   description,
   action,
   children,
 }: {
+  /**
+   * Ancre de navigation, posee seulement par les ecrans dont le sommaire
+   * renvoie a leurs propres sections. Le panneau devient alors la cible du
+   * defilement, et `tabIndex` fait suivre le focus : sans lui la navigation
+   * n'existerait qu'a l'oeil, pas au clavier ni au lecteur d'ecran.
+   */
+  id?: string;
   title: string;
   description?: string;
   action?: ReactNode;
   children: ReactNode;
 }) {
   return (
-    <Card>
+    <Card
+      id={id}
+      tabIndex={id === undefined ? undefined : -1}
+      className={id === undefined ? undefined : "scroll-mt-20"}
+    >
       <CardHeader>
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
