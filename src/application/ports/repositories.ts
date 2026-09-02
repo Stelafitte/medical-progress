@@ -7,6 +7,12 @@
  */
 import type { PlanMilestone, PlanMilestoneId, PlanScheduleEntry } from "@/domain/acquisitionPlan";
 import type {
+  MilestoneTemplate,
+  MilestoneTemplateApplyMode,
+  MilestoneTemplateApplyReport,
+  MilestoneTemplateId,
+} from "@/domain/milestoneTemplate";
+import type {
   AssessmentMode,
   AssessmentModality,
   AssessmentSubtype,
@@ -711,6 +717,34 @@ export interface UpdatePlanMilestoneInput {
   readonly position?: number;
 }
 
+/** Relève d'un modèle. Le nom doit être neuf dans le programme. */
+export interface SaveMilestoneTemplateInput {
+  readonly cohortId: CohortId;
+  readonly label: string;
+  readonly description?: string;
+}
+
+export interface UpdateMilestoneTemplateInput {
+  readonly templateId: MilestoneTemplateId;
+  readonly label: string;
+  readonly description: string;
+}
+
+/**
+ * Pose d'un modèle.
+ *
+ * `mode` n'a pas de valeur par défaut ici, volontairement : « compléter » et
+ * « remplacer » n'ont pas les mêmes conséquences, et un appelant qui n'y aurait
+ * pas pensé doit être arrêté par le compilateur, pas servi par une supposition.
+ */
+export interface ApplyMilestoneTemplateInput {
+  readonly templateId: MilestoneTemplateId;
+  readonly cohortId: CohortId;
+  readonly mode: MilestoneTemplateApplyMode;
+  /** Compte sans écrire. Même rapport, aucune ligne posée. */
+  readonly dryRun?: boolean;
+}
+
 export interface AcquisitionPlanRepository {
   /** Calendrier de référence des acquis d'un programme. */
   listPlanSchedule(programId: ProgramId): Promise<readonly PlanScheduleEntry[]>;
@@ -733,6 +767,35 @@ export interface AcquisitionPlanRepository {
     milestoneId: PlanMilestoneId,
     outcomeIds: readonly OutcomeId[],
   ): Promise<number>;
+
+  /* --------------------------------------------------------------- */
+  /* Modèles de rétroplanning                                         */
+  /* --------------------------------------------------------------- */
+
+  /**
+   * Les modèles visibles depuis un programme.
+   *
+   * Par programme et non par promotion : un modèle est justement ce qui SURVIT
+   * à la promotion dont il a été relevé.
+   */
+  listTemplates(programId: ProgramId): Promise<readonly MilestoneTemplate[]>;
+  /** Relève le calendrier d'une promotion sous un nom. */
+  saveTemplate(input: SaveMilestoneTemplateInput): Promise<MilestoneTemplate>;
+  /**
+   * Renomme un modèle. Ne rend rien : la fonction SQL rend le modèle SANS ses
+   * lignes, et un objet qui prétendrait les connaître mentirait. L'appelant
+   * recharge la liste, qui les porte.
+   */
+  updateTemplate(input: UpdateMilestoneTemplateInput): Promise<void>;
+  deleteTemplate(templateId: MilestoneTemplateId): Promise<void>;
+  /**
+   * Pose un modèle sur une promotion, et rend le compte de ce qui s'est passé.
+   *
+   * `dryRun` rend LE MÊME rapport sans rien écrire. C'est le serveur qui le
+   * calcule, jamais l'écran : deux calculs finiraient par diverger, et c'est
+   * celui du serveur qui écrit.
+   */
+  applyTemplate(input: ApplyMilestoneTemplateInput): Promise<MilestoneTemplateApplyReport>;
 }
 
 export interface StageLogRepository {

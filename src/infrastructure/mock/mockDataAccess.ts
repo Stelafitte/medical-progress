@@ -617,6 +617,21 @@ export const mockDataAccess: DataAccess = {
       Promise.reject(new Error("Le rétroplanning exige une connexion à la base.")),
     setMilestoneOutcomes: () =>
       Promise.reject(new Error("Le rétroplanning exige une connexion à la base.")),
+    /*
+     * Les modèles suivent le rétroplanning dont ils sont tirés : aucun jeu de
+     * démonstration, et des écritures qui refusent. Un modèle de maquette
+     * laisserait croire qu'on peut relever un calendrier sans base, alors que
+     * relever suppose précisément des jalons enregistrés.
+     */
+    listTemplates: () => ok([]),
+    saveTemplate: () =>
+      Promise.reject(new Error("Les modèles de rétroplanning exigent une connexion à la base.")),
+    updateTemplate: () =>
+      Promise.reject(new Error("Les modèles de rétroplanning exigent une connexion à la base.")),
+    deleteTemplate: () =>
+      Promise.reject(new Error("Les modèles de rétroplanning exigent une connexion à la base.")),
+    applyTemplate: () =>
+      Promise.reject(new Error("Les modèles de rétroplanning exigent une connexion à la base.")),
   },
   stageLogs: {
     listTemplates: (programId) =>

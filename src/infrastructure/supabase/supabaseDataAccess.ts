@@ -1540,6 +1540,160 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
         assertNoSupabaseError(error);
         return ((data ?? []) as unknown[]).length;
       },
+      async listTemplates(programId) {
+        /*
+         * Deux lectures directes, comme pour les jalons : la policy des items
+         * remonte au modèle parent, et une jointure PostgREST rendrait les
+         * lignes sous une clé imbriquée qu'il faudrait déplier de toute façon.
+         */
+        const { data, error } = await client
+          .from("milestone_templates")
+          .select("id,program_id,label,description,source_cohort_id,created_at")
+          .eq("program_id", programId)
+          .order("label");
+        assertNoSupabaseError(error);
+        const rows = (data ?? []) as {
+          id: string;
+          program_id: string;
+          label: string;
+          description: string;
+          source_cohort_id: string | null;
+          created_at: string;
+        }[];
+        if (rows.length === 0) return [];
+
+        const { data: itemRows, error: itemError } = await client
+          .from("milestone_template_items")
+          .select("template_id,label,week_offset,week_offset_end,official,position")
+          .in(
+            "template_id",
+            rows.map((row) => row.id),
+          )
+          .order("position");
+        assertNoSupabaseError(itemError);
+        const items = (itemRows ?? []) as {
+          template_id: string;
+          label: string;
+          week_offset: number;
+          week_offset_end: number | null;
+          official: boolean;
+          position: number;
+        }[];
+
+        return rows.map((row) => ({
+          id: row.id,
+          programId: row.program_id as ProgramId,
+          label: row.label,
+          description: row.description,
+          ...(row.source_cohort_id === null
+            ? {}
+            : { sourceCohortId: row.source_cohort_id as CohortId }),
+          createdAt: row.created_at,
+          items: items
+            .filter((item) => item.template_id === row.id)
+            .map((item) => ({
+              label: item.label,
+              weekOffset: item.week_offset,
+              ...(item.week_offset_end === null ? {} : { weekOffsetEnd: item.week_offset_end }),
+              official: item.official,
+              position: item.position,
+            })),
+        }));
+      },
+      async saveTemplate(input) {
+        const { data, error } = await client.rpc("save_milestone_template", {
+          p_cohort_id: input.cohortId,
+          p_label: input.label,
+          p_description: input.description ?? "",
+        });
+        assertNoSupabaseError(error);
+        const row = data as {
+          id: string;
+          program_id: string;
+          label: string;
+          description: string;
+          source_cohort_id: string | null;
+          created_at: string;
+        };
+        /*
+         * La fonction rend le MODÈLE, pas ses lignes : elles viennent d'être
+         * copiées depuis les jalons. On les relit plutôt que de les déduire —
+         * un objet qui prétendrait connaître ses lignes sans les avoir lues
+         * mentirait au premier écart.
+         */
+        const { data: itemRows, error: itemError } = await client
+          .from("milestone_template_items")
+          .select("label,week_offset,week_offset_end,official,position")
+          .eq("template_id", row.id)
+          .order("position");
+        assertNoSupabaseError(itemError);
+        const items = (itemRows ?? []) as {
+          label: string;
+          week_offset: number;
+          week_offset_end: number | null;
+          official: boolean;
+          position: number;
+        }[];
+
+        return {
+          id: row.id,
+          programId: row.program_id as ProgramId,
+          label: row.label,
+          description: row.description,
+          ...(row.source_cohort_id === null
+            ? {}
+            : { sourceCohortId: row.source_cohort_id as CohortId }),
+          createdAt: row.created_at,
+          items: items.map((item) => ({
+            label: item.label,
+            weekOffset: item.week_offset,
+            ...(item.week_offset_end === null ? {} : { weekOffsetEnd: item.week_offset_end }),
+            official: item.official,
+            position: item.position,
+          })),
+        };
+      },
+      async updateTemplate(input) {
+        const { error } = await client.rpc("update_milestone_template", {
+          p_template_id: input.templateId,
+          p_label: input.label,
+          p_description: input.description,
+        });
+        assertNoSupabaseError(error);
+      },
+      async deleteTemplate(templateId) {
+        const { error } = await client.rpc("delete_milestone_template", {
+          p_template_id: templateId,
+        });
+        assertNoSupabaseError(error);
+      },
+      async applyTemplate(input) {
+        const { data, error } = await client.rpc("apply_milestone_template", {
+          p_template_id: input.templateId,
+          p_cohort_id: input.cohortId,
+          p_mode: input.mode,
+          p_dry_run: input.dryRun ?? false,
+        });
+        assertNoSupabaseError(error);
+        /*
+         * `returns table` rend TOUJOURS un tableau, même pour une seule ligne.
+         * Absent voudrait dire que la fonction n'a rien rendu, ce qui n'arrive
+         * pas : elle lève plutôt qu'elle ne se tait. Le zéro est donc un
+         * garde-fou, pas un cas nominal.
+         */
+        const row = (
+          (data ?? []) as {
+            poses: number;
+            ignores: number;
+            sans_chapitre: string[] | null;
+          }[]
+        )[0];
+        return {
+          posed: row?.poses ?? 0,
+          skipped: row?.ignores ?? 0,
+          withoutChapter: row?.sans_chapitre ?? [],
+        };
+      },
     },
 
     /**
