@@ -333,15 +333,23 @@ export function chronologicalThemeOrder<
 }
 
 export interface MilestoneGanttBar {
-  readonly id: PlanMilestoneId;
+  /**
+   * Le CHAPITRE, pas le jalon : une barre existe dès qu'une semaine est
+   * saisie, avant tout enregistrement. C'est ce qui permet au graphique d'être
+   * la seconde vue de la saisie plutôt qu'un rapport sur la base.
+   */
+  readonly themeId: string;
   readonly label: string;
+  /** La saisie telle quelle, pour qu'un glissement reparte de son origine. */
+  readonly timing: MilestoneTiming;
   readonly weekStart: number;
   /** Égale `weekStart` pour un jalon ponctuel : une barre a toujours une fin. */
   readonly weekEnd: number;
   readonly startsOn: IsoDateTime;
   readonly endsOn: IsoDateTime;
-  readonly official: boolean;
   readonly outcomeCount: number;
+  /** Diffère de la base : jamais enregistré, ou déplacé depuis. */
+  readonly unsaved: boolean;
 }
 
 export interface MilestoneGantt {
@@ -353,45 +361,121 @@ export interface MilestoneGantt {
 /**
  * Le rétroplanning vu comme des barres sur une échelle de semaines.
  *
- * L'échelle part de la semaine 0 — le début du stage — et non de la première
- * semaine occupée : un rétroplanning qui ne commence qu'en semaine 3 doit se
- * VOIR comme tel, et une échelle qui se recale sur son contenu effacerait
- * précisément ce qu'on cherche à lire.
+ * TROIS CHOSES QUI EXPLIQUENT CETTE SIGNATURE.
  *
- * Elle va jusqu'à la fin de la promotion quand celle-ci est connue, et au-delà
- * si un jalon déborde : une barre posée après la fin du stage doit rester
- * VISIBLE pour être corrigée. Une échelle qui s'arrêterait à la fin du stage
- * ferait disparaître précisément les jalons qui posent problème.
+ * 1. **Elle part de la SAISIE, pas des jalons enregistrés.** Le graphique est
+ *    devenu manipulable (on tire une barre pour déplacer un jalon) : il doit
+ *    donc montrer ce que l'écran contient, sinon la barre qu'on vient de tirer
+ *    reviendrait à sa place. `unsaved` porte l'écart avec la base, pour que ce
+ *    qui n'est pas encore enregistré se voie.
+ * 2. **Elle n'ordonne rien.** Les barres sortent dans l'ordre des chapitres
+ *    reçus — celui de la liste au-dessus, chronologique et figé entre deux
+ *    enregistrements. Deux tris indépendants finiraient par diverger, et la
+ *    troisième barre cesserait de correspondre au troisième chapitre.
+ * 3. **L'échelle part de la semaine 0** — le début du stage — et non de la
+ *    première semaine occupée : un rétroplanning qui ne commence qu'en semaine
+ *    3 doit se VOIR comme tel. Elle va jusqu'à la fin de la promotion, et
+ *    au-delà si un jalon déborde : une barre posée après la fin du stage doit
+ *    rester visible pour être corrigée.
+ *
+ * `official` n'y figure plus : la saisie ne le porte pas, et une barre dérivée
+ * de la saisie ne peut donc pas l'afficher sans mentir.
  */
-export function milestoneGantt(
-  milestones: readonly PlanMilestone[],
-  cohortStartsOn: IsoDateTime,
-  promotionLastWeek?: number,
-): MilestoneGantt {
-  const bars = [...milestones]
-    .map((milestone) => {
-      const weekEnd = milestone.weekOffsetEnd ?? milestone.weekOffset;
-      return {
-        id: milestone.id,
-        label: milestone.label,
-        weekStart: milestone.weekOffset,
-        weekEnd,
-        startsOn: milestoneDateFor(cohortStartsOn, milestone.weekOffset),
-        endsOn: milestoneDateFor(cohortStartsOn, weekEnd),
-        official: milestone.official,
-        outcomeCount: milestone.outcomeIds.length,
-      };
-    })
-    .sort((a, b) => {
-      if (a.weekStart !== b.weekStart) return a.weekStart - b.weekStart;
-      if (a.weekEnd !== b.weekEnd) return a.weekEnd - b.weekEnd;
-      return a.label.localeCompare(b.label, "fr");
+export function milestoneGanttBars(input: {
+  /** Chapitres DÉJÀ ordonnés : la fonction respecte cet ordre. */
+  readonly themes: readonly { readonly id: string; readonly label: string }[];
+  readonly timings: Readonly<Record<string, MilestoneTiming>>;
+  readonly existing: readonly PlanMilestone[];
+  readonly outcomeCounts: ReadonlyMap<string, number>;
+  readonly cohortStartsOn: IsoDateTime;
+  readonly promotionLastWeek?: number;
+}): MilestoneGantt {
+  const bars: MilestoneGanttBar[] = [];
+
+  for (const theme of input.themes) {
+    const timing = input.timings[theme.id] ?? { kind: "undated" as const };
+    if (timing.kind === "undated") continue;
+    const from = parsedWeek(timing.from);
+    // Une semaine pas encore saisie n'a pas de barre : lui en donner une la
+    // placerait en semaine 0, qui est une vraie valeur.
+    if (from === undefined) continue;
+    const weekEnd = (timing.kind === "period" ? parsedWeek(timing.to) : undefined) ?? from;
+    const saved = input.existing.find((milestone) => milestone.label === theme.label);
+
+    bars.push({
+      themeId: theme.id,
+      label: theme.label,
+      timing,
+      weekStart: from,
+      weekEnd,
+      startsOn: milestoneDateFor(input.cohortStartsOn, from),
+      endsOn: milestoneDateFor(input.cohortStartsOn, weekEnd),
+      outcomeCount: input.outcomeCounts.get(theme.id) ?? 0,
+      unsaved:
+        saved === undefined ||
+        saved.weekOffset !== from ||
+        (saved.weekOffsetEnd ?? saved.weekOffset) !== weekEnd,
     });
+  }
 
   // Une échelle de largeur nulle rendrait des barres invisibles : au moins une
   // semaine, même quand tout est posé en semaine 0.
-  const lastWeek = Math.max(1, promotionLastWeek ?? 0, ...bars.map((bar) => bar.weekEnd));
+  const lastWeek = Math.max(1, input.promotionLastWeek ?? 0, ...bars.map((bar) => bar.weekEnd));
   return { lastWeek, bars };
+}
+
+/** Ce qu'on saisit d'une barre : la déplacer, ou tirer l'une de ses extrémités. */
+export type MilestoneDragKind = "move" | "start" | "end";
+
+/**
+ * Une période d'une seule semaine EST un jalon ponctuel.
+ *
+ * Les distinguer laisserait en base un `week_offset_end` égal au début —
+ * invisible à l'œil, bien présent dans la table — et le bouton « Semaine
+ * unique » cesserait de dire vrai pour ce jalon.
+ */
+function timingBetween(from: number, to: number): MilestoneTiming {
+  return from === to
+    ? { kind: "week", from: String(from) }
+    : { kind: "period", from: String(from), to: String(to) };
+}
+
+/**
+ * Ce que devient un jalon qu'on tire dans le graphique.
+ *
+ * La règle qui compte est celle du déplacement : **on décale le bloc sans
+ * jamais le déformer**. Une période poussée contre le bord du stage s'arrête,
+ * elle ne se rétrécit pas — sinon un doigt un peu trop appuyé raccourcirait
+ * silencieusement une période de trois semaines.
+ *
+ * Tirer une extrémité, à l'inverse, déforme volontairement : c'est le geste
+ * qui transforme un jalon ponctuel en période, et réciproquement.
+ *
+ * Un chapitre non daté, ou dont la semaine n'est pas encore saisie, ne bouge
+ * pas : il n'a pas de barre, il n'y a rien à tirer.
+ */
+export function dragMilestoneTiming(
+  timing: MilestoneTiming,
+  drag: { readonly kind: MilestoneDragKind; readonly deltaWeeks: number },
+  bounds: { readonly lastWeek: number },
+): MilestoneTiming {
+  if (timing.kind === "undated") return timing;
+  const from = parsedWeek(timing.from);
+  if (from === undefined) return timing;
+  const end = (timing.kind === "period" ? parsedWeek(timing.to) : undefined) ?? from;
+
+  const max = Math.max(0, bounds.lastWeek);
+  const clamp = (value: number) => Math.min(Math.max(value, 0), max);
+
+  if (drag.kind === "move") {
+    const width = end - from;
+    const start = Math.min(Math.max(from + drag.deltaWeeks, 0), Math.max(0, max - width));
+    return timingBetween(start, start + width);
+  }
+  if (drag.kind === "start") {
+    return timingBetween(Math.min(clamp(from + drag.deltaWeeks), end), end);
+  }
+  return timingBetween(from, Math.max(clamp(end + drag.deltaWeeks), from));
 }
 
 export interface AcquisitionPlanItem {

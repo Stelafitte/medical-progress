@@ -127,6 +127,12 @@ export function ProgramMilestonePlanner({
 
   const ordered = useMemo(() => [...themes].sort((a, b) => a.position - b.position), [themes]);
 
+  /** Le seul compte d'acquis par chapitre : la liste et le graphique le lisent tous deux. */
+  const outcomeCountByTheme = useMemo(
+    () => new Map([...outcomesByTheme].map(([themeId, list]) => [themeId, list.length])),
+    [outcomesByTheme],
+  );
+
   /**
    * L'ordre d'AFFICHAGE, chronologique — distinct de `ordered`, qui reste
    * l'ordre du référentiel.
@@ -561,9 +567,13 @@ export function ProgramMilestonePlanner({
 
       {cohort && existing && weeks ? (
         <ProgramMilestoneGantt
-          milestones={existing}
+          themes={displayed}
+          timings={timings}
+          existing={existing}
+          outcomeCounts={outcomeCountByTheme}
           cohortStartsOn={cohort.startsOn}
           promotionLastWeek={weeks.lastWeek}
+          onChange={patch}
         />
       ) : null}
 
