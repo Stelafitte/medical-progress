@@ -487,7 +487,25 @@ export function AdminProgramDesigner() {
               dataAccess.outcomes.archiveOutcome(id as OutcomeId),
             )
           }
-          onSetRetained={setOutcomesRetained}
+          /*
+           * Retenir des acquis DÉJÀ présents vaut implémentation de la
+           * ressource.
+           *
+           * Avant le 02/09, `implemented` ne passait à vrai que dans le
+           * `onCreated` des formulaires de création. Un programme dont le
+           * référentiel existait déjà — 349 connaissances importées — ne
+           * pouvait donc jamais satisfaire « Implémenter maintenant » : l'écran
+           * attendait un 350e élément pour débloquer l'étape 2. Décider quels
+           * acquis entrent au parcours EST l'implémentation de cette ressource ;
+           * en créer un de plus n'y ajoutait rien.
+           *
+           * Vrai aussi quand la décision est de tout décocher : ce qui compte
+           * est que le concepteur ait tranché, pas le sens dans lequel.
+           */
+          onSetRetained={async (ids, retained) => {
+            await setOutcomesRetained(ids, retained);
+            patch(resourceId, { implemented: true });
+          }}
         />
       );
     }
@@ -580,6 +598,22 @@ export function AdminProgramDesigner() {
     (r) => resources[r.id].mode === "now" && !resources[r.id].implemented,
   );
   const designReady = modelReady && chosenResources.length > 0 && pendingResources.length === 0;
+
+  /*
+   * Le motif du blocage, NOMMÉ.
+   *
+   * Le message disait « implémentations en attente réglées » sans dire
+   * laquelle : impossible de savoir où regarder dans six ressources dépliées.
+   * Stef, le 02/09 : « que faut-il valider dans l'étape 1 ? » — la question ne
+   * se poserait pas si l'écran répondait.
+   */
+  const designBlockedReason = !modelReady
+    ? "Choisissez ou nommez d'abord un modèle de programme (étape 1)."
+    : chosenResources.length === 0
+      ? "Cochez au moins une ressource du programme (étape 1)."
+      : pendingResources.length > 0
+        ? `En attente dans l'étape 1 : ${pendingResources.map((r) => r.label).join(", ")}. Créez-y un élément, ou passez ${pendingResources.length > 1 ? "ces ressources" : "cette ressource"} sur « Réutiliser l'existant » ou « Plus tard ».`
+        : "";
 
   const boundsInvalid =
     programStartsOn !== "" && programEndsOn !== "" && programEndsOn < programStartsOn;
@@ -1189,10 +1223,7 @@ export function AdminProgramDesigner() {
               {associated} est associée à {data.program?.name ?? "ce programme"}.
             </span>
           ) : !designReady ? (
-            <span className="text-muted-foreground text-sm">
-              Terminez d'abord l'étape 1 (ressources choisies et implémentations en attente
-              réglées).
-            </span>
+            <span className="text-muted-foreground text-sm">{designBlockedReason}</span>
           ) : null}
         </div>
       </PanelCard>
