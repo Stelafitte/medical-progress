@@ -21,15 +21,16 @@ import type {
 import type {
   Cohort,
   CohortId,
+  CohortStatus,
   CurriculumVersion,
   CurriculumVersionId,
   Enrollment,
   LearningResource,
   LearningResourceId,
   Outcome,
+  OutcomeId,
   OutcomeTheme,
   OutcomeThemeId,
-  OutcomeId,
   Person,
   Program,
   ProgramId,
@@ -147,6 +148,7 @@ type CohortRow = {
   academic_year: string;
   starts_on: string;
   ends_on: string;
+  status: string;
   archived_at: string | null;
   created_at: string;
 };
@@ -189,6 +191,7 @@ export function mapCohort(row: CohortRow, learnerCount: number): Cohort {
     startsOn: normalizeIsoDate(row.starts_on),
     endsOn: normalizeIsoDate(row.ends_on),
     learnerCount,
+    status: row.status as CohortStatus,
     archivedAt: row.archived_at ?? null,
   };
 }
@@ -666,7 +669,7 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
         let query = client
           .from("cohorts")
           .select(
-            "id,program_id,curriculum_version_id,label,academic_year,starts_on,ends_on,archived_at,created_at,enrollments(count)",
+            "id,program_id,curriculum_version_id,label,academic_year,starts_on,ends_on,status,archived_at,created_at,enrollments(count)",
           )
           .order("starts_on");
         if (programId) query = query.eq("program_id", programId);
@@ -684,7 +687,7 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
         const { data, error } = await client
           .from("cohorts")
           .select(
-            "id,program_id,curriculum_version_id,label,academic_year,starts_on,ends_on,archived_at,created_at,enrollments(count)",
+            "id,program_id,curriculum_version_id,label,academic_year,starts_on,ends_on,status,archived_at,created_at,enrollments(count)",
           )
           .eq("id", id)
           .maybeSingle();
@@ -711,6 +714,34 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
         return mapCohort(data as CohortRow, 0);
       },
       /** Même famille que `create_cohort` : RPC `SECURITY DEFINER`, droits au serveur. */
+      async openCohort(cohortId, options) {
+        const { data, error } = await client.rpc("open_cohort", {
+          p_cohort_id: cohortId,
+          p_dry_run: options?.dryRun ?? false,
+        });
+        assertNoSupabaseError(error);
+        // `returns table` rend toujours un tableau, même pour une seule ligne.
+        const row = (
+          (data ?? []) as {
+            jalons: number;
+            acquis: number;
+            jalons_vides: number;
+            version_activee: boolean;
+          }[]
+        )[0];
+        return {
+          milestones: row?.jalons ?? 0,
+          outcomes: row?.acquis ?? 0,
+          emptyMilestones: row?.jalons_vides ?? 0,
+          versionActivated: row?.version_activee ?? false,
+        };
+      },
+      async revertCohortToDraft(cohortId) {
+        const { error } = await client.rpc("revert_cohort_to_draft", {
+          p_cohort_id: cohortId,
+        });
+        assertNoSupabaseError(error);
+      },
       async updateCohort(input) {
         const { data, error } = await client.rpc("update_cohort", {
           p_cohort_id: input.cohortId,

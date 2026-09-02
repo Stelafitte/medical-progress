@@ -98,6 +98,24 @@ export interface CurriculumVersion extends Entity<CurriculumVersionId> {
   readonly status: "draft" | "active" | "archived";
 }
 
+/**
+ * Où en est une promotion. Miroir exact de l'enum `cohort_status`.
+ *
+ * `draft` = en conception : elle se modifie, et l'apprenant n'a rien à y voir.
+ * `open` = ouverte, scellée par le concepteur — voir `open_cohort`.
+ * Les trois autres sont la vie de la promotion après son ouverture ; aucun
+ * écran ne les écrit encore.
+ */
+export type CohortStatus = "draft" | "open" | "in_progress" | "completed" | "archived";
+
+export const COHORT_STATUS_LABELS_FR: Record<CohortStatus, string> = {
+  draft: "En conception",
+  open: "Ouverte",
+  in_progress: "En cours",
+  completed: "Terminée",
+  archived: "Archivée",
+};
+
 export interface Cohort extends Entity<CohortId> {
   readonly programId: ProgramId;
   readonly curriculumVersionId: CurriculumVersionId;
@@ -106,6 +124,7 @@ export interface Cohort extends Entity<CohortId> {
   readonly startsOn: IsoDateTime;
   readonly endsOn: IsoDateTime;
   readonly learnerCount: number;
+  readonly status: CohortStatus;
   /**
    * Archivage réversible. Non nul = sortie des listes actives, sans perte :
    * inscriptions, jalons et carnets de stage restent rattachés. Absent sur les

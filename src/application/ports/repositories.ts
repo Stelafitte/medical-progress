@@ -6,6 +6,7 @@
  * modifier l'UI ni la logique métier.
  */
 import type { PlanMilestone, PlanMilestoneId, PlanScheduleEntry } from "@/domain/acquisitionPlan";
+import type { CohortOpeningReport } from "@/domain/cohortOpening";
 import type {
   MilestoneTemplate,
   MilestoneTemplateApplyMode,
@@ -137,6 +138,26 @@ export interface ProgramRepository {
   createCohort(input: CreateCohortInput): Promise<Cohort>;
   /** Reprend une classe existante : nom, année, dates. Droits vérifiés côté serveur. */
   updateCohort(input: UpdateCohortInput): Promise<Cohort>;
+  /**
+   * Ouvre une promotion : elle cesse d'être un brouillon, et son modèle de
+   * curriculum se fige.
+   *
+   * `dryRun` rend le MÊME rapport sans rien écrire — c'est le serveur qui
+   * vérifie (rétroplanning non vide, aucun jalon après la fin du stage), et
+   * c'est lui qui refuse. L'écran ne fait que le dire plus tôt.
+   */
+  openCohort(
+    cohortId: CohortId,
+    options?: { readonly dryRun?: boolean },
+  ): Promise<CohortOpeningReport>;
+  /**
+   * Retire le sceau. Ne rend rien : la fonction SQL rend la classe sans son
+   * effectif, et un objet qui prétendrait le connaître mentirait.
+   *
+   * Ne redescend PAS la version de curriculum : elle sert peut-être d'autres
+   * promotions, qu'on rouvrirait sous leurs pieds.
+   */
+  revertCohortToDraft(cohortId: CohortId): Promise<void>;
   /**
    * Archive ou désarchive une classe. Réversible et sans perte — la suppression
    * n'existe pas : cinq tables pointent vers `cohorts`.

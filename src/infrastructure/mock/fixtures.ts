@@ -96,6 +96,7 @@ export const cohorts: readonly Cohort[] = [
     startsOn: ts("2026-09-15T00:00:00Z"),
     endsOn: ts("2027-06-30T00:00:00Z"),
     learnerCount: 412,
+    status: "draft",
   },
   {
     ...base,
@@ -107,6 +108,7 @@ export const cohorts: readonly Cohort[] = [
     startsOn: ts("2026-09-01T00:00:00Z"),
     endsOn: ts("2027-07-15T00:00:00Z"),
     learnerCount: 98,
+    status: "draft",
   },
   dpc.dpcCohort,
   hvg.dpcHvgCohort,

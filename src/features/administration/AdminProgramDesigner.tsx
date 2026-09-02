@@ -47,6 +47,7 @@ import {
 } from "@/infrastructure/text/documentText";
 import { CohortForm } from "@/features/administration/CohortForm";
 import { ProgramAssociationList } from "@/features/administration/ProgramAssociationList";
+import { CohortSealPanel } from "@/features/administration/CohortSealPanel";
 import { ProgramMilestonePlanner } from "@/features/administration/ProgramMilestonePlanner";
 import { outcomeAssociationItems } from "@/domain/outcomeAssociation";
 import { PlacementCreationForm } from "@/features/administration/PlacementCreationForm";
@@ -1291,13 +1292,24 @@ export function AdminProgramDesigner() {
       <section
         id={STEP_ANCHORS.operations}
         tabIndex={-1}
-        className="border-border bg-card flex scroll-mt-20 flex-wrap items-center justify-between gap-3 rounded-lg border p-5"
+        className="border-border bg-card flex scroll-mt-20 flex-wrap items-start justify-between gap-3 rounded-lg border p-5"
       >
-        <div className="min-w-0">
-          <h2 className="text-base font-semibold">4. Basculer dans le pilotage</h2>
-          <p className="text-muted-foreground text-sm">
-            C'est le seul moment où l'on quitte le concepteur : le suivi se fait dans le pilotage.
-          </p>
+        <div className="min-w-0 flex-1 space-y-3">
+          <div>
+            <h2 className="text-base font-semibold">4. Ouvrir la promotion, puis piloter</h2>
+            <p className="text-muted-foreground text-sm">
+              C'est le seul moment où l'on quitte le concepteur : le suivi se fait dans le pilotage.
+            </p>
+          </div>
+          {/*
+            Le sceau. Jusqu'au 02/09 cette étape n'était qu'un lien : rien
+            n'écrivait jamais `cohorts.status`, toutes les promotions restaient
+            des brouillons, et « valider le programme » ne voulait rien dire.
+          */}
+          <CohortSealPanel
+            cohort={cohorts.find((c) => c.id === selectedCohortId)}
+            onChanged={() => void refetch()}
+          />
         </div>
         <Button asChild={readyForPilot} className="min-h-11" disabled={!readyForPilot}>
           {readyForPilot ? (

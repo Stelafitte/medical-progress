@@ -98,11 +98,20 @@ export const mockDataAccess: DataAccess = {
           startsOn: input.startsOn,
           endsOn: input.endsOn,
           learnerCount: 0,
+          status: "draft",
           archivedAt: null,
         };
         cohorts = [...cohorts, created];
         return ok(created);
       },
+      /*
+       * Le sceau exige la base : il compte les jalons et les acquis rattachés,
+       * que la maquette n'a pas. Un sceau de démonstration certifierait du vide.
+       */
+      openCohort: () =>
+        Promise.reject(new Error("Ouvrir une promotion exige une connexion à la base.")),
+      revertCohortToDraft: () =>
+        Promise.reject(new Error("Ouvrir une promotion exige une connexion à la base.")),
       updateCohort: (input) => {
         const existing = cohorts.find((c) => c.id === input.cohortId);
         if (!existing) return ok(undefined as never);

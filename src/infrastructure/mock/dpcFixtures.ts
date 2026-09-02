@@ -69,6 +69,7 @@ export const dpcCohort: Cohort = {
   startsOn: "2026-03-15T00:00:00Z",
   endsOn: "2026-11-30T00:00:00Z",
   learnerCount: 24,
+  status: "draft",
 };
 
 export const dpcPeople: readonly Person[] = [
