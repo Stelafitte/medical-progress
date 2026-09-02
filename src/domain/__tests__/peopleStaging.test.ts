@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  describePendingPersonWriteError,
+  findPersonByLoginEmail,
   normalizeLoginEmail,
   pendingPersonRemovalIssue,
   statusAfterRestore,
@@ -127,5 +129,42 @@ describe("l'adresse de connexion", () => {
     expect(normalizeLoginEmail("  Camille.ROUBERTIE@Example.org ")).toBe(
       "camille.roubertie@example.org",
     );
+  });
+});
+
+describe("une adresse déjà prise dans le programme", () => {
+  it("retrouve la personne quelle que soit la casse saisie", () => {
+    const people = [person(), person({ id: "p-2", loginEmail: "agathe.leger@etu.example.fr" })];
+    expect(findPersonByLoginEmail(people, " Agathe.Leger@ETU.example.fr ")?.id).toBe("p-2");
+  });
+
+  it("la retrouve même retirée : l'unicité couvre aussi les annulées", () => {
+    // C'est le cas qui déroute : la personne n'est plus dans la liste active,
+    // mais son adresse occupe toujours la place.
+    const people = [person({ status: "cancelled", cancelledAt: "2026-09-02T10:00:00Z" })];
+    expect(findPersonByLoginEmail(people, "camille.roubertie@example.org")?.status).toBe(
+      "cancelled",
+    );
+  });
+
+  it("ne retrouve rien sur une adresse libre", () => {
+    expect(findPersonByLoginEmail([person()], "libre@example.org")).toBeUndefined();
+  });
+});
+
+describe("les erreurs d'écriture de la base", () => {
+  it("traduit la contrainte d'unicité au lieu de la recopier", () => {
+    const message = describePendingPersonWriteError(
+      new Error(
+        'duplicate key value violates unique constraint "people_program_id_login_email_key"',
+      ),
+    );
+    expect(message).toContain("déjà utilisée");
+    expect(message).not.toContain("duplicate key");
+  });
+
+  it("laisse passer telle quelle une erreur qu'elle ne connaît pas", () => {
+    // Masquer une erreur non reconnue serait pire que la montrer.
+    expect(describePendingPersonWriteError(new Error("connexion perdue"))).toBe("connexion perdue");
   });
 });

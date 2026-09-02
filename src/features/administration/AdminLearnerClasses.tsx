@@ -237,11 +237,19 @@ export function AdminLearnerClasses() {
                         onUpdate={updatePerson}
                         onSetCancelled={setPersonCancelled}
                       />
+                      {/*
+                        `existingPeople` reçoit TOUTES les personnes du
+                        programme, pas celles de la classe : l'adresse d'un
+                        étudiant d'une autre promotion — ou d'un étudiant retiré
+                        — occupe la place tout autant, et c'est la base qui
+                        refuserait, avec un message que personne ne comprend.
+                      */}
                       {data.program ? (
                         <RealIndividualPersonForm
                           programId={data.program.id}
                           cohorts={[cohort]}
                           defaultCohortId={cohort.id}
+                          existingPeople={pendingQuery.data ?? []}
                           lockCohort
                           idPrefix={`add-${cohort.id}`}
                           title={`Ajouter un apprenant à « ${cohort.label} »`}

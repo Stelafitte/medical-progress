@@ -168,3 +168,46 @@ export function pendingPersonRemovalIssue(person: PendingPerson): PendingPersonI
 export function statusAfterRestore(person: PendingPerson): PendingPersonStatus {
   return person.invitedAt === undefined ? "pending" : "invited";
 }
+
+/**
+ * Une personne déjà présente dans ce programme avec la même adresse.
+ *
+ * La base a le dernier mot — contrainte `people_program_id_login_email_key` —
+ * mais elle répond « duplicate key value violates unique constraint », ce qui
+ * ne dit à personne QUI occupe l'adresse ni ce qu'il faut faire. Ce contrôle
+ * sert à le dire AVANT d'écrire ; il ne remplace pas la contrainte, il la rend
+ * lisible.
+ *
+ * L'unicité couvre TOUTES les lignes du programme : une personne annulée, ou
+ * rattachée à une autre promotion, occupe l'adresse tout autant. C'est
+ * précisément le cas où l'écran doit orienter plutôt que refuser sèchement.
+ */
+export function findPersonByLoginEmail(
+  people: readonly PendingPerson[],
+  loginEmail: string,
+): PendingPerson | undefined {
+  const email = normalizeLoginEmail(loginEmail);
+  return people.find((person) => person.loginEmail === email);
+}
+
+/**
+ * Ce que dit une erreur d'écriture de la base, en français.
+ *
+ * Recopier `reason.message` mettait « duplicate key value violates unique
+ * constraint "people_program_id_login_email_key" » sous les yeux de
+ * l'utilisateur. Le message d'origine reste en dessous : quand une erreur n'est
+ * pas reconnue, la masquer serait pire que la montrer.
+ */
+export function describePendingPersonWriteError(reason: unknown): string {
+  const raw = reason instanceof Error ? reason.message : String(reason);
+  if (raw.includes("people_program_id_login_email_key")) {
+    return "Cette adresse de connexion est déjà utilisée par une personne de ce programme — y compris si elle a été retirée ou si elle est rattachée à une autre promotion.";
+  }
+  if (raw.includes("people_cohort_same_program")) {
+    return "Cette promotion n'appartient pas au programme de la personne.";
+  }
+  if (raw.includes("login_email")) {
+    return "L'adresse de connexion n'est pas acceptée : elle doit être en minuscules, sans espaces autour.";
+  }
+  return raw;
+}

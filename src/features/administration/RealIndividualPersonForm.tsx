@@ -21,6 +21,13 @@ import {
 } from "@/components/ui/select";
 import { MockBadge, PanelCard } from "@/features/professional/mock-ui";
 import { useDataAccess } from "@/application/session";
+import {
+  PENDING_PERSON_STATUS_LABELS_FR,
+  describePendingPersonWriteError,
+  findPersonByLoginEmail,
+  fullNameOfPendingPerson,
+  type PendingPerson,
+} from "@/domain/peopleStaging";
 import type { Cohort, CohortId } from "@/domain/types";
 
 /** « Aucune promotion » : une valeur, pas un vide — un Select ne rend pas `undefined`. */
@@ -30,6 +37,7 @@ export function RealIndividualPersonForm({
   programId,
   cohorts,
   defaultCohortId,
+  existingPeople,
   lockCohort = false,
   idPrefix = "real-dir",
   title = "Ajouter une personne",
@@ -39,6 +47,12 @@ export function RealIndividualPersonForm({
   cohorts: readonly Cohort[];
   /** Promotion pré-choisie quand le formulaire est monté sous une classe. */
   defaultCohortId?: CohortId;
+  /**
+   * Les personnes déjà dans le sas de ce programme, pour dire AVANT l'envoi
+   * qu'une adresse est prise. Facultatif : l'écran qui ne les a pas garde le
+   * refus de la base, simplement traduit.
+   */
+  existingPeople?: readonly PendingPerson[];
   /** Verrouille ce choix : sous une classe, la destination n'est pas une question. */
   lockCohort?: boolean;
   /**
@@ -60,6 +74,15 @@ export function RealIndividualPersonForm({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  /*
+   * L'adresse déjà prise se voit AVANT le clic. La contrainte de la base reste
+   * l'autorité — elle voit les lignes que cet écran ne charge pas — mais elle
+   * répond par un nom de contrainte, qui ne dit ni QUI occupe l'adresse ni
+   * qu'elle peut être occupée par quelqu'un de retiré.
+   */
+  const clash =
+    email.trim() === "" ? undefined : findPersonByLoginEmail(existingPeople ?? [], email);
 
   async function submit() {
     setError(null);
@@ -90,7 +113,7 @@ export function RealIndividualPersonForm({
       setCohortId(defaultCohortId ?? "");
       await onCreated();
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Création impossible.");
+      setError(describePendingPersonWriteError(reason));
     } finally {
       setSubmitting(false);
     }
@@ -174,6 +197,14 @@ export function RealIndividualPersonForm({
         </div>
       </div>
 
+      {clash ? (
+        <p className="border-destructive/40 bg-destructive/5 text-destructive rounded-md border px-3 py-2 text-xs">
+          {fullNameOfPendingPerson(clash)} occupe déjà cette adresse dans ce programme (
+          {PENDING_PERSON_STATUS_LABELS_FR[clash.status]}). Corrigez cette personne plutôt que d'en
+          créer une seconde — une même adresse ne peut désigner qu'un compte.
+        </p>
+      ) : null}
+
       {error ? (
         <p className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-xs text-destructive">
           {error}
@@ -187,7 +218,9 @@ export function RealIndividualPersonForm({
         type="button"
         size="sm"
         className="min-h-11"
-        disabled={submitting || !firstName || !lastName || !email || !cohortId}
+        disabled={
+          submitting || !firstName || !lastName || !email || !cohortId || clash !== undefined
+        }
         onClick={() => void submit()}
       >
         <UserPlus className="mr-2 size-4" aria-hidden />

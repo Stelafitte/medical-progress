@@ -321,6 +321,7 @@ function RealPeopleEnrollmentsView() {
       <RealIndividualPersonForm
         programId={activeProgram.id}
         cohorts={cohorts}
+        existingPeople={people}
         onCreated={refresh}
       />
 
