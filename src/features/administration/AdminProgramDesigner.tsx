@@ -628,7 +628,37 @@ export function AdminProgramDesigner() {
    * une promotion peut démarrer avant que tous ses jalons soient posés. Bloquer
    * le pilotage sur un planning complet interdirait de commencer.
    */
-  const readyForPilot = designReady && associated !== null && !boundsInvalid;
+  /** La promotion choisie, telle que la base la connaît — pas un état d'écran. */
+  const selectedCohort = cohorts.find((c) => c.id === selectedCohortId);
+
+  /*
+   * LE PILOTAGE S'OUVRE SUR UNE PROMOTION OUVERTE.
+   *
+   * La condition était `associated !== null` : un état local de React, remis à
+   * null à chaque rechargement. Le concepteur avait bien associé sa promotion,
+   * l'écran l'oubliait au premier F5, et le bouton réclamait un clic déjà fait.
+   * Stef, le 02/09 : « mais piloter reste grisé ».
+   *
+   * Le statut de la promotion dit la même chose, en mieux : il survit au
+   * rechargement, et il DONNE SON EFFET AU SCEAU. Piloter un brouillon n'aurait
+   * de toute façon aucun sens — il n'y a rien à suivre tant que la promotion
+   * n'est pas ouverte.
+   */
+  const readyForPilot =
+    designReady &&
+    selectedCohort !== undefined &&
+    selectedCohort.status !== "draft" &&
+    !boundsInvalid;
+
+  const pilotBlockedReason = !designReady
+    ? designBlockedReason
+    : selectedCohort === undefined
+      ? "Choisissez la promotion à piloter (étape 2)."
+      : selectedCohort.status === "draft"
+        ? "Ouvrez d'abord la promotion ci-dessus : on ne pilote pas un brouillon."
+        : boundsInvalid
+          ? "Les dates du programme sont incohérentes (étape 3)."
+          : "";
 
   const patch = (id: ResourceKind, next: Partial<ResourceState>) =>
     setResources((prev) => ({ ...prev, [id]: { ...prev[id], ...next } }));
@@ -1132,8 +1162,8 @@ export function AdminProgramDesigner() {
         title="2. Préparer et associer la promotion"
         description="Créez la classe ici avec le même outil que l'onglet « Classes d'apprenants », ou réutilisez une classe déjà créée, puis associez-la au programme conçu."
         action={
-          <Badge variant={associated ? "secondary" : "outline"} className="font-normal">
-            {associated ? "promotion associée" : "à associer"}
+          <Badge variant={selectedCohort ? "secondary" : "outline"} className="font-normal">
+            {selectedCohort ? "promotion associée" : "à associer"}
           </Badge>
         }
       >
@@ -1306,10 +1336,7 @@ export function AdminProgramDesigner() {
             n'écrivait jamais `cohorts.status`, toutes les promotions restaient
             des brouillons, et « valider le programme » ne voulait rien dire.
           */}
-          <CohortSealPanel
-            cohort={cohorts.find((c) => c.id === selectedCohortId)}
-            onChanged={() => void refetch()}
-          />
+          <CohortSealPanel cohort={selectedCohort} onChanged={() => void refetch()} />
         </div>
         <Button asChild={readyForPilot} className="min-h-11" disabled={!readyForPilot}>
           {readyForPilot ? (
@@ -1321,6 +1348,9 @@ export function AdminProgramDesigner() {
             <span>Piloter le programme</span>
           )}
         </Button>
+        {readyForPilot ? null : (
+          <p className="text-muted-foreground w-full text-xs">{pilotBlockedReason}</p>
+        )}
       </section>
     </div>
   );
