@@ -46,8 +46,9 @@ import {
   type PlanMilestoneId,
 } from "@/domain/acquisitionPlan";
 import { formatFrDate } from "@/features/administration/adminProgramViewModel";
+import { MilestoneTemplateBar } from "@/features/administration/MilestoneTemplateBar";
 import { ProgramMilestoneGantt } from "@/features/administration/ProgramMilestoneGantt";
-import type { Cohort, CohortId, Outcome, OutcomeTheme } from "@/domain/types";
+import type { Cohort, CohortId, Outcome, OutcomeTheme, ProgramId } from "@/domain/types";
 
 const TIMING_LABELS: Record<MilestoneTiming["kind"], string> = {
   week: "Semaine unique",
@@ -76,11 +77,19 @@ function weekNumber(value: string): number | undefined {
 }
 
 export function ProgramMilestonePlanner({
+  programId,
   cohorts,
   themes,
   outcomes,
   defaultCohortId,
 }: {
+  /**
+   * Passé explicitement plutôt que déduit de `themes[0].programId` : les
+   * modèles se listent par programme, y compris avant qu'une promotion soit
+   * choisie, et un programme sans chapitre ne doit pas faire disparaître ses
+   * modèles au passage.
+   */
+  programId: ProgramId;
   cohorts: readonly Cohort[];
   themes: readonly OutcomeTheme[];
   outcomes: readonly Outcome[];
@@ -362,6 +371,16 @@ export function ProgramMilestonePlanner({
           </div>
         ) : null}
       </div>
+
+      <MilestoneTemplateBar
+        programId={programId}
+        cohortId={cohortId}
+        {...(cohort ? { cohortLabel: cohort.label } : {})}
+        themeLabels={ordered.map((theme) => theme.label)}
+        milestoneCount={existing?.length ?? 0}
+        {...(weeks ? { promotionLastWeek: weeks.lastWeek } : {})}
+        onApplied={() => void load()}
+      />
 
       {cohort === undefined ? (
         <EmptyState>

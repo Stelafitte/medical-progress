@@ -1247,6 +1247,7 @@ export function AdminProgramDesigner() {
             rend.
           */}
           <ProgramMilestonePlanner
+            programId={activeProgramId}
             cohorts={cohorts}
             themes={data.outcomeThemes}
             outcomes={data.outcomes}
