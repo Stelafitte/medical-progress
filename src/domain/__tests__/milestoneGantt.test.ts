@@ -99,6 +99,18 @@ describe("le rétroplanning en barres", () => {
     ]);
   });
 
+  it("étend l'échelle jusqu'à la fin de la promotion, même sans jalon à la fin", () => {
+    const gantt = milestoneGantt([saved("Valvulopathies", 2)], "2026-09-01", 10);
+    expect(gantt.lastWeek).toBe(10);
+  });
+
+  it("garde VISIBLE un jalon posé après la fin de la promotion", () => {
+    // Une échelle qui s'arrêterait à la fin du stage ferait disparaître
+    // précisément les barres à corriger.
+    const gantt = milestoneGantt([saved("Valvulopathies", 11)], "2026-09-01", 10);
+    expect(gantt.lastWeek).toBe(11);
+  });
+
   it("garde une échelle non nulle quand il n'y a rien à montrer", () => {
     // Une échelle de largeur zéro rendrait toute barre invisible.
     const gantt = milestoneGantt([], "2026-09-01");

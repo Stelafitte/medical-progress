@@ -72,14 +72,69 @@ export const PLAN_MILESTONE_MIN_WEEK = 0;
 export const PLAN_MILESTONE_MAX_WEEK = 104;
 
 export type PlanMilestoneIssue =
-  "label_manquant" | "semaine_hors_bornes" | "fin_hors_bornes" | "fin_avant_debut";
+  | "label_manquant"
+  | "semaine_hors_bornes"
+  | "fin_hors_bornes"
+  | "fin_avant_debut"
+  | "semaine_hors_promotion"
+  | "fin_hors_promotion";
 
 export const PLAN_MILESTONE_ISSUE_LABELS_FR: Record<PlanMilestoneIssue, string> = {
   label_manquant: "Le jalon doit porter un intitulé.",
   semaine_hors_bornes: `La semaine de début doit être comprise entre ${PLAN_MILESTONE_MIN_WEEK} et ${PLAN_MILESTONE_MAX_WEEK}.`,
   fin_hors_bornes: `La semaine de fin doit être comprise entre ${PLAN_MILESTONE_MIN_WEEK} et ${PLAN_MILESTONE_MAX_WEEK}.`,
   fin_avant_debut: "La fin de la période précède son début.",
+  semaine_hors_promotion: "Cette semaine tombe après la fin de la promotion.",
+  fin_hors_promotion: "La fin de la période tombe après la fin de la promotion.",
 };
+
+/* ------------------------------------------------------------------ */
+/* Combien de semaines dure une promotion                              */
+/* ------------------------------------------------------------------ */
+
+export interface LearningWeeks {
+  /** Durée de la promotion en jours, du premier au dernier. */
+  readonly days: number;
+  /** Dernier rang de semaine utilisable. Une semaine qui commence après la fin n'existe pas. */
+  readonly lastWeek: number;
+  /** Nombre de semaines d'apprentissage, la semaine 0 comprise : `lastWeek + 1`. */
+  readonly count: number;
+  /** La dernière semaine s'arrête avant d'être complète. */
+  readonly lastWeekPartial: boolean;
+}
+
+/**
+ * Les semaines d'apprentissage d'une promotion, déduites de SES dates.
+ *
+ * Une semaine n'est utilisable que si elle COMMENCE avant la fin de la
+ * promotion : la semaine 11 d'un stage de 75 jours débuterait le 17/11 pour un
+ * stage qui s'achève le 15/11, et un jalon posé là serait une échéance après
+ * la fin. C'est le défaut mesuré le 02/09 sur « Promotion 2026-2027 : centurie
+ * A », où cinq jalons et 54 acquis étaient datés hors stage sans que rien ne
+ * le signale.
+ *
+ * La dernière semaine est le plus souvent incomplète, et c'est normal : un
+ * stage de 75 jours fait dix semaines et cinq jours. On la compte quand même —
+ * elle contient de vrais jours de stage — mais l'écran le dit, pour que
+ * « 11 semaines » ne se lise pas comme onze semaines pleines.
+ */
+export function learningWeeks(startsOn: IsoDateTime, endsOn: IsoDateTime): LearningWeeks {
+  const start = Date.parse(startsOn.slice(0, 10));
+  const end = Date.parse(endsOn.slice(0, 10));
+  if (Number.isNaN(start) || Number.isNaN(end) || end < start) {
+    // Une promotion mal bornée ne doit pas rendre l'écran inutilisable : une
+    // seule semaine, et la contrainte SQL reste l'autorité.
+    return { days: 0, lastWeek: 0, count: 1, lastWeekPartial: true };
+  }
+  const days = Math.round((end - start) / 86_400_000);
+  const lastWeek = Math.min(Math.floor(days / 7), PLAN_MILESTONE_MAX_WEEK);
+  return {
+    days,
+    lastWeek,
+    count: lastWeek + 1,
+    lastWeekPartial: days - lastWeek * 7 < 6,
+  };
+}
 
 /**
  * Ce qui empêche d'enregistrer un jalon. Liste vide = enregistrable.
@@ -88,11 +143,20 @@ export const PLAN_MILESTONE_ISSUE_LABELS_FR: Record<PlanMilestoneIssue, string> 
  * expliquer, la base vérifie pour garantir. On ne remplace pas l'une par
  * l'autre.
  */
-export function validatePlanMilestone(input: {
-  readonly label: string;
-  readonly weekOffset: number;
-  readonly weekOffsetEnd?: number;
-}): readonly PlanMilestoneIssue[] {
+export function validatePlanMilestone(
+  input: {
+    readonly label: string;
+    readonly weekOffset: number;
+    readonly weekOffsetEnd?: number;
+  },
+  /**
+   * La promotion visée, quand elle est connue. Elle resserre les bornes
+   * générales : la base accepte 104 semaines, une promotion de 75 jours n'en
+   * accepte que onze. Optionnelle à dessein — un jalon se valide aussi hors de
+   * toute promotion, et l'omettre revient au contrôle d'avant.
+   */
+  promotion?: { readonly lastWeek: number },
+): readonly PlanMilestoneIssue[] {
   const issues: PlanMilestoneIssue[] = [];
   if (input.label.trim() === "") issues.push("label_manquant");
   if (
@@ -111,6 +175,20 @@ export function validatePlanMilestone(input: {
       issues.push("fin_hors_bornes");
     } else if (input.weekOffsetEnd < input.weekOffset) {
       issues.push("fin_avant_debut");
+    }
+  }
+  if (promotion !== undefined) {
+    // Après les bornes générales : dire « hors promotion » d'une semaine qui
+    // n'est même pas un entier valide brouillerait le message.
+    if (!issues.includes("semaine_hors_bornes") && input.weekOffset > promotion.lastWeek) {
+      issues.push("semaine_hors_promotion");
+    }
+    if (
+      input.weekOffsetEnd !== undefined &&
+      !issues.includes("fin_hors_bornes") &&
+      input.weekOffsetEnd > promotion.lastWeek
+    ) {
+      issues.push("fin_hors_promotion");
     }
   }
   return issues;
@@ -280,14 +358,15 @@ export interface MilestoneGantt {
  * VOIR comme tel, et une échelle qui se recale sur son contenu effacerait
  * précisément ce qu'on cherche à lire.
  *
- * Elle s'arrête au dernier jalon. Ce sera la fin réelle de la promotion quand
- * le nombre de semaines d'apprentissage sera calculé (point 1 du 02/09) ;
- * aujourd'hui rien en base ne dit où le stage s'arrête, donc l'échelle ne
- * peut pas le prétendre.
+ * Elle va jusqu'à la fin de la promotion quand celle-ci est connue, et au-delà
+ * si un jalon déborde : une barre posée après la fin du stage doit rester
+ * VISIBLE pour être corrigée. Une échelle qui s'arrêterait à la fin du stage
+ * ferait disparaître précisément les jalons qui posent problème.
  */
 export function milestoneGantt(
   milestones: readonly PlanMilestone[],
   cohortStartsOn: IsoDateTime,
+  promotionLastWeek?: number,
 ): MilestoneGantt {
   const bars = [...milestones]
     .map((milestone) => {
@@ -311,7 +390,7 @@ export function milestoneGantt(
 
   // Une échelle de largeur nulle rendrait des barres invisibles : au moins une
   // semaine, même quand tout est posé en semaine 0.
-  const lastWeek = Math.max(1, ...bars.map((bar) => bar.weekEnd));
+  const lastWeek = Math.max(1, promotionLastWeek ?? 0, ...bars.map((bar) => bar.weekEnd));
   return { lastWeek, bars };
 }
 

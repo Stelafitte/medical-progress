@@ -37,6 +37,7 @@ import {
   PLAN_MILESTONE_ISSUE_LABELS_FR,
   PLAN_MILESTONE_MAX_WEEK,
   chronologicalThemeOrder,
+  learningWeeks,
   milestoneDateFor,
   planMilestoneIntent,
   validatePlanMilestone,
@@ -95,6 +96,17 @@ export function ProgramMilestonePlanner({
   const [deleting, setDeleting] = useState<string | null>(null);
 
   const cohort = cohorts.find((c) => c.id === cohortId);
+
+  /**
+   * Les semaines de CETTE promotion, déduites de ses dates.
+   *
+   * La base accepte 104 semaines — c'est la borne d'une table, pas celle
+   * d'un stage. Sans ce calcul, rien n'empêchait de poser un jalon en
+   * semaine 11 sur une promotion qui s'arrête en semaine 10 : c'est
+   * exactement ce qui s'était produit, cinq jalons et 54 acquis datés après
+   * la fin du stage, sans un mot à l'écran.
+   */
+  const weeks = cohort ? learningWeeks(cohort.startsOn, cohort.endsOn) : undefined;
 
   /**
    * Les acquis RETENUS de chaque chapitre.
@@ -176,11 +188,14 @@ export function ProgramMilestonePlanner({
     if (from === undefined) return [];
     const to = timing.kind === "period" ? weekNumber(timing.to) : undefined;
     const theme = ordered.find((t) => t.id === themeId);
-    return validatePlanMilestone({
-      label: theme?.label ?? "",
-      weekOffset: from,
-      ...(to === undefined ? {} : { weekOffsetEnd: to }),
-    });
+    return validatePlanMilestone(
+      {
+        label: theme?.label ?? "",
+        weekOffset: from,
+        ...(to === undefined ? {} : { weekOffsetEnd: to }),
+      },
+      weeks,
+    );
   };
 
   const blocked = ordered.some((theme) => issuesFor(theme.id).length > 0);
@@ -308,10 +323,22 @@ export function ProgramMilestonePlanner({
           </select>
         </div>
         {cohort ? (
-          <p className="text-muted-foreground pb-2 text-sm">
-            Semaine 0 = {formatFrDate(cohort.startsOn)}. Les semaines se comptent depuis cette date
-            : changer la date de la classe décale tout le rétroplanning.
-          </p>
+          <div className="text-muted-foreground pb-2 text-sm">
+            <p>
+              Du {formatFrDate(cohort.startsOn)} au {formatFrDate(cohort.endsOn)} —{" "}
+              <strong className="text-foreground font-medium">
+                {weeks?.count} semaines d'apprentissage
+              </strong>
+              , de la semaine 0 à la semaine {weeks?.lastWeek}.
+            </p>
+            <p>
+              Les semaines se comptent depuis le {formatFrDate(cohort.startsOn)} : changer les dates
+              de la classe décale tout le rétroplanning.
+              {weeks?.lastWeekPartial === true
+                ? ` La dernière est entamée sans être complète — la promotion dure ${weeks.days} jours.`
+                : ""}
+            </p>
+          </div>
         ) : null}
       </div>
 
@@ -393,7 +420,7 @@ export function ProgramMilestonePlanner({
                       id={`ms-${theme.id}-from`}
                       type="number"
                       min={0}
-                      max={PLAN_MILESTONE_MAX_WEEK}
+                      max={weeks?.lastWeek ?? PLAN_MILESTONE_MAX_WEEK}
                       value={timing.from}
                       className="min-h-11 w-24"
                       onChange={(event) => patch(theme.id, { ...timing, from: event.target.value })}
@@ -410,7 +437,7 @@ export function ProgramMilestonePlanner({
                       id={`ms-${theme.id}-to`}
                       type="number"
                       min={0}
-                      max={PLAN_MILESTONE_MAX_WEEK}
+                      max={weeks?.lastWeek ?? PLAN_MILESTONE_MAX_WEEK}
                       value={timing.to}
                       className="min-h-11 w-24"
                       onChange={(event) => patch(theme.id, { ...timing, to: event.target.value })}
@@ -518,8 +545,12 @@ export function ProgramMilestonePlanner({
 
       {error ? <p className="text-destructive text-sm">{error}</p> : null}
 
-      {cohort && existing ? (
-        <ProgramMilestoneGantt milestones={existing} cohortStartsOn={cohort.startsOn} />
+      {cohort && existing && weeks ? (
+        <ProgramMilestoneGantt
+          milestones={existing}
+          cohortStartsOn={cohort.startsOn}
+          promotionLastWeek={weeks.lastWeek}
+        />
       ) : null}
 
       <p className="text-muted-foreground text-xs">

@@ -27,11 +27,14 @@ import type { IsoDateTime } from "@/domain/types";
 export function ProgramMilestoneGantt({
   milestones,
   cohortStartsOn,
+  promotionLastWeek,
 }: {
   milestones: readonly PlanMilestone[];
   cohortStartsOn: IsoDateTime;
+  /** Dernière semaine de la promotion. Au-delà, un jalon est hors stage. */
+  promotionLastWeek?: number;
 }) {
-  const { lastWeek, bars } = milestoneGantt(milestones, cohortStartsOn);
+  const { lastWeek, bars } = milestoneGantt(milestones, cohortStartsOn, promotionLastWeek);
 
   /*
    * Rien d'enregistré : pas de cadre vide. Un graphique sans barre ressemble à
@@ -51,7 +54,14 @@ export function ProgramMilestoneGantt({
             <span />
             <div className="text-muted-foreground flex text-[10px]">
               {weeks.map((week) => (
-                <span key={week} className="flex-1 text-center">
+                <span
+                  key={week}
+                  className={
+                    promotionLastWeek !== undefined && week > promotionLastWeek
+                      ? "text-destructive flex-1 text-center"
+                      : "flex-1 text-center"
+                  }
+                >
                   S{week}
                 </span>
               ))}
@@ -80,11 +90,33 @@ export function ProgramMilestoneGantt({
                     </Badge>
                   </span>
                   <span className="bg-muted relative block h-5 rounded">
+                    {/*
+                      La fin de la promotion, en trait plein. C'est ce qui rend
+                      lisible d'un coup d'oeil qu'un jalon est posé après la fin
+                      du stage : la barre passe le trait.
+                    */}
+                    {promotionLastWeek !== undefined && promotionLastWeek < lastWeek ? (
+                      <span
+                        aria-hidden
+                        className="bg-destructive absolute inset-y-0 w-0.5"
+                        style={{ left: `${((promotionLastWeek + 1) / span) * 100}%` }}
+                      />
+                    ) : null}
                     <span
-                      className={`absolute inset-y-0 rounded ${bar.official ? "bg-success" : "bg-primary/70"}`}
+                      className={`absolute inset-y-0 rounded ${
+                        promotionLastWeek !== undefined && bar.weekEnd > promotionLastWeek
+                          ? "bg-destructive/70"
+                          : bar.official
+                            ? "bg-success"
+                            : "bg-primary/70"
+                      }`}
                       style={{ left: `${left}%`, width: `${width}%` }}
                       role="img"
-                      aria-label={`${bar.label} : ${when}, ${bar.outcomeCount} acquis${bar.official ? ", échéance officielle" : ""}.`}
+                      aria-label={`${bar.label} : ${when}, ${bar.outcomeCount} acquis${bar.official ? ", échéance officielle" : ""}${
+                        promotionLastWeek !== undefined && bar.weekEnd > promotionLastWeek
+                          ? ", APRÈS la fin de la promotion"
+                          : ""
+                      }.`}
                     />
                   </span>
                 </li>
@@ -94,9 +126,9 @@ export function ProgramMilestoneGantt({
         </div>
       </div>
       <p className="text-muted-foreground text-xs">
-        Le chiffre suit le nombre d'acquis que le jalon emporte. L'échelle part de la semaine 0 — le
-        début de la promotion — et s'arrête au dernier jalon posé : elle ne prétend pas dire où la
-        promotion se termine, rien en base ne le lui dit encore.
+        Le chiffre suit le nombre d'acquis que le jalon emporte. L'échelle part de la semaine 0, le
+        début de la promotion. Le trait rouge marque sa fin : une barre qui le dépasse est une
+        échéance posée après le dernier jour du stage.
       </p>
     </section>
   );
