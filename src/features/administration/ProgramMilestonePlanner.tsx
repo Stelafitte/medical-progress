@@ -87,7 +87,21 @@ export function ProgramMilestonePlanner({
   defaultCohortId?: CohortId;
 }) {
   const dataAccess = useDataAccess();
-  const [cohortId, setCohortId] = useState<string>(defaultCohortId ?? cohorts[0]?.id ?? "");
+  /**
+   * AUCUNE promotion présélectionnée dès qu'il y en a plusieurs.
+   *
+   * Le 02/09, Stef a saisi des jalons en croyant travailler « au niveau du
+   * programme » : l'écran avait choisi la première promotion pour lui, en
+   * silence, et affichait ses 29 jalons. Tant qu'il n'y avait qu'une promotion
+   * c'était sans conséquence ; dès la deuxième, on écrit sur une promotion
+   * qu'on n'a jamais choisie — et un jalon appartient à UNE promotion
+   * (`cohort_id not null`), il n'y a pas de repli possible.
+   *
+   * Avec une seule promotion, le choix n'est pas une question : on la garde.
+   */
+  const [cohortId, setCohortId] = useState<string>(
+    defaultCohortId ?? (cohorts.length === 1 ? (cohorts[0]?.id ?? "") : ""),
+  );
   const [timings, setTimings] = useState<Record<string, MilestoneTiming>>({});
   const [existing, setExisting] = useState<readonly PlanMilestone[] | null>(null);
   const [saving, setSaving] = useState(false);
@@ -321,6 +335,7 @@ export function ProgramMilestonePlanner({
               setDone(null);
             }}
           >
+            {cohorts.length === 1 ? null : <option value="">Choisir une promotion…</option>}
             {cohorts.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.label}
@@ -348,7 +363,14 @@ export function ProgramMilestonePlanner({
         ) : null}
       </div>
 
-      <ul className="space-y-2">
+      {cohort === undefined ? (
+        <EmptyState>
+          Choisissez la promotion à programmer. Un jalon appartient à une promotion, pas au
+          programme : ce que vous saisirez ici sera enregistré pour celle que vous aurez choisie.
+        </EmptyState>
+      ) : null}
+
+      <ul className={cohort === undefined ? "hidden" : "space-y-2"}>
         {displayed.map((theme) => {
           const timing = timings[theme.id] ?? EMPTY;
           const issues = issuesFor(theme.id);
@@ -551,7 +573,7 @@ export function ProgramMilestonePlanner({
         <Button
           type="button"
           className="min-h-11"
-          disabled={saving || blocked || nothingToDo}
+          disabled={saving || blocked || nothingToDo || cohort === undefined}
           onClick={() => void save()}
         >
           {saving
