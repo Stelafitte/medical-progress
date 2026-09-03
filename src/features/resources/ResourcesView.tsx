@@ -16,6 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { formatPlayerDuration } from "@/domain/mediaLibrary";
 import { useLearnerPassport } from "@/features/dashboard/useLearnerPassport";
 import { ContentAiTutorPanel } from "@/features/resources/ContentAiTutorPanel";
+import { OutcomeScheduleSection } from "@/features/passport/OutcomeScheduleSection";
 import { KnowledgeRow, type CoveringSupport } from "@/features/resources/KnowledgeRow";
 import {
   AI_GROUNDING_NOTICE_FR,
@@ -287,6 +288,13 @@ export function ResourcesView() {
           </Accordion>
         )}
       </section>
+
+      <OutcomeScheduleSection
+        plan={data.plan}
+        garder={(nature) => nature === "knowledge"}
+        title="Quand je dois les savoir"
+        description="Les jalons du programme qui portent des connaissances. Dépliez un jalon pour voir ce qu'il demande, et déclarez au passage."
+      />
     </div>
   );
 }

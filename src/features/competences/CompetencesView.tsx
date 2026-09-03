@@ -54,6 +54,7 @@ import {
 } from "@/domain/competenceListView";
 import type { LearningResourceId, OutcomeNature } from "@/domain/types";
 import { OutcomeRow } from "@/features/passport/OutcomeRow";
+import { OutcomeScheduleSection } from "@/features/passport/OutcomeScheduleSection";
 import { ResourceMediaPlayer } from "@/features/resources/ResourceMediaPlayer";
 import { ResourceTextPanel } from "@/features/resources/ResourceTextPanel";
 import {
@@ -537,6 +538,13 @@ export function CompetencesView() {
           </Accordion>
         )}
       </PanelCard>
+
+      <OutcomeScheduleSection
+        plan={data.plan}
+        garder={(nature) => nature !== "knowledge"}
+        title="Quand je dois les maîtriser"
+        description="Les jalons du programme qui portent des compétences. Dépliez un jalon pour voir ce qu'il demande, et déclarez au passage."
+      />
     </div>
   );
 }
