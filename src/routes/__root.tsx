@@ -9,6 +9,7 @@ import {
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
 
+import { PasswordRecoveryGate } from "@/application/password-recovery-gate";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 
@@ -134,8 +135,15 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <Outlet />
+      {/*
+        Une arrivee par lien de premiere connexion atterrit sur la page PUBLIQUE
+        (l'URL de site configuree dans Supabase), hors du fournisseur de session.
+        La porte doit donc etre ici, au-dessus de toutes les routes.
+      */}
+      <PasswordRecoveryGate>
+        {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+        <Outlet />
+      </PasswordRecoveryGate>
     </QueryClientProvider>
   );
 }

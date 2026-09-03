@@ -15,6 +15,7 @@ import {
 import { getSelectedDataAccess } from "@/application/dataAccess";
 import { getBrowserSupabaseClient } from "@/infrastructure/supabase/client";
 import { SupabaseLoginForm } from "@/components/supabase-login-form";
+
 import {
   AuthenticationRequiredError,
   loadAuthenticatedSupabaseSession,
