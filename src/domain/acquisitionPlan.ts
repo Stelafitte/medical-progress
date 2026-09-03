@@ -6,7 +6,14 @@
  * (`PlanScheduleEntry`). Les quatre vues du Passeport (Liste, Kanban, Gantt,
  * Calendrier) consomment ce même modèle.
  */
-import type { CohortId, IsoDateTime, OutcomeId, OutcomeNature, ProgramId } from "./types";
+import type {
+  CohortId,
+  IsoDateTime,
+  OutcomeId,
+  OutcomeNature,
+  OutcomeThemeId,
+  ProgramId,
+} from "./types";
 import type { MasteryLevel } from "./types";
 import { masteryRank, type OutcomeProgress } from "./mastery";
 
@@ -498,6 +505,8 @@ export interface AcquisitionPlanItem {
   readonly milestoneLabel: string | null;
   /** Ce que l'apprenant a declare sur cet acquis, s'il l'a fait. */
   readonly declaredLevel?: MasteryLevel;
+  /** Chapitre du Concepteur, pour replier les vues qui portent des centaines de lignes. */
+  readonly themeId?: OutcomeThemeId;
   readonly officialDeadline: boolean;
   readonly requiresThirdPartyValidation: boolean;
   readonly countedEvidence: number;

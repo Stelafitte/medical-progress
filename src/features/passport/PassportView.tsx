@@ -27,15 +27,20 @@ import { PlanChangeRequestDialog } from "./PlanChangeRequestDialog";
 import { CalendarView } from "./views/CalendarView";
 import { GanttView } from "./views/GanttView";
 import { KanbanView } from "./views/KanbanView";
-import { ListView } from "./views/ListView";
 
-type PassportViewMode = "list" | "kanban" | "gantt" | "calendar";
+type PassportViewMode = "kanban" | "gantt" | "calendar";
 
+/**
+ * ORDRE ET SELECTION DES VUES, decides par Stef le 03/09 : Calendrier d'abord,
+ * puis Gantt, puis Kanban — du plus proche du temps vecu au plus proche de
+ * l'etat d'avancement. Et **la Liste est retiree** : elle rendait les
+ * 368 acquis a plat, alors que les trois autres vues disent la meme chose en
+ * les regroupant. `ListView` reste dans le depot, sans onglet.
+ */
 const VIEW_TABS: ReadonlyArray<{ value: PassportViewMode; label: string }> = [
-  { value: "list", label: "Liste" },
-  { value: "kanban", label: "Kanban" },
-  { value: "gantt", label: "Gantt" },
   { value: "calendar", label: "Calendrier" },
+  { value: "gantt", label: "Gantt" },
+  { value: "kanban", label: "Kanban" },
 ];
 
 type PlanFilter = "all" | "knowledge" | "competence";
@@ -54,7 +59,7 @@ const IMPACTS: readonly PlanChangeImpact[] = [
 
 export function PassportView() {
   const { data, isPending } = useLearnerPassport();
-  const [view, setView] = useState<PassportViewMode>("list");
+  const [view, setView] = useState<PassportViewMode>("calendar");
   const [filter, setFilter] = useState<PlanFilter>("all");
   const [dialogItem, setDialogItem] = useState<AcquisitionPlanItem | null>(null);
   const [requests, setRequests] = useState<readonly PlanChangeRequest[]>([]);
@@ -87,7 +92,7 @@ export function PassportView() {
 
   if (isPending || !data || !plan) return <Skeleton className="h-96 w-full" />;
 
-  const { progress, evidence, summary } = data;
+  const { evidence, summary } = data;
   /*
    * « Que dois-je faire maintenant ? » repond avec des JALONS, pas avec des
    * acquis. Un jalon porte souvent une dizaine d'acquis : les lister un par un
@@ -211,22 +216,18 @@ export function PassportView() {
             ))}
           </TabsList>
 
-          <TabsContent value="list" className="mt-6">
-            <ListView
-              progress={progress}
-              planItems={filteredItems}
-              evidence={evidence}
-              onProposeChange={setDialogItem}
-            />
-          </TabsContent>
-          <TabsContent value="kanban" className="mt-6">
-            <KanbanView items={filteredItems} onProposeChange={setDialogItem} />
+          <TabsContent value="calendar" className="mt-6">
+            <CalendarView events={filteredEvents} items={plan.items} />
           </TabsContent>
           <TabsContent value="gantt" className="mt-6">
             <GanttView items={filteredItems} range={plan.range} />
           </TabsContent>
-          <TabsContent value="calendar" className="mt-6">
-            <CalendarView events={filteredEvents} items={plan.items} />
+          <TabsContent value="kanban" className="mt-6">
+            <KanbanView
+              items={filteredItems}
+              themes={data.themes}
+              onProposeChange={setDialogItem}
+            />
           </TabsContent>
         </Tabs>
       </section>

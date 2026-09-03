@@ -29,9 +29,7 @@ describe("terminologie", () => {
 
   it("nomme la fonctionnalité « Mon Passeport Éducatif » (nom officiel)", () => {
     expect(passportView).toContain('title="Mon Passeport Éducatif"');
-    expect(passportRoute).toContain(
-      '{ title: "Mon Passeport Éducatif — Campus Santé Augmenté" }',
-    );
+    expect(passportRoute).toContain('{ title: "Mon Passeport Éducatif — Campus Santé Augmenté" }');
   });
 
   it("réserve le nom global « Campus Santé Augmenté » au shell et à la racine", () => {
@@ -157,10 +155,24 @@ describe("profil — présentation du passeport", () => {
   });
 });
 
-describe("passeport — quatre vues", () => {
-  it("propose Liste, Kanban, Gantt et Calendrier", () => {
-    for (const label of ["Liste", "Kanban", "Gantt", "Calendrier"]) {
-      expect(passportView).toContain(`label: "${label}"`);
-    }
+describe("passeport — trois vues", () => {
+  /**
+   * CONTRAT MIS A JOUR LE 03/09, sur decision de Stef : **Calendrier, puis
+   * Gantt, puis Kanban** — du plus proche du temps vecu au plus proche de
+   * l'etat d'avancement — et **la Liste retiree**. Elle rendait les 368 acquis
+   * a plat, la ou les trois autres vues disent la meme chose en les regroupant
+   * (par jalon pour le Calendrier et le Gantt, par chapitre pour le Kanban).
+   *
+   * CE TEST VERIFIE L'ORDRE, pas seulement la presence : l'ordre EST la
+   * decision. Une version qui proposerait les trois vues dans le desordre
+   * passerait un test de simple presence sans respecter ce qui a ete demande.
+   */
+  it("propose Calendrier, Gantt et Kanban, dans cet ordre, et plus la Liste", () => {
+    const positions = ["Calendrier", "Gantt", "Kanban"].map((label) =>
+      passportView.indexOf(`label: "${label}"`),
+    );
+    expect(positions.every((position) => position >= 0)).toBe(true);
+    expect([...positions].sort((a, b) => a - b)).toEqual(positions);
+    expect(passportView).not.toContain(`label: "Liste"`);
   });
 });

@@ -1,21 +1,44 @@
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
 import type { AcquisitionPlanItem } from "@/domain/acquisitionPlan";
 import { STAGE_LABELS_FR } from "@/domain/acquisitionPlan";
-
-const NATURE_BAR: Record<AcquisitionPlanItem["nature"], string> = {
-  knowledge: "bg-primary/70",
-  simulated_competence: "bg-accent",
-  real_competence: "bg-success",
-};
 
 function fmt(iso: string) {
   return new Date(iso).toLocaleDateString("fr-FR", { day: "2-digit", month: "short" });
 }
 
+interface BarreJalon {
+  readonly cle: string;
+  readonly label: string;
+  readonly startsOn: string;
+  readonly dueOn: string;
+  readonly officielle: boolean;
+  readonly items: readonly AcquisitionPlanItem[];
+}
+
 /**
- * Gantt léger : aucune dépendance externe, positions calculées en pourcentage
- * de la plage du plan. Sur petit écran, la zone défile horizontalement et une
- * alternative textuelle reste disponible.
+ * Gantt REGROUPÉ PAR JALON (03/09).
+ *
+ * CE QUI N'ALLAIT PAS. Une barre par acquis, soit 368 barres empilées sur douze
+ * semaines — et comme un jalon porte jusqu'à douze acquis, douze barres
+ * strictement superposées, aux mêmes dates. Stef : « les listes sont
+ * monstrueuses pour Kanban et Gantt ». C'est le même défaut que celui corrigé
+ * le matin sur le Calendrier, à un écran près.
+ *
+ * POURQUOI LE JALON, ET NON LE CHAPITRE. Une barre de Gantt EST une période.
+ * Le jalon en a une — sa semaine ; le chapitre n'en a pas, il s'étalerait du
+ * premier au dernier de ses acquis et ne dirait rien. Le Kanban, lui, regroupe
+ * par chapitre : il parle de contenu, pas de temps.
+ *
+ * LES NON PLANIFIÉS NE SONT PAS DESSINÉS, mais ils sont comptés sous le
+ * diagramme et listés dans l'alternative textuelle. Un Gantt ne peut montrer
+ * que ce qui a des dates ; les faire disparaître laisserait croire que tout le
+ * programme est planifié.
  */
 export function GanttView({
   items,
@@ -29,16 +52,23 @@ export function GanttView({
   const span = Math.max(end - start, 1);
   const pct = (iso: string) => ((new Date(iso).getTime() - start) / span) * 100;
 
-  /*
-   * UN GANTT NE PEUT DESSINER QUE CE QUI A DES DATES. Les acquis non planifies
-   * en sont donc exclus — mais ils ne disparaissent pas de l'ecran pour autant :
-   * ils sont comptes sous le diagramme et listes dans l'alternative textuelle.
-   * Les faire disparaitre en silence reviendrait a laisser croire que tout le
-   * programme est planifie.
-   */
-  const planifies = items.filter(
-    (item): item is AcquisitionPlanItem & { startsOn: string; dueOn: string } =>
-      Boolean(item.startsOn) && Boolean(item.dueOn),
+  const parJalon = new Map<string, BarreJalon & { items: AcquisitionPlanItem[] }>();
+  for (const item of items) {
+    if (!item.startsOn || !item.dueOn || !item.milestoneLabel) continue;
+    const cle = `${item.milestoneLabel}|${item.dueOn}`;
+    const barre = parJalon.get(cle) ?? {
+      cle,
+      label: item.milestoneLabel,
+      startsOn: item.startsOn,
+      dueOn: item.dueOn,
+      officielle: item.officialDeadline,
+      items: [],
+    };
+    barre.items.push(item);
+    parJalon.set(cle, barre);
+  }
+  const jalons = [...parJalon.values()].sort(
+    (a, b) => a.startsOn.localeCompare(b.startsOn) || a.label.localeCompare(b.label),
   );
   const nonPlanifies = items.filter((item) => !item.startsOn || !item.dueOn);
 
@@ -55,32 +85,33 @@ export function GanttView({
             <span>{fmt(range.end)}</span>
           </p>
           <ul className="space-y-3">
-            {planifies.map((item) => {
-              const left = Math.max(pct(item.startsOn), 0);
-              const width = Math.max(pct(item.dueOn) - left, 2);
+            {jalons.map((jalon) => {
+              const left = Math.max(pct(jalon.startsOn), 0);
+              const width = Math.max(pct(jalon.dueOn) - left, 2);
               return (
-                <li key={item.id} className="grid grid-cols-[10rem_1fr] items-center gap-3">
-                  <span className="truncate text-xs font-medium" title={item.label}>
-                    <span className="font-mono">{item.code}</span> {item.label}
+                <li key={jalon.cle} className="grid grid-cols-[14rem_1fr] items-center gap-3">
+                  <span className="truncate text-xs font-medium" title={jalon.label}>
+                    {jalon.label}{" "}
+                    <span className="text-muted-foreground">({jalon.items.length})</span>
                   </span>
                   <span className="relative block h-6 rounded bg-muted">
                     <span
-                      className={`absolute inset-y-0 rounded ${NATURE_BAR[item.nature]}`}
+                      className="absolute inset-y-0 rounded bg-primary/70"
                       style={{ left: `${left}%`, width: `${width}%` }}
                       role="img"
-                      aria-label={`${item.code} : du ${fmt(item.startsOn)} au ${fmt(item.dueOn)}, ${STAGE_LABELS_FR[item.stage]}`}
+                      aria-label={`${jalon.label} : du ${fmt(jalon.startsOn)} au ${fmt(jalon.dueOn)}, ${jalon.items.length} acquis`}
                     />
                     <span
                       aria-hidden
                       className="absolute top-0 h-6 w-0.5 bg-foreground"
-                      style={{ left: `${Math.min(pct(item.dueOn), 99.5)}%` }}
+                      style={{ left: `${Math.min(pct(jalon.dueOn), 99.5)}%` }}
                     />
                   </span>
                 </li>
               );
             })}
           </ul>
-          {planifies.length === 0 ? (
+          {jalons.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               Aucun acquis n'est encore posé sur un jalon du rétroplanning.
             </p>
@@ -95,35 +126,63 @@ export function GanttView({
         </p>
       ) : null}
 
-      <details className="rounded-lg border border-border bg-card p-4">
-        <summary className="cursor-pointer text-sm font-medium">
-          Alternative textuelle du diagramme (périodes, jalons et dépendances)
-        </summary>
-        <ul className="mt-3 space-y-2 text-sm">
-          {items.map((item) => {
-            const deps = item.dependsOn
-              .map((id) => items.find((i) => i.id === id)?.code ?? id)
-              .join(", ");
-            return (
-              <li key={item.id}>
-                <span className="font-mono text-xs">{item.code}</span> {item.label} —{" "}
-                {item.startsOn && item.dueOn
-                  ? `du ${fmt(item.startsOn)} au ${fmt(item.dueOn)} · ${item.milestoneLabel}`
-                  : "non planifié"}{" "}
-                · {STAGE_LABELS_FR[item.stage]}
-                {item.officialDeadline ? (
-                  <Badge variant="outline" className="ms-2">
-                    Échéance officielle
+      <div className="rounded-lg border border-border bg-card p-2">
+        <Accordion type="multiple" className="w-full">
+          {jalons.map((jalon) => (
+            <AccordionItem key={jalon.cle} value={jalon.cle}>
+              <AccordionTrigger className="py-2 text-left text-sm">
+                <span className="flex flex-1 items-center gap-2 pr-2">
+                  <span className="min-w-0 truncate font-medium">{jalon.label}</span>
+                  <span className="shrink-0 text-xs text-muted-foreground">
+                    {fmt(jalon.startsOn)} → {fmt(jalon.dueOn)}
+                  </span>
+                  {jalon.officielle ? (
+                    <Badge variant="outline" className="shrink-0 font-normal">
+                      Officielle
+                    </Badge>
+                  ) : null}
+                  <Badge variant="secondary" className="ms-auto shrink-0 font-normal">
+                    {jalon.items.length}
                   </Badge>
-                ) : null}
-                {deps ? (
-                  <span className="block text-xs text-muted-foreground">Prérequis : {deps}</span>
-                ) : null}
-              </li>
-            );
-          })}
-        </ul>
-      </details>
+                </span>
+              </AccordionTrigger>
+              <AccordionContent>
+                <ul className="space-y-1 pt-1 text-sm">
+                  {jalon.items.map((item) => (
+                    <li key={item.id}>
+                      <span className="font-mono text-xs">{item.code}</span> {item.label} ·{" "}
+                      <span className="text-muted-foreground">{STAGE_LABELS_FR[item.stage]}</span>
+                    </li>
+                  ))}
+                </ul>
+              </AccordionContent>
+            </AccordionItem>
+          ))}
+        </Accordion>
+        {nonPlanifies.length > 0 ? (
+          <Accordion type="multiple" className="w-full">
+            <AccordionItem value="non-planifies">
+              <AccordionTrigger className="py-2 text-left text-sm">
+                <span className="flex flex-1 items-center justify-between gap-2 pr-2">
+                  <span>Sans jalon</span>
+                  <Badge variant="outline" className="font-normal">
+                    {nonPlanifies.length}
+                  </Badge>
+                </span>
+              </AccordionTrigger>
+              <AccordionContent>
+                <ul className="space-y-1 pt-1 text-sm">
+                  {nonPlanifies.map((item) => (
+                    <li key={item.id}>
+                      <span className="font-mono text-xs">{item.code}</span> {item.label}
+                    </li>
+                  ))}
+                </ul>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        ) : null}
+      </div>
     </div>
   );
 }
