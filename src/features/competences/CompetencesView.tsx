@@ -19,7 +19,6 @@ import {
 } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
@@ -44,7 +43,7 @@ import { useSession } from "@/application/session";
 import { MASTERY_LABELS_FR, NATURE_LABELS_FR, summarizeProgress } from "@/domain/mastery";
 import type { OutcomeProgress } from "@/domain/mastery";
 import type { AcquisitionPlanItem } from "@/domain/acquisitionPlan";
-import { selfDeclarationState, type CompetenceJournalEntry } from "@/domain/competenceJournal";
+import type { CompetenceJournalEntry } from "@/domain/competenceJournal";
 import {
   COMPETENCE_STATUS_LABELS_FR,
   EMPTY_COMPETENCE_FILTERS,
@@ -54,10 +53,10 @@ import {
   type CompetenceStatusFilter,
 } from "@/domain/competenceListView";
 import type { LearningResourceId, OutcomeNature } from "@/domain/types";
+import { OutcomeRow } from "@/features/passport/OutcomeRow";
 import { ResourceMediaPlayer } from "@/features/resources/ResourceMediaPlayer";
 import { ResourceTextPanel } from "@/features/resources/ResourceTextPanel";
 import {
-  declareCompetence,
   saveExperienceNote,
   sendJournalMessage,
   useCompetenceJournal,
@@ -149,146 +148,121 @@ function CompetenceRow({
   supports: readonly { id: LearningResourceId; title: string; format: string }[];
 }) {
   const [openJournal, setOpenJournal] = useState(false);
-  const declaration = selfDeclarationState(entry, item.meetsTarget);
-  const checkboxId = `acquise-${item.outcome.id}`;
 
+  /*
+   * LA MISE EN PAGE EST CELLE DE « MES RESSOURCES », demandee par Stef le
+   * 03/09 apres l'avoir vue sur les connaissances. La carte precedente etalait
+   * badges, barre d'avancement, dates et journal a plat : sur 57 competences,
+   * l'ecran devenait une colonne interminable ou rien ne se reperait. Tout ce
+   * detail est desormais DERRIERE l'intitulé — on l'ouvre quand on le veut.
+   *
+   * UN SEUL GESTE DE DECLARATION. La case a cocher du journal local a disparu :
+   * elle ecrivait dans un magasin en memoire, a cote de la vraie declaration en
+   * base. Deux cases pour la meme phrase, dont une qui n'enregistrait rien.
+   * L'interrupteur de `OutcomeRow` est maintenant le seul chemin, et le journal
+   * ne garde que ce qui lui appartient : la note d'experience et le fil avec le
+   * tuteur.
+   */
   return (
-    <li className="space-y-3 rounded-lg border border-border p-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="font-medium">{item.outcome.label}</span>
-        <Badge variant="outline" className="font-normal">
-          {item.outcome.code}
-        </Badge>
-        {/* Le caractère simulé / réel est un attribut, pas une catégorie de page. */}
-        <Badge variant="secondary" className="font-normal">
-          {NATURE_LABELS_FR[item.outcome.nature]}
-        </Badge>
-        <Badge variant={item.meetsTarget ? "default" : "outline"} className="font-normal">
-          {MASTERY_LABELS_FR[item.mastery]}
-        </Badge>
-        <Badge variant="outline" className="font-normal">
-          Cible : {MASTERY_LABELS_FR[item.outcome.targetMastery]}
-        </Badge>
-        {declaration === "awaiting_validation" ? (
-          <Badge variant="outline" className="font-normal text-warning">
-            Déclarée — en attente de validation
+    <OutcomeRow
+      outcome={item.outcome}
+      {...(item.declaredLevel === undefined ? {} : { declaredLevel: item.declaredLevel })}
+      badges={
+        <>
+          <Badge variant="secondary" className="ml-2 font-normal">
+            {NATURE_LABELS_FR[item.outcome.nature]}
           </Badge>
+          <Badge variant={item.meetsTarget ? "default" : "outline"} className="ml-2 font-normal">
+            {MASTERY_LABELS_FR[item.mastery]}
+          </Badge>
+        </>
+      }
+    >
+      <div className="space-y-3">
+        {item.outcome.description ? (
+          <p className="text-sm text-muted-foreground">{item.outcome.description}</p>
         ) : null}
-      </div>
 
-      <p className="text-sm text-muted-foreground">{item.outcome.description}</p>
-      <Progress
-        value={planItem?.progressPercent ?? (item.meetsTarget ? 100 : 0)}
-        aria-label={`Avancement ${item.outcome.code}`}
-      />
-      <p className="text-xs text-muted-foreground">
-        {item.countedEvidence.length} preuve(s) retenue(s) · {item.pendingEvidence.length} en
-        attente
-      </p>
-
-      {planItem ? (
-        <p className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-          <CalendarDays className="size-4" aria-hidden />
-          {planItem.startsOn && planItem.dueOn ? (
-            <>
-              Montée en compétence : du {formatDate(planItem.startsOn)} au{" "}
-              {formatDate(planItem.dueOn)} · {planItem.milestoneLabel}
-              {planItem.officialDeadline ? (
-                <Badge variant="outline" className="font-normal">
-                  Échéance officielle
-                </Badge>
-              ) : null}
-            </>
-          ) : (
-            <>Non planifié : aucun jalon du rétroplanning ne porte cette compétence.</>
-          )}
-        </p>
-      ) : null}
-
-      {supports.length > 0 ? (
-        <Accordion type="single" collapsible>
-          <AccordionItem value="contenu" className="border-b-0">
-            <AccordionTrigger className="py-2 text-sm">
-              Voir le contenu ({supports.length})
-            </AccordionTrigger>
-            <AccordionContent>
-              <div className="space-y-4">
-                {supports.map((support) => (
-                  <section key={support.id}>
-                    <p className="mb-1 text-xs font-medium text-muted-foreground">
-                      {support.title}
-                    </p>
-                    {support.format === "video" ? (
-                      <ResourceMediaPlayer resourceId={support.id} title={support.title} />
-                    ) : (
-                      <ResourceTextPanel resourceId={support.id} />
-                    )}
-                  </section>
-                ))}
-              </div>
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
-      ) : null}
-
-      <div className="flex items-center gap-2">
-        <Checkbox
-          id={checkboxId}
-          checked={entry.selfDeclaredAcquired || item.meetsTarget}
-          disabled={item.meetsTarget}
-          onCheckedChange={(checked) => declareCompetence(item.outcome.id, checked === true)}
+        <Progress
+          value={planItem?.progressPercent ?? (item.meetsTarget ? 100 : 0)}
+          aria-label={`Avancement ${item.outcome.code}`}
         />
-        <Label htmlFor={checkboxId} className="text-sm font-normal">
-          {item.meetsTarget
-            ? "Acquise et validée par des preuves"
-            : "Je considère cette compétence acquise"}
-        </Label>
-      </div>
-      <DeclarationNotice item={item} />
-      {declaration === "awaiting_validation" ? (
         <p className="text-xs text-muted-foreground">
-          Tuteur notifié de votre déclaration (notification simulée, aucun envoi réel).
+          Cible : {MASTERY_LABELS_FR[item.outcome.targetMastery]} · {item.countedEvidence.length}{" "}
+          preuve(s) retenue(s) · {item.pendingEvidence.length} en attente
         </p>
-      ) : null}
 
-      {item.blockedBySelfDeclaration ? (
-        <p className="text-xs text-warning">
-          Auto-déclaration enregistrée : une validation par un tiers est nécessaire pour une
-          compétence en situation réelle.
-        </p>
-      ) : null}
+        {planItem ? (
+          <p className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+            <CalendarDays className="size-4" aria-hidden />
+            {planItem.startsOn && planItem.dueOn ? (
+              <>
+                Montée en compétence : du {formatDate(planItem.startsOn)} au{" "}
+                {formatDate(planItem.dueOn)} · {planItem.milestoneLabel}
+                {planItem.officialDeadline ? (
+                  <Badge variant="outline" className="font-normal">
+                    Échéance officielle
+                  </Badge>
+                ) : null}
+              </>
+            ) : (
+              <>Non planifié : aucun jalon du rétroplanning ne porte cette compétence.</>
+            )}
+          </p>
+        ) : null}
 
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        onClick={() => setOpenJournal((open) => !open)}
-        aria-expanded={openJournal}
-      >
-        {openJournal ? "Masquer mon journal" : "Commenter mon expérience et échanger"}
-      </Button>
+        {supports.map((support) => (
+          <section key={support.id}>
+            <p className="mb-1 text-xs font-medium text-muted-foreground">{support.title}</p>
+            {support.format === "video" ? (
+              <ResourceMediaPlayer resourceId={support.id} title={support.title} />
+            ) : (
+              <ResourceTextPanel resourceId={support.id} />
+            )}
+          </section>
+        ))}
 
-      {openJournal ? (
-        <div className="space-y-3">
-          <div className="space-y-1">
-            <Label htmlFor={`note-${item.outcome.id}`} className="text-xs">
-              Mon expérience d'acquisition
-            </Label>
-            <Textarea
-              id={`note-${item.outcome.id}`}
-              value={entry.experienceNote}
-              rows={3}
-              placeholder="Contexte, gestes réalisés, difficultés, ce qu'il me reste à consolider…"
-              onChange={(event) => saveExperienceNote(item.outcome.id, event.target.value)}
+        <DeclarationNotice item={item} />
+
+        {item.blockedBySelfDeclaration ? (
+          <p className="text-xs text-warning">
+            Déclaration enregistrée : une validation par un encadrant reste nécessaire pour une
+            compétence en situation réelle.
+          </p>
+        ) : null}
+
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => setOpenJournal((open) => !open)}
+          aria-expanded={openJournal}
+        >
+          {openJournal ? "Masquer mon journal" : "Commenter mon expérience et échanger"}
+        </Button>
+
+        {openJournal ? (
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <Label htmlFor={`note-${item.outcome.id}`} className="text-xs">
+                Mon expérience d'acquisition
+              </Label>
+              <Textarea
+                id={`note-${item.outcome.id}`}
+                value={entry.experienceNote}
+                rows={3}
+                placeholder="Contexte, gestes réalisés, difficultés, ce qu'il me reste à consolider…"
+                onChange={(event) => saveExperienceNote(item.outcome.id, event.target.value)}
+              />
+            </div>
+            <TutorThread
+              entry={entry}
+              onSend={(body) => sendJournalMessage(item.outcome.id, "learner", body)}
             />
           </div>
-          <TutorThread
-            entry={entry}
-            onSend={(body) => sendJournalMessage(item.outcome.id, "learner", body)}
-          />
-        </div>
-      ) : null}
-    </li>
+        ) : null}
+      </div>
+    </OutcomeRow>
   );
 }
 
@@ -311,11 +285,36 @@ export function CompetencesView() {
   if (isPending || !data) return <Skeleton className="h-80 w-full" />;
 
   const competences = data.progress.filter((p) => p.outcome.nature !== "knowledge");
-  const visible = filterCompetences(competences, filters, journalById);
+
+  /*
+   * LE JOURNAL DIT MAINTENANT LA VERITE SUR CE QUI EST DECLARE.
+   *
+   * `selfDeclaredAcquired` venait d'un magasin en memoire, alimente par une case
+   * a cocher locale. Depuis que la declaration passe par `declare_outcome_level`
+   * et vit en base, cette colonne mentait : le filtre « Declarees » et le compteur
+   * « Declarees, a valider » ignoraient les vraies declarations. On la reconcilie
+   * ici plutot que de changer la signature de `filterCompetences` — le journal
+   * garde ce qui lui appartient (la note d'experience, le fil avec le tuteur), et
+   * l'etat de declaration vient d'ou il doit venir.
+   */
+  const journalReconcilie = new Map(
+    competences.map((c) => {
+      const entree = journalById.get(c.outcome.id) ?? {
+        outcomeId: c.outcome.id,
+        selfDeclaredAcquired: false,
+        experienceNote: "",
+        messages: [],
+      };
+      const declare = c.declaredLevel !== undefined && c.declaredLevel !== "not_started";
+      return [c.outcome.id, { ...entree, selfDeclaredAcquired: declare }] as const;
+    }),
+  );
+
+  const visible = filterCompetences(competences, filters, journalReconcilie);
   const summary = summarizeProgress(competences);
   const planById = new Map(data.plan.items.map((i) => [i.id, i] as const));
   const declaredCount = competences.filter(
-    (c) => !c.meetsTarget && journalById.get(c.outcome.id)?.selfDeclaredAcquired,
+    (c) => !c.meetsTarget && journalReconcilie.get(c.outcome.id)?.selfDeclaredAcquired,
   ).length;
 
   /**
@@ -380,7 +379,7 @@ export function CompetencesView() {
       learnerName: person.fullName,
       generatedAt: new Date().toISOString(),
       items: visible,
-      journal: journalById,
+      journal: journalReconcilie,
     });
     const win = window.open("", "_blank");
     if (!win) return;
@@ -504,14 +503,14 @@ export function CompetencesView() {
                   </span>
                 </AccordionTrigger>
                 <AccordionContent>
-                  <ul className="space-y-4 pt-2">
+                  <ul className="pt-2">
                     {chapitre.items.map((item) => (
                       <CompetenceRow
                         key={item.outcome.id}
                         item={item}
                         planItem={planById.get(item.outcome.id)}
                         entry={
-                          journalById.get(item.outcome.id) ?? {
+                          journalReconcilie.get(item.outcome.id) ?? {
                             outcomeId: item.outcome.id,
                             selfDeclaredAcquired: false,
                             experienceNote: "",

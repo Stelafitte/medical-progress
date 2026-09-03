@@ -1,6 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import type { PlanCalendarEvent } from "@/application/acquisitionPlan";
 import type { AcquisitionPlanItem } from "@/domain/acquisitionPlan";
+import { OutcomeDeclarationSwitch } from "@/features/passport/OutcomeDeclarationSwitch";
 
 const KIND_LABELS: Record<PlanCalendarEvent["kind"], string> = {
   milestone: "Jalon",
@@ -83,10 +84,28 @@ export function CalendarView({
                         <summary className="cursor-pointer text-xs text-muted-foreground">
                           Voir les acquis de ce jalon
                         </summary>
-                        <ul className="mt-2 space-y-1">
+                        {/*
+                          « C'est dans cette section que l'apprenant doit
+                          pouvoir cliquer pour valider chaque acquis » (Stef,
+                          03/09). Le meme interrupteur que dans « Mes ressources »
+                          et « Mes competences » : un seul geste, une seule
+                          ecriture, quel que soit l'ecran d'ou on le fait.
+                        */}
+                        <ul className="mt-2 space-y-2">
                           {portes.map((item) => (
-                            <li key={item.id} className="text-sm">
-                              <span className="font-mono text-xs">{item.code}</span> {item.label}
+                            <li key={item.id} className="flex items-start gap-3 text-sm">
+                              <OutcomeDeclarationSwitch
+                                outcomeId={item.id}
+                                label={item.label}
+                                nature={item.nature}
+                                targetMastery={item.targetMastery}
+                                {...(item.declaredLevel === undefined
+                                  ? {}
+                                  : { declaredLevel: item.declaredLevel })}
+                              />
+                              <span className="min-w-0 flex-1">
+                                <span className="font-mono text-xs">{item.code}</span> {item.label}
+                              </span>
                             </li>
                           ))}
                         </ul>

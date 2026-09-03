@@ -8,6 +8,7 @@ import { MASTERY_LABELS_FR } from "@/domain/mastery";
 import type { OutcomeProgress } from "@/domain/mastery";
 import type { AcquisitionPlanItem } from "@/domain/acquisitionPlan";
 import { STAGE_LABELS_FR } from "@/domain/acquisitionPlan";
+import { OutcomeDeclarationSwitch } from "@/features/passport/OutcomeDeclarationSwitch";
 import type { Evidence, EvidenceKind, OutcomeNature } from "@/domain/types";
 
 const EVIDENCE_LABELS: Record<EvidenceKind, string> = {
@@ -67,6 +68,18 @@ function OutcomeCard({
             {item.outcome.code}
           </Badge>
           <NatureBadge nature={item.outcome.nature} />
+          {/*
+            Le meme interrupteur que partout ailleurs. La Liste est la vue par
+            defaut du passeport : c'est la que l'apprenant passe le plus de
+            temps, il doit pouvoir s'y declarer sans changer d'ecran.
+          */}
+          <OutcomeDeclarationSwitch
+            outcomeId={item.outcome.id}
+            label={item.outcome.label}
+            nature={item.outcome.nature}
+            targetMastery={item.outcome.targetMastery}
+            {...(item.declaredLevel === undefined ? {} : { declaredLevel: item.declaredLevel })}
+          />
           <MasteryBadge level={item.mastery} className="ms-auto" />
         </div>
         <CardTitle className="text-base">{item.outcome.label}</CardTitle>

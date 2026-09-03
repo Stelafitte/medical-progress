@@ -101,6 +101,7 @@ export function buildAcquisitionPlan(
       countedEvidence: progress.countedEvidence.length,
       pendingEvidence: progress.pendingEvidence.length,
       dependsOn,
+      ...(progress.declaredLevel === undefined ? {} : { declaredLevel: progress.declaredLevel }),
     };
   });
 

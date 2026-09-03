@@ -496,6 +496,8 @@ export interface AcquisitionPlanItem {
   readonly startsOn: IsoDateTime | null;
   readonly dueOn: IsoDateTime | null;
   readonly milestoneLabel: string | null;
+  /** Ce que l'apprenant a declare sur cet acquis, s'il l'a fait. */
+  readonly declaredLevel?: MasteryLevel;
   readonly officialDeadline: boolean;
   readonly requiresThirdPartyValidation: boolean;
   readonly countedEvidence: number;
