@@ -168,6 +168,8 @@ function CompetenceRow({
     <OutcomeRow
       outcome={item.outcome}
       {...(item.declaredLevel === undefined ? {} : { declaredLevel: item.declaredLevel })}
+      supportCount={supports.length}
+      supportKind={supports.some((s) => s.format === "video") ? "video" : "text"}
       badges={
         <>
           <Badge variant="secondary" className="ml-2 font-normal">

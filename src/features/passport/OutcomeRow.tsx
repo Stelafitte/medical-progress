@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { BookOpen, PlayCircle } from "lucide-react";
 
 import {
   Accordion,
@@ -6,6 +7,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { Badge } from "@/components/ui/badge";
 import type { MasteryLevel, Outcome } from "@/domain/types";
 import { OutcomeDeclarationSwitch } from "@/features/passport/OutcomeDeclarationSwitch";
 
@@ -29,15 +31,48 @@ export function OutcomeRow({
   outcome,
   declaredLevel,
   badges,
+  supportCount,
+  supportKind,
   children,
 }: {
   readonly outcome: Outcome;
   readonly declaredLevel?: MasteryLevel;
   /** Étiquettes affichées à la suite de l'intitulé, sur la ligne fermée. */
   readonly badges?: ReactNode;
+  /**
+   * Nombre de supports pédagogiques derrière cette ligne. Zéro = aucune
+   * pastille : promettre un contenu absent est pire que ne rien promettre.
+   */
+  readonly supportCount?: number;
+  /** Vidéo si au moins un support en est une, texte sinon. */
+  readonly supportKind?: "video" | "text";
   /** Ce que l'ouverture révèle : contenus, échéances, journal. */
   readonly children: ReactNode;
 }) {
+  /**
+   * LA PASTILLE DE CONTENU (03/09). Rien, sur la ligne fermée, ne disait qu'un
+   * cours se cachait derrière l'intitulé : le chevron d'un accordéon annonce
+   * qu'il y a « quelque chose », jamais qu'il y a un support à lire ou une
+   * vidéo à regarder. Un étudiant pressé passait à côté de tout le contenu.
+   *
+   * ELLE COMPTE, elle ne se contente pas d'exister : savoir qu'une
+   * connaissance est traitée par trois supports et une autre par un seul
+   * change ce qu'on ouvre en premier.
+   */
+  const pastille =
+    supportCount && supportCount > 0 ? (
+      <Badge variant="secondary" className="ml-2 gap-1 font-normal">
+        {supportKind === "video" ? (
+          <PlayCircle className="size-3" aria-hidden />
+        ) : (
+          <BookOpen className="size-3" aria-hidden />
+        )}
+        {supportCount}
+        <span className="sr-only">
+          {supportKind === "video" ? "vidéo(s) disponible(s)" : "support(s) de cours disponible(s)"}
+        </span>
+      </Badge>
+    ) : null;
   return (
     <li className="border-b border-border last:border-0">
       <div className="flex items-start gap-3 py-1">
@@ -55,6 +90,7 @@ export function OutcomeRow({
             <AccordionTrigger className="py-2 text-left">
               <span className="min-w-0 flex-1 pr-2 text-sm">
                 <span className="font-mono text-xs">{outcome.code}</span> {outcome.label}
+                {pastille}
                 {badges}
               </span>
             </AccordionTrigger>

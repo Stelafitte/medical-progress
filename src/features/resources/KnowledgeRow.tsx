@@ -32,6 +32,8 @@ export function KnowledgeRow({
     <OutcomeRow
       outcome={outcome}
       {...(declaredLevel === undefined ? {} : { declaredLevel })}
+      supportCount={supports.length}
+      supportKind="text"
       badges={
         outcome.knowledgeRank ? (
           <Badge variant="outline" className="ml-2 font-normal">
