@@ -2,6 +2,12 @@ import { useState } from "react";
 import { BookOpen, Globe, PlayCircle, Search } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { SectionHeading } from "@/components/section-heading";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,6 +23,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { formatPlayerDuration } from "@/domain/mediaLibrary";
 import { useLearnerPassport } from "@/features/dashboard/useLearnerPassport";
 import { ContentAiTutorPanel } from "@/features/resources/ContentAiTutorPanel";
+import { ResourceTextPanel } from "@/features/resources/ResourceTextPanel";
 import {
   AI_GROUNDING_NOTICE_FR,
   CITATION_KIND_LABELS_FR,
@@ -53,6 +60,58 @@ export function ResourcesView() {
   const resources = filterLearnerResources(data.resources, { search, format, outcomeId });
   const narratedDecks = searchResources(data.narratedDecks, search);
   const aiResources = searchResources(data.aiResources, search);
+
+  /**
+   * LES CONNAISSANCES DU PROGRAMME, repliees par chapitre.
+   *
+   * CE QUI MANQUAIT. Cet ecran listait les SUPPORTS — 26 fiches — et jamais les
+   * CONNAISSANCES. Les 313 acquis de nature `knowledge` du referentiel n'avaient
+   * aucune vue apprenant : l'etudiant ne pouvait pas savoir ce qu'il devait
+   * savoir. C'est l'objectif 2 enonce par Stef le 03/09.
+   *
+   * CHAQUE CONNAISSANCE PORTE SES SUPPORTS. Le lien vit dans
+   * `learning_resource_outcomes` ; on le retourne ici pour que l'etudiant parte
+   * de ce qu'il doit apprendre et trouve de quoi l'apprendre — et non l'inverse.
+   *
+   * LE RANG EST AFFICHE quand il existe : rang A et rang B ne se revisent pas de
+   * la meme facon, et c'est l'information que l'etudiant cherche en premier.
+   */
+  const HORS_CHAPITRE = "Hors chapitre";
+  const chapitreDe = new Map(data.themes.map((t) => [t.id, t] as const));
+  const termeRecherche = search.trim().toLowerCase();
+  const connaissances = outcomes
+    .filter((o) => o.nature === "knowledge")
+    .filter(
+      (o) =>
+        termeRecherche.length === 0 ||
+        `${o.code} ${o.label}`.toLowerCase().includes(termeRecherche),
+    );
+
+  const supportsParAcquis = new Map<string, string[]>();
+  for (const resource of data.resources) {
+    for (const id of resource.outcomeIds) {
+      supportsParAcquis.set(id, [...(supportsParAcquis.get(id) ?? []), resource.title]);
+    }
+  }
+
+  const chapitresConnaissances = [
+    ...connaissances
+      .reduce((acc, outcome) => {
+        const theme = outcome.themeId ? chapitreDe.get(outcome.themeId) : undefined;
+        const cle = theme?.id ?? HORS_CHAPITRE;
+        const groupe = acc.get(cle) ?? {
+          cle,
+          label: theme?.label ?? HORS_CHAPITRE,
+          // Sans chapitre, on passe en dernier plutot qu'en premier.
+          position: theme ? theme.position : Number.MAX_SAFE_INTEGER,
+          items: [] as typeof connaissances,
+        };
+        groupe.items = [...groupe.items, outcome];
+        acc.set(cle, groupe);
+        return acc;
+      }, new Map<string, { cle: string; label: string; position: number; items: typeof connaissances }>())
+      .values(),
+  ].sort((a, b) => a.position - b.position);
 
   return (
     <div className="space-y-8">
@@ -203,11 +262,11 @@ export function ResourcesView() {
                           asChild
                           variant="secondary"
                           className="min-h-11 w-full gap-2 sm:w-auto"
-                      >
-                        <a href={item.canonicalUrl} target="_blank" rel="noreferrer noopener">
-                          <Globe className="size-4" aria-hidden />
-                          {WEB_REFERENCE_CTA_FR}
-                        </a>
+                        >
+                          <a href={item.canonicalUrl} target="_blank" rel="noreferrer noopener">
+                            <Globe className="size-4" aria-hidden />
+                            {WEB_REFERENCE_CTA_FR}
+                          </a>
                         </Button>
                       ) : null}
                       {item.hasNarratedPlayer ? (
@@ -230,6 +289,69 @@ export function ResourcesView() {
           </ul>
         </section>
       ) : null}
+
+      <section className="space-y-3">
+        <SectionHeading
+          title="Les connaissances du programme"
+          level={2}
+          description="Ce que vous devez savoir, chapitre par chapitre. Dépliez un chapitre pour voir ses connaissances et les supports qui les traitent."
+        />
+        {chapitresConnaissances.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            Aucune connaissance ne correspond à cette recherche.
+          </p>
+        ) : (
+          <Accordion type="multiple" className="w-full">
+            {chapitresConnaissances.map((chapitre) => (
+              <AccordionItem key={chapitre.cle} value={chapitre.cle}>
+                <AccordionTrigger className="text-left">
+                  <span className="flex flex-1 items-center justify-between gap-3 pr-2">
+                    <span className="font-medium">{chapitre.label}</span>
+                    <Badge variant="outline" className="font-normal">
+                      {chapitre.items.length}
+                    </Badge>
+                  </span>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <ul className="space-y-3 pt-2">
+                    {chapitre.items.map((outcome) => {
+                      const supports = supportsParAcquis.get(outcome.id) ?? [];
+                      return (
+                        <li key={outcome.id} className="border-b border-border pb-3 last:border-0">
+                          <p className="text-sm">
+                            <span className="font-mono text-xs">{outcome.code}</span>{" "}
+                            {outcome.label}
+                            {outcome.knowledgeRank ? (
+                              <Badge variant="outline" className="ml-2 font-normal">
+                                rang {outcome.knowledgeRank}
+                              </Badge>
+                            ) : null}
+                          </p>
+                          {supports.length === 0 ? (
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              Aucun support ne traite encore cette connaissance.
+                            </p>
+                          ) : (
+                            <ul className="mt-1 flex flex-wrap gap-2">
+                              {supports.map((titre) => (
+                                <li key={titre}>
+                                  <Badge variant="secondary" className="font-normal">
+                                    {titre}
+                                  </Badge>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
+        )}
+      </section>
 
       <ul className="grid gap-4 md:grid-cols-2">
         {resources.map((resource) => (
@@ -258,6 +380,19 @@ export function ResourcesView() {
                     );
                   })}
                 </ul>
+                {/*
+                  Le contenu s'ouvre SUR DEMANDE : charger le texte des 22
+                  chapitres a l'affichage de la page ferait payer a l'etudiant
+                  plus d'un million de caracteres qu'il n'a pas demandes.
+                */}
+                <Accordion type="single" collapsible className="mt-3">
+                  <AccordionItem value="contenu" className="border-b-0">
+                    <AccordionTrigger className="py-2 text-sm">Lire le contenu</AccordionTrigger>
+                    <AccordionContent>
+                      <ResourceTextPanel resourceId={resource.id} />
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
               </CardContent>
             </Card>
           </li>

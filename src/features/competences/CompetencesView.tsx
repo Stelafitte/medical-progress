@@ -11,6 +11,12 @@
 import { useMemo, useState } from "react";
 import { CalendarDays, Download, MessageSquare, Search } from "lucide-react";
 import { SectionHeading } from "@/components/section-heading";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -55,7 +61,6 @@ import {
   useCompetenceJournal,
 } from "@/application/competenceJournalStore";
 
-
 function formatDate(iso?: string): string {
   if (!iso) return "—";
   return new Date(iso).toLocaleDateString("fr-FR", {
@@ -97,9 +102,7 @@ function TutorThread({
         <ul className="space-y-2">
           {entry.messages.map((message) => (
             <li key={message.id} className="text-xs">
-              <span className="font-medium">
-                {message.author === "learner" ? "Moi" : "Tuteur"}
-              </span>{" "}
+              <span className="font-medium">{message.author === "learner" ? "Moi" : "Tuteur"}</span>{" "}
               <span className="text-muted-foreground">
                 · {new Date(message.sentAt).toLocaleString("fr-FR")}
               </span>
@@ -174,14 +177,15 @@ function CompetenceRow({
         aria-label={`Avancement ${item.outcome.code}`}
       />
       <p className="text-xs text-muted-foreground">
-        {item.countedEvidence.length} preuve(s) retenue(s) · {item.pendingEvidence.length} en attente
+        {item.countedEvidence.length} preuve(s) retenue(s) · {item.pendingEvidence.length} en
+        attente
       </p>
 
       {planItem ? (
         <p className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
           <CalendarDays className="size-4" aria-hidden />
-          Montée en compétence : du {formatDate(planItem.startsOn)} au {formatDate(planItem.dueOn)} ·{" "}
-          {planItem.milestoneLabel}
+          Montée en compétence : du {formatDate(planItem.startsOn)} au {formatDate(planItem.dueOn)}{" "}
+          · {planItem.milestoneLabel}
           {planItem.officialDeadline ? (
             <Badge variant="outline" className="font-normal">
               Échéance officielle
@@ -277,6 +281,41 @@ export function CompetencesView() {
     (c) => !c.meetsTarget && journalById.get(c.outcome.id)?.selfDeclaredAcquired,
   ).length;
 
+  /**
+   * Les competences repliees PAR CHAPITRE.
+   *
+   * L'ecran rendait une liste a plat : sur ce programme, plusieurs centaines de
+   * lignes que l'apprenant devait parcourir au doigt. La forme arretee le 01/09
+   * est celle-ci — on voit les chapitres, on deplie celui qui interesse.
+   *
+   * LES ACQUIS SANS CHAPITRE NE SONT PAS PERDUS : ils tombent dans un groupe
+   * « Hors chapitre », place en dernier. Les faire disparaitre serait pire que
+   * de les montrer mal — c'est precisement ce qui rend visible le fait qu'ils
+   * attendent un rangement.
+   *
+   * L'ORDRE EST CELUI DU CONCEPTEUR (`position` du chapitre), pas l'ordre
+   * alphabetique : l'apprenant doit retrouver la progression telle qu'elle a
+   * ete pensee.
+   */
+  const HORS_CHAPITRE = "Hors chapitre";
+  const chapitreDe = new Map(data.themes.map((t) => [t.id, t] as const));
+  const parChapitre = new Map<string, { label: string; position: number; items: typeof visible }>();
+  for (const item of visible) {
+    const theme = item.outcome.themeId ? chapitreDe.get(item.outcome.themeId) : undefined;
+    const cle = theme?.id ?? HORS_CHAPITRE;
+    const groupe = parChapitre.get(cle) ?? {
+      label: theme?.label ?? HORS_CHAPITRE,
+      // Sans chapitre, on passe en dernier plutot qu'en premier.
+      position: theme ? theme.position : Number.MAX_SAFE_INTEGER,
+      items: [] as typeof visible,
+    };
+    groupe.items = [...groupe.items, item];
+    parChapitre.set(cle, groupe);
+  }
+  const chapitres = [...parChapitre.entries()]
+    .map(([cle, g]) => ({ cle, ...g }))
+    .sort((a, b) => a.position - b.position);
+
   const scheduled = competences
     .map((c) => planById.get(c.outcome.id))
     .filter((item): item is AcquisitionPlanItem => Boolean(item))
@@ -328,7 +367,13 @@ export function CompetencesView() {
         title="Liste de mes compétences"
         description="Une seule liste : la nature (simulée ou réelle) est un attribut de la compétence."
         action={
-          <Button type="button" variant="outline" size="sm" className="gap-2" onClick={exportJournal}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            onClick={exportJournal}
+          >
             <Download className="size-4" aria-hidden />
             Exporter mon journal (PDF)
           </Button>
@@ -375,13 +420,13 @@ export function CompetencesView() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {(
-                ["all", "at_target", "declared", "in_progress", "not_started"] as const
-              ).map((status) => (
-                <SelectItem key={status} value={status}>
-                  {COMPETENCE_STATUS_LABELS_FR[status]}
-                </SelectItem>
-              ))}
+              {(["all", "at_target", "declared", "in_progress", "not_started"] as const).map(
+                (status) => (
+                  <SelectItem key={status} value={status}>
+                    {COMPETENCE_STATUS_LABELS_FR[status]}
+                  </SelectItem>
+                ),
+              )}
             </SelectContent>
           </Select>
         </div>
@@ -395,24 +440,41 @@ export function CompetencesView() {
         ) : visible.length === 0 ? (
           <EmptyState>Aucune compétence ne correspond à cette recherche.</EmptyState>
         ) : (
-          <ul className="space-y-4">
-            {visible.map((item) => (
-              <CompetenceRow
-                key={item.outcome.id}
-                item={item}
-                planItem={planById.get(item.outcome.id)}
-                entry={journalById.get(item.outcome.id) ?? {
-                  outcomeId: item.outcome.id,
-                  selfDeclaredAcquired: false,
-                  experienceNote: "",
-                  messages: [],
-                }}
-              />
+          <Accordion type="multiple" className="w-full">
+            {chapitres.map((chapitre) => (
+              <AccordionItem key={chapitre.cle} value={chapitre.cle}>
+                <AccordionTrigger className="text-left">
+                  <span className="flex flex-1 items-center justify-between gap-3 pr-2">
+                    <span className="font-medium">{chapitre.label}</span>
+                    <Badge variant="outline" className="font-normal">
+                      {chapitre.items.length}
+                    </Badge>
+                  </span>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <ul className="space-y-4 pt-2">
+                    {chapitre.items.map((item) => (
+                      <CompetenceRow
+                        key={item.outcome.id}
+                        item={item}
+                        planItem={planById.get(item.outcome.id)}
+                        entry={
+                          journalById.get(item.outcome.id) ?? {
+                            outcomeId: item.outcome.id,
+                            selfDeclaredAcquired: false,
+                            experienceNote: "",
+                            messages: [],
+                          }
+                        }
+                      />
+                    ))}
+                  </ul>
+                </AccordionContent>
+              </AccordionItem>
             ))}
-          </ul>
+          </Accordion>
         )}
       </PanelCard>
-
 
       <PanelCard
         title="Calendrier de montée en compétence"
