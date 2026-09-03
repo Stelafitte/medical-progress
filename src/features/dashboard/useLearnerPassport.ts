@@ -116,6 +116,9 @@ export function useLearnerPassport() {
         progress,
         themes,
         selfReports,
+        // La promotion : son debut date tout le retroplanning, et c'est ce qui
+        // permet a la Vue d'ensemble de dire ou l'on en est dans le stage.
+        cohort,
         summary: summarizeProgress(progress),
       };
     },
