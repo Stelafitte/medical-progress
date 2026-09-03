@@ -11,6 +11,7 @@ import {
   type Outcome,
   type OutcomeNature,
 } from "./types";
+import { isValidated, type OutcomeSelfReport } from "./passport";
 
 export function masteryRank(level: MasteryLevel): number {
   return MASTERY_ORDER.indexOf(level);
@@ -58,30 +59,68 @@ export interface OutcomeProgress {
   readonly pendingEvidence: readonly Evidence[];
   readonly blockedBySelfDeclaration: boolean;
   readonly meetsTarget: boolean;
+  /**
+   * Le niveau que l'apprenant a POSE lui-meme, s'il l'a fait. Distinct de
+   * `mastery`, qui est le niveau retenu : sur une competence reelle non
+   * contresignee, l'apprenant a beau declarer « Autonome », `mastery` ne bouge
+   * pas. Garder les deux permet a l'ecran de dire « vous avez declare X, il
+   * manque la validation d'un encadrant » plutot que d'effacer sa declaration
+   * en silence.
+   */
+  readonly declaredLevel?: MasteryLevel;
 }
 
 /**
  * Progression déterministe (aucune IA) : le niveau croît avec le nombre de
- * preuves recevables, plafonné pour les compétences réelles sans validateur.
+ * preuves recevables, plafonné pour les compétences réelles sans validateur —
+ * ET, depuis le 03/09, avec ce que l'apprenant a lui-même déclaré.
+ *
+ * POURQUOI LA DÉCLARATION ENTRE ICI. La V1 DFASM est un passeport DÉCLARATIF :
+ * « l'étudiant POSE SON NIVEAU, il n'accumule pas de preuves » (décision du
+ * 31/08, écrite dans la migration `outcome_self_reports`). L'échelle par
+ * nombre de preuves supposait des épreuves ; le programme n'en a aucune. Sans
+ * ce branchement, cocher une connaissance n'aurait rien changé au passeport —
+ * exactement ce que Stef demande à voir se reporter.
+ *
+ * L'INVARIANT DU SOCLE SURVIT INTACT : sur une **compétence réelle**, une
+ * déclaration non contresignée ne fait PAS monter `mastery`. Elle est
+ * conservée dans `declaredLevel` et lève `blockedBySelfDeclaration` — l'état
+ * « à valider » du passeport. C'est la même règle que pour une preuve
+ * auto-déclarée, appliquée au même endroit.
+ *
+ * ON PREND LE MAXIMUM, jamais le dernier arrivé : une déclaration modeste ne
+ * doit pas effacer des preuves validées par un tiers, et des preuves absentes
+ * ne doivent pas effacer une déclaration.
  */
 export function computeOutcomeProgress(
   outcome: Outcome,
   evidence: readonly Evidence[],
+  selfReport?: OutcomeSelfReport,
 ): OutcomeProgress {
   const related = evidence.filter((e) => e.outcomeId === outcome.id);
   const counted = related.filter((e) => isCountableEvidence(e, outcome.nature));
   const pending = related.filter((e) => e.status === "submitted" || e.status === "draft");
-
-  // Auto-déclaration en attente d'un tiers : signalée, jamais comptée.
-  const blockedBySelfDeclaration =
-    outcome.nature === "real_competence" &&
-    related.some((e) => e.selfDeclared && !hasThirdPartyValidation(e));
 
   let mastery: MasteryLevel = "not_started";
   if (counted.length >= 1) mastery = "novice";
   if (counted.length >= 2) mastery = "intermediate";
   if (counted.length >= 3) mastery = "proficient";
   if (counted.length >= 4) mastery = "autonomous";
+
+  const declaration = selfReport?.outcomeId === outcome.id ? selfReport : undefined;
+  const declarationCompte =
+    declaration !== undefined && (outcome.nature !== "real_competence" || isValidated(declaration));
+  if (declarationCompte && masteryRank(declaration.declaredLevel) > masteryRank(mastery)) {
+    mastery = declaration.declaredLevel;
+  }
+
+  // Auto-déclaration en attente d'un tiers : signalée, jamais comptée.
+  const blockedBySelfDeclaration =
+    outcome.nature === "real_competence" &&
+    (related.some((e) => e.selfDeclared && !hasThirdPartyValidation(e)) ||
+      (declaration !== undefined &&
+        !isValidated(declaration) &&
+        declaration.declaredLevel !== "not_started"));
 
   return {
     outcome,
@@ -90,6 +129,7 @@ export function computeOutcomeProgress(
     pendingEvidence: pending,
     blockedBySelfDeclaration,
     meetsTarget: isAtLeast(mastery, outcome.targetMastery),
+    ...(declaration ? { declaredLevel: declaration.declaredLevel } : {}),
   };
 }
 

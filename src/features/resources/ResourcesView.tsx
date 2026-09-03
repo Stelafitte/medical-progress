@@ -12,18 +12,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatPlayerDuration } from "@/domain/mediaLibrary";
 import { useLearnerPassport } from "@/features/dashboard/useLearnerPassport";
 import { ContentAiTutorPanel } from "@/features/resources/ContentAiTutorPanel";
-import { ResourceTextPanel } from "@/features/resources/ResourceTextPanel";
+import { KnowledgeRow, type CoveringSupport } from "@/features/resources/KnowledgeRow";
 import {
   AI_GROUNDING_NOTICE_FR,
   CITATION_KIND_LABELS_FR,
@@ -31,33 +24,15 @@ import {
   WEB_REFERENCE_CTA_FR,
 } from "@/domain/contentAi";
 import { MEDIA_KIND_LABELS_FR } from "@/domain/mediaLibrary";
-import {
-  filterLearnerResources,
-  learnerResourceFormats,
-  searchResources,
-} from "@/domain/learnerLibrary";
-
-/** Aligné sur l'enum Postgres `resource_format` (voir domain/types.ts). */
-const FORMAT_FR: Record<string, string> = {
-  html: "Page web",
-  pdf: "Document PDF",
-  video: "Vidéo",
-  narrated_slides: "Diaporama commenté",
-  link: "Lien externe",
-  other: "Autre",
-};
+import { searchResources } from "@/domain/learnerLibrary";
 
 export function ResourcesView() {
   const { data, isPending } = useLearnerPassport();
   const [search, setSearch] = useState("");
-  const [format, setFormat] = useState<string>("all");
-  const [outcomeId, setOutcomeId] = useState<string>("all");
 
   if (isPending || !data) return <Skeleton className="h-64 w-full" />;
 
   const { outcomes } = data;
-  const formats = learnerResourceFormats(data.resources);
-  const resources = filterLearnerResources(data.resources, { search, format, outcomeId });
   const narratedDecks = searchResources(data.narratedDecks, search);
   const aiResources = searchResources(data.aiResources, search);
 
@@ -87,12 +62,21 @@ export function ResourcesView() {
         `${o.code} ${o.label}`.toLowerCase().includes(termeRecherche),
     );
 
-  const supportsParAcquis = new Map<string, string[]>();
+  /*
+   * L'identifiant du support, et plus seulement son titre : c'est lui qui
+   * ouvre `learning_resource_texts`. Sans lui, l'ecran savait nommer le
+   * chapitre qui traite une connaissance mais pas en montrer le contenu.
+   */
+  const supportsParAcquis = new Map<string, CoveringSupport[]>();
   for (const resource of data.resources) {
     for (const id of resource.outcomeIds) {
-      supportsParAcquis.set(id, [...(supportsParAcquis.get(id) ?? []), resource.title]);
+      supportsParAcquis.set(id, [
+        ...(supportsParAcquis.get(id) ?? []),
+        { id: resource.id, title: resource.title },
+      ]);
     }
   }
+  const niveauDeclare = new Map(data.selfReports.map((r) => [r.outcomeId, r.declaredLevel]));
 
   const chapitresConnaissances = [
     ...connaissances
@@ -115,21 +99,19 @@ export function ResourcesView() {
 
   return (
     <div className="space-y-8">
+      {/*
+        LE BADGE « SIMULÉ » ET LE BANDEAU « CATALOGUE SIMULÉ » ONT ÉTÉ RETIRÉS
+        LE 03/09 : ils ne disaient plus la vérité. Les connaissances, les
+        supports et leur texte intégral viennent de Supabase depuis le 30/08 et
+        le 03/09. Une mention « simulé » sur du réel est aussi trompeuse qu'une
+        absence de mention sur du simulé — et elle apprend à l'étudiant à ne
+        plus lire les avertissements.
+      */}
       <SectionHeading
         title="Mes ressources théoriques"
         level={1}
-        action={
-          <Badge variant="outline" className="font-normal">
-            Simulé
-          </Badge>
-        }
-        description="Cours et supports pour acquérir et consolider mes connaissances théoriques."
+        description="Ce que je dois savoir, chapitre par chapitre, avec le contenu des cours."
       />
-
-      <p className="rounded-md border border-border bg-secondary/40 px-4 py-3 text-sm text-muted-foreground">
-        Catalogue simulé : les ressources proviennent des repositories mock. La lecture réelle des
-        contenus et le suivi de consultation sont prévus après validation du schéma de données.
-      </p>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <div className="relative">
@@ -145,32 +127,6 @@ export function ResourcesView() {
             className="pl-9"
           />
         </div>
-        <Select value={format} onValueChange={setFormat}>
-          <SelectTrigger aria-label="Filtrer par format">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Tous les formats</SelectItem>
-            {formats.map((value) => (
-              <SelectItem key={value} value={value}>
-                {FORMAT_FR[value] ?? value}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={outcomeId} onValueChange={setOutcomeId}>
-          <SelectTrigger aria-label="Filtrer par acquis visé">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Tous les acquis</SelectItem>
-            {outcomes.map((outcome) => (
-              <SelectItem key={outcome.id} value={outcome.id}>
-                {outcome.code} · {outcome.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
       </div>
 
       {narratedDecks.length > 0 ? (
@@ -313,38 +269,17 @@ export function ResourcesView() {
                   </span>
                 </AccordionTrigger>
                 <AccordionContent>
-                  <ul className="space-y-3 pt-2">
-                    {chapitre.items.map((outcome) => {
-                      const supports = supportsParAcquis.get(outcome.id) ?? [];
-                      return (
-                        <li key={outcome.id} className="border-b border-border pb-3 last:border-0">
-                          <p className="text-sm">
-                            <span className="font-mono text-xs">{outcome.code}</span>{" "}
-                            {outcome.label}
-                            {outcome.knowledgeRank ? (
-                              <Badge variant="outline" className="ml-2 font-normal">
-                                rang {outcome.knowledgeRank}
-                              </Badge>
-                            ) : null}
-                          </p>
-                          {supports.length === 0 ? (
-                            <p className="mt-1 text-xs text-muted-foreground">
-                              Aucun support ne traite encore cette connaissance.
-                            </p>
-                          ) : (
-                            <ul className="mt-1 flex flex-wrap gap-2">
-                              {supports.map((titre) => (
-                                <li key={titre}>
-                                  <Badge variant="secondary" className="font-normal">
-                                    {titre}
-                                  </Badge>
-                                </li>
-                              ))}
-                            </ul>
-                          )}
-                        </li>
-                      );
-                    })}
+                  <ul className="pt-2">
+                    {chapitre.items.map((outcome) => (
+                      <KnowledgeRow
+                        key={outcome.id}
+                        outcome={outcome}
+                        supports={supportsParAcquis.get(outcome.id) ?? []}
+                        {...(niveauDeclare.has(outcome.id)
+                          ? { declaredLevel: niveauDeclare.get(outcome.id)! }
+                          : {})}
+                      />
+                    ))}
                   </ul>
                 </AccordionContent>
               </AccordionItem>
@@ -352,55 +287,6 @@ export function ResourcesView() {
           </Accordion>
         )}
       </section>
-
-      <ul className="grid gap-4 md:grid-cols-2">
-        {resources.map((resource) => (
-          <li key={resource.id}>
-            <Card className="h-full">
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <BookOpen className="size-4 text-primary" aria-hidden />
-                  <Badge variant="outline" className="font-normal">
-                    {FORMAT_FR[resource.format] ?? resource.format}
-                  </Badge>
-                </div>
-                <CardTitle className="text-base">{resource.title}</CardTitle>
-                <CardDescription>≈ {resource.estimatedMinutes} min</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ul className="flex flex-wrap gap-2">
-                  {resource.outcomeIds.map((id) => {
-                    const outcome = outcomes.find((o) => o.id === id);
-                    return (
-                      <li key={id}>
-                        <Badge variant="secondary" className="font-normal">
-                          {outcome ? `${outcome.code} · ${outcome.label}` : id}
-                        </Badge>
-                      </li>
-                    );
-                  })}
-                </ul>
-                {/*
-                  Le contenu s'ouvre SUR DEMANDE : charger le texte des 22
-                  chapitres a l'affichage de la page ferait payer a l'etudiant
-                  plus d'un million de caracteres qu'il n'a pas demandes.
-                */}
-                <Accordion type="single" collapsible className="mt-3">
-                  <AccordionItem value="contenu" className="border-b-0">
-                    <AccordionTrigger className="py-2 text-sm">Lire le contenu</AccordionTrigger>
-                    <AccordionContent>
-                      <ResourceTextPanel resourceId={resource.id} />
-                    </AccordionContent>
-                  </AccordionItem>
-                </Accordion>
-              </CardContent>
-            </Card>
-          </li>
-        ))}
-        {resources.length === 0 ? (
-          <li className="text-sm text-muted-foreground">Aucune ressource pour ce programme.</li>
-        ) : null}
-      </ul>
     </div>
   );
 }

@@ -62,9 +62,20 @@ export function useLearnerPassport() {
        */
       const themes = await data.outcomes.listOutcomeThemes(activeProgram.id);
 
+      /*
+       * CE QUE L'APPRENANT A DECLARE. Lu a part, pour la meme raison que les
+       * chapitres. Sans cette lecture, cocher un acquis ecrirait bien en base
+       * mais ne changerait RIEN a l'ecran ni au passeport — la boucle
+       * resterait ouverte et l'etudiant croirait que rien n'a ete enregistre.
+       */
+      const selfReports = await data.passport.listSelfReports(activeEnrollment.id);
+      const declarationParAcquis = new Map(selfReports.map((r) => [r.outcomeId, r] as const));
+
       const placements = mergePlacements(storedPlacements, localPlacements);
 
-      const progress = outcomes.map((outcome) => computeOutcomeProgress(outcome, evidence));
+      const progress = outcomes.map((outcome) =>
+        computeOutcomeProgress(outcome, evidence, declarationParAcquis.get(outcome.id)),
+      );
 
       const plan = buildAcquisitionPlan({
         progress,
@@ -104,6 +115,7 @@ export function useLearnerPassport() {
         aiResources,
         progress,
         themes,
+        selfReports,
         summary: summarizeProgress(progress),
       };
     },

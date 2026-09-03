@@ -26,18 +26,22 @@ import type {
   CurriculumVersion,
   CurriculumVersionId,
   Enrollment,
+  EnrollmentId,
   LearningResource,
   LearningResourceId,
+  MasteryLevel,
   Outcome,
   OutcomeId,
   OutcomeTheme,
   OutcomeThemeId,
   Person,
+  PersonId,
   Program,
   ProgramId,
   RoleAssignment,
   RoleScope,
 } from "@/domain/types";
+import type { OutcomeSelfReport } from "@/domain/passport";
 import type { AssessmentModality } from "@/domain/assessmentModality";
 import type {
   MediaAsset,
@@ -194,6 +198,33 @@ export function mapCohort(row: CohortRow, learnerCount: number): Cohort {
     learnerCount,
     status: row.status as CohortStatus,
     archivedAt: row.archived_at ?? null,
+  };
+}
+
+interface SelfReportRow {
+  enrollment_id: string;
+  outcome_id: string;
+  declared_level: MasteryLevel;
+  declared_at: string;
+  note: string;
+  validated_by: string | null;
+  validated_at: string | null;
+}
+
+/**
+ * `validatedBy` et `validatedAt` sont OMIS quand la validation est absente, et
+ * non poses a `null` : le domaine les declare optionnels, et `isValidated()`
+ * teste `validatedAt !== undefined`. Un `null` passerait ce test.
+ */
+function mapSelfReport(row: SelfReportRow): OutcomeSelfReport {
+  return {
+    enrollmentId: row.enrollment_id as EnrollmentId,
+    outcomeId: row.outcome_id as OutcomeId,
+    declaredLevel: row.declared_level,
+    declaredAt: row.declared_at,
+    note: row.note,
+    ...(row.validated_by ? { validatedBy: row.validated_by as PersonId } : {}),
+    ...(row.validated_at ? { validatedAt: row.validated_at } : {}),
   };
 }
 
@@ -1151,6 +1182,31 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
      * ne laisse voir à un apprenant que les supports publiés et visibles.
      */
     resources: {
+      /**
+       * Lien de lecture du fichier source, signé une heure.
+       *
+       * ON PREND LE PLUS ANCIEN `source` du support — le même que
+       * `loadSourceAssetsByResource` — et jamais un asset derivé : les images
+       * et l'audio d'un diaporama vivent dans la même table.
+       *
+       * Un support sans fichier, ou dont le lien echoue, rend `null` : l'ecran
+       * dit alors que le fichier n'est pas disponible, plutot que de proposer
+       * un lecteur vide.
+       */
+      async signResourceMediaUrl(resourceId) {
+        const { data, error } = await client
+          .from("learning_resource_assets")
+          .select("id")
+          .eq("resource_id", resourceId)
+          .eq("kind", "source")
+          .order("created_at", { ascending: true })
+          .limit(1);
+        assertNoSupabaseError(error);
+        const asset = ((data ?? []) as { id: string }[])[0];
+        if (!asset) return null;
+        const signed = await signAssetUrls(client, [asset.id]);
+        return signed.get(asset.id) ?? null;
+      },
       async listResources(programId: ProgramId) {
         const { data, error } = await client
           .from("learning_resources")
@@ -1449,6 +1505,44 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
           version: row.version,
           status: row.status,
         };
+      },
+    },
+    /**
+     * LE PASSEPORT DECLARATIF — branche sur Supabase le 03/09.
+     *
+     * CE QUI MANQUAIT. `declare_outcome_level` est en base depuis le 31/08 et
+     * l'adaptateur Supabase n'en portait AUCUNE implementation : le `passport`
+     * retombait sur `...mockDataAccess`, qui rend une declaration en memoire,
+     * perdue au rechargement, et une liste vide. L'ecran aurait donc coche, dit
+     * merci, et n'aurait rien ecrit — le pire des trois etats possibles.
+     */
+    passport: {
+      /**
+       * Poser ou corriger son niveau. TOUT PASSE PAR LA FONCTION : la table
+       * `outcome_self_reports` n'a aucune policy d'ecriture, c'est deliberé.
+       * La fonction verifie que l'inscription est bien celle de l'appelant et
+       * que l'acquis appartient au PARCOURS (retenu, non archive) ; l'ecran
+       * n'a donc aucune regle a redire ici.
+       */
+      async declareOutcomeLevel(input) {
+        const { data, error } = await client.rpc("declare_outcome_level", {
+          p_enrollment_id: input.enrollmentId,
+          p_outcome_id: input.outcomeId,
+          p_level: input.level,
+          p_note: input.note ?? "",
+        });
+        assertNoSupabaseError(error);
+        return mapSelfReport(data as SelfReportRow);
+      },
+      async listSelfReports(enrollmentId) {
+        const { data, error } = await client
+          .from("outcome_self_reports")
+          .select(
+            "enrollment_id, outcome_id, declared_level, declared_at, note, validated_by, validated_at",
+          )
+          .eq("enrollment_id", enrollmentId);
+        assertNoSupabaseError(error);
+        return ((data ?? []) as SelfReportRow[]).map(mapSelfReport);
       },
     },
     /**

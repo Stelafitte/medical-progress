@@ -53,7 +53,9 @@ import {
   type CompetenceListFilters,
   type CompetenceStatusFilter,
 } from "@/domain/competenceListView";
-import type { OutcomeNature } from "@/domain/types";
+import type { LearningResourceId, OutcomeNature } from "@/domain/types";
+import { ResourceMediaPlayer } from "@/features/resources/ResourceMediaPlayer";
+import { ResourceTextPanel } from "@/features/resources/ResourceTextPanel";
 import {
   declareCompetence,
   saveExperienceNote,
@@ -138,10 +140,13 @@ function CompetenceRow({
   item,
   planItem,
   entry,
+  supports,
 }: {
   item: OutcomeProgress;
   planItem: AcquisitionPlanItem | undefined;
   entry: CompetenceJournalEntry;
+  /** Supports qui traitent CETTE competence — les 4 videos, aujourd'hui. */
+  supports: readonly { id: LearningResourceId; title: string; format: string }[];
 }) {
   const [openJournal, setOpenJournal] = useState(false);
   const declaration = selfDeclarationState(entry, item.meetsTarget);
@@ -198,6 +203,32 @@ function CompetenceRow({
             <>Non planifié : aucun jalon du rétroplanning ne porte cette compétence.</>
           )}
         </p>
+      ) : null}
+
+      {supports.length > 0 ? (
+        <Accordion type="single" collapsible>
+          <AccordionItem value="contenu" className="border-b-0">
+            <AccordionTrigger className="py-2 text-sm">
+              Voir le contenu ({supports.length})
+            </AccordionTrigger>
+            <AccordionContent>
+              <div className="space-y-4">
+                {supports.map((support) => (
+                  <section key={support.id}>
+                    <p className="mb-1 text-xs font-medium text-muted-foreground">
+                      {support.title}
+                    </p>
+                    {support.format === "video" ? (
+                      <ResourceMediaPlayer resourceId={support.id} title={support.title} />
+                    ) : (
+                      <ResourceTextPanel resourceId={support.id} />
+                    )}
+                  </section>
+                ))}
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
       ) : null}
 
       <div className="flex items-center gap-2">
@@ -318,6 +349,26 @@ export function CompetencesView() {
     groupe.items = [...groupe.items, item];
     parChapitre.set(cle, groupe);
   }
+  /*
+   * AIGUILLAGE D'UN SUPPORT, regle posee le 03/09 : un support apparait dans
+   * l'onglet de la NATURE des acquis qu'il couvre. Les 4 videos ne couvrent que
+   * des competences — elles n'avaient donc rien a faire dans « Mes ressources »,
+   * ou elles trainaient, injouables. Un support mixte apparait des deux cotes,
+   * et c'est correct : il traite bien les deux.
+   */
+  const supportsParAcquis = new Map<
+    string,
+    { id: LearningResourceId; title: string; format: string }[]
+  >();
+  for (const resource of data.resources) {
+    for (const id of resource.outcomeIds) {
+      supportsParAcquis.set(id, [
+        ...(supportsParAcquis.get(id) ?? []),
+        { id: resource.id, title: resource.title, format: resource.format },
+      ]);
+    }
+  }
+
   const chapitres = [...parChapitre.entries()]
     .map(([cle, g]) => ({ cle, ...g }))
     .sort((a, b) => a.position - b.position);
@@ -467,6 +518,7 @@ export function CompetencesView() {
                             messages: [],
                           }
                         }
+                        supports={supportsParAcquis.get(item.outcome.id) ?? []}
                       />
                     ))}
                   </ul>

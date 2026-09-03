@@ -5,6 +5,7 @@
 import { describe, expect, it } from "vitest";
 import { computeOutcomeProgress, isCountableEvidence, summarizeProgress } from "../mastery";
 import type { Evidence, Outcome, Provenance } from "../types";
+import type { OutcomeSelfReport } from "../passport";
 
 const provenance: Provenance = { sourceSystem: "native" };
 
@@ -116,5 +117,77 @@ describe("compétence réelle et auto-déclaration", () => {
     const progress = computeOutcomeProgress(real, [validated]);
     expect(progress.mastery).toBe("novice");
     expect(progress.blockedBySelfDeclaration).toBe(false);
+  });
+});
+
+/**
+ * LA DECLARATION LIBRE (objectif 3 du passeport, 03/09). La V1 est declarative :
+ * « l'etudiant POSE SON NIVEAU, il n'accumule pas de preuves » (31/08). Ces
+ * tests tiennent les deux moities de la regle — la declaration compte, SAUF sur
+ * une competence reelle non contresignee.
+ */
+describe("declaration libre de l'apprenant", () => {
+  const declaration = (patch: Partial<OutcomeSelfReport> = {}): OutcomeSelfReport => ({
+    enrollmentId: "enr-test" as OutcomeSelfReport["enrollmentId"],
+    outcomeId: "out-test" as OutcomeSelfReport["outcomeId"],
+    declaredLevel: "intermediate",
+    declaredAt: "2026-09-03T00:00:00Z",
+    note: "",
+    ...patch,
+  });
+
+  it("fait monter le niveau sur une connaissance, sans aucune preuve", () => {
+    const progress = computeOutcomeProgress(outcome("knowledge"), [], declaration());
+    expect(progress.mastery).toBe("intermediate");
+    expect(progress.declaredLevel).toBe("intermediate");
+    expect(progress.meetsTarget).toBe(true);
+  });
+
+  it("fait monter le niveau sur une competence simulee", () => {
+    const progress = computeOutcomeProgress(outcome("simulated_competence"), [], declaration());
+    expect(progress.mastery).toBe("intermediate");
+    expect(progress.blockedBySelfDeclaration).toBe(false);
+  });
+
+  /** L'invariant du socle, teste par le chemin declaratif cette fois. */
+  it("ne fait PAS monter une competence reelle sans contresignature", () => {
+    const progress = computeOutcomeProgress(outcome("real_competence"), [], declaration());
+    expect(progress.mastery).toBe("not_started");
+    expect(progress.meetsTarget).toBe(false);
+    expect(progress.blockedBySelfDeclaration).toBe(true);
+    // La declaration n'est pas effacee pour autant : l'ecran doit pouvoir dire
+    // « vous avez declare X, il manque la validation d'un encadrant ».
+    expect(progress.declaredLevel).toBe("intermediate");
+  });
+
+  it("fait monter une competence reelle des qu'un tiers a contresigne", () => {
+    const progress = computeOutcomeProgress(
+      outcome("real_competence"),
+      [],
+      declaration({ validatedBy: "per-senior", validatedAt: "2026-09-04T00:00:00Z" }),
+    );
+    expect(progress.mastery).toBe("intermediate");
+    expect(progress.blockedBySelfDeclaration).toBe(false);
+  });
+
+  /** On prend le maximum : une declaration modeste n'efface pas des preuves. */
+  it("ne redescend jamais le niveau atteint par des preuves", () => {
+    const preuves = [evidence({ id: "e1" }), evidence({ id: "e2" }), evidence({ id: "e3" })];
+    const progress = computeOutcomeProgress(
+      outcome("knowledge"),
+      preuves,
+      declaration({ declaredLevel: "novice" }),
+    );
+    expect(progress.mastery).toBe("proficient");
+  });
+
+  it("ignore une declaration qui vise un autre acquis", () => {
+    const progress = computeOutcomeProgress(
+      outcome("knowledge"),
+      [],
+      declaration({ outcomeId: "out-autre" as OutcomeSelfReport["outcomeId"] }),
+    );
+    expect(progress.mastery).toBe("not_started");
+    expect(progress.declaredLevel).toBeUndefined();
   });
 });

@@ -596,6 +596,22 @@ export interface ResourceTextSegment {
 
 export interface LearningResourceRepository {
   listResources(programId: ProgramId): Promise<readonly LearningResource[]>;
+  /**
+   * Lien de LECTURE d'un support deposé en seau privé — une vidéo, un PDF.
+   * `null` quand le support n'a pas de fichier source, ou que le lien ne peut
+   * pas etre produit.
+   *
+   * POURQUOI PAS UNE URL DANS `LearningResource`. Un lien signé expire (une
+   * heure ici). Le porter dans l'objet du domaine obligerait à le regénérer à
+   * chaque lecture de la liste, pour les 26 supports, alors qu'on n'en regarde
+   * qu'un — et donnerait à l'écran un lien déjà périmé s'il l'affiche plus
+   * tard. Il se demande donc au moment de lire, et seulement là.
+   *
+   * Constat du 03/09 : les 4 vidéos étaient visibles et INJOUABLES. Aucune
+   * balise `video` nulle part, aucun appel à `signAssetUrls`, alors que la
+   * fonction existait depuis le 30/08.
+   */
+  signResourceMediaUrl(resourceId: LearningResourceId): Promise<string | null>;
   /** Crée un support (publication immédiate en v1). Autorisation vérifiée côté serveur. */
   createResource(input: CreateLearningResourceInput): Promise<LearningResource>;
   /**

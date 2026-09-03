@@ -452,6 +452,12 @@ export const mockDataAccess: DataAccess = {
     let counter = 0;
     return {
       listResources: (programId) => ok(resources.filter((r) => r.programId === programId)),
+      /*
+       * Aucun seau derriere le mock : rendre une fausse URL ferait afficher un
+       * lecteur qui ne lit rien. `null` fait dire a l'ecran ce qui est vrai —
+       * le fichier n'est pas atteignable ici.
+       */
+      signResourceMediaUrl: () => ok(null),
       storeResourceText: (resourceId, sourcePath, segments) => {
         // Remplacement, comme le RPC réel : un réimport ne doit pas empiler
         // les segments d'une version précédente.
