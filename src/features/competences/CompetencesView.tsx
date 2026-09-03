@@ -391,17 +391,27 @@ export function CompetencesView() {
 
   return (
     <div className="space-y-8">
+      {/*
+        LE BADGE « SIMULÉ » A ÉTÉ RETIRÉ LE 03/09 : les compétences viennent de
+        Supabase et la déclaration s'écrit vraiment en base. Ce qui reste simulé
+        — le fil avec le tuteur — porte sa propre mention, à l'endroit exact où
+        il se trouve. Une mention globale posée sur un écran majoritairement réel
+        apprend à l'étudiant à ne plus lire les avertissements.
+
+        LE CALENDRIER A QUITTÉ CET ÉCRAN pour le Passeport : la description ne
+        doit plus le promettre.
+      */}
       <SectionHeading
         title="Mes compétences"
         level={1}
-        action={<MockBadge label="Simulé" />}
-        description={`${activeProgram.name} — liste unique des compétences, avec leurs attributs, mon journal d'acquisition et mon calendrier.`}
+        description={`${activeProgram.name} — les compétences du programme, chapitre par chapitre, avec leurs contenus et mon journal d'acquisition.`}
       />
 
       <ScopeNotice>
-        Cocher une compétence est une auto-déclaration : elle est notifiée à votre tuteur, qui la
-        retrouve dans « Compétences à confirmer », mais elle ne vaut jamais acquisition d'une
-        compétence en situation réelle, qui exige une validation humaine par un tiers habilité.
+        Déclarer une compétence acquise est une auto-déclaration : elle est enregistrée et vous
+        suivez ainsi votre progression, mais elle ne vaut jamais acquisition d'une compétence en
+        situation réelle, qui exige la validation d'un encadrant. La notification au tuteur n'est
+        pas encore branchée.
       </ScopeNotice>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
