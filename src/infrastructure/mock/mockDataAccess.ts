@@ -606,6 +606,23 @@ export const mockDataAccess: DataAccess = {
     listInventory: () => ok(efx.legacyEcosInventory),
     listScenarios: (programId) => ok(efx.ecosScenarios.filter((s) => s.programId === programId)),
   },
+  /*
+   * Passeport en memoire : le mock ne conserve rien entre deux rechargements,
+   * mais il repond avec la meme forme que Supabase pour que les ecrans se
+   * developpent sans base.
+   */
+  passport: {
+    declareOutcomeLevel: (input) =>
+      ok({
+        enrollmentId: input.enrollmentId,
+        outcomeId: input.outcomeId,
+        declaredLevel: input.level,
+        declaredAt: new Date().toISOString(),
+        note: input.note ?? "",
+      }),
+    listSelfReports: () => ok([]),
+  },
+
   plan: {
     listPlanSchedule: (programId) => {
       const ids = new Set(fx.outcomes.filter((o) => o.programId === programId).map((o) => o.id));

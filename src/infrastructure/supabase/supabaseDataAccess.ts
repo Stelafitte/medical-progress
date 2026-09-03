@@ -1,4 +1,5 @@
 import type { SupabaseClient, User } from "@supabase/supabase-js";
+import type { PlanScheduleEntry } from "@/domain/acquisitionPlan";
 import type {
   CreateAssessmentModalityInput,
   CreateCohortInput,
@@ -1425,12 +1426,88 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
     /**
      * Rétroplanning réel d'une promotion.
      *
-     * `listPlanSchedule` reste délégué au mock : c'est le calendrier de
-     * démonstration du passeport, qui n'a pas encore été rebranché sur les
-     * jalons. Les cinq autres écrivent et lisent la vraie table.
+     * `listPlanSchedule` LIT MAINTENANT LES VRAIS JALONS (03/09).
+     *
+     * Il rendait le calendrier de demonstration du mock : l'apprenant voyait
+     * des echeances qui n'avaient aucun rapport avec sa promotion, alors que
+     * les 29 jalons construits le 01/09 dormaient dans `plan_milestones`.
+     * Constate par Stef en testant la vue apprenant : « pas logique pour les
+     * jalons ». Les autres fonctions du depot ecrivaient deja la vraie table —
+     * seule la lecture du passeport etait restee en arriere.
      */
     plan: {
       ...mockDataAccess.plan,
+      /**
+       * Projette les jalons d'une promotion dans la forme attendue par le
+       * passeport : une ligne par acquis, avec ses dates.
+       *
+       * LES DATES SONT CALCULEES, PAS STOCKEES. Un jalon porte un `week_offset`
+       * — un rang de semaine depuis le debut du stage — et non une date. C'est
+       * ce qui permet de rejouer le meme modele de retroplanning d'une
+       * promotion a l'autre (voir la migration `milestone_templates`). La date
+       * reelle se deduit donc du `starts_on` de la promotion, et d'elle seule.
+       *
+       * SANS PROMOTION, LISTE VIDE. Un programme n'a pas de calendrier : deux
+       * centuries du meme programme ont chacune le leur. Rendre le calendrier
+       * d'une promotion arbitraire serait un mensonge silencieux.
+       */
+      async listPlanSchedule(programId, cohortId) {
+        if (!cohortId) return [];
+
+        const { data: cohort, error: cohortError } = await client
+          .from("cohorts")
+          .select("starts_on, program_id")
+          .eq("id", cohortId)
+          .maybeSingle();
+        assertNoSupabaseError(cohortError);
+        const cohortRow = cohort as { starts_on: string; program_id: string } | null;
+        if (!cohortRow || cohortRow.program_id !== programId) return [];
+
+        const { data: milestones, error: milestonesError } = await client
+          .from("plan_milestones")
+          .select("id, label, week_offset, official")
+          .eq("cohort_id", cohortId);
+        assertNoSupabaseError(milestonesError);
+        const milestoneRows = (milestones ?? []) as {
+          id: string;
+          label: string;
+          week_offset: number;
+          official: boolean;
+        }[];
+        if (milestoneRows.length === 0) return [];
+
+        const { data: links, error: linksError } = await client
+          .from("plan_milestone_outcomes")
+          .select("milestone_id, outcome_id")
+          .in(
+            "milestone_id",
+            milestoneRows.map((row) => row.id),
+          );
+        assertNoSupabaseError(linksError);
+
+        const byId = new Map(milestoneRows.map((row) => [row.id, row]));
+        const start = new Date(`${cohortRow.starts_on}T00:00:00.000Z`);
+        const jour = 24 * 60 * 60 * 1000;
+
+        const entries: PlanScheduleEntry[] = [];
+        for (const link of (links ?? []) as { milestone_id: string; outcome_id: string }[]) {
+          const milestone = byId.get(link.milestone_id);
+          if (!milestone) continue;
+          const debut = new Date(start.getTime() + milestone.week_offset * 7 * jour);
+          // La semaine du jalon : elle s'ouvre le lundi de son rang et se ferme
+          // six jours plus tard. Une echeance ponctuelle afficherait un trait
+          // sans epaisseur dans le Gantt du passeport.
+          const fin = new Date(debut.getTime() + 6 * jour);
+          entries.push({
+            outcomeId: link.outcome_id as OutcomeId,
+            startsOn: debut.toISOString(),
+            dueOn: fin.toISOString(),
+            milestoneLabel: milestone.label,
+            official: milestone.official,
+          });
+        }
+        return entries;
+      },
       async listMilestones(cohortId) {
         /*
          * Deux lectures directes plutôt qu'une jointure imbriquée : la policy

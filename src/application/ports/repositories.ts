@@ -6,6 +6,7 @@
  * modifier l'UI ni la logique métier.
  */
 import type { PlanMilestone, PlanMilestoneId, PlanScheduleEntry } from "@/domain/acquisitionPlan";
+import type { OutcomeSelfReport } from "@/domain/passport";
 import type { CohortOpeningReport } from "@/domain/cohortOpening";
 import type {
   MilestoneTemplate,
@@ -768,7 +769,16 @@ export interface ApplyMilestoneTemplateInput {
 
 export interface AcquisitionPlanRepository {
   /** Calendrier de référence des acquis d'un programme. */
-  listPlanSchedule(programId: ProgramId): Promise<readonly PlanScheduleEntry[]>;
+  /**
+   * Calendrier de reference des acquis. La promotion est INDISPENSABLE : un
+   * jalon appartient a une promotion, pas a un programme — deux centuries du
+   * meme programme n'ont pas le meme retroplanning. Sans elle, la seule reponse
+   * honnete est une liste vide.
+   */
+  listPlanSchedule(
+    programId: ProgramId,
+    cohortId?: CohortId,
+  ): Promise<readonly PlanScheduleEntry[]>;
   /**
    * Le rétroplanning d'une PROMOTION, avec la composition de chaque jalon.
    *
@@ -881,6 +891,25 @@ export interface AuditRepository {
 }
 
 /** Façade unique injectée dans l'application. */
+/**
+ * Le passeport de l'apprenant : ce qu'il declare, et ce qu'un senior confirme.
+ *
+ * Depot distinct d'`EvidenceRepository` a dessein : une declaration n'est pas
+ * une preuve (voir `@/domain/passport`). Les fonctions existent en base depuis
+ * le 31/08 et n'etaient appelees par AUCUNE ligne de code jusqu'au 03/09.
+ */
+export interface PassportRepository {
+  /** Declare ou revise son niveau sur un acquis DU PARCOURS. Idempotent. */
+  declareOutcomeLevel(input: {
+    readonly enrollmentId: EnrollmentId;
+    readonly outcomeId: OutcomeId;
+    readonly level: MasteryLevel;
+    readonly note?: string;
+  }): Promise<OutcomeSelfReport>;
+  /** Les declarations d'une inscription. */
+  listSelfReports(enrollmentId: EnrollmentId): Promise<readonly OutcomeSelfReport[]>;
+}
+
 export interface DataAccess {
   readonly programs: ProgramRepository;
   readonly people: PeopleRepository;
@@ -895,6 +924,7 @@ export interface DataAccess {
   readonly aiCredits: AiCreditsRepository;
   readonly ecos: EcosMigrationRepository;
   readonly plan: AcquisitionPlanRepository;
+  readonly passport: PassportRepository;
   readonly stageLogs: StageLogRepository;
   readonly supervision: SupervisionRepository;
   readonly administration: AdministrationRepository;
