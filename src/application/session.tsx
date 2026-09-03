@@ -92,6 +92,14 @@ export interface SessionValue {
   setActiveRole(role: RoleAssignment | null): void;
   /** Revient au profil et au programme par défaut, et efface la persistance locale. */
   resetDemoSession(): void;
+  /**
+   * Relit la session depuis la source de données. À appeler après une écriture
+   * qui change ce que la session porte — la correction de sa propre fiche, par
+   * exemple : sans cela l'en-tête continuerait d'afficher l'ancien nom jusqu'au
+   * prochain rechargement complet de la page. Sans effet en session simulée,
+   * dont les données sont des fixtures immuables.
+   */
+  reloadSession(): Promise<void>;
   signOut(): Promise<void>;
   hasRoleInProgram(role: RoleName, programId: ProgramId): boolean;
 }
@@ -186,6 +194,7 @@ function MockSessionProvider({ children }: { children: ReactNode }) {
       setActivePersonId: selectPerson,
       setActiveRole: () => undefined,
       resetDemoSession,
+      reloadSession: async () => undefined,
       signOut: async () => undefined,
       hasRoleInProgram: (role, programId) =>
         roles.some(
@@ -308,6 +317,9 @@ function SupabaseSessionProvider({ children }: { children: ReactNode }) {
       setActivePersonId: () => undefined,
       setActiveRole,
       resetDemoSession: () => undefined,
+      reloadSession: async () => {
+        await load();
+      },
       signOut: async () => {
         if (!client) return;
         const { error: signOutError } = await client.auth.signOut();
@@ -321,7 +333,7 @@ function SupabaseSessionProvider({ children }: { children: ReactNode }) {
               ("programId" in assignment.scope && assignment.scope.programId === programId)),
         ),
     };
-  }, [activeProgramId, activeRoleKey, client, setActiveRole, state]);
+  }, [activeProgramId, activeRoleKey, client, load, setActiveRole, state]);
 
   if (error) {
     return (

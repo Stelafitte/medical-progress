@@ -10,10 +10,11 @@ import { ROLE_LABELS_FR, rolesInContext } from "@/domain/roles";
 import * as fx from "@/infrastructure/mock/fixtures";
 import { initials } from "@/lib/initials";
 import { AccountSecuritySection } from "./AccountSecuritySection";
+import { IdentityForm } from "./IdentityForm";
 import { PassportVisibilitySection } from "./PassportVisibilitySection";
 
 export function ProfileView() {
-  const { person, programs, enrollments, roles, isSimulated } = useSession();
+  const { person, programs, enrollments, roles, isSimulated, reloadSession } = useSession();
 
   const memberships = programs
     .map((program) => {
@@ -58,16 +59,27 @@ export function ProfileView() {
             </Badge>
           </div>
         </CardHeader>
-        <CardContent className="grid gap-6 sm:grid-cols-2">
-          <div className="space-y-1">
-            <Label htmlFor="profil-email">Adresse e-mail</Label>
-            <p
-              id="profil-email"
-              className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm"
-            >
-              {person.email}
-            </p>
-            <p className="text-xs text-muted-foreground">Lecture seule.</p>
+        <CardContent className="grid gap-6 md:grid-cols-2">
+          <div className="space-y-3">
+            <h3 className="text-sm font-medium">Mes informations</h3>
+            {isSimulated ? (
+              <>
+                <Button type="button" variant="outline" disabled className="justify-start">
+                  <Lock className="size-4" aria-hidden />
+                  Modifier ma fiche
+                </Button>
+                <p className="text-xs text-muted-foreground">
+                  Indisponible en session simulée : aucune fiche réelle derrière ce compte.
+                </p>
+              </>
+            ) : (
+              <IdentityForm
+                initialFullName={person.fullName}
+                email={person.email}
+                submitLabel="Enregistrer ma fiche"
+                onSaved={reloadSession}
+              />
+            )}
           </div>
           <div className="space-y-1">
             <Label htmlFor="profil-langue">Langue de l'interface</Label>
@@ -78,12 +90,6 @@ export function ProfileView() {
               Français (fr-FR)
             </p>
             <p className="text-xs text-muted-foreground">Préférence unique dans cette itération.</p>
-          </div>
-          <div className="sm:col-span-2">
-            <Button type="button" disabled variant="outline">
-              <Lock className="size-4" aria-hidden />
-              Modifier mon profil — Disponible après activation du compte
-            </Button>
           </div>
         </CardContent>
       </Card>

@@ -138,6 +138,7 @@ export const mockDataAccess: DataAccess = {
     };
   })(),
   people: {
+    updateOwnProfile: (input) => ok({ ...fx.people[0]!, fullName: input.fullName }),
     getPerson: (id) => ok(fx.people.find((p) => p.id === id)),
     listEnrollments: (personId) => ok(fx.enrollments.filter((e) => e.personId === personId)),
     listRoleAssignments: (personId) =>

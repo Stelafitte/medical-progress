@@ -218,6 +218,17 @@ export interface PeopleRepository {
   getPerson(id: PersonId): Promise<Person | undefined>;
   listEnrollments(personId: PersonId): Promise<readonly Enrollment[]>;
   listRoleAssignments(personId: PersonId): Promise<readonly RoleAssignment[]>;
+  /**
+   * Corrige SA PROPRE fiche. Aucun identifiant en argument : c'est la session
+   * qui designe la personne, jamais l'appelant — sinon l'ecran deviendrait le
+   * gardien du droit, alors que la policy `profiles_update_self` l'est deja.
+   *
+   * Constat du 03/09 : une personne activee n'avait AUCUN moyen de corriger son
+   * nom. Ni elle-meme (rien dans ce port), ni son gestionnaire, qui ne peut
+   * editer que le sas `people` — sans effet une fois la personne activee, et
+   * sans que rien ne le dise. Stef s'y est fait prendre.
+   */
+  updateOwnProfile(input: { readonly fullName: string }): Promise<Person>;
 }
 
 /**

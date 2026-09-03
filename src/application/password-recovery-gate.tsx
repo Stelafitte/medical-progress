@@ -1,8 +1,11 @@
 import { useEffect, useState, type ReactNode } from "react";
 
+import { getSelectedDataAccess } from "@/application/dataAccess";
 import { getBrowserSupabaseClient } from "@/infrastructure/supabase/client";
 import { SupabasePasswordForm } from "@/components/supabase-password-form";
 import { Button } from "@/components/ui/button";
+import { IdentityForm } from "@/features/profile/IdentityForm";
+import type { Person, PersonId } from "@/domain/types";
 
 /**
  * Lus AU CHARGEMENT DU MODULE, avant que quoi que ce soit ne monte.
@@ -16,13 +19,21 @@ import { Button } from "@/components/ui/button";
  *
  * POURQUOI À LA RACINE ET PAS DANS LE FOURNISSEUR DE SESSION. Le lien renvoie sur
  * l'URL de site configurée dans Supabase, c'est-à-dire la page d'accueil PUBLIQUE —
- * hors de `SessionProvider`, monté sous `/espace` seulement.
+ * hors de `SessionProvider`, monté sous `/espace` seulement. La fiche est donc
+ * relue ici directement par le port `people`, sans passer par la session.
  */
 const HASH = typeof window !== "undefined" ? window.location.hash + window.location.search : "";
 const RECOVERY_DANS_URL = HASH.includes("type=recovery");
 const LIEN_REFUSE = HASH.includes("error_code=") || HASH.includes("error=access_denied");
 
-type Phase = "verification" | "formulaire" | "lien_perime" | "aucun";
+/**
+ * Deux étapes, dans cet ordre, parce que c'est celui de la demande du 03/09 :
+ * « permet à l'apprenant de vérifier ses données et surtout de mettre un MDP ».
+ * L'identité d'abord — c'est le moment où la personne est attentive et où le nom
+ * qu'on lui a attribué à l'inscription lui saute aux yeux ; le mot de passe
+ * ensuite, parce que c'est lui qui referme la porte derrière elle.
+ */
+type Phase = "verification" | "identite" | "mot_de_passe" | "lien_perime" | "aucun";
 
 /**
  * Intercepte l'arrivée par lien de première connexion et impose la définition d'un
@@ -46,11 +57,16 @@ export function PasswordRecoveryGate({ children }: { children: ReactNode }) {
     // La session est le seul juge : le fragment d'URL ne prouve rien.
     if (phase === "verification") {
       void client.auth.getSession().then(({ data }) => {
-        setPhase(data.session ? "formulaire" : "lien_perime");
+        setPhase(data.session ? "identite" : "lien_perime");
       });
     }
     const { data } = client.auth.onAuthStateChange((event) => {
-      if (event === "PASSWORD_RECOVERY") setPhase("formulaire");
+      if (event !== "PASSWORD_RECOVERY") return;
+      // Ne jamais ramener en arrière quelqu'un déjà engagé dans le parcours :
+      // `updateUser` ré-émet des événements, et l'écran sauterait sur place.
+      setPhase((courante) =>
+        courante === "aucun" || courante === "verification" ? "identite" : courante,
+      );
     });
     return () => data.subscription.unsubscribe();
   }, [client, phase]);
@@ -84,8 +100,82 @@ export function PasswordRecoveryGate({ children }: { children: ReactNode }) {
     );
   }
 
-  if (phase === "formulaire" && client) {
+  if (phase === "identite") {
+    return <EtapeIdentite onDone={() => setPhase("mot_de_passe")} />;
+  }
+
+  if (phase === "mot_de_passe" && client) {
     return <SupabasePasswordForm client={client} onDone={() => setPhase("aucun")} />;
   }
   return <>{children}</>;
+}
+
+/**
+ * Première étape : « voici ce qu'on a de vous, corrigez si besoin ».
+ *
+ * ON N'IMPOSE RIEN. Le bouton « Ces informations sont correctes » passe à la
+ * suite sans écrire : la plupart des fiches sont justes, et bloquer la première
+ * connexion derrière une modification obligatoire ferait taper n'importe quoi.
+ * Enregistrer avance aussi — la personne n'a pas à valider deux fois.
+ */
+function EtapeIdentite({ onDone }: { onDone: () => void }) {
+  const client = getBrowserSupabaseClient();
+  const dataAccess = getSelectedDataAccess();
+  const [fiche, setFiche] = useState<Person | null>(null);
+  const [echec, setEchec] = useState(false);
+
+  useEffect(() => {
+    if (!client) return;
+    let vivant = true;
+    void (async () => {
+      try {
+        const {
+          data: { user },
+        } = await client.auth.getUser();
+        if (!user) throw new Error("Session absente.");
+        const person = await dataAccess.people.getPerson(user.id as PersonId);
+        if (!vivant) return;
+        if (person) setFiche(person);
+        else setEchec(true);
+      } catch {
+        if (vivant) setEchec(true);
+      }
+    })();
+    return () => {
+      vivant = false;
+    };
+  }, [client, dataAccess]);
+
+  // La fiche est un confort, pas un péage : si on n'arrive pas à la lire, on
+  // n'enferme personne dehors — on passe directement au mot de passe.
+  useEffect(() => {
+    if (echec) onDone();
+  }, [echec, onDone]);
+
+  if (!fiche) {
+    return <p className="p-6 text-sm text-muted-foreground">Chargement de votre fiche…</p>;
+  }
+
+  return (
+    <main className="mx-auto flex min-h-screen max-w-xl items-center px-6">
+      <div className="w-full space-y-2">
+        <h1 className="text-xl font-semibold">Vérifiez vos informations</h1>
+        <p className="text-sm text-muted-foreground">
+          Voici ce que nous avons de vous. Corrigez si besoin — vous pourrez y revenir à tout moment
+          depuis Mon profil. Vous choisirez votre mot de passe à l'étape suivante.
+        </p>
+        <div className="mt-6">
+          <IdentityForm
+            initialFullName={fiche.fullName}
+            email={fiche.email}
+            submitLabel="Enregistrer et continuer"
+            onSaved={onDone}
+          />
+        </div>
+        <Button type="button" variant="ghost" className="mt-2 min-h-11" onClick={onDone}>
+          Ces informations sont correctes
+        </Button>
+      </div>
+    </main>
+  );
 }

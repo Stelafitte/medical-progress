@@ -766,6 +766,34 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
     },
     people: {
       ...mockDataAccess.people,
+      /**
+       * Corrige sa propre fiche. La policy `profiles_update_self` decide : on ne
+       * reecrit aucune regle ici, on se contente de viser la ligne de l'appelant.
+       *
+       * `auth.getUser()` plutot qu'un identifiant passe en argument : un ecran
+       * qui transmettrait l'identifiant pourrait, par erreur ou par malice, en
+       * transmettre un autre. La RLS le refuserait — mais autant ne jamais poser
+       * la question.
+       */
+      async updateOwnProfile(input) {
+        const {
+          data: { user },
+          error: userError,
+        } = await client.auth.getUser();
+        if (userError || !user) throw new Error("Session expiree : reconnectez-vous.");
+
+        const nom = input.fullName.trim();
+        if (nom.length === 0) throw new Error("Le nom ne peut pas etre vide.");
+
+        const { data, error } = await client
+          .from("profiles")
+          .update({ full_name: nom, updated_at: new Date().toISOString() })
+          .eq("id", user.id)
+          .select("id, full_name, created_at, updated_at")
+          .single();
+        assertNoSupabaseError(error);
+        return mapPerson(data as ProfileRow, user);
+      },
       async getPerson(id) {
         const { data: userData, error: userError } = await client.auth.getUser();
         assertNoSupabaseError(userError);
