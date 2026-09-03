@@ -73,9 +73,11 @@ function OutcomeCard({
         <CardDescription>
           {item.outcome.description} · Cible : {MASTERY_LABELS_FR[item.outcome.targetMastery]}
           {planItem
-            ? ` · ${STAGE_LABELS_FR[planItem.stage]} · échéance ${new Date(
-                planItem.dueOn,
-              ).toLocaleDateString("fr-FR")}`
+            ? ` · ${STAGE_LABELS_FR[planItem.stage]}${
+                planItem.dueOn
+                  ? ` · échéance ${new Date(planItem.dueOn).toLocaleDateString("fr-FR")}`
+                  : " · non planifié"
+              }`
             : ""}
         </CardDescription>
       </CardHeader>

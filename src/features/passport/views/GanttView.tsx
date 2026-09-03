@@ -29,8 +29,21 @@ export function GanttView({
   const span = Math.max(end - start, 1);
   const pct = (iso: string) => ((new Date(iso).getTime() - start) / span) * 100;
 
+  /*
+   * UN GANTT NE PEUT DESSINER QUE CE QUI A DES DATES. Les acquis non planifies
+   * en sont donc exclus — mais ils ne disparaissent pas de l'ecran pour autant :
+   * ils sont comptes sous le diagramme et listes dans l'alternative textuelle.
+   * Les faire disparaitre en silence reviendrait a laisser croire que tout le
+   * programme est planifie.
+   */
+  const planifies = items.filter(
+    (item): item is AcquisitionPlanItem & { startsOn: string; dueOn: string } =>
+      Boolean(item.startsOn) && Boolean(item.dueOn),
+  );
+  const nonPlanifies = items.filter((item) => !item.startsOn || !item.dueOn);
+
   if (items.length === 0) {
-    return <p className="text-sm text-muted-foreground">Aucun élément planifié à afficher.</p>;
+    return <p className="text-sm text-muted-foreground">Aucun élément à afficher.</p>;
   }
 
   return (
@@ -42,7 +55,7 @@ export function GanttView({
             <span>{fmt(range.end)}</span>
           </p>
           <ul className="space-y-3">
-            {items.map((item) => {
+            {planifies.map((item) => {
               const left = Math.max(pct(item.startsOn), 0);
               const width = Math.max(pct(item.dueOn) - left, 2);
               return (
@@ -67,8 +80,20 @@ export function GanttView({
               );
             })}
           </ul>
+          {planifies.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Aucun acquis n'est encore posé sur un jalon du rétroplanning.
+            </p>
+          ) : null}
         </div>
       </div>
+
+      {nonPlanifies.length > 0 ? (
+        <p className="text-sm text-muted-foreground">
+          {nonPlanifies.length} acquis ne sont portés par aucun jalon : ils n'ont pas d'échéance et
+          n'apparaissent pas dans le diagramme.
+        </p>
+      ) : null}
 
       <details className="rounded-lg border border-border bg-card p-4">
         <summary className="cursor-pointer text-sm font-medium">
@@ -81,9 +106,11 @@ export function GanttView({
               .join(", ");
             return (
               <li key={item.id}>
-                <span className="font-mono text-xs">{item.code}</span> {item.label} — du{" "}
-                {fmt(item.startsOn)} au {fmt(item.dueOn)} · {item.milestoneLabel} ·{" "}
-                {STAGE_LABELS_FR[item.stage]}
+                <span className="font-mono text-xs">{item.code}</span> {item.label} —{" "}
+                {item.startsOn && item.dueOn
+                  ? `du ${fmt(item.startsOn)} au ${fmt(item.dueOn)} · ${item.milestoneLabel}`
+                  : "non planifié"}{" "}
+                · {STAGE_LABELS_FR[item.stage]}
                 {item.officialDeadline ? (
                   <Badge variant="outline" className="ms-2">
                     Échéance officielle

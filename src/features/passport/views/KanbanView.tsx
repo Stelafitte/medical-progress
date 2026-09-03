@@ -49,7 +49,9 @@ export function KanbanView({
                           aria-label={`Avancement de ${item.code} : ${item.progressPercent} % du niveau cible`}
                         />
                         <p className="text-xs text-muted-foreground">
-                          Échéance {new Date(item.dueOn).toLocaleDateString("fr-FR")}
+                          {item.dueOn
+                            ? `Échéance ${new Date(item.dueOn).toLocaleDateString("fr-FR")}`
+                            : "Non planifié"}
                           {item.officialDeadline ? " · échéance officielle" : ""}
                         </p>
                         <Button

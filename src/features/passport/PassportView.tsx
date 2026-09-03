@@ -76,7 +76,11 @@ export function PassportView() {
       (plan?.events ?? []).filter(
         (event) =>
           filter === "all" ||
-          (filter === "knowledge" ? event.nature === "knowledge" : event.nature !== "knowledge"),
+          // Un jalon porte souvent les deux natures : il reste visible des qu'il
+          // en porte une qui correspond au filtre.
+          event.natures.some((nature) =>
+            filter === "knowledge" ? nature === "knowledge" : nature !== "knowledge",
+          ),
       ),
     [plan, filter],
   );
@@ -84,7 +88,30 @@ export function PassportView() {
   if (isPending || !data || !plan) return <Skeleton className="h-96 w-full" />;
 
   const { progress, evidence, summary } = data;
-  const nextSteps = plan.items.filter((i) => i.stage !== "acquired").slice(0, 4);
+  /*
+   * « Que dois-je faire maintenant ? » repond avec des JALONS, pas avec des
+   * acquis. Un jalon porte souvent une dizaine d'acquis : les lister un par un
+   * remplissait la carte de quatre lignes portant le meme libelle et la meme
+   * date — le doublon vu le 03/09. On regroupe donc par jalon, on compte ce
+   * qu'il reste a y faire, et on garde les quatre prochains. Les items sont
+   * deja tries echeance croissante.
+   */
+  const prochainsJalons = new Map<string, { label: string; dueOn: string; restants: number }>();
+  for (const item of plan.items) {
+    if (item.stage === "acquired" || !item.dueOn || !item.milestoneLabel) continue;
+    const cle = `${item.milestoneLabel}|${item.dueOn}`;
+    const jalon = prochainsJalons.get(cle) ?? {
+      label: item.milestoneLabel,
+      dueOn: item.dueOn,
+      restants: 0,
+    };
+    jalon.restants += 1;
+    prochainsJalons.set(cle, jalon);
+  }
+  const nextSteps = [...prochainsJalons.entries()]
+    .map(([cle, jalon]) => ({ cle, ...jalon }))
+    .slice(0, 4);
+  const nonPlanifies = plan.items.filter((i) => !i.dueOn).length;
   const validatedCount = evidence.filter((e) => e.status === "validated").length;
 
   return (
@@ -116,17 +143,17 @@ export function PassportView() {
               <CardTitle className="text-base">Que dois-je faire maintenant ?</CardTitle>
               <CardDescription>
                 {nextSteps.length === 0
-                  ? "Tous les acquis du référentiel sont au niveau cible."
+                  ? "Aucun jalon à venir sur les acquis qui vous restent."
                   : "Prochains jalons à travailler :"}
               </CardDescription>
             </CardHeader>
             {nextSteps.length > 0 ? (
               <CardContent>
                 <ul className="space-y-1 text-sm text-muted-foreground">
-                  {nextSteps.map((item) => (
-                    <li key={item.id}>
-                      <span className="font-mono text-xs">{item.code}</span> {item.milestoneLabel} —{" "}
-                      {new Date(item.dueOn).toLocaleDateString("fr-FR")}
+                  {nextSteps.map((jalon) => (
+                    <li key={jalon.cle}>
+                      {jalon.label} — {new Date(jalon.dueOn).toLocaleDateString("fr-FR")} ·{" "}
+                      {jalon.restants} acquis à travailler
                     </li>
                   ))}
                 </ul>
@@ -168,6 +195,11 @@ export function PassportView() {
                 : "Compétences"}{" "}
             · {filteredItems.length} élément(s)
           </p>
+          {nonPlanifies > 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Dont {nonPlanifies} sans jalon — non planifié(s).
+            </p>
+          ) : null}
         </div>
 
         <Tabs value={view} onValueChange={(value) => setView(value as PassportViewMode)}>
@@ -194,7 +226,7 @@ export function PassportView() {
             <GanttView items={filteredItems} range={plan.range} />
           </TabsContent>
           <TabsContent value="calendar" className="mt-6">
-            <CalendarView events={filteredEvents} />
+            <CalendarView events={filteredEvents} items={plan.items} />
           </TabsContent>
         </Tabs>
       </section>

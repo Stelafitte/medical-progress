@@ -31,9 +31,20 @@ export interface PlanCalendarEvent {
   readonly date: IsoDateTime;
   readonly label: string;
   readonly kind: "milestone" | "evidence" | "validation" | "placement";
-  /** Permet les filtres Connaissances / Compétences simulées / réelles. */
-  readonly nature: OutcomeNature;
-  readonly itemId?: OutcomeId;
+  /**
+   * Natures concernees. AU PLURIEL depuis le 03/09 : un jalon porte souvent des
+   * connaissances ET des competences, et le reduire a une seule nature obligeait
+   * a en fabriquer un par acquis.
+   */
+  readonly natures: readonly OutcomeNature[];
+  /**
+   * Acquis portes par l'evenement. UN JALON EN PORTE PLUSIEURS — c'est tout le
+   * defaut corrige le 03/09 : le calendrier poussait un evenement par acquis,
+   * etiquete du libelle du jalon. Les 29 jalons de la promotion s'affichaient
+   * alors en 366 lignes, la meme repetee jusqu'a douze fois. Mesure en base :
+   * 29 jalons, 29 libelles distincts, aucun doublon. Le doublon etait ici.
+   */
+  readonly itemIds: readonly OutcomeId[];
 }
 
 export interface AcquisitionPlanPresentation {
@@ -43,13 +54,14 @@ export interface AcquisitionPlanPresentation {
   readonly range: { readonly start: IsoDateTime; readonly end: IsoDateTime };
 }
 
-const DAY = 24 * 60 * 60 * 1000;
-
-function fallbackSchedule(index: number, anchor: number): { startsOn: string; dueOn: string } {
-  const start = new Date(anchor + index * 21 * DAY);
-  const due = new Date(start.getTime() + 28 * DAY);
-  return { startsOn: start.toISOString(), dueOn: due.toISOString() };
-}
+/**
+ * `fallbackSchedule` A ETE SUPPRIMEE LE 03/09. Elle fabriquait, pour tout acquis
+ * absent du retroplanning, une date de debut a `ancrage + rang x 21 jours` et une
+ * echeance 28 jours plus tard. L'apprenant lisait donc « echeance 28/09/2026 » sur
+ * un acquis que personne n'avait planifie — une date inventee, plausible, et donc
+ * invisible. Un acquis sans jalon n'a plus de dates du tout : `startsOn` et `dueOn`
+ * valent `null`, les ecrans disent « non planifie ».
+ */
 
 export interface BuildAcquisitionPlanInput {
   readonly progress: readonly OutcomeProgress[];
@@ -65,11 +77,8 @@ export interface BuildAcquisitionPlanInput {
 export function buildAcquisitionPlan(
   input: BuildAcquisitionPlanInput,
 ): AcquisitionPlanPresentation {
-  const anchor = new Date(input.anchorDate).getTime();
-
-  const items: AcquisitionPlanItem[] = input.progress.map((progress, index) => {
+  const items: AcquisitionPlanItem[] = input.progress.map((progress) => {
     const entry = input.schedule.find((s) => s.outcomeId === progress.outcome.id);
-    const dates = entry ?? fallbackSchedule(index, anchor);
     const dependsOn = input.relations
       .filter((r) => r.kind === "prerequisite_of" && r.toOutcomeId === progress.outcome.id)
       .map((r) => r.fromOutcomeId);
@@ -84,9 +93,9 @@ export function buildAcquisitionPlan(
       mastery: progress.mastery,
       targetMastery: progress.outcome.targetMastery,
       progressPercent: progressPercent(progress.mastery, progress.outcome.targetMastery),
-      startsOn: dates.startsOn,
-      dueOn: dates.dueOn,
-      milestoneLabel: entry?.milestoneLabel ?? `Jalon ${progress.outcome.code}`,
+      startsOn: entry ? entry.startsOn : null,
+      dueOn: entry ? entry.dueOn : null,
+      milestoneLabel: entry ? entry.milestoneLabel : null,
       officialDeadline: entry?.official ?? false,
       requiresThirdPartyValidation: progress.outcome.nature === "real_competence",
       countedEvidence: progress.countedEvidence.length,
@@ -95,7 +104,17 @@ export function buildAcquisitionPlan(
     };
   });
 
-  items.sort((a, b) => a.dueOn.localeCompare(b.dueOn) || a.code.localeCompare(b.code));
+  /**
+   * Les acquis planifies d'abord, par echeance ; les non planifies ensuite, par
+   * code. Les mettre en tete parce qu'ils n'ont pas de date reviendrait a placer
+   * en premier ce qui n'est justement pas au programme de la semaine.
+   */
+  items.sort((a, b) => {
+    if (a.dueOn && b.dueOn) return a.dueOn.localeCompare(b.dueOn) || a.code.localeCompare(b.code);
+    if (a.dueOn) return -1;
+    if (b.dueOn) return 1;
+    return a.code.localeCompare(b.code);
+  });
 
   const tracks: readonly AcquisitionPlanTrack[] = (
     ["knowledge", "competence"] as readonly AcquisitionTrack[]
@@ -113,14 +132,38 @@ export function buildAcquisitionPlan(
 
   const events: PlanCalendarEvent[] = [];
 
+  /*
+   * UN EVENEMENT PAR JALON. La cle de regroupement est le couple (libelle,
+   * echeance) et non l'identifiant du jalon : le presenter ne recoit pas les
+   * jalons, il recoit leur projection sur les acquis. Deux jalons homonymes
+   * tombant la meme semaine seraient fondus — c'est acceptable, et la base
+   * l'interdit deja (29 jalons, 29 libelles distincts, mesure du 03/09).
+   */
+  const jalons = new Map<
+    string,
+    { date: IsoDateTime; label: string; itemIds: OutcomeId[]; natures: Set<OutcomeNature> }
+  >();
   for (const item of items) {
-    events.push({
-      id: `milestone-${item.id}`,
+    if (!item.dueOn || !item.milestoneLabel) continue;
+    const cle = `${item.milestoneLabel}|${item.dueOn}`;
+    const groupe = jalons.get(cle) ?? {
       date: item.dueOn,
       label: item.milestoneLabel,
+      itemIds: [],
+      natures: new Set<OutcomeNature>(),
+    };
+    groupe.itemIds.push(item.id);
+    groupe.natures.add(item.nature);
+    jalons.set(cle, groupe);
+  }
+  for (const [cle, groupe] of jalons) {
+    events.push({
+      id: `milestone-${cle}`,
+      date: groupe.date,
+      label: groupe.label,
       kind: "milestone",
-      nature: item.nature,
-      itemId: item.id,
+      natures: [...groupe.natures],
+      itemIds: groupe.itemIds,
     });
   }
 
@@ -132,8 +175,8 @@ export function buildAcquisitionPlan(
       date: ev.occurredAt,
       label: ev.title,
       kind: "evidence",
-      nature,
-      itemId: ev.outcomeId,
+      natures: [nature],
+      itemIds: [ev.outcomeId],
     });
     for (const validation of ev.validations) {
       events.push({
@@ -141,8 +184,8 @@ export function buildAcquisitionPlan(
         date: validation.decidedAt,
         label: `Validation — ${ev.title}`,
         kind: "validation",
-        nature,
-        itemId: ev.outcomeId,
+        natures: [nature],
+        itemIds: [ev.outcomeId],
       });
     }
   }
@@ -155,24 +198,29 @@ export function buildAcquisitionPlan(
       date: assignment.startsOn,
       label: `Début de stage — ${placement.name}`,
       kind: "placement",
-      nature: "real_competence",
+      natures: ["real_competence"],
+      itemIds: [],
     });
     events.push({
       id: `placement-end-${assignment.id}`,
       date: assignment.endsOn,
       label: `Fin de stage — ${placement.name}`,
       kind: "placement",
-      nature: "real_competence",
+      natures: ["real_competence"],
+      itemIds: [],
     });
   }
 
   events.sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id));
 
+  // Les acquis non planifies n'ont pas de date : ils ne tirent pas la plage.
   const dates = [
     ...items.map((i) => i.startsOn),
     ...items.map((i) => i.dueOn),
     ...events.map((e) => e.date),
-  ].sort();
+  ]
+    .filter((d): d is IsoDateTime => d !== null)
+    .sort();
 
   return {
     items,

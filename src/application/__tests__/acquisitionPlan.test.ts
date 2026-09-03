@@ -45,7 +45,7 @@ describe("presenter du plan d'acquisition", () => {
       .sort();
     const calendarIds = events
       .filter((e) => e.kind === "milestone")
-      .map((e) => e.itemId as string)
+      .flatMap((e) => e.itemIds as string[])
       .sort();
     const trackIds = tracks.flatMap((t) => t.items.map((i) => i.id)).sort();
 
@@ -72,5 +72,66 @@ describe("presenter du plan d'acquisition", () => {
   it("rattache les prérequis pour la vue Gantt", () => {
     const item = plan().items.find((i) => i.id === "out-echo-fevg");
     expect(item?.dependsOn).toContain("out-echo-coupes");
+  });
+
+  /**
+   * LE DEFAUT DU 03/09. Le calendrier poussait un evenement par ACQUIS etiquete
+   * du libelle du JALON : les 29 jalons de la promotion s'affichaient en
+   * 366 lignes, la meme repetee jusqu'a douze fois. Mesure en base le meme jour :
+   * 29 jalons, 29 libelles distincts, aucun doublon. Le doublon etait dans le
+   * presenter, pas dans les donnees.
+   */
+  it("ne pousse qu'un evenement par jalon, meme s'il porte plusieurs acquis", () => {
+    const { events } = plan();
+    const jalons = events.filter((e) => e.kind === "milestone");
+    const cles = jalons.map((e) => `${e.label}|${e.date}`);
+    expect(new Set(cles).size).toBe(jalons.length);
+  });
+
+  /**
+   * `fallbackSchedule` fabriquait `ancrage + rang x 21 jours` pour tout acquis
+   * absent du retroplanning : l'apprenant lisait une echeance que personne
+   * n'avait posee. Une date inventee est pire qu'une date absente — elle ne se
+   * voit pas.
+   */
+  it("n'invente aucune date pour un acquis absent du retroplanning", () => {
+    const outcomes = fx.outcomes.filter((o) => o.programId === programId);
+    const sansCalendrier = buildAcquisitionPlan({
+      progress: outcomes.map((o) => computeOutcomeProgress(o, [])),
+      evidence: [],
+      relations: [],
+      schedule: [],
+      placements: [],
+      assignments: [],
+      anchorDate: "2026-06-01T00:00:00Z",
+    });
+
+    expect(sansCalendrier.items).toHaveLength(outcomes.length);
+    expect(sansCalendrier.items.every((i) => i.startsOn === null)).toBe(true);
+    expect(sansCalendrier.items.every((i) => i.dueOn === null)).toBe(true);
+    expect(sansCalendrier.items.every((i) => i.milestoneLabel === null)).toBe(true);
+    expect(sansCalendrier.events.filter((e) => e.kind === "milestone")).toHaveLength(0);
+  });
+
+  /** Les acquis planifies passent devant : un acquis sans date n'est pas urgent. */
+  it("classe les acquis non planifies apres les acquis planifies", () => {
+    const outcomes = fx.outcomes.filter((o) => o.programId === programId);
+    const ids = new Set(outcomes.map((o) => o.id));
+    const complet = fx.planSchedule.filter((s) => ids.has(s.outcomeId));
+    const partiel = complet.slice(0, 1);
+
+    const { items } = buildAcquisitionPlan({
+      progress: outcomes.map((o) => computeOutcomeProgress(o, [])),
+      evidence: [],
+      relations: [],
+      schedule: partiel,
+      placements: [],
+      assignments: [],
+      anchorDate: "2026-06-01T00:00:00Z",
+    });
+
+    const premierSansDate = items.findIndex((i) => i.dueOn === null);
+    const dernierAvecDate = items.map((i) => i.dueOn !== null).lastIndexOf(true);
+    expect(premierSansDate).toBeGreaterThan(dernierAvecDate);
   });
 });

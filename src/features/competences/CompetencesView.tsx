@@ -184,13 +184,19 @@ function CompetenceRow({
       {planItem ? (
         <p className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
           <CalendarDays className="size-4" aria-hidden />
-          Montée en compétence : du {formatDate(planItem.startsOn)} au {formatDate(planItem.dueOn)}{" "}
-          · {planItem.milestoneLabel}
-          {planItem.officialDeadline ? (
-            <Badge variant="outline" className="font-normal">
-              Échéance officielle
-            </Badge>
-          ) : null}
+          {planItem.startsOn && planItem.dueOn ? (
+            <>
+              Montée en compétence : du {formatDate(planItem.startsOn)} au{" "}
+              {formatDate(planItem.dueOn)} · {planItem.milestoneLabel}
+              {planItem.officialDeadline ? (
+                <Badge variant="outline" className="font-normal">
+                  Échéance officielle
+                </Badge>
+              ) : null}
+            </>
+          ) : (
+            <>Non planifié : aucun jalon du rétroplanning ne porte cette compétence.</>
+          )}
         </p>
       ) : null}
 
@@ -315,11 +321,6 @@ export function CompetencesView() {
   const chapitres = [...parChapitre.entries()]
     .map(([cle, g]) => ({ cle, ...g }))
     .sort((a, b) => a.position - b.position);
-
-  const scheduled = competences
-    .map((c) => planById.get(c.outcome.id))
-    .filter((item): item is AcquisitionPlanItem => Boolean(item))
-    .sort((a, b) => a.dueOn.localeCompare(b.dueOn));
 
   /** Export local imprimable : « Enregistrer en PDF » depuis la boîte d'impression. */
   const exportJournal = () => {
@@ -473,40 +474,6 @@ export function CompetencesView() {
               </AccordionItem>
             ))}
           </Accordion>
-        )}
-      </PanelCard>
-
-      <PanelCard
-        title="Calendrier de montée en compétence"
-        description="Jalons issus du plan d'acquisition du programme, classés par échéance."
-        action={<MockBadge label="Simulé" />}
-      >
-        {scheduled.length === 0 ? (
-          <EmptyState>Aucun calendrier de montée en compétence défini.</EmptyState>
-        ) : (
-          <ul className="space-y-2">
-            {scheduled.map((item) => (
-              <li
-                key={item.id}
-                className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-2 last:border-0"
-              >
-                <span className="text-sm">
-                  <span className="font-medium">{item.code}</span> — {item.label}
-                </span>
-                <span className="flex items-center gap-2 text-xs text-muted-foreground">
-                  {formatDate(item.startsOn)} → {formatDate(item.dueOn)}
-                  <Badge variant="outline" className="font-normal">
-                    {NATURE_LABELS_FR[item.nature]}
-                  </Badge>
-                  {item.officialDeadline ? (
-                    <Badge variant="outline" className="font-normal">
-                      Officielle
-                    </Badge>
-                  ) : null}
-                </span>
-              </li>
-            ))}
-          </ul>
         )}
       </PanelCard>
     </div>

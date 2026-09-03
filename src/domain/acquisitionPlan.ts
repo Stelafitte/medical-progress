@@ -488,9 +488,14 @@ export interface AcquisitionPlanItem {
   readonly mastery: MasteryLevel;
   readonly targetMastery: MasteryLevel;
   readonly progressPercent: number;
-  readonly startsOn: IsoDateTime;
-  readonly dueOn: IsoDateTime;
-  readonly milestoneLabel: string;
+  /**
+   * `null` = NON PLANIFIE. Aucun jalon du retroplanning ne porte cet acquis.
+   * Avant le 03/09 le presenter fabriquait ici une date plausible ; l'apprenant
+   * lisait une echeance que personne n'avait posee, sans moyen de le savoir.
+   */
+  readonly startsOn: IsoDateTime | null;
+  readonly dueOn: IsoDateTime | null;
+  readonly milestoneLabel: string | null;
   readonly officialDeadline: boolean;
   readonly requiresThirdPartyValidation: boolean;
   readonly countedEvidence: number;
