@@ -243,10 +243,15 @@ Deno.serve(async (req) => {
       userContent,
     );
   } catch (e) {
-    return json(
-      { error: `Appel du fournisseur impossible : ${e instanceof Error ? e.message : String(e)}` },
-      502,
-    );
+    /*
+      ON NE RELAIE JAMAIS LE MESSAGE D'ERREUR DU FOURNISSEUR (04/09).
+      Deno inclut la valeur de l'en-tete fautif dans « Invalid header value »,
+      et cet en-tete porte la cle. Un message d'erreur verbatim est donc un
+      canal de fuite. Le detail part dans les journaux du serveur, jamais dans
+      la reponse HTTP.
+    */
+    console.error("ai-companion-chat / appel fournisseur", e);
+    return json({ error: "Le fournisseur IA n'a pas repondu correctement." }, 502);
   }
 
   // 6. GARDE-FOU N°3 : les citations sont confrontées aux passages envoyés.
@@ -357,6 +362,15 @@ async function callProvider(
   turns: readonly { role: string; content: string }[],
   userContent: string,
 ): Promise<{ answer: string; citations: number[]; inputTokens: number; outputTokens: number }> {
+  /*
+    Une cle contenant un espace, un retour a la ligne ou un caractere non ASCII
+    ne peut pas devenir un en-tete HTTP : `fetch` leve alors une erreur qui
+    CONTIENT la valeur. On refuse donc en amont, sans jamais citer la valeur.
+  */
+  if (!/^[\x21-\x7e]+$/.test(apiKey)) {
+    throw new Error("cle du fournisseur mal formee");
+  }
+
   if (provider === "anthropic") {
     const res = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -378,7 +392,10 @@ async function callProvider(
         ],
       }),
     });
-    if (!res.ok) throw new Error(`${provider} ${res.status} : ${(await res.text()).slice(0, 300)}`);
+    if (!res.ok) {
+      console.error("reponse anthropic", res.status, (await res.text()).slice(0, 300));
+      throw new Error(`anthropic ${res.status}`);
+    }
     const payload = await res.json();
     const text = payload?.content?.[0]?.text ?? "";
     const parsed = parseJsonAnswer(text);
@@ -420,7 +437,10 @@ async function callProvider(
     headers: { "content-type": "application/json", Authorization: `Bearer ${apiKey}` },
     body: JSON.stringify(requestBody),
   });
-  if (!res.ok) throw new Error(`${provider} ${res.status} : ${(await res.text()).slice(0, 300)}`);
+  if (!res.ok) {
+    console.error("reponse fournisseur", provider, res.status, (await res.text()).slice(0, 300));
+    throw new Error(`${provider} ${res.status}`);
+  }
   const payload = await res.json();
   const parsed = parseJsonAnswer(payload?.choices?.[0]?.message?.content ?? "");
   return {
@@ -446,7 +466,19 @@ function parseJsonAnswer(raw: string): { answer: string; citations: number[] } {
   }
 }
 
-/** Les deux tours partent ensemble : jamais une question sans sa réponse. */
+/**
+ * Les deux tours partent ensemble : jamais une question sans sa réponse.
+ *
+ * LE ROLE EST `learner`, PAS `user` (mesuré le 04/09). L'énumération en base
+ * est `('learner', 'assistant')`. La première version écrivait `user` : la
+ * valeur était refusée, l'insertion échouait, et comme l'erreur n'était pas
+ * vérifiée la fonction rendait 200 avec une réponse impeccable pendant que
+ * RIEN n'était écrit. Un faux succès parfait, exactement ce que ce dépôt
+ * traque partout ailleurs.
+ *
+ * L'ERREUR EST DONC REMONTÉE. Une écriture qu'on ne vérifie pas n'est pas une
+ * écriture, c'est un espoir.
+ */
 async function writeTurns(
   admin: ReturnType<typeof createClient>,
   threadId: string,
@@ -458,8 +490,8 @@ async function writeTurns(
   outputTokens: number,
   credits: number,
 ): Promise<void> {
-  await admin.from("ai_messages").insert([
-    { thread_id: threadId, role: "user", content: question, mode, citations: [], credits: 0 },
+  const { error } = await admin.from("ai_messages").insert([
+    { thread_id: threadId, role: "learner", content: question, mode, citations: [], credits: 0 },
     {
       thread_id: threadId,
       role: "assistant",
@@ -471,6 +503,10 @@ async function writeTurns(
       credits,
     },
   ]);
+  if (error) {
+    console.error("ai-companion-chat / ecriture des tours", error);
+    throw new Error(`Les tours n'ont pas pu etre enregistres : ${error.message}`);
+  }
   await admin
     .from("ai_threads")
     .update({ updated_at: new Date().toISOString() })
