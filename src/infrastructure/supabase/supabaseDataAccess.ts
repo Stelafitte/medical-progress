@@ -1005,6 +1005,23 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
         return ((data ?? []) as RoleAssignmentRow[]).map(mapRoleAssignment);
       },
       /**
+       * Les inscriptions RÉELLES du programme, pour tous les écrans
+       * d'administration. Auparavant servie par le mock, dont les fixtures
+       * portent des identifiants de programme littéraux (`prog-dfasm-cardio`) :
+       * filtrées sur un UUID réel, elles rendaient TOUJOURS une liste vide.
+       * La visibilité est bornée côté serveur par la policy
+       * `enrollments_select_scoped` : le titulaire, ou le personnel du
+       * programme (`is_program_staff`).
+       */
+      async listAllEnrollments(programId: ProgramId) {
+        const { data, error } = await client
+          .from("enrollments")
+          .select("id,person_id,program_id,cohort_id,status,created_at,updated_at")
+          .eq("program_id", programId);
+        assertNoSupabaseError(error);
+        return ((data ?? []) as EnrollmentRow[]).map(mapEnrollment);
+      },
+      /**
        * RPC `SECURITY DEFINER` : écrit atomiquement dans `role_assignments`
        * ET `audit_events` (motif obligatoire). Anti-escalade et vérification
        * des droits déjà appliquées côté serveur (voir la fonction SQL).

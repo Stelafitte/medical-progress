@@ -27,6 +27,26 @@ describe("sélection du backend de données", () => {
     expect(selected.isMock).toBe(false);
     expect(selected.programs.listPrograms).not.toBe(mockDataAccess.programs.listPrograms);
   });
+
+  /**
+   * Garde-fou contre le mode de panne le plus silencieux du dépôt : une
+   * surcharge PARTIELLE. `administration` commence par `...mockDataAccess
+   * .administration`, donc une méthode oubliee ne leve aucune erreur — elle
+   * rend du mock, et l'ecran affiche un vide credible.
+   */
+  it("surcharge les methodes d'administration branchees sur la base", () => {
+    const selected = selectDataAccess(
+      {
+        configured: true as const,
+        backend: "supabase" as const,
+        value: { url: "https://example.supabase.co", publishableKey: "x".repeat(24) },
+      },
+      {} as SupabaseClient,
+    );
+    for (const method of ["listPeople", "listAllRoleAssignments", "listAllEnrollments"] as const) {
+      expect(selected.administration[method]).not.toBe(mockDataAccess.administration[method]);
+    }
+  });
 });
 
 describe("mapping du socle Supabase", () => {
