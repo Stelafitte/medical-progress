@@ -6,11 +6,11 @@ import {
 } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { NatureBadge } from "@/components/mastery-badge";
 import { PLAN_STAGES, STAGE_LABELS_FR, type AcquisitionPlanItem } from "@/domain/acquisitionPlan";
 import { groupByTheme } from "@/domain/outcomeGrouping";
+import { PlanOutcomeRow } from "@/features/passport/PlanOutcomeRow";
 import type { OutcomeTheme } from "@/domain/types";
 
 /**
@@ -49,7 +49,7 @@ export function KanbanView({
           <section
             key={stage}
             aria-labelledby={headingId}
-            className="rounded-lg border border-border bg-card p-3"
+            className="min-w-0 rounded-lg border border-border bg-card p-3"
           >
             <h3 id={headingId} className="mb-3 flex items-center gap-2 text-sm font-semibold">
               {STAGE_LABELS_FR[stage]}
@@ -61,29 +61,36 @@ export function KanbanView({
               <Accordion type="multiple" className="w-full">
                 {chapitres.map((chapitre) => (
                   <AccordionItem key={chapitre.key} value={chapitre.key}>
-                    <AccordionTrigger className="py-2 text-left text-sm">
-                      <span className="flex flex-1 items-center justify-between gap-2 pr-2">
-                        <span className="min-w-0 truncate">{chapitre.label}</span>
+                    <AccordionTrigger className="min-w-0 py-2 text-left text-sm">
+                      <span className="flex min-w-0 flex-1 items-center justify-between gap-2 pr-2">
+                        <span className="min-w-0 break-words">{chapitre.label}</span>
                         <Badge variant="outline" className="font-normal">
                           {chapitre.items.length}
                         </Badge>
                       </span>
                     </AccordionTrigger>
                     <AccordionContent>
-                      <ul className="space-y-3 pt-1">
+                      {/*
+                        LA CARTE A LAISSE PLACE A LA LIGNE PARTAGEE (04/09).
+                        Elle portait l'avancement et l'echeance mais AUCUN
+                        contenu, et pas meme l'interrupteur de declaration :
+                        depuis le Kanban, un acquis se regardait sans pouvoir
+                        ni l'ouvrir ni le declarer. Rien n'est perdu — tout ce
+                        que portait la carte est passe SOUS l'intitule, avec le
+                        cours ou la video.
+                      */}
+                      <ul className="pt-1">
                         {chapitre.items.map((item) => (
-                          <li key={item.id}>
-                            <Card>
-                              <CardHeader className="gap-2 pb-3">
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <Badge variant="outline" className="font-mono text-xs">
-                                    {item.code}
-                                  </Badge>
-                                  <NatureBadge nature={item.nature} />
-                                </div>
-                                <CardTitle className="text-sm leading-snug">{item.label}</CardTitle>
-                              </CardHeader>
-                              <CardContent className="space-y-2 pb-4">
+                          <PlanOutcomeRow
+                            key={item.id}
+                            item={item}
+                            badges={
+                              <span className="ml-2 inline-flex">
+                                <NatureBadge nature={item.nature} />
+                              </span>
+                            }
+                            extra={
+                              <div className="space-y-2">
                                 <Progress
                                   value={item.progressPercent}
                                   aria-label={`Avancement de ${item.code} : ${item.progressPercent} % du niveau cible`}
@@ -102,9 +109,9 @@ export function KanbanView({
                                 >
                                   Proposer une modification
                                 </Button>
-                              </CardContent>
-                            </Card>
-                          </li>
+                              </div>
+                            }
+                          />
                         ))}
                       </ul>
                     </AccordionContent>

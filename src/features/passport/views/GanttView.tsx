@@ -7,6 +7,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import type { AcquisitionPlanItem } from "@/domain/acquisitionPlan";
 import { STAGE_LABELS_FR } from "@/domain/acquisitionPlan";
+import { PlanOutcomeRow } from "@/features/passport/PlanOutcomeRow";
 
 function fmt(iso: string) {
   return new Date(iso).toLocaleDateString("fr-FR", { day: "2-digit", month: "short" });
@@ -130,29 +131,38 @@ export function GanttView({
         <Accordion type="multiple" className="w-full">
           {jalons.map((jalon) => (
             <AccordionItem key={jalon.cle} value={jalon.cle}>
-              <AccordionTrigger className="py-2 text-left text-sm">
-                <span className="flex flex-1 items-center gap-2 pr-2">
-                  <span className="min-w-0 truncate font-medium">{jalon.label}</span>
-                  <span className="shrink-0 text-xs text-muted-foreground">
-                    {fmt(jalon.startsOn)} → {fmt(jalon.dueOn)}
+              <AccordionTrigger className="min-w-0 py-2 text-left text-sm">
+                <span className="flex min-w-0 flex-1 flex-col items-start gap-1 pr-2 sm:flex-row sm:items-center sm:gap-2">
+                  <span className="w-full min-w-0 break-words font-medium sm:w-auto sm:flex-1 sm:truncate">
+                    {jalon.label}
                   </span>
-                  {jalon.officielle ? (
-                    <Badge variant="outline" className="shrink-0 font-normal">
-                      Officielle
+                  <span className="flex w-full min-w-0 items-center gap-2 sm:w-auto">
+                    <span className="shrink-0 text-xs text-muted-foreground">
+                      {fmt(jalon.startsOn)} → {fmt(jalon.dueOn)}
+                    </span>
+                    {jalon.officielle ? (
+                      <Badge variant="outline" className="shrink-0 font-normal">
+                        Officielle
+                      </Badge>
+                    ) : null}
+                    <Badge variant="secondary" className="ms-auto shrink-0 font-normal">
+                      {jalon.items.length}
                     </Badge>
-                  ) : null}
-                  <Badge variant="secondary" className="ms-auto shrink-0 font-normal">
-                    {jalon.items.length}
-                  </Badge>
+                  </span>
                 </span>
               </AccordionTrigger>
               <AccordionContent>
-                <ul className="space-y-1 pt-1 text-sm">
+                <ul className="pt-1">
                   {jalon.items.map((item) => (
-                    <li key={item.id}>
-                      <span className="font-mono text-xs">{item.code}</span> {item.label} ·{" "}
-                      <span className="text-muted-foreground">{STAGE_LABELS_FR[item.stage]}</span>
-                    </li>
+                    <PlanOutcomeRow
+                      key={item.id}
+                      item={item}
+                      badges={
+                        <span className="ml-2 text-xs text-muted-foreground">
+                          {STAGE_LABELS_FR[item.stage]}
+                        </span>
+                      }
+                    />
                   ))}
                 </ul>
               </AccordionContent>
@@ -162,8 +172,8 @@ export function GanttView({
         {nonPlanifies.length > 0 ? (
           <Accordion type="multiple" className="w-full">
             <AccordionItem value="non-planifies">
-              <AccordionTrigger className="py-2 text-left text-sm">
-                <span className="flex flex-1 items-center justify-between gap-2 pr-2">
+              <AccordionTrigger className="min-w-0 py-2 text-left text-sm">
+                <span className="flex min-w-0 flex-1 items-center justify-between gap-2 pr-2">
                   <span>Sans jalon</span>
                   <Badge variant="outline" className="font-normal">
                     {nonPlanifies.length}
@@ -171,11 +181,9 @@ export function GanttView({
                 </span>
               </AccordionTrigger>
               <AccordionContent>
-                <ul className="space-y-1 pt-1 text-sm">
+                <ul className="pt-1">
                   {nonPlanifies.map((item) => (
-                    <li key={item.id}>
-                      <span className="font-mono text-xs">{item.code}</span> {item.label}
-                    </li>
+                    <PlanOutcomeRow key={item.id} item={item} />
                   ))}
                 </ul>
               </AccordionContent>
