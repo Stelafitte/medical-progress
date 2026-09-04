@@ -4,6 +4,12 @@ import { BookOpen, CalendarClock, PlayCircle, Target, TrendingUp } from "lucide-
 import { useSession } from "@/application/session";
 import { NatureBadge } from "@/components/mastery-badge";
 import { SectionHeading } from "@/components/section-heading";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -74,26 +80,61 @@ export function DashboardView() {
       : null;
 
   /*
-   * LE PROCHAIN JALON, et non « les trois premiers acquis ». On regroupe par
-   * jalon comme partout ailleurs depuis le 03/09, on ecarte ce qui est deja
-   * acquis, et on garde le plus proche. Les items sont deja tries par echeance.
+   * LA PROCHAINE ECHEANCE, ET NON UN SEUL JALON (Stef, 04/09).
+   *
+   * CE QUI N'ALLAIT PAS, mesure en base le 04/09 : le calcul groupait par le
+   * couple (libelle, echeance). Or plusieurs jalons partagent la meme date —
+   * la semaine 1 en porte QUATRE, pour 34 acquis (11 + 9 + 5 + 9). La carte
+   * n'en retenait qu'un, celui dont le code arrivait premier au tri, puis en
+   * affichait cinq acquis. Le calendrier et le Gantt, eux, raisonnent par
+   * echeance et montraient les quatre : « il y a une discordance entre le
+   * contenu de Mon prochain jalon et le contenu de Voir toute la chronologie ».
+   * Les deux ecrans lisaient pourtant le meme `plan.items` — c'etait un ecart
+   * de definition, pas de donnees.
+   *
+   * ON GROUPE DONC PAR ECHEANCE, puis par jalon a l'interieur. Le repli
+   * remplace la troncature a cinq : c'est deja la regle du Gantt et du Kanban,
+   * et elle ne ferme plus la porte aux acquis surnumeraires.
+   *
+   * UNE ECHEANCE DEPASSEE RESTE LA PROCHAINE tant qu'il y reste a faire. On ne
+   * la saute pas : c'est justement celle sur laquelle l'etudiant est en retard.
+   * L'etiquette le dit.
+   *
+   * `plan.items` est deja trie par echeance puis par code : le premier element
+   * non acquis porte donc la date la plus proche.
    */
-  const prochain = (() => {
-    for (const item of plan.items) {
-      if (item.stage === "acquired" || !item.dueOn || !item.milestoneLabel) continue;
-      const restants = plan.items.filter(
-        (autre) =>
-          autre.milestoneLabel === item.milestoneLabel &&
-          autre.dueOn === item.dueOn &&
-          autre.stage !== "acquired",
-      );
-      return { label: item.milestoneLabel, dueOn: item.dueOn, items: restants };
+  const echeance = (() => {
+    const premier = plan.items.find(
+      (item) => item.stage !== "acquired" && item.dueOn !== null && item.milestoneLabel !== null,
+    );
+    if (premier === undefined || premier.dueOn === null) return null;
+    const dueOn = premier.dueOn;
+    const restants = plan.items.filter(
+      (item) => item.dueOn === dueOn && item.stage !== "acquired" && item.milestoneLabel !== null,
+    );
+    const parJalon = new Map<
+      string,
+      { label: string; officielle: boolean; items: typeof restants }
+    >();
+    for (const item of restants) {
+      const label = item.milestoneLabel ?? "";
+      const groupe = parJalon.get(label) ?? {
+        label,
+        officielle: item.officialDeadline,
+        items: [] as typeof restants,
+      };
+      groupe.items = [...groupe.items, item];
+      parJalon.set(label, groupe);
     }
-    return null;
+    return {
+      dueOn,
+      total: restants.length,
+      jalons: [...parJalon.values()].sort((a, b) => a.label.localeCompare(b.label)),
+    };
   })();
 
   const jours =
-    prochain !== null ? Math.ceil((new Date(prochain.dueOn).getTime() - Date.now()) / JOUR) : null;
+    echeance !== null ? Math.ceil((new Date(echeance.dueOn).getTime() - Date.now()) / JOUR) : null;
 
   return (
     <div className="space-y-10">
@@ -120,10 +161,10 @@ export function DashboardView() {
           title="Mon prochain jalon"
           description="Ce que le programme attend de vous en premier, et ce qu'il vous reste à y faire."
         />
-        {prochain === null ? (
+        {echeance === null ? (
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Aucun jalon à venir</CardTitle>
+              <CardTitle className="text-base">Aucune échéance à venir</CardTitle>
               <CardDescription>
                 Tous les jalons du rétroplanning sont derrière vous, ou aucun ne porte encore
                 d'acquis à travailler.
@@ -135,33 +176,90 @@ export function DashboardView() {
             <CardHeader>
               <div className="flex flex-wrap items-center gap-2">
                 <CalendarClock className="size-5 text-primary" aria-hidden />
-                <CardTitle className="text-base">{prochain.label}</CardTitle>
+                <CardTitle className="text-base">{dateFr(echeance.dueOn)}</CardTitle>
                 <Badge variant="secondary" className="font-normal">
-                  {prochain.items.length} acquis à travailler
+                  {echeance.total} acquis à travailler
                 </Badge>
                 <Badge variant="outline" className="ms-auto font-normal">
                   {jours !== null && jours >= 0
                     ? `dans ${jours} jour(s)`
-                    : `échéance passée le ${dateFr(prochain.dueOn)}`}
+                    : `échéance passée depuis ${Math.abs(jours ?? 0)} jour(s)`}
                 </Badge>
               </div>
-              <CardDescription>Échéance : {dateFr(prochain.dueOn)}</CardDescription>
+              <CardDescription>
+                {echeance.jalons.length === 1
+                  ? "Un jalon arrive à échéance à cette date."
+                  : `${echeance.jalons.length} jalons arrivent à échéance à cette même date. Dépliez celui que vous voulez travailler.`}
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-              <ul className="space-y-2">
-                {prochain.items.slice(0, 5).map((item) => (
-                  <li key={item.id} className="flex flex-wrap items-center gap-2 text-sm">
-                    <span className="font-mono text-xs text-muted-foreground">{item.code}</span>
-                    <span className="min-w-0 flex-1">{item.label}</span>
-                    <NatureBadge nature={item.nature} />
-                  </li>
+              {/*
+                UN REPLI PAR JALON, ET PLUS DE TRONCATURE A CINQ. La date porte
+                jusqu'a 34 acquis : les couper a cinq laissait « … et 29
+                autre(s) », c'est-a-dire une porte fermee des lors que ces
+                lignes menent quelque part.
+
+                CHAQUE ACQUIS EST UN LIEN (Stef, 04/09) : « clique sur item
+                envoie dans le bon onglet et surtout directement sur le bon item
+                a voir et a valider ». L'ONGLET SE DEDUIT DE LA NATURE, pas d'un
+                reglage : une connaissance vit dans « Mes ressources », une
+                competence — simulee ou reelle — dans « Mes competences ». Meme
+                regle d'aiguillage que pour les supports. On passe le CODE et
+                non l'identifiant : lisible dans la barre d'adresse, unique par
+                programme, stable.
+              */}
+              <Accordion type="multiple" className="w-full">
+                {echeance.jalons.map((jalon) => (
+                  <AccordionItem key={jalon.label} value={jalon.label}>
+                    <AccordionTrigger className="min-w-0 py-2 text-left text-sm">
+                      <span className="flex min-w-0 flex-1 items-center gap-2 pr-2">
+                        <span className="min-w-0 break-words font-medium">{jalon.label}</span>
+                        {jalon.officielle ? (
+                          <Badge variant="outline" className="shrink-0 font-normal">
+                            Officielle
+                          </Badge>
+                        ) : null}
+                        <Badge variant="secondary" className="ms-auto shrink-0 font-normal">
+                          {jalon.items.length}
+                        </Badge>
+                      </span>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <ul className="space-y-1 pt-1">
+                        {jalon.items.map((item) => (
+                          <li key={item.id}>
+                            {item.nature === "knowledge" ? (
+                              <Link
+                                to="/espace/ressources"
+                                search={{ acquis: item.code }}
+                                className="flex min-h-11 flex-wrap items-center gap-2 rounded-md px-2 py-1 text-sm transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                              >
+                                <span className="font-mono text-xs text-muted-foreground">
+                                  {item.code}
+                                </span>
+                                <span className="min-w-0 flex-1">{item.label}</span>
+                                <NatureBadge nature={item.nature} />
+                              </Link>
+                            ) : (
+                              <Link
+                                to="/espace/competences"
+                                search={{ acquis: item.code }}
+                                className="flex min-h-11 flex-wrap items-center gap-2 rounded-md px-2 py-1 text-sm transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                              >
+                                <span className="font-mono text-xs text-muted-foreground">
+                                  {item.code}
+                                </span>
+                                <span className="min-w-0 flex-1">{item.label}</span>
+                                <NatureBadge nature={item.nature} />
+                              </Link>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    </AccordionContent>
+                  </AccordionItem>
                 ))}
-              </ul>
-              {prochain.items.length > 5 ? (
-                <p className="text-xs text-muted-foreground">
-                  … et {prochain.items.length - 5} autre(s) sur ce jalon.
-                </p>
-              ) : null}
+              </Accordion>
               <Button asChild variant="outline" className="min-h-11">
                 <Link to="/espace/passeport">Voir toute la chronologie</Link>
               </Button>

@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { BookOpen, PlayCircle } from "lucide-react";
 
 import {
@@ -8,6 +8,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import type { MasteryLevel, Outcome } from "@/domain/types";
 import { OutcomeDeclarationSwitch } from "@/features/passport/OutcomeDeclarationSwitch";
 
@@ -33,6 +34,7 @@ export function OutcomeRow({
   badges,
   supportCount,
   supportKind,
+  spotlight = false,
   children,
 }: {
   readonly outcome: Outcome;
@@ -46,9 +48,29 @@ export function OutcomeRow({
   readonly supportCount?: number;
   /** Vidéo si au moins un support en est une, texte sinon. */
   readonly supportKind?: "video" | "text";
+  /**
+   * VRAI quand on ARRIVE SUR CETTE LIGNE depuis un lien (Vue d'ensemble →
+   * « Mon prochain jalon »). Elle s'ouvre alors d'elle-même, se signale, et
+   * l'écran défile jusqu'à elle. Sans cela, un lien profond déposait
+   * l'étudiant en haut d'un écran de 368 lignes : il avait changé de page
+   * sans être arrivé nulle part.
+   */
+  readonly spotlight?: boolean;
   /** Ce que l'ouverture révèle : contenus, échéances, journal. */
   readonly children: ReactNode;
 }) {
+  /*
+   * On défile APRÈS la peinture (`requestAnimationFrame`) : avant, la ligne
+   * n'a pas encore sa hauteur ouverte et le navigateur viserait à côté.
+   */
+  const ancre = useRef<HTMLLIElement>(null);
+  useEffect(() => {
+    if (!spotlight) return;
+    const trame = window.requestAnimationFrame(() => {
+      ancre.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+    return () => window.cancelAnimationFrame(trame);
+  }, [spotlight]);
   /**
    * LA PASTILLE DE CONTENU (03/09). Rien, sur la ligne fermée, ne disait qu'un
    * cours se cachait derrière l'intitulé : le chevron d'un accordéon annonce
@@ -61,7 +83,10 @@ export function OutcomeRow({
    */
   const pastille =
     supportCount && supportCount > 0 ? (
-      <Badge variant="secondary" className="ml-2 gap-1 font-normal">
+      <Badge
+        variant="secondary"
+        className="ml-2 gap-1 border-transparent bg-success font-normal text-success-foreground"
+      >
         {supportKind === "video" ? (
           <PlayCircle className="size-3" aria-hidden />
         ) : (
@@ -74,7 +99,14 @@ export function OutcomeRow({
       </Badge>
     ) : null;
   return (
-    <li className="border-b border-border last:border-0">
+    <li
+      ref={ancre}
+      id={`acquis-${outcome.code}`}
+      className={cn(
+        "border-b border-border last:border-0",
+        spotlight ? "rounded-md bg-primary/5 ring-2 ring-primary/50" : null,
+      )}
+    >
       <div className="flex items-start gap-3 py-1">
         <div className="flex shrink-0 items-center pt-3">
           <OutcomeDeclarationSwitch
@@ -85,7 +117,12 @@ export function OutcomeRow({
             {...(declaredLevel === undefined ? {} : { declaredLevel })}
           />
         </div>
-        <Accordion type="single" collapsible className="min-w-0 flex-1">
+        <Accordion
+          type="single"
+          collapsible
+          className="min-w-0 flex-1"
+          {...(spotlight ? { defaultValue: "contenu" } : {})}
+        >
           <AccordionItem value="contenu" className="border-b-0">
             <AccordionTrigger className="py-2 text-left">
               <span className="min-w-0 flex-1 pr-2 text-sm">

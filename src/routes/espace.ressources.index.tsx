@@ -2,6 +2,11 @@ import { createFileRoute } from "@tanstack/react-router";
 import { ResourcesView } from "@/features/resources/ResourcesView";
 
 export const Route = createFileRoute("/espace/ressources/")({
+  // Lien profond depuis « Mon prochain jalon » : ?acquis=<code de l'acquis>
+  validateSearch: (search: Record<string, unknown>): { acquis?: string } => {
+    const value = search["acquis"];
+    return typeof value === "string" ? { acquis: value } : {};
+  },
   head: () => ({
     meta: [
       { title: "Mes ressources théoriques — Campus Santé Augmenté" },

@@ -9,6 +9,7 @@
  * preuves et une compétence réelle exige une validation humaine tierce.
  */
 import { useMemo, useState } from "react";
+import { useSearch } from "@tanstack/react-router";
 import { CalendarDays, Download, MessageSquare, Search } from "lucide-react";
 import { SectionHeading } from "@/components/section-heading";
 import {
@@ -141,10 +142,13 @@ function CompetenceRow({
   planItem,
   entry,
   supports,
+  spotlight = false,
 }: {
   item: OutcomeProgress;
   planItem: AcquisitionPlanItem | undefined;
   entry: CompetenceJournalEntry;
+  /** Arrivée d'un lien profond : la ligne s'ouvre et l'écran défile jusqu'à elle. */
+  spotlight?: boolean;
   /** Supports qui traitent CETTE competence — les 4 videos, aujourd'hui. */
   supports: readonly { id: LearningResourceId; title: string; format: string }[];
 }) {
@@ -167,6 +171,7 @@ function CompetenceRow({
   return (
     <OutcomeRow
       outcome={item.outcome}
+      spotlight={spotlight}
       {...(item.declaredLevel === undefined ? {} : { declaredLevel: item.declaredLevel })}
       supportCount={supports.length}
       supportKind={supports.some((s) => s.format === "video") ? "video" : "text"}
@@ -274,6 +279,8 @@ export function CompetencesView() {
   const { data, isPending } = useLearnerPassport();
   const journal = useCompetenceJournal();
   const [filters, setFilters] = useState<CompetenceListFilters>(EMPTY_COMPETENCE_FILTERS);
+  /** Lien profond depuis « Mon prochain jalon » : `?acquis=<code>`. */
+  const { acquis } = useSearch({ from: "/espace/competences" });
 
   const journalById = useMemo(
     () => new Map(journal.map((entry) => [entry.outcomeId, entry] as const)),
@@ -374,6 +381,13 @@ export function CompetencesView() {
   const chapitres = [...parChapitre.entries()]
     .map(([cle, g]) => ({ cle, ...g }))
     .sort((a, b) => a.position - b.position);
+
+  /** Le chapitre qui porte l'acquis visé — celui qu'il faut déplier à l'arrivée. */
+  const chapitreCible =
+    acquis === undefined
+      ? undefined
+      : chapitres.find((chapitre) => chapitre.items.some((item) => item.outcome.code === acquis))
+          ?.cle;
 
   /** Export local imprimable : « Enregistrer en PDF » depuis la boîte d'impression. */
   const exportJournal = () => {
@@ -504,7 +518,12 @@ export function CompetencesView() {
         ) : visible.length === 0 ? (
           <EmptyState>Aucune compétence ne correspond à cette recherche.</EmptyState>
         ) : (
-          <Accordion type="multiple" className="w-full">
+          <Accordion
+            type="multiple"
+            className="w-full"
+            key={acquis ?? "tous"}
+            defaultValue={chapitreCible === undefined ? [] : [chapitreCible]}
+          >
             {chapitres.map((chapitre) => (
               <AccordionItem key={chapitre.cle} value={chapitre.cle}>
                 <AccordionTrigger className="text-left">
@@ -521,6 +540,7 @@ export function CompetencesView() {
                       <CompetenceRow
                         key={item.outcome.id}
                         item={item}
+                        spotlight={acquis !== undefined && item.outcome.code === acquis}
                         planItem={planById.get(item.outcome.id)}
                         entry={
                           journalReconcilie.get(item.outcome.id) ?? {

@@ -23,14 +23,18 @@ export function KnowledgeRow({
   outcome,
   supports,
   declaredLevel,
+  spotlight = false,
 }: {
   readonly outcome: Outcome;
   readonly supports: readonly CoveringSupport[];
   readonly declaredLevel?: MasteryLevel;
+  /** Arrivée d'un lien profond : la ligne s'ouvre et l'écran défile jusqu'à elle. */
+  readonly spotlight?: boolean;
 }) {
   return (
     <OutcomeRow
       outcome={outcome}
+      spotlight={spotlight}
       {...(declaredLevel === undefined ? {} : { declaredLevel })}
       supportCount={supports.length}
       supportKind="text"

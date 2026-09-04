@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { BookOpen, Globe, PlayCircle, Search } from "lucide-react";
-import { Link } from "@tanstack/react-router";
+import { Link, useSearch } from "@tanstack/react-router";
 import { SectionHeading } from "@/components/section-heading";
 import {
   Accordion,
@@ -30,6 +30,14 @@ import { searchResources } from "@/domain/learnerLibrary";
 export function ResourcesView() {
   const { data, isPending } = useLearnerPassport();
   const [search, setSearch] = useState("");
+  /**
+   * L'ACQUIS VISÉ PAR UN LIEN PROFOND (`?acquis=<code>`), demandé par Stef le
+   * 04/09 : « clique sur item de Mes prochains jalons envoie dans le bon
+   * onglet et surtout directement sur le bon item à voir et à valider ».
+   * On désigne l'acquis par son CODE et non par son identifiant : il est
+   * unique par programme, lisible dans la barre d'adresse, et stable.
+   */
+  const { acquis } = useSearch({ from: "/espace/ressources/" });
 
   if (isPending || !data) return <Skeleton className="h-64 w-full" />;
 
@@ -97,6 +105,14 @@ export function ResourcesView() {
       }, new Map<string, { cle: string; label: string; position: number; items: typeof connaissances }>())
       .values(),
   ].sort((a, b) => a.position - b.position);
+
+  /** Le chapitre qui porte l'acquis visé — celui qu'il faut déplier à l'arrivée. */
+  const chapitreCible =
+    acquis === undefined
+      ? undefined
+      : chapitresConnaissances.find((chapitre) =>
+          chapitre.items.some((outcome) => outcome.code === acquis),
+        )?.cle;
 
   return (
     <div className="space-y-8">
@@ -258,7 +274,19 @@ export function ResourcesView() {
             Aucune connaissance ne correspond à cette recherche.
           </p>
         ) : (
-          <Accordion type="multiple" className="w-full">
+          /*
+            LA CLÉ CHANGE AVEC LA CIBLE, ce qui remonte l'accordéon et applique
+            `defaultValue`. Un accordéon contrôlé aurait exigé un état déclaré
+            avant le retour anticipé de chargement — donc avant que les
+            chapitres n'existent. Le remontage ne se produit qu'à l'arrivée
+            d'un lien, jamais pendant que l'étudiant navigue.
+          */
+          <Accordion
+            type="multiple"
+            className="w-full"
+            key={acquis ?? "tous"}
+            defaultValue={chapitreCible === undefined ? [] : [chapitreCible]}
+          >
             {chapitresConnaissances.map((chapitre) => (
               <AccordionItem key={chapitre.cle} value={chapitre.cle}>
                 <AccordionTrigger className="text-left">
@@ -275,6 +303,7 @@ export function ResourcesView() {
                       <KnowledgeRow
                         key={outcome.id}
                         outcome={outcome}
+                        spotlight={acquis !== undefined && outcome.code === acquis}
                         supports={supportsParAcquis.get(outcome.id) ?? []}
                         {...(niveauDeclare.has(outcome.id)
                           ? { declaredLevel: niveauDeclare.get(outcome.id)! }
