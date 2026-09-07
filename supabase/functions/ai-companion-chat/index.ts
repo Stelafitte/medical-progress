@@ -204,7 +204,18 @@ Deno.serve(async (req) => {
 
   // Rien de pertinent : on répond sans appeler le fournisseur. Coût ZÉRO.
   if (passages.length === 0) {
-    await writeTurns(adminClient, threadId, question, NOT_FOUND_FR, mode, [], 0, 0, 0);
+    const writeError = await writeTurns(
+      adminClient,
+      threadId,
+      question,
+      NOT_FOUND_FR,
+      mode,
+      [],
+      0,
+      0,
+      0,
+    );
+    if (writeError) return json({ error: writeError }, 500);
     return json({ answer: NOT_FOUND_FR, citations: [], grounded: false, credits: 0 }, 200);
   }
 
@@ -263,7 +274,7 @@ Deno.serve(async (req) => {
   const unique = [...new Set(valid)];
 
   if (unique.length === 0) {
-    await writeTurns(
+    const writeError = await writeTurns(
       adminClient,
       threadId,
       question,
@@ -274,6 +285,7 @@ Deno.serve(async (req) => {
       result.outputTokens,
       CREDITS_PER_TEXT_TURN,
     );
+    if (writeError) return json({ error: writeError }, 500);
     return json(
       { answer: NOT_FOUND_FR, citations: [], grounded: false, credits: CREDITS_PER_TEXT_TURN },
       200,
@@ -290,7 +302,7 @@ Deno.serve(async (req) => {
     };
   });
 
-  await writeTurns(
+  const writeError = await writeTurns(
     adminClient,
     threadId,
     question,
@@ -301,6 +313,7 @@ Deno.serve(async (req) => {
     result.outputTokens,
     CREDITS_PER_TEXT_TURN,
   );
+  if (writeError) return json({ error: writeError }, 500);
 
   return json(
     {
@@ -489,9 +502,26 @@ async function writeTurns(
   inputTokens: number,
   outputTokens: number,
   credits: number,
-): Promise<void> {
+): Promise<string | null> {
   const { error } = await admin.from("ai_messages").insert([
-    { thread_id: threadId, role: "learner", content: question, mode, citations: [], credits: 0 },
+    /*
+      LES DEUX OBJETS PORTENT LES MEMES CLES (mesure du 07/09). PostgREST
+      construit UNE seule liste de colonnes a partir de l'union des cles des
+      lignes envoyees, puis ecrit `null` la ou une cle manque : le `default 0`
+      de la colonne ne joue jamais. La ligne apprenant, qui omettait les deux
+      compteurs, faisait donc echouer l'insertion ENTIERE --
+      23502, null value in column "input_tokens" violates not-null constraint.
+    */
+    {
+      thread_id: threadId,
+      role: "learner",
+      content: question,
+      mode,
+      citations: [],
+      input_tokens: 0,
+      output_tokens: 0,
+      credits: 0,
+    },
     {
       thread_id: threadId,
       role: "assistant",
@@ -504,13 +534,22 @@ async function writeTurns(
     },
   ]);
   if (error) {
+    /*
+      ON REND L'ERREUR, ON NE LA LANCE PLUS (07/09). Le `throw` remontait au
+      runtime, qui repond un 500 SANS les en-tetes CORS : le navigateur n'y
+      voyait qu'un « Failed to fetch », et le message -- seul endroit ou la
+      cause etait ecrite -- ne vivait que dans les journaux du serveur. Une
+      erreur illisible depuis l'ecran ou elle se produit coute une journee a
+      diagnostiquer ; celle-ci en a coute une.
+    */
     console.error("ai-companion-chat / ecriture des tours", error);
-    throw new Error(`Les tours n'ont pas pu etre enregistres : ${error.message}`);
+    return `Les tours n'ont pas pu etre enregistres : ${error.message}`;
   }
   await admin
     .from("ai_threads")
     .update({ updated_at: new Date().toISOString() })
     .eq("id", threadId);
+  return null;
 }
 
 function json(payload: unknown, status: number): Response {
