@@ -178,6 +178,7 @@ describe("complétude d'une entrée", () => {
     stageLogId: "slog-test",
     templateId: dfasm.id,
     occurredAt: "2026-08-17T10:00:00Z",
+    narrative: "",
     values,
     photos: [],
   });
@@ -220,8 +221,17 @@ describe("workflow de validation", () => {
     expect(nextStageLogStatus("validated", "transmit", supervisor)).toBeNull();
   });
 
+  it("laisse valider un carnet resté en brouillon, puisque l'étudiant ne soumet rien", () => {
+    // Décision du 07/09 : plus de soumission. Exiger « soumis » rendait la
+    // validation inatteignable — aucun geste ne faisait plus passer le carnet
+    // dans cet état.
+    expect(nextStageLogStatus("draft", "validate", supervisor)).toBe("validated");
+    expect(nextStageLogStatus("draft", "request_revision", supervisor)).toBe("needs_revision");
+    expect(nextStageLogStatus("draft", "validate", learner)).toBeNull();
+  });
+
   it("interdit les transitions hors séquence", () => {
-    expect(nextStageLogStatus("draft", "validate", supervisor)).toBeNull();
+    expect(nextStageLogStatus("transmitted", "validate", supervisor)).toBeNull();
     expect(nextStageLogStatus("transmitted", "submit", learner)).toBeNull();
   });
 });

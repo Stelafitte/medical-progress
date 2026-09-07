@@ -69,7 +69,8 @@ export function StageLogBook() {
   const log = data?.logs[0];
   const effectiveStatus = status ?? log?.status ?? "draft";
 
-  if (!activeEnrollment) return <p className="text-sm text-muted-foreground">Aucune inscription active.</p>;
+  if (!activeEnrollment)
+    return <p className="text-sm text-muted-foreground">Aucune inscription active.</p>;
   if (isPending || !data) return <Skeleton className="h-64 w-full" />;
 
   if (!template) {
@@ -100,6 +101,7 @@ export function StageLogBook() {
       stageLogId: log?.id ?? "slog-local",
       templateId: template.id,
       occurredAt: new Date().toISOString(),
+      narrative: "",
       values,
       photos,
     };

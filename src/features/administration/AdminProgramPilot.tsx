@@ -262,19 +262,14 @@ export function AdminProgramPilot() {
             <PlacementSection
               programId={data.program.id}
               programName={data.program.name}
-              placements={mergePlacements(data.placements, localPlacements)}
-              localPlacements={localPlacements}
-              assignments={data.assignments}
+              placements={data.placements}
               enrollments={data.enrollments}
               people={data.people}
               cohorts={data.cohorts}
+              groups={data.groups}
+              stageLogs={data.stageLogs}
               templates={data.templates}
-              competencesExpected={Math.max(
-                1,
-                data.outcomes.filter((outcome) => outcome.nature === "real_competence").length,
-              )}
               cohortId={selectedId}
-              showCohortSelector={false}
               showCreation={false}
             />
           ) : null}

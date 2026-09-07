@@ -12,6 +12,7 @@ const shell = read("src/components/layout/app-shell.tsx");
 const programSwitcher = read("src/components/program-switcher.tsx");
 const stageLogBook = read("src/features/stage/StageLogBook.tsx");
 const mediaSection = read("src/features/administration/MediaLibrarySection.tsx");
+const stageLogWeek = read("src/features/stage/StageLogWeek.tsx");
 
 describe("navigation mobile", () => {
   it("expose un menu latéral déclenché par un bouton accessible", () => {
@@ -40,6 +41,20 @@ describe("zones tactiles", () => {
   it("empile les actions du carnet de stage sur mobile", () => {
     expect(stageLogBook).toContain("flex-col gap-2 sm:flex-row");
     expect(stageLogBook).toContain("w-full gap-2 sm:w-auto");
+  });
+
+  /**
+   * Le carnet de la semaine est l'ecran le plus contraint de la V1 : il est
+   * concu pour un telephone, en service. Deux invariants seulement, mais ils
+   * decident de son usage.
+   */
+  it("garde la case a cocher sur la ligne fermee, sans debordement", () => {
+    // Un geste par jour : la case est sur la ligne, jamais au fond d'un
+    // depliant -- meme regle que la liste du Passeport.
+    expect(stageLogWeek).toContain("flex items-start gap-3");
+    // Lecon du 04/09 : sans `min-w-0`, un libelle long pousse la ligne et fait
+    // deborder la page horizontalement.
+    expect(stageLogWeek).toContain("min-w-0");
   });
 });
 

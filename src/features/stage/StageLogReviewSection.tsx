@@ -1,35 +1,94 @@
-import { useQuery } from "@tanstack/react-query";
+/**
+ * Carnets vus par l'ENCADRANT, puis par l'administration du programme.
+ *
+ * Deux règles portées par ce fichier, et une seule autorité :
+ *
+ * - **Le périmètre n'est pas calculé ici.** L'écran demande les carnets du
+ *   programme ; c'est `supervises_enrollment()` qui décide, côté serveur, à
+ *   partir des GROUPES d'encadrement. Refiltrer à l'affichage redonnerait à
+ *   cette page une autorité qu'elle n'a pas, et masquerait un défaut de policy
+ *   au lieu de le révéler.
+ * - **La validation porte une PÉRIODE**, jamais une journée : une semaine,
+ *   trois, ou tout le stage. L'étudiant ne soumet rien — l'encadrant valide
+ *   quand il le décide.
+ */
+import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, Inbox, RotateCcw } from "lucide-react";
 import { SectionHeading } from "@/components/section-heading";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
 import { useDataAccess, useSession } from "@/application/session";
-import { STAGE_LOG_STATUS_LABELS_FR, nextStageLogStatus } from "@/domain/stageLog";
-import * as fx from "@/infrastructure/mock/fixtures";
+import { STAGE_LOG_STATUS_LABELS_FR, nextStageLogStatus, type StageLog } from "@/domain/stageLog";
+import type { Enrollment, Person } from "@/domain/types";
 
-/**
- * Vue mock « Carnets à valider » : un encadrant ne voit que les carnets
- * rattachés aux stages dont il est responsable.
- */
+const DATE_FORMAT = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long" });
+
+/** Nom réel de l'apprenant : `enrollments` fait le lien vers son compte. */
+function learnerNameOf(
+  log: StageLog,
+  enrollments: readonly Enrollment[],
+  people: readonly Person[],
+): string {
+  const personId = enrollments.find((e) => e.id === log.enrollmentId)?.personId;
+  return people.find((p) => p.id === personId)?.fullName ?? "Apprenant";
+}
+
+/** Dernier jour déjà couvert par une validation acceptée. */
+function lastValidatedDay(log: StageLog): string | null {
+  const covered = log.validations
+    .filter((validation) => validation.decision === "validated")
+    .map((validation) => validation.coversTo);
+  if (covered.length === 0) return null;
+  return covered.reduce((latest, current) => (current > latest ? current : latest));
+}
+
+function addOneDay(day: string): string {
+  const date = new Date(`${day}T00:00:00`);
+  date.setDate(date.getDate() + 1);
+  const month = `${date.getMonth() + 1}`.padStart(2, "0");
+  const dayOfMonth = `${date.getDate()}`.padStart(2, "0");
+  return `${date.getFullYear()}-${month}-${dayOfMonth}`;
+}
+
 export function StageLogsToValidate() {
   const dataAccess = useDataAccess();
-  const { person, rolesInActiveProgram, activeProgram } = useSession();
+  const queryClient = useQueryClient();
+  const { rolesInActiveProgram, activeProgram } = useSession();
 
   const { data, isPending } = useQuery({
-    queryKey: ["stage-logs-to-validate", person.id, activeProgram.id],
+    queryKey: ["stage-logs-to-validate", activeProgram.id],
     queryFn: async () => {
-      const mine = fx.placementAssignments
-        .filter((a) => a.supervisorPersonId === person.id)
-        .map((a) => a.id);
-      return dataAccess.stageLogs.listLogsToValidate(mine);
+      // Le périmètre n'est plus calculé ici : `supervises_enrollment()` le
+      // décide côté serveur, à partir des GROUPES d'encadrement.
+      const [logs, enrollments, people] = await Promise.all([
+        dataAccess.stageLogs.listLogsToValidate(activeProgram.id),
+        dataAccess.administration.listAllEnrollments(activeProgram.id),
+        dataAccess.administration.listPeople(),
+      ]);
+      return { logs, enrollments, people };
     },
   });
 
+  /**
+   * Qui voit cette section — et pourquoi l'administration y figure.
+   *
+   * `supervises_enrollment()` est vraie pour `can_administer_program()` AVANT
+   * même de regarder les groupes : l'administration d'un programme peut donc
+   * valider n'importe quel carnet, et la contrainte de
+   * `stage_log_validations.validator_role` accepte `administrator`. Sans cette
+   * troisième ligne, l'écran cachait une action que le serveur autorise — et un
+   * administrateur ne pouvait pas valider alors que rien ne le lui interdisait.
+   */
   const isValidator =
     rolesInActiveProgram.includes("placement_supervisor") ||
-    rolesInActiveProgram.includes("teacher");
+    rolesInActiveProgram.includes("teacher") ||
+    rolesInActiveProgram.includes("administrator");
 
   if (!isValidator) return null;
   if (isPending || !data) return <Skeleton className="h-40 w-full" />;
@@ -39,67 +98,184 @@ export function StageLogsToValidate() {
       <SectionHeading
         id="titre-a-valider"
         title="Carnets à valider"
-        description="Carnets soumis par les apprenants des stages dont vous êtes responsable."
-        action={
-          <Badge variant="outline" className="font-normal">
-            Simulé
-          </Badge>
-        }
+        description="Carnets des apprenants des groupes que vous encadrez. Vous validez la période de votre choix : une semaine, plusieurs, ou tout le stage."
       />
       <ul className="grid gap-3">
-        {data.map((log) => {
-          const learner = fx.people.find(
-            (p) => p.id === fx.enrollments.find((e) => e.id === log.enrollmentId)?.personId,
-          );
-          const canValidate = !!nextStageLogStatus(log.status, "validate", rolesInActiveProgram);
-          return (
-            <li key={log.id}>
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">{learner?.fullName ?? "Apprenant"}</CardTitle>
-                  <CardDescription>
-                    {log.entries.length} entrée(s) · état : {STAGE_LOG_STATUS_LABELS_FR[log.status]}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="flex flex-wrap items-center gap-2">
-                  <Button type="button" size="sm" className="gap-1" disabled={!canValidate}>
-                    <CheckCircle2 className="size-4" aria-hidden />
-                    Valider (simulé)
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    className="gap-1"
-                    disabled={!canValidate}
-                  >
-                    <RotateCcw className="size-4" aria-hidden />
-                    Demander une correction (simulé)
-                  </Button>
-                  <span className="text-xs text-muted-foreground">
-                    La validation humaine est la seule source d'acquisition d'une compétence réelle.
-                  </span>
-                </CardContent>
-              </Card>
-            </li>
-          );
-        })}
-        {data.length === 0 ? (
-          <li className="text-sm text-muted-foreground">Aucun carnet en attente de validation.</li>
+        {data.logs.map((log) => (
+          <StageLogReviewCard
+            key={log.id}
+            log={log}
+            learnerName={learnerNameOf(log, data.enrollments, data.people)}
+            canValidate={!!nextStageLogStatus(log.status, "validate", rolesInActiveProgram)}
+            onDone={() =>
+              void queryClient.invalidateQueries({ queryKey: ["stage-logs-to-validate"] })
+            }
+          />
+        ))}
+        {data.logs.length === 0 ? (
+          <li className="text-muted-foreground text-sm">
+            Aucun carnet dans vos groupes d'encadrement.
+          </li>
         ) : null}
       </ul>
     </section>
   );
 }
 
-/** Vue mock « Carnets reçus » : espace interne de l'administration du programme. */
+function StageLogReviewCard({
+  log,
+  learnerName,
+  canValidate,
+  onDone,
+}: {
+  readonly log: StageLog;
+  readonly learnerName: string;
+  readonly canValidate: boolean;
+  readonly onDone: () => void;
+}) {
+  const dataAccess = useDataAccess();
+  const alreadyCovered = lastValidatedDay(log);
+  const [coversFrom, setCoversFrom] = useState(
+    alreadyCovered ? addOneDay(alreadyCovered) : (log.periodStartsOn ?? ""),
+  );
+  const [coversTo, setCoversTo] = useState(log.periodEndsOn ?? "");
+  const [comment, setComment] = useState("");
+
+  const decide = useMutation({
+    mutationFn: (decision: "validated" | "needs_revision") =>
+      dataAccess.stageLogs.validateStageLogBlock({
+        stageLogId: log.id,
+        coversFrom,
+        coversTo,
+        decision,
+        comment,
+      }),
+    onSuccess: () => {
+      setComment("");
+      onDone();
+    },
+  });
+
+  const days = log.entries.length;
+  const inRange = log.entries.filter(
+    (entry) => entry.occurredAt >= coversFrom && entry.occurredAt <= coversTo,
+  ).length;
+  const periodValid = coversFrom.length > 0 && coversTo.length > 0 && coversFrom <= coversTo;
+
+  return (
+    <li>
+      <Card>
+        <CardHeader>
+          <div className="flex flex-wrap items-center gap-2">
+            <CardTitle className="text-base">{learnerName}</CardTitle>
+            <Badge variant="secondary" className="font-normal">
+              {STAGE_LOG_STATUS_LABELS_FR[log.status]}
+            </Badge>
+          </div>
+          <CardDescription>
+            {days} journée(s) déclarée(s) sur l'ensemble du stage
+            {alreadyCovered
+              ? ` · déjà validé jusqu'au ${DATE_FORMAT.format(new Date(`${alreadyCovered}T00:00:00`))}`
+              : " · aucune période validée pour l'instant"}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {days === 0 ? (
+            <p className="text-muted-foreground text-sm">
+              Cet apprenant n'a déclaré aucune journée. Le carnet existe, il est vide — c'est
+              l'information utile.
+            </p>
+          ) : null}
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor={`from-${log.id}`}>Du</Label>
+              <Input
+                id={`from-${log.id}`}
+                type="date"
+                value={coversFrom}
+                onChange={(event) => setCoversFrom(event.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor={`to-${log.id}`}>Au</Label>
+              <Input
+                id={`to-${log.id}`}
+                type="date"
+                value={coversTo}
+                onChange={(event) => setCoversTo(event.target.value)}
+              />
+            </div>
+          </div>
+
+          <p className="text-muted-foreground text-sm">
+            {inRange} journée(s) déclarée(s) dans cette période.
+          </p>
+
+          <div className="space-y-1.5">
+            <Label htmlFor={`comment-${log.id}`}>Commentaire (facultatif)</Label>
+            <Textarea
+              id={`comment-${log.id}`}
+              rows={2}
+              value={comment}
+              onChange={(event) => setComment(event.target.value)}
+            />
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              size="sm"
+              className="gap-1"
+              disabled={!canValidate || !periodValid || decide.isPending}
+              onClick={() => decide.mutate("validated")}
+            >
+              <CheckCircle2 className="size-4" aria-hidden />
+              Valider cette période
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="gap-1"
+              disabled={!canValidate || !periodValid || decide.isPending}
+              onClick={() => decide.mutate("needs_revision")}
+            >
+              <RotateCcw className="size-4" aria-hidden />
+              Demander une correction
+            </Button>
+          </div>
+
+          <p className="text-muted-foreground text-xs">
+            La validation humaine est la seule source d'acquisition d'une compétence réelle.
+          </p>
+
+          {decide.error ? (
+            <p className="text-destructive text-sm">
+              {decide.error instanceof Error ? decide.error.message : "Validation impossible."}
+            </p>
+          ) : null}
+        </CardContent>
+      </Card>
+    </li>
+  );
+}
+
+/** « Carnets reçus » : espace interne de l'administration du programme. */
 export function StageLogsReceived() {
   const dataAccess = useDataAccess();
   const { activeProgram } = useSession();
 
   const { data, isPending } = useQuery({
     queryKey: ["stage-logs-received", activeProgram.id],
-    queryFn: () => dataAccess.stageLogs.listLogsReceived(activeProgram.id),
+    queryFn: async () => {
+      const [logs, enrollments, people] = await Promise.all([
+        dataAccess.stageLogs.listLogsReceived(activeProgram.id),
+        dataAccess.administration.listAllEnrollments(activeProgram.id),
+        dataAccess.administration.listPeople(),
+      ]);
+      return { logs, enrollments, people };
+    },
   });
 
   if (isPending || !data) return <Skeleton className="h-40 w-full" />;
@@ -110,47 +286,39 @@ export function StageLogsReceived() {
         id="titre-recus"
         title="Carnets reçus"
         description="Transmission interne à l'application : aucun carnet n'est envoyé en pièce jointe par e-mail."
-        action={
-          <Badge variant="outline" className="font-normal">
-            Simulé
-          </Badge>
-        }
       />
       <ul className="grid gap-3">
-        {data.map((log) => {
-          const learner = fx.people.find(
-            (p) => p.id === fx.enrollments.find((e) => e.id === log.enrollmentId)?.personId,
-          );
+        {data.logs.map((log) => {
+          const validation = log.validations[0];
           return (
             <li key={log.id}>
               <Card>
                 <CardHeader>
                   <div className="flex flex-wrap items-center gap-2">
-                    <Inbox className="size-4 text-primary" aria-hidden />
-                    <CardTitle className="text-base">{learner?.fullName ?? "Apprenant"}</CardTitle>
+                    <Inbox className="text-primary size-4" aria-hidden />
+                    <CardTitle className="text-base">
+                      {learnerNameOf(log, data.enrollments, data.people)}
+                    </CardTitle>
                     <Badge variant="secondary" className="font-normal">
                       {STAGE_LOG_STATUS_LABELS_FR[log.status]}
                     </Badge>
                   </div>
-                  <CardDescription>
-                    Modèle {log.templateId} · version {log.templateVersion} · {log.entries.length}{" "}
-                    entrée(s)
-                  </CardDescription>
+                  <CardDescription>{log.entries.length} journée(s) déclarée(s)</CardDescription>
                 </CardHeader>
-                <CardContent className="text-sm text-muted-foreground">
-                  {log.validations.length > 0
+                <CardContent className="text-muted-foreground text-sm">
+                  {validation
                     ? `Validé par ${
-                        fx.people.find((p) => p.id === log.validations[0]!.validatorPersonId)
-                          ?.fullName ?? "responsable"
-                      } le ${new Date(log.validations[0]!.decidedAt).toLocaleDateString("fr-FR")}.`
+                        data.people.find((p) => p.id === validation.validatorPersonId)?.fullName ??
+                        "responsable"
+                      } le ${new Date(validation.decidedAt).toLocaleDateString("fr-FR")}.`
                     : "En attente de validation du responsable de stage."}
                 </CardContent>
               </Card>
             </li>
           );
         })}
-        {data.length === 0 ? (
-          <li className="text-sm text-muted-foreground">Aucun carnet reçu pour ce programme.</li>
+        {data.logs.length === 0 ? (
+          <li className="text-muted-foreground text-sm">Aucun carnet reçu pour ce programme.</li>
         ) : null}
       </ul>
     </section>

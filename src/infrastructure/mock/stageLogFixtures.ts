@@ -234,6 +234,7 @@ export const stageLogs: readonly StageLog[] = [
         stageLogId: "slog-diu-camille",
         templateId: "slt-diu-echo-v2",
         occurredAt: "2026-08-10T09:30:00Z",
+        narrative: "",
         values: {
           exam_type: "ETT complète",
           volume: "3",
@@ -260,6 +261,7 @@ export const stageLogs: readonly StageLog[] = [
         stageLogId: "slog-diu-camille",
         templateId: "slt-diu-echo-v2",
         occurredAt: "2026-08-12T14:00:00Z",
+        narrative: "",
         values: {
           exam_type: "ETT ciblée",
           volume: "5",
@@ -288,6 +290,7 @@ export const stageLogs: readonly StageLog[] = [
         stageLogId: "slog-dfasm-camille",
         templateId: "slt-dfasm-cardio-v1",
         occurredAt: "2026-09-08T08:15:00Z",
+        narrative: "",
         values: {
           clinical_situation: "Douleur thoracique",
           acts: "Examen clinique, ECG 12 dérivations",
@@ -312,6 +315,8 @@ export const stageLogs: readonly StageLog[] = [
     validations: [
       {
         stageLogId: "slog-diu-autre",
+        coversFrom: "2026-06-01",
+        coversTo: "2026-06-30",
         validatorPersonId: "per-supervisor",
         validatorRole: "placement_supervisor",
         decision: "validated",
@@ -327,6 +332,7 @@ export const stageLogs: readonly StageLog[] = [
         stageLogId: "slog-diu-autre",
         templateId: "slt-diu-echo-v2",
         occurredAt: "2026-08-11T10:00:00Z",
+        narrative: "",
         values: {
           exam_type: "Échographie de stress",
           volume: "1",

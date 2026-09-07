@@ -17,6 +17,7 @@ export type EnrollmentId = Id<"Enrollment">;
 export type OutcomeId = Id<"Outcome">;
 export type PlacementId = Id<"Placement">;
 export type PlacementAssignmentId = Id<"PlacementAssignment">;
+export type SupervisionGroupId = Id<"SupervisionGroup">;
 export type EvidenceId = Id<"Evidence">;
 export type LearningResourceId = Id<"LearningResource">;
 export type AuditEventId = Id<"AuditEvent">;
@@ -281,6 +282,21 @@ export interface Placement extends Entity<PlacementId> {
   readonly site: string;
   readonly department: string;
   readonly capacity: number;
+}
+
+/**
+ * Groupe d'encadrement : le RÔLE dit ce qu'un senior a le droit de faire, le
+ * GROUPE dit sur quels étudiants. Un groupe appartient à une cohorte ET à un
+ * terrain ; il porte plusieurs encadrants, et un encadrant peut suivre
+ * plusieurs groupes. Un étudiant n'appartient qu'à un seul groupe.
+ */
+export interface SupervisionGroup extends Entity<SupervisionGroupId> {
+  readonly programId: ProgramId;
+  readonly cohortId: CohortId;
+  readonly placementId: PlacementId;
+  readonly label: string;
+  readonly memberEnrollmentIds: readonly EnrollmentId[];
+  readonly supervisorPersonIds: readonly PersonId[];
 }
 
 export interface PlacementAssignment extends Entity<PlacementAssignmentId> {

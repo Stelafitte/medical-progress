@@ -1,41 +1,54 @@
-import { CalendarDays, MapPin, ShieldCheck, Stethoscope } from "lucide-react";
-import { SectionHeading } from "@/components/section-heading";
+/**
+ * « Mon carnet de stage », côté apprenant.
+ *
+ * L'écran part désormais des CARNETS de l'étudiant, plus de ses affectations :
+ * la table d'affectation n'existe pas, et le rattachement passe par les groupes
+ * d'encadrement depuis le 31/08. Un carnet est ouvert pour chaque inscrit au
+ * moment où sa promotion est rattachée à un terrain.
+ *
+ * Le contenu affiché est réel : ce fichier ne lit plus aucune donnée simulée.
+ */
+import { useQuery } from "@tanstack/react-query";
+import { CalendarDays, MapPin, Stethoscope } from "lucide-react";
+import { FieldHeader } from "@/components/field-header";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLearnerPassport } from "@/features/dashboard/useLearnerPassport";
-import { useSession } from "@/application/session";
-import { ROLE_LABELS_FR, rolesInContext } from "@/domain/roles";
-import { StageLogBook } from "@/features/stage/StageLogBook";
+import { useDataAccess, useSession } from "@/application/session";
+import { StageLogWeek } from "@/features/stage/StageLogWeek";
 import { StageLogsToValidate } from "@/features/stage/StageLogReviewSection";
+import type { PlacementId } from "@/domain/types";
 
-const STATUS_FR: Record<string, string> = {
-  planned: "à venir",
-  in_progress: "en cours",
-  completed: "terminé",
-  cancelled: "annulé",
-};
+const DATE_FORMAT = new Intl.DateTimeFormat("fr-FR", {
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+});
 
 export function StageView() {
-  const { activeProgram, activeEnrollment, roles } = useSession();
-  const { data, isPending } = useLearnerPassport();
+  const { activeProgram, activeEnrollment } = useSession();
+  const dataAccess = useDataAccess();
+  const passport = useLearnerPassport();
+
+  const enrollmentId = activeEnrollment?.id;
+
+  const logs = useQuery({
+    queryKey: ["stage-logs-mine", enrollmentId],
+    enabled: enrollmentId !== undefined,
+    queryFn: () => dataAccess.stageLogs.listLogsForEnrollment(enrollmentId!),
+  });
 
   if (!activeEnrollment) {
-    return <p className="text-sm text-muted-foreground">Aucune inscription active pour ce programme.</p>;
+    return (
+      <p className="text-muted-foreground text-sm">Aucune inscription active pour ce programme.</p>
+    );
   }
-
-  if (isPending || !data) return <Skeleton className="h-64 w-full" />;
-
-  const { placements, assignments, evidence } = data;
 
   if (!activeProgram.config.placementsEnabled) {
     return (
       <div className="space-y-4">
-        <SectionHeading
-          title="Mon carnet de stage"
-          level={1}
-          description="Ce programme ne comporte aucun stage configuré."
-        />
+        <FieldHeader eyebrow={activeProgram.name} title="Mon carnet de stage" />
         <Card>
           <CardHeader>
             <Badge variant="outline" className="w-fit font-normal">
@@ -51,79 +64,75 @@ export function StageView() {
     );
   }
 
+  if (logs.isPending || passport.isPending || !passport.data) {
+    return <Skeleton className="h-64 w-full" />;
+  }
+
+  const placements = passport.data.placements;
+  const myLogs = logs.data ?? [];
+
   return (
     <div className="space-y-8">
-      <SectionHeading
+      <FieldHeader
+        eyebrow={activeProgram.name}
         title="Mon carnet de stage"
-        level={1}
-        action={
-          <Badge variant="outline" className="font-normal">
-            Simulé
-          </Badge>
-        }
-        description="Affectations de stage, gestes enregistrés et contre-signatures de l'encadrant."
+        figures={[
+          { value: myLogs.length, label: myLogs.length > 1 ? "carnets ouverts" : "carnet ouvert" },
+        ]}
       />
+      <p className="-mt-3 text-sm text-muted-foreground">
+        Cochez les journées où vous étiez présent, et racontez ce que vous avez fait. Votre
+        encadrant valide par périodes.
+      </p>
 
-
-      <ul className="grid gap-4">
-        {assignments.map((assignment) => {
-          const placement = placements.find((p) => p.id === assignment.placementId);
-          const linked = evidence.filter((e) => e.placementAssignmentId === assignment.id);
-          const contextRoles = rolesInContext(roles, {
-            programId: activeProgram.id,
-            cohortId: activeEnrollment.cohortId,
-            placementId: assignment.placementId,
-          });
-
-          return (
-            <li key={assignment.id}>
-              <Card>
-                <CardHeader>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Stethoscope className="size-5 text-primary" aria-hidden />
-                    <CardTitle className="text-base">
-                      {placement?.name ?? "Stage inconnu"}
-                    </CardTitle>
-                    <Badge variant="outline" className="font-normal">
-                      {STATUS_FR[assignment.status]}
-                    </Badge>
-                  </div>
-                  <CardDescription className="flex flex-wrap items-center gap-x-4 gap-y-1">
-                    <span className="inline-flex items-center gap-1">
-                      <MapPin className="size-3.5" aria-hidden />
-                      {placement ? `${placement.site} · ${placement.department}` : "—"}
-                    </span>
-                    <span className="inline-flex items-center gap-1">
-                      <CalendarDays className="size-3.5" aria-hidden />
-                      {new Date(assignment.startsOn).toLocaleDateString("fr-FR")} —{" "}
-                      {new Date(assignment.endsOn).toLocaleDateString("fr-FR")}
-                    </span>
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3 text-sm text-muted-foreground">
-                  <p className="inline-flex items-center gap-2">
-                    <ShieldCheck className="size-4 text-success" aria-hidden />
-                    {linked.length} preuve(s) de terrain rattachée(s) à cette affectation.
-                  </p>
-                  <p>
-                    Vos rôles dans ce contexte :{" "}
-                    {contextRoles.map((r) => ROLE_LABELS_FR[r]).join(", ") || "aucun"}
-                  </p>
-                  <p className="text-xs">
-                    Simulé : la saisie d'un geste et la contre-signature de l'encadrant seront
-                    ajoutées lors d'une prochaine itération.
-                  </p>
-                </CardContent>
-              </Card>
-            </li>
-          );
-        })}
-        {assignments.length === 0 ? (
-          <li className="text-sm text-muted-foreground">Aucune affectation pour l'instant.</li>
-        ) : null}
-      </ul>
-
-      <StageLogBook />
+      {myLogs.length === 0 ? (
+        <Card>
+          <CardHeader>
+            <CardDescription>
+              Aucun carnet n'est encore ouvert à votre nom. Il l'est par l'administration du
+              programme au moment où votre promotion est rattachée à un terrain de stage.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      ) : (
+        <ul className="grid gap-4">
+          {myLogs.map((log) => {
+            const placement = placements.find((p) => p.id === log.placementId);
+            return (
+              <li key={log.id}>
+                <Card>
+                  <CardHeader>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Stethoscope className="text-primary size-5" aria-hidden />
+                      <CardTitle className="text-base">{placement?.name ?? "Stage"}</CardTitle>
+                    </div>
+                    <CardDescription className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                      <span className="inline-flex items-center gap-1">
+                        <MapPin className="size-3.5" aria-hidden />
+                        {placement ? `${placement.site} · ${placement.department}` : "—"}
+                      </span>
+                      {log.periodStartsOn && log.periodEndsOn ? (
+                        <span className="inline-flex items-center gap-1">
+                          <CalendarDays className="size-3.5" aria-hidden />
+                          {DATE_FORMAT.format(new Date(log.periodStartsOn))} —{" "}
+                          {DATE_FORMAT.format(new Date(log.periodEndsOn))}
+                        </span>
+                      ) : null}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <StageLogWeek
+                      enrollmentId={activeEnrollment.id}
+                      placementId={(log.placementId ?? "") as PlacementId}
+                      placementName={placement?.name ?? "Stage"}
+                    />
+                  </CardContent>
+                </Card>
+              </li>
+            );
+          })}
+        </ul>
+      )}
 
       <StageLogsToValidate />
     </div>

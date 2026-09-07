@@ -162,9 +162,7 @@ export function buildPilotTimeline(
 }
 
 /** Prochain jalon non passé, utilisé comme échéance affichée. */
-export function nextMilestone(
-  items: readonly PilotTimelineItem[],
-): PilotTimelineItem | undefined {
+export function nextMilestone(items: readonly PilotTimelineItem[]): PilotTimelineItem | undefined {
   return items.find((item) => item.state !== "done");
 }
 

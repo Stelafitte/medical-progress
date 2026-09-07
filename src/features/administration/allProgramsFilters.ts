@@ -78,7 +78,6 @@ export function programCategory(program: Program): ProgramCategory {
   return "other";
 }
 
-
 /**
  * État du programme, dérivé de ses cohortes :
  *  - construction : aucune cohorte programmée ;
@@ -140,7 +139,6 @@ export function hasActiveFilters(filters: AllProgramsFilterState): boolean {
   );
 }
 
-
 /** Bascule d'une valeur dans une liste de filtres (sélection multiple). */
 export function toggleFilterValue<T>(values: readonly T[], value: T): readonly T[] {
   return values.includes(value) ? values.filter((v) => v !== value) : [...values, value];
@@ -157,9 +155,7 @@ function matchesDateWindow(card: AdministeredProgramCard, from: string, to: stri
   const lower = from ? ms(`${from}T00:00:00.000Z`) : Number.NEGATIVE_INFINITY;
   const upper = to ? ms(`${to}T23:59:59.999Z`) : Number.POSITIVE_INFINITY;
   if (Number.isNaN(lower) || Number.isNaN(upper)) return true;
-  return card.cohorts.some(
-    (cohort) => ms(cohort.startsOn) <= upper && ms(cohort.endsOn) >= lower,
-  );
+  return card.cohorts.some((cohort) => ms(cohort.startsOn) <= upper && ms(cohort.endsOn) >= lower);
 }
 
 export function filterProgramCards(
@@ -168,10 +164,7 @@ export function filterProgramCards(
   now: Date = new Date(),
 ): readonly AdministeredProgramCard[] {
   return cards.filter((card) => {
-    if (
-      filters.tracks.length > 0 &&
-      !filters.tracks.includes(programTrack(card.program.kind))
-    ) {
+    if (filters.tracks.length > 0 && !filters.tracks.includes(programTrack(card.program.kind))) {
       return false;
     }
     if (

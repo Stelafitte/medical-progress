@@ -13,6 +13,7 @@ const book = read("src/features/stage/StageLogBook.tsx");
 const review = read("src/features/stage/StageLogReviewSection.tsx");
 const adminTemplates = read("src/features/administration/StageLogTemplatesSection.tsx");
 const domain = read("src/domain/stageLog.ts");
+const week = read("src/features/stage/StageLogWeek.tsx");
 
 describe("messages de sécurité", () => {
   it("affiche la bannière de cadrage dans le carnet et la boîte de dialogue", () => {
@@ -61,11 +62,34 @@ describe("absence de stockage réel", () => {
   });
 });
 
+describe("saisie d'une journée", () => {
+  /**
+   * Piège rencontré le 07/09, à ne jamais laisser revenir : `toISOString()`
+   * convertit en UTC. En UTC+2, une journée cochée après 22 h serait
+   * enregistrée la veille — et l'étudiant ne le verrait pas.
+   */
+  it("compose les dates en heure locale, jamais en UTC", () => {
+    expect(week).not.toContain("toISOString");
+  });
+
+  it("fait de l'existence de l'entrée la déclaration de présence", () => {
+    expect(week).toContain("saveStageLogDay");
+    expect(week).toContain("deleteStageLogDay");
+  });
+});
+
 describe("droits et visibilité simulés", () => {
-  it("réserve « Carnets à valider » aux validateurs de leurs propres stages", () => {
-    expect(review).toContain("supervisorPersonId === person.id");
+  it("réserve « Carnets à valider » aux validateurs, sans calculer le périmètre à l'écran", () => {
     expect(review).toContain("if (!isValidator) return null;");
-    expect(review).toContain("listLogsToValidate");
+    expect(review).toContain("listLogsToValidate(activeProgram.id)");
+
+    // Le périmètre a CHANGÉ DE MAIN le 07/09 : il était calculé ici, à partir
+    // des affectations de l'encadrant ; il est désormais décidé côté serveur
+    // par `supervises_enrollment()`, qui passe par les groupes d'encadrement.
+    // Refiltrer à l'écran redonnerait à cette page une autorité qu'elle n'a
+    // pas — et masquerait un défaut de policy au lieu de le révéler.
+    expect(review).not.toContain("supervisorPersonId");
+    expect(review).toContain("supervises_enrollment");
   });
 
   it("limite « Carnets reçus » au programme actif et à une transmission interne", () => {

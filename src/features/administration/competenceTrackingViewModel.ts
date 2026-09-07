@@ -27,10 +27,7 @@ function stableHash(seed: string): number {
   return Math.abs(hash);
 }
 
-export function simulatedCompetenceState(
-  enrollmentId: string,
-  outcomeId: string,
-): CompetenceState {
+export function simulatedCompetenceState(enrollmentId: string, outcomeId: string): CompetenceState {
   const bucket = stableHash(`${enrollmentId}::${outcomeId}`) % 10;
   if (bucket < 5) return "validated";
   if (bucket < 8) return "declared";
@@ -114,9 +111,7 @@ export function buildCompetenceCoverage(
       validatedLearners,
       declaredLearners,
       percent:
-        enrollments.length === 0
-          ? 0
-          : Math.round((validatedLearners / enrollments.length) * 100),
+        enrollments.length === 0 ? 0 : Math.round((validatedLearners / enrollments.length) * 100),
     };
   });
 }

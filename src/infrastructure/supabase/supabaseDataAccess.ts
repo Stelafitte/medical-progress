@@ -36,11 +36,22 @@ import type {
   OutcomeThemeId,
   Person,
   PersonId,
+  Placement,
+  PlacementId,
   Program,
   ProgramId,
   RoleAssignment,
   RoleScope,
+  SupervisionGroup,
+  SupervisionGroupId,
 } from "@/domain/types";
+import type {
+  StageLog,
+  StageLogEntryId,
+  StageLogId,
+  StageLogStatus,
+  StageLogTemplateId,
+} from "@/domain/stageLog";
 import type { OutcomeSelfReport } from "@/domain/passport";
 import type { AssessmentModality } from "@/domain/assessmentModality";
 import type {
@@ -181,6 +192,151 @@ export function mapCurriculumVersion(row: CurriculumVersionRow): CurriculumVersi
     label: row.label,
     effectiveFrom: normalizeIsoDate(row.effective_from),
     status: row.status,
+  };
+}
+
+type PlacementRow = {
+  id: string;
+  program_id: string;
+  name: string;
+  site: string;
+  department: string;
+  capacity: number;
+  created_at: string;
+};
+
+const placementColumns = "id,program_id,name,site,department,capacity,created_at";
+
+export function mapPlacement(row: PlacementRow): Placement {
+  return {
+    id: row.id as PlacementId,
+    createdAt: row.created_at,
+    provenance: nativeProvenance,
+    programId: row.program_id as ProgramId,
+    name: row.name,
+    site: row.site,
+    department: row.department,
+    capacity: row.capacity,
+  };
+}
+
+type SupervisionGroupRow = {
+  id: string;
+  program_id: string;
+  cohort_id: string;
+  placement_id: string;
+  label: string;
+  created_at: string;
+  supervision_group_members?: { enrollment_id: string }[] | null;
+  supervision_group_supervisors?: { person_id: string }[] | null;
+};
+
+const supervisionGroupColumns =
+  "id,program_id,cohort_id,placement_id,label,created_at," +
+  "supervision_group_members(enrollment_id),supervision_group_supervisors(person_id)";
+
+export function mapSupervisionGroup(row: SupervisionGroupRow): SupervisionGroup {
+  return {
+    id: row.id as SupervisionGroupId,
+    createdAt: row.created_at,
+    provenance: nativeProvenance,
+    programId: row.program_id as ProgramId,
+    cohortId: row.cohort_id as CohortId,
+    placementId: row.placement_id as PlacementId,
+    label: row.label,
+    memberEnrollmentIds: (row.supervision_group_members ?? []).map(
+      (m) => m.enrollment_id as EnrollmentId,
+    ),
+    supervisorPersonIds: (row.supervision_group_supervisors ?? []).map(
+      (sup) => sup.person_id as PersonId,
+    ),
+  };
+}
+
+type StageLogEntryRow = {
+  id: string;
+  occurred_on: string;
+  narrative: string;
+  values: Record<string, string> | null;
+  created_at: string;
+};
+
+type StageLogValidationRow = {
+  covers_from: string;
+  covers_to: string;
+  validator_person_id: string;
+  validator_role: "placement_supervisor" | "teacher" | "administrator";
+  decision: "validated" | "needs_revision";
+  comment: string;
+  decided_at: string;
+};
+
+type StageLogRow = {
+  id: string;
+  template_id: string | null;
+  template_version: number;
+  program_id: string;
+  cohort_id: string;
+  enrollment_id: string;
+  placement_id: string;
+  period_starts_on: string;
+  period_ends_on: string;
+  status: StageLogStatus;
+  created_at: string;
+  stage_log_entries?: StageLogEntryRow[] | null;
+  stage_log_validations?: StageLogValidationRow[] | null;
+};
+
+const stageLogColumns =
+  "id,template_id,template_version,program_id,cohort_id,enrollment_id,placement_id," +
+  "period_starts_on,period_ends_on,status,created_at," +
+  "stage_log_entries(id,occurred_on,narrative,values,created_at)," +
+  "stage_log_validations(covers_from,covers_to,validator_person_id,validator_role,decision,comment,decided_at)";
+
+/**
+ * `template_id` est nul tant qu'aucun modele de carnet n'est configure — et il
+ * n'y en a aucun aujourd'hui. Le domaine attend un identifiant : on rend la
+ * chaine vide, que les ecrans traitent comme « pas de modele », plutot que
+ * d'inventer un modele qui n'existe pas.
+ */
+export function mapStageLog(row: StageLogRow): StageLog {
+  return {
+    id: row.id as StageLogId,
+    createdAt: row.created_at,
+    provenance: nativeProvenance,
+    templateId: (row.template_id ?? "") as StageLogTemplateId,
+    templateVersion: row.template_version,
+    programId: row.program_id as ProgramId,
+    cohortId: row.cohort_id as CohortId,
+    enrollmentId: row.enrollment_id as EnrollmentId,
+    placementId: row.placement_id as PlacementId,
+    periodStartsOn: row.period_starts_on,
+    periodEndsOn: row.period_ends_on,
+    status: row.status,
+    entries: (row.stage_log_entries ?? [])
+      .map((entry) => ({
+        id: entry.id as StageLogEntryId,
+        createdAt: entry.created_at,
+        provenance: nativeProvenance,
+        stageLogId: row.id as StageLogId,
+        templateId: (row.template_id ?? "") as StageLogTemplateId,
+        occurredAt: entry.occurred_on,
+        narrative: entry.narrative,
+        values: entry.values ?? {},
+        photos: [],
+      }))
+      .sort((a, b) => a.occurredAt.localeCompare(b.occurredAt)),
+    validations: (row.stage_log_validations ?? []).map((validation) => ({
+      stageLogId: row.id as StageLogId,
+      coversFrom: validation.covers_from,
+      coversTo: validation.covers_to,
+      validatorPersonId: validation.validator_person_id as PersonId,
+      validatorRole: validation.validator_role,
+      decision: validation.decision,
+      decidedAt: validation.decided_at,
+      comment: validation.comment,
+      provenance: nativeProvenance,
+    })),
   };
 }
 
@@ -638,6 +794,173 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
   return {
     ...mockDataAccess,
     isMock: false,
+    /**
+     * Carnets de stage — LECTURE ET ECRITURE REELLES (07/09).
+     *
+     * Avant ce jour, ce depot n'existait pas cote Supabase : le carnet de
+     * l'apprenant affichait `stageLogFixtures`, donc des journees INVENTEES, en
+     * production.
+     *
+     * Le perimetre de `listLogsToValidate` n'est pas calcule ici : la policy
+     * s'appuie sur `supervises_enrollment()`, qui passe par les GROUPES. Un
+     * encadrant ne recoit donc que les carnets de ses groupes, meme si l'ecran
+     * demande tout le programme.
+     */
+    stageLogs: {
+      ...mockDataAccess.stageLogs,
+      async listTemplates() {
+        // Aucun modele de carnet n'est configure : la table est vide, et
+        // inventer un modele donnerait un formulaire qui ne correspond a rien.
+        return [];
+      },
+      async listLogsForEnrollment(enrollmentId: EnrollmentId) {
+        const { data, error } = await client
+          .from("stage_logs")
+          .select(stageLogColumns)
+          .eq("enrollment_id", enrollmentId);
+        assertNoSupabaseError(error);
+        return ((data ?? []) as unknown as StageLogRow[]).map(mapStageLog);
+      },
+      async listLogsToValidate(programId: ProgramId) {
+        const { data, error } = await client
+          .from("stage_logs")
+          .select(stageLogColumns)
+          .eq("program_id", programId);
+        assertNoSupabaseError(error);
+        return ((data ?? []) as unknown as StageLogRow[]).map(mapStageLog);
+      },
+      async listLogsReceived(programId: ProgramId) {
+        const { data, error } = await client
+          .from("stage_logs")
+          .select(stageLogColumns)
+          .eq("program_id", programId)
+          .in("status", ["validated", "transmitted"]);
+        assertNoSupabaseError(error);
+        return ((data ?? []) as unknown as StageLogRow[]).map(mapStageLog);
+      },
+      async saveStageLogDay(input) {
+        const { error } = await client.rpc("save_stage_log_day", {
+          p_enrollment_id: input.enrollmentId,
+          p_placement_id: input.placementId,
+          p_occurred_on: input.occurredOn,
+          p_narrative: input.narrative,
+        });
+        assertNoSupabaseError(error);
+      },
+      async deleteStageLogDay(input) {
+        const { error } = await client.rpc("delete_stage_log_day", {
+          p_enrollment_id: input.enrollmentId,
+          p_placement_id: input.placementId,
+          p_occurred_on: input.occurredOn,
+        });
+        assertNoSupabaseError(error);
+      },
+      async validateStageLogBlock(input) {
+        const { error } = await client.rpc("validate_stage_log_block", {
+          p_stage_log_id: input.stageLogId,
+          p_covers_from: input.coversFrom,
+          p_covers_to: input.coversTo,
+          p_decision: input.decision,
+          p_comment: input.comment,
+        });
+        assertNoSupabaseError(error);
+      },
+      async openStageLogsForGroup(groupId) {
+        const { error } = await client.rpc("open_stage_logs_for_group", {
+          p_group_id: groupId,
+        });
+        assertNoSupabaseError(error);
+      },
+    },
+    /**
+     * Terrains de stage — LECTURE REELLE (07/09).
+     *
+     * `placements` n'accepte aucune ecriture directe : la migration
+     * 20260831093000 revoque tout et n'accorde que le `select` aux
+     * authentifies. La creation passera par la fonction `create_placement`.
+     *
+     * Les AFFECTATIONS n'ont pas encore de stockage : la seule table en
+     * `%assignment%` est `role_assignments`, et le modele retenu le 31/08 fait
+     * porter le rattachement des etudiants par les GROUPES d'encadrement
+     * (`supervision_group_members`). On rend donc une liste VIDE plutot que les
+     * fixtures du mock : un ecran vide se lit, une affectation inventee non.
+     */
+    placements: {
+      ...mockDataAccess.placements,
+      async listPlacements(programId: ProgramId) {
+        const { data, error } = await client
+          .from("placements")
+          .select(placementColumns)
+          .eq("program_id", programId)
+          .order("name");
+        assertNoSupabaseError(error);
+        return ((data ?? []) as PlacementRow[]).map(mapPlacement);
+      },
+      async listAssignmentsForProgram() {
+        return [];
+      },
+      async listAssignmentsForEnrollment() {
+        return [];
+      },
+      async listAssignmentsForSupervisor() {
+        return [];
+      },
+      /**
+       * Ecriture : la migration 20260831093000 revoque tout et n'accorde que le
+       * `select`. Chaque mutation passe donc par sa fonction `security definer`,
+       * qui verifie `can_administer_program` cote serveur.
+       */
+      async createPlacement(input) {
+        const { data, error } = await client.rpc("create_placement", {
+          p_program_id: input.programId,
+          p_name: input.name,
+          p_site: input.site,
+          p_department: input.department,
+          p_capacity: input.capacity,
+        });
+        assertNoSupabaseError(error);
+        return mapPlacement(data as PlacementRow);
+      },
+      async listSupervisionGroups(programId: ProgramId) {
+        const { data, error } = await client
+          .from("supervision_groups")
+          .select(supervisionGroupColumns)
+          .eq("program_id", programId)
+          .order("label");
+        assertNoSupabaseError(error);
+        return ((data ?? []) as unknown as SupervisionGroupRow[]).map(mapSupervisionGroup);
+      },
+      async createSupervisionGroup(input) {
+        const { data, error } = await client.rpc("create_supervision_group", {
+          p_cohort_id: input.cohortId,
+          p_placement_id: input.placementId,
+          p_label: input.label,
+        });
+        assertNoSupabaseError(error);
+        const row = data as SupervisionGroupRow;
+        // La fonction rend la LIGNE du groupe, sans ses membres ni ses
+        // encadrants : le groupe vient de naitre, les deux listes sont vides.
+        return mapSupervisionGroup({
+          ...row,
+          supervision_group_members: [],
+          supervision_group_supervisors: [],
+        });
+      },
+      async setSupervisionGroupMembers(groupId, enrollmentIds) {
+        const { error } = await client.rpc("set_group_members", {
+          p_group_id: groupId,
+          p_enrollment_ids: [...enrollmentIds],
+        });
+        assertNoSupabaseError(error);
+      },
+      async setSupervisionGroupSupervisors(groupId, personIds) {
+        const { error } = await client.rpc("set_group_supervisors", {
+          p_group_id: groupId,
+          p_person_ids: [...personIds],
+        });
+        assertNoSupabaseError(error);
+      },
+    },
     programs: {
       ...mockDataAccess.programs,
       async listPrograms() {

@@ -39,7 +39,7 @@ import type {
   ProfessionalMessage,
   SupervisionAlert,
 } from "@/domain/supervision";
-import type { StageLog, StageLogTemplate } from "@/domain/stageLog";
+import type { StageLog, StageLogId, StageLogTemplate } from "@/domain/stageLog";
 import type { CohortStatisticsSnapshot } from "@/domain/statistics";
 import type {
   ClinicalAuditCampaign,
@@ -84,9 +84,12 @@ import type {
   PersonId,
   Placement,
   PlacementAssignment,
+  PlacementId,
   Program,
   ProgramId,
   RoleAssignment,
+  SupervisionGroup,
+  SupervisionGroupId,
 } from "@/domain/types";
 import type { GrantableRole, GrantScopeKind } from "@/domain/accessGrant";
 import type {
@@ -390,6 +393,48 @@ export interface PlacementRepository {
     supervisorPersonId: PersonId,
     programId: ProgramId,
   ): Promise<readonly PlacementAssignment[]>;
+
+  /* ---------------------------------------------------------------- */
+  /* Écriture — passe par les fonctions serveur de la migration stage  */
+  /* ---------------------------------------------------------------- */
+
+  /** Crée un terrain de stage (RPC `create_placement`). */
+  createPlacement(input: CreatePlacementInput): Promise<Placement>;
+
+  /**
+   * Groupes d'encadrement du programme, membres et encadrants inclus.
+   * Générique : vaut pour toute cohorte de tout programme.
+   */
+  listSupervisionGroups(programId: ProgramId): Promise<readonly SupervisionGroup[]>;
+
+  /** Crée un groupe d'encadrement pour une cohorte sur un terrain donné. */
+  createSupervisionGroup(input: CreateSupervisionGroupInput): Promise<SupervisionGroup>;
+
+  /** REMPLACE la liste des membres du groupe. Idempotent. */
+  setSupervisionGroupMembers(
+    groupId: SupervisionGroupId,
+    enrollmentIds: readonly EnrollmentId[],
+  ): Promise<void>;
+
+  /** REMPLACE la liste des encadrants du groupe. Idempotent. */
+  setSupervisionGroupSupervisors(
+    groupId: SupervisionGroupId,
+    personIds: readonly PersonId[],
+  ): Promise<void>;
+}
+
+export interface CreatePlacementInput {
+  readonly programId: ProgramId;
+  readonly name: string;
+  readonly site: string;
+  readonly department: string;
+  readonly capacity: number;
+}
+
+export interface CreateSupervisionGroupInput {
+  readonly cohortId: CohortId;
+  readonly placementId: PlacementId;
+  readonly label: string;
 }
 
 /** Lecture du périmètre d'encadrement (responsable de stage). */
@@ -861,10 +906,56 @@ export interface StageLogRepository {
   listTemplates(programId?: ProgramId): Promise<readonly StageLogTemplate[]>;
   /** Carnet(s) d'une inscription : accès apprenant limité à son propre carnet. */
   listLogsForEnrollment(enrollmentId: EnrollmentId): Promise<readonly StageLog[]>;
-  /** Carnets soumis rattachés aux stages d'un encadrant / enseignant. */
-  listLogsToValidate(placementAssignmentIds: readonly string[]): Promise<readonly StageLog[]>;
+  /**
+   * Carnets des étudiants que l'appelant encadre RÉELLEMENT.
+   *
+   * La signature d'origine prenait des identifiants d'affectation, qui
+   * n'existent plus : le rattachement passe par les groupes d'encadrement
+   * depuis le 31/08. Le périmètre est décidé côté serveur par
+   * `supervises_enrollment()` — l'écran ne le calcule pas.
+   */
+  listLogsToValidate(programId: ProgramId): Promise<readonly StageLog[]>;
   /** Carnets validés puis transmis dans l'espace de l'administration du programme. */
   listLogsReceived(programId: ProgramId): Promise<readonly StageLog[]>;
+
+  /* ---------------------------------------------------------------- */
+  /* Écriture — fonctions serveur de la migration 20260831093000       */
+  /* ---------------------------------------------------------------- */
+
+  /**
+   * Enregistre UNE JOURNÉE PRÉSENTE. L'existence de l'entrée EST la présence ;
+   * le récit peut être vide. Rejouable : réécrit la journée si elle existe.
+   */
+  saveStageLogDay(input: SaveStageLogDayInput): Promise<void>;
+
+  /** Retire une journée — donc déclare l'absence. */
+  deleteStageLogDay(input: {
+    readonly enrollmentId: EnrollmentId;
+    readonly placementId: PlacementId;
+    readonly occurredOn: string;
+  }): Promise<void>;
+
+  /** L'encadrant valide un BLOC : une semaine, deux, ou tout le stage. */
+  validateStageLogBlock(input: ValidateStageLogBlockInput): Promise<void>;
+
+  /** Ouvre les carnets de tous les membres d'un groupe. Idempotent. */
+  openStageLogsForGroup(groupId: SupervisionGroupId): Promise<void>;
+}
+
+export interface SaveStageLogDayInput {
+  readonly enrollmentId: EnrollmentId;
+  readonly placementId: PlacementId;
+  /** Jour concerné, en `AAAA-MM-JJ`. */
+  readonly occurredOn: string;
+  readonly narrative: string;
+}
+
+export interface ValidateStageLogBlockInput {
+  readonly stageLogId: StageLogId;
+  readonly coversFrom: string;
+  readonly coversTo: string;
+  readonly decision: "validated" | "needs_revision";
+  readonly comment: string;
 }
 
 /**

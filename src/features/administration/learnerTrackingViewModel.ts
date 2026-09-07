@@ -130,8 +130,7 @@ export function buildLearnerTrackingRows(input: {
       return {
         enrollmentId: enrollment.id,
         cohortId: enrollment.cohortId,
-        personName:
-          input.people.find((p) => p.id === enrollment.personId)?.fullName ?? "Apprenant",
+        personName: input.people.find((p) => p.id === enrollment.personId)?.fullName ?? "Apprenant",
         status: enrollment.status,
         theory,
         competence,

@@ -43,7 +43,7 @@ export function useSupervision() {
         data.supervision.listCompetenceConfirmations(activeProgram.id),
         data.supervision.listPlacementReports(activeProgram.id),
         data.supervision.listMessages(activeProgram.id),
-        data.stageLogs.listLogsToValidate(assignments.map((a) => a.id)),
+        data.stageLogs.listLogsToValidate(activeProgram.id),
       ]);
       const learners = await data.supervision.listPeopleByIds(enrollments.map((e) => e.personId));
 

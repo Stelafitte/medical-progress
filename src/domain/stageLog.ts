@@ -21,6 +21,7 @@ import type {
   IsoDateTime,
   PersonId,
   PlacementAssignmentId,
+  PlacementId,
   ProgramId,
   Provenance,
   RoleName,
@@ -135,12 +136,21 @@ export interface StageLogEntry extends Entity<StageLogEntryId> {
   readonly stageLogId: StageLogId;
   readonly templateId: StageLogTemplateId;
   readonly occurredAt: IsoDateTime;
+  /**
+   * Récit libre de la journée, dicté au clavier du téléphone. L'EXISTENCE de
+   * l'entrée déclare la présence ; le récit peut rester vide. Décision du
+   * 31/08 : un geste, pas deux.
+   */
+  readonly narrative: string;
   readonly values: Readonly<Record<string, string>>;
   readonly photos: readonly StageLogPhotoAttachment[];
 }
 
 export interface StageLogValidation {
   readonly stageLogId: StageLogId;
+  /** La validation porte une PÉRIODE, jamais une journée isolée (31/08). */
+  readonly coversFrom: IsoDateTime;
+  readonly coversTo: IsoDateTime;
   readonly validatorPersonId: PersonId;
   readonly validatorRole: Extract<RoleName, "placement_supervisor" | "teacher" | "administrator">;
   readonly decision: "validated" | "needs_revision";
@@ -155,6 +165,10 @@ export interface StageLog extends Entity<StageLogId> {
   readonly programId: ProgramId;
   readonly cohortId: CohortId;
   readonly enrollmentId: EnrollmentId;
+  /** Terrain du carnet, et période héritée de la cohorte. */
+  readonly placementId?: PlacementId;
+  readonly periodStartsOn?: IsoDateTime;
+  readonly periodEndsOn?: IsoDateTime;
   readonly placementAssignmentId?: PlacementAssignmentId;
   readonly status: StageLogStatus;
   readonly entries: readonly StageLogEntry[];
@@ -302,17 +316,28 @@ export function nextStageLogStatus(
   action: StageLogAction,
   actorRoles: readonly RoleName[],
 ): StageLogStatus | null {
-  const isValidator = actorRoles.includes("placement_supervisor") || actorRoles.includes("teacher");
   const isAdmin = actorRoles.includes("administrator");
+  // L'administration d'un programme valide aussi : `supervises_enrollment()`
+  // est vraie pour `can_administer_program()` avant meme de regarder les
+  // groupes, et `stage_log_validations.validator_role` accepte `administrator`.
+  const isValidator =
+    actorRoles.includes("placement_supervisor") || actorRoles.includes("teacher") || isAdmin;
   switch (action) {
     case "submit":
       return actorRoles.includes("learner") && (current === "draft" || current === "needs_revision")
         ? "submitted"
         : null;
+    // Decision de Stef (07/09) : l'etudiant NE SOUMET RIEN. Son carnet reste
+    // `draft` tout le stage, et l'encadrant valide la periode qu'il veut, quand
+    // il veut. Exiger `submitted` rendait la validation impossible : plus
+    // personne ne faisait passer le carnet dans cet etat. `submitted` reste
+    // accepte pour les carnets deja soumis sous l'ancien modele.
     case "request_revision":
-      return isValidator && current === "submitted" ? "needs_revision" : null;
+      return isValidator && (current === "draft" || current === "submitted")
+        ? "needs_revision"
+        : null;
     case "validate":
-      return isValidator && current === "submitted" ? "validated" : null;
+      return isValidator && (current === "draft" || current === "submitted") ? "validated" : null;
     case "transmit":
       return isAdmin && current === "validated" ? "transmitted" : null;
     default:

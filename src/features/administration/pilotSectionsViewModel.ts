@@ -54,9 +54,7 @@ export function nextProgrammingState(
   }
 }
 
-export function allowedProgrammingActions(
-  current: ProgrammingState,
-): readonly ProgrammingAction[] {
+export function allowedProgrammingActions(current: ProgrammingState): readonly ProgrammingAction[] {
   return (["activate", "pause", "resume", "close", "reopen"] as const).filter(
     (action) => nextProgrammingState(current, action) !== null,
   );
@@ -125,8 +123,7 @@ export function buildLearnerActivityRows(input: {
       const dates = logs.flatMap((l) => l.entries.map((e) => e.occurredAt)).sort();
       const base = {
         enrollmentId: enrollment.id,
-        personName:
-          input.people.find((p) => p.id === enrollment.personId)?.fullName ?? "Apprenant",
+        personName: input.people.find((p) => p.id === enrollment.personId)?.fullName ?? "Apprenant",
         status: enrollment.status,
         logCount: logs.length,
         entryCount,
@@ -160,9 +157,7 @@ export interface GroupActivitySummary {
 const mean = (values: readonly number[]) =>
   values.length === 0 ? 0 : values.reduce((a, b) => a + b, 0) / values.length;
 
-export function summarizeGroupActivity(
-  rows: readonly LearnerActivityRow[],
-): GroupActivitySummary {
+export function summarizeGroupActivity(rows: readonly LearnerActivityRow[]): GroupActivitySummary {
   const markerCounts = (
     ["late", "awaiting_validation", "in_progress", "on_track", "idle"] as const
   ).reduce(

@@ -7,12 +7,7 @@
  * validation d'un stage (compétences, validation finale, carnet reçu).
  */
 import type { LocalPlacement } from "@/domain/placementDraft";
-import type {
-  Enrollment,
-  Person,
-  Placement,
-  PlacementAssignment,
-} from "@/domain/types";
+import type { Enrollment, Person, Placement, PlacementAssignment } from "@/domain/types";
 
 /** Nom du responsable d'un terrain : encadrant saisi, sinon encadrant affecté. */
 export function supervisorNameFor(
@@ -59,8 +54,7 @@ export function buildCohortPlacementRows(args: {
       const placement = args.placements.find((p) => p.id === assignment?.placementId);
       return {
         enrollmentId: enrollment.id,
-        learnerName:
-          args.people.find((p) => p.id === enrollment.personId)?.fullName ?? "Apprenant",
+        learnerName: args.people.find((p) => p.id === enrollment.personId)?.fullName ?? "Apprenant",
         placementName: placement?.name ?? null,
         status: assignment?.status ?? null,
         startsOn: assignment?.startsOn ?? null,

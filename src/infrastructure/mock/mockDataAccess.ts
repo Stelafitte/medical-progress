@@ -13,7 +13,11 @@ import type {
   LearningResource,
   Outcome,
   OutcomeTheme,
+  Placement,
+  PlacementId,
   RoleAssignment,
+  SupervisionGroup,
+  SupervisionGroupId,
 } from "@/domain/types";
 import { scopeFromGrantFields } from "@/domain/accessGrant";
 import type { AssessmentModality } from "@/domain/assessmentModality";
@@ -34,6 +38,14 @@ import * as hvg from "./dpcHvgFixtures";
 
 const clone = <T>(value: T): T => value;
 const ok = <T>(value: T): Promise<T> => Promise.resolve(clone(value));
+
+/**
+ * Terrains et groupes d'encadrement CRÉÉS PENDANT LA SESSION mock. En mémoire,
+ * comme tout le reste de ce fichier : rien n'est persisté, l'état disparaît au
+ * rechargement. Le backend Supabase, lui, écrit vraiment.
+ */
+const createdPlacements: Placement[] = [];
+const createdGroups: SupervisionGroup[] = [];
 
 /**
  * Recopie une personne du sas SANS certaines de ses clés optionnelles.
@@ -322,7 +334,61 @@ export const mockDataAccess: DataAccess = {
       ok(fx.evidence.filter((e) => e.enrollmentId === enrollmentId)),
   },
   placements: {
-    listPlacements: (programId) => ok(fx.placements.filter((p) => p.programId === programId)),
+    listPlacements: (programId) =>
+      ok([
+        ...fx.placements.filter((p) => p.programId === programId),
+        ...createdPlacements.filter((p) => p.programId === programId),
+      ]),
+    createPlacement: (input) => {
+      const created: Placement = {
+        id: `plc-mock-${createdPlacements.length + 1}` as PlacementId,
+        createdAt: new Date().toISOString(),
+        provenance: { sourceSystem: "native" },
+        programId: input.programId,
+        name: input.name,
+        site: input.site,
+        department: input.department,
+        capacity: input.capacity,
+      };
+      createdPlacements.push(created);
+      return ok(created);
+    },
+    listSupervisionGroups: (programId) =>
+      ok(createdGroups.filter((g) => g.programId === programId)),
+    createSupervisionGroup: (input) => {
+      const placement = [...fx.placements, ...createdPlacements].find(
+        (p) => p.id === input.placementId,
+      );
+      const created: SupervisionGroup = {
+        id: `grp-mock-${createdGroups.length + 1}` as SupervisionGroupId,
+        createdAt: new Date().toISOString(),
+        provenance: { sourceSystem: "native" },
+        programId: placement?.programId ?? ("program-unknown" as ProgramId),
+        cohortId: input.cohortId,
+        placementId: input.placementId,
+        label: input.label,
+        memberEnrollmentIds: [],
+        supervisorPersonIds: [],
+      };
+      createdGroups.push(created);
+      return ok(created);
+    },
+    setSupervisionGroupMembers: (groupId, enrollmentIds) => {
+      const index = createdGroups.findIndex((g) => g.id === groupId);
+      const group = createdGroups[index];
+      if (group) {
+        createdGroups[index] = { ...group, memberEnrollmentIds: [...enrollmentIds] };
+      }
+      return ok(undefined);
+    },
+    setSupervisionGroupSupervisors: (groupId, personIds) => {
+      const index = createdGroups.findIndex((g) => g.id === groupId);
+      const group = createdGroups[index];
+      if (group) {
+        createdGroups[index] = { ...group, supervisorPersonIds: [...personIds] };
+      }
+      return ok(undefined);
+    },
     listAssignmentsForEnrollment: (enrollmentId) =>
       ok(fx.placementAssignments.filter((a) => a.enrollmentId === enrollmentId)),
     listAssignmentsForProgram: (programId) => {
@@ -675,15 +741,7 @@ export const mockDataAccess: DataAccess = {
       ),
     listLogsForEnrollment: (enrollmentId) =>
       ok(slfx.stageLogs.filter((l) => l.enrollmentId === enrollmentId)),
-    listLogsToValidate: (placementAssignmentIds) =>
-      ok(
-        slfx.stageLogs.filter(
-          (l) =>
-            l.status === "submitted" &&
-            !!l.placementAssignmentId &&
-            placementAssignmentIds.includes(l.placementAssignmentId),
-        ),
-      ),
+    listLogsToValidate: (programId) => ok(slfx.stageLogs.filter((l) => l.programId === programId)),
     listLogsReceived: (programId) =>
       ok(
         slfx.stageLogs.filter(
@@ -691,6 +749,12 @@ export const mockDataAccess: DataAccess = {
             l.programId === programId && (l.status === "validated" || l.status === "transmitted"),
         ),
       ),
+    // Le mock ne persiste rien : ces quatre écritures sont sans effet, comme
+    // tout le reste de ce fichier. Le backend Supabase, lui, écrit vraiment.
+    saveStageLogDay: () => ok(undefined),
+    deleteStageLogDay: () => ok(undefined),
+    validateStageLogBlock: () => ok(undefined),
+    openStageLogsForGroup: () => ok(undefined),
   },
   statistics: {
     listCohortStatistics: (programId) =>
