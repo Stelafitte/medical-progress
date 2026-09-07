@@ -1,5 +1,5 @@
 import { useEffect, useRef, type ReactNode } from "react";
-import { BookOpen, PlayCircle } from "lucide-react";
+import { BookOpen, Check, PlayCircle } from "lucide-react";
 
 import {
   Accordion,
@@ -7,9 +7,9 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { MasteryLevel, Outcome } from "@/domain/types";
+import { MASTERY_LABELS_FR } from "@/domain/mastery";
 import { OutcomeDeclarationSwitch } from "@/features/passport/OutcomeDeclarationSwitch";
 
 /**
@@ -35,6 +35,8 @@ export function OutcomeRow({
   supportCount,
   supportKind,
   spotlight = false,
+  open,
+  onOpenChange,
   children,
 }: {
   readonly outcome: Outcome;
@@ -56,6 +58,15 @@ export function OutcomeRow({
    * sans être arrivé nulle part.
    */
   readonly spotlight?: boolean;
+  /**
+   * PILOTAGE EXTERNE, optionnel. Sans ces deux propriétés la ligne garde son
+   * comportement d'origine : chacune s'ouvre et se ferme pour son compte. Les
+   * fournir laisse la LISTE décider — c'est ce qui permet de n'avoir qu'un seul
+   * acquis ouvert à la fois, sans quoi la page devient interminable sur
+   * téléphone.
+   */
+  readonly open?: boolean;
+  readonly onOpenChange?: (open: boolean) => void;
   /** Ce que l'ouverture révèle : contenus, échéances, journal. */
   readonly children: ReactNode;
 }) {
@@ -72,32 +83,58 @@ export function OutcomeRow({
     return () => window.cancelAnimationFrame(trame);
   }, [spotlight]);
   /**
-   * LA PASTILLE DE CONTENU (03/09). Rien, sur la ligne fermée, ne disait qu'un
-   * cours se cachait derrière l'intitulé : le chevron d'un accordéon annonce
-   * qu'il y a « quelque chose », jamais qu'il y a un support à lire ou une
-   * vidéo à regarder. Un étudiant pressé passait à côté de tout le contenu.
+   * LES INDICATEURS DE CONTENU, EN TRAIT (07/09).
    *
-   * ELLE COMPTE, elle ne se contente pas d'exister : savoir qu'une
-   * connaissance est traitée par trois supports et une autre par un seul
-   * change ce qu'on ouvre en premier.
+   * CE QU'ILS REMPLACENT : une pastille marine pleine, qui attirait l'oeil plus
+   * fort que l'enonce lui-meme. Or l'enonce est ce que l'etudiant doit lire ;
+   * le contenu derriere n'est qu'une promesse secondaire.
+   *
+   * TROIS REGLES QUI TIENNENT LE BRUIT :
+   *   - le CHIFFRE n'apparait qu'a partir de DEUX. « 1 » n'apprend rien que la
+   *     presence de l'icone ne dise deja ;
+   *   - un type absent est RETIRE, jamais grise. Quatre icones dont trois
+   *     eteintes font plus de bruit qu'une seule allumee ;
+   *   - chaque icone porte son libelle en toutes lettres pour les lecteurs
+   *     d'ecran — une icone muette n'existe pas pour eux.
+   *
+   * ON N'AFFICHE QUE CE QUI EXISTE VRAIMENT AU NIVEAU DE L'ACQUIS. Figures et
+   * videos pendent au SUPPORT (verifie dans le schema le 07/09 : aucune de ces
+   * tables ne porte d'`outcome_id`) et vivent au niveau du chapitre. En mettre
+   * le compte sur chaque ligne repeterait quinze fois le meme chiffre.
    */
-  const pastille =
+  const Icone = supportKind === "video" ? PlayCircle : BookOpen;
+  const indicateurs =
     supportCount && supportCount > 0 ? (
-      <Badge
-        variant="secondary"
-        className="ml-2 gap-1 border-transparent bg-success font-normal text-success-foreground"
+      <span
+        className="ms-2 inline-flex shrink-0 items-center gap-1 align-middle text-muted-foreground"
+        title={
+          supportKind === "video"
+            ? `${supportCount} vidéo(s)`
+            : `${supportCount} support(s) de cours`
+        }
       >
-        {supportKind === "video" ? (
-          <PlayCircle className="size-3" aria-hidden />
-        ) : (
-          <BookOpen className="size-3" aria-hidden />
-        )}
-        {supportCount}
+        <Icone className="size-3.5" aria-hidden />
+        {supportCount > 1 ? (
+          <span className="text-xs" style={{ fontVariantNumeric: "tabular-nums" }}>
+            {supportCount}
+          </span>
+        ) : null}
         <span className="sr-only">
-          {supportKind === "video" ? "vidéo(s) disponible(s)" : "support(s) de cours disponible(s)"}
+          {supportCount} {supportKind === "video" ? "vidéo" : "support de cours"}
+          {supportCount > 1 ? "s" : ""}
         </span>
-      </Badge>
+      </span>
     ) : null;
+
+  /**
+   * L'INDICATEUR D'ETAT A SA PLACE RESERVEE, A DROITE. Il vivait a cote de
+   * l'interrupteur, DANS LE FLUX : une ligne declaree decalait son enonce vers
+   * la droite et plus rien ne s'alignait. La colonne de gauche ne porte donc
+   * plus que l'interrupteur, de largeur fixe, et tous les enonces demarrent sur
+   * la meme verticale, declares ou non.
+   */
+  const declare = declaredLevel !== undefined && declaredLevel !== "not_started";
+
   return (
     <li
       ref={ancre}
@@ -107,34 +144,62 @@ export function OutcomeRow({
         spotlight ? "rounded-md bg-primary/5 ring-2 ring-primary/50" : null,
       )}
     >
-      <div className="flex items-start gap-3 py-1">
-        <div className="flex shrink-0 items-center pt-3">
-          <OutcomeDeclarationSwitch
-            outcomeId={outcome.id}
-            label={outcome.label}
-            nature={outcome.nature}
-            targetMastery={outcome.targetMastery}
-            {...(declaredLevel === undefined ? {} : { declaredLevel })}
-          />
-        </div>
-        <Accordion
-          type="single"
-          collapsible
-          className="min-w-0 flex-1"
-          {...(spotlight ? { defaultValue: "contenu" } : {})}
-        >
-          <AccordionItem value="contenu" className="border-b-0">
-            <AccordionTrigger className="py-2 text-left">
+      {/*
+        LA GRILLE DU DEPLIE EST CELLE DU REPLIE (defaut releve par Stef le
+        07/09). L'accordeon enveloppait AUSSI le contenu dans la colonne de
+        droite : une fois ouvert, le texte et les boutons se tassaient dans une
+        colonne etroite pendant qu'une grande zone vide s'etendait sous
+        l'interrupteur. L'accordeon enveloppe donc maintenant TOUTE la ligne, et
+        seul son DECLENCHEUR partage l'espace avec l'interrupteur. Le contenu
+        deplie prend la pleine largeur, en dessous.
+      */}
+      <Accordion
+        type="single"
+        collapsible
+        className="w-full"
+        {...(open === undefined
+          ? spotlight
+            ? { defaultValue: "contenu" }
+            : {}
+          : {
+              value: open ? "contenu" : "",
+              onValueChange: (v: string) => onOpenChange?.(v === "contenu"),
+            })}
+      >
+        <AccordionItem value="contenu" className="border-b-0">
+          <div className="flex items-center gap-3 py-1">
+            <div className="flex w-9 shrink-0 items-center">
+              <OutcomeDeclarationSwitch
+                outcomeId={outcome.id}
+                label={outcome.label}
+                nature={outcome.nature}
+                targetMastery={outcome.targetMastery}
+                showBadge={false}
+                {...(declaredLevel === undefined ? {} : { declaredLevel })}
+              />
+            </div>
+            <AccordionTrigger className="min-w-0 flex-1 py-2 text-left">
               <span className="min-w-0 flex-1 pr-2 text-sm">
                 <span className="font-mono text-xs">{outcome.code}</span> {outcome.label}
-                {pastille}
+                {indicateurs}
+                {declare ? (
+                  <span
+                    className="ms-2 inline-flex shrink-0 items-center gap-1 align-middle text-xs font-medium text-success"
+                    title={`Déclaré au niveau ${MASTERY_LABELS_FR[outcome.targetMastery]}${
+                      outcome.nature === "real_competence" ? " · à faire valider" : ""
+                    }`}
+                  >
+                    <Check className="size-3.5" aria-hidden />
+                    Déclaré
+                  </span>
+                ) : null}
                 {badges}
               </span>
             </AccordionTrigger>
-            <AccordionContent>{children}</AccordionContent>
-          </AccordionItem>
-        </Accordion>
-      </div>
+          </div>
+          <AccordionContent className="pb-4">{children}</AccordionContent>
+        </AccordionItem>
+      </Accordion>
     </li>
   );
 }

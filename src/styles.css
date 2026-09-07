@@ -59,6 +59,25 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
+  --color-card-sunk: var(--card-sunk);
+  --color-line-soft: var(--line-soft);
+  --color-accent-wash: var(--accent-wash);
+  --color-d-1: var(--d-1);
+  --color-d-2: var(--d-2);
+  --color-d-3: var(--d-3);
+  --color-d-4: var(--d-4);
+  --color-d-5: var(--d-5);
+  --color-d-6: var(--d-6);
+  --color-d-7: var(--d-7);
+  --color-d-8: var(--d-8);
+  --color-d-neutral: var(--d-neutral);
+  --color-field: var(--field);
+  --color-field-2: var(--field-2);
+  --color-field-ink: var(--field-ink);
+  --color-field-mute: var(--field-mute);
+  --color-live: var(--live);
+  --color-live-ink: var(--live-ink);
+  --color-dot-idle: var(--dot-idle);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -116,6 +135,63 @@
   --sidebar-accent-foreground: oklch(0.28 0.05 258);
   --sidebar-border: oklch(0.9 0.016 245);
   --sidebar-ring: oklch(0.55 0.09 245);
+  /*
+   * Fonds et separateurs internes de la maquette /espace (07/09).
+   * `card-sunk` est le rail VIDE d'une barre de progression : il doit se lire
+   * comme un creux, jamais comme un bogue de rendu.
+   */
+  --card-sunk: oklch(0.975 0.006 255.5);
+  --line-soft: oklch(0.947 0.013 255.5);
+  --accent-wash: oklch(0.943 0.021 259.2);
+  /*
+   * LES HUIT TEINTES DE DOMAINE. Valeurs reprises telles quelles de la
+   * maquette v2 et converties en oklch — dans son ordre, `--d-1` a `--d-8`
+   * sont : examen clinique, interrogatoire, relationnel patient, relationnel
+   * equipe, ECG, gestes, raisonnement, information.
+   *
+   * LA TEINTE NE DIT QU'UNE CHOSE : LE DOMAINE DE COMPETENCE. Une
+   * connaissance, un chapitre, une ressource de cours n'en portent jamais —
+   * ils sont en marine. Un statut (lu/non lu, en attente/valide) passe par le
+   * jeu semantique, jamais par une teinte de domaine.
+   *
+   * Un domaine sans correspondance retombe sur `--d-neutral` : il ne doit ni
+   * casser, ni emprunter la couleur d'un autre domaine.
+   *
+   * RESERVE CONNUE : l'attribution d'une teinte a un domaine se fait
+   * aujourd'hui par le RANG du chapitre (`domainColor.ts`), pas par son
+   * identifiant. Inserer un domaine decale les teintes suivantes. Correctif a
+   * trancher — voir la note de chantier.
+   */
+  --d-1: oklch(0.502 0.164 259);
+  --d-2: oklch(0.537 0.092 184.1);
+  --d-3: oklch(0.523 0.173 299.4);
+  --d-4: oklch(0.573 0.129 54.3);
+  --d-5: oklch(0.525 0.127 146.3);
+  --d-6: oklch(0.544 0.17 358.1);
+  --d-7: oklch(0.542 0.105 86.3);
+  --d-8: oklch(0.522 0.039 253.9);
+  --d-neutral: oklch(0.52 0.035 254);
+  /*
+   * LE BANDEAU SOMBRE, ouverture commune aux huit onglets (maquette v2).
+   * Il absorbe la barre d'application et porte l'identite de la page plus ses
+   * deux ou trois chiffres cles. C'est le seul dispositif qui fasse lire huit
+   * ecrans differents comme un seul produit — sans image et sans composant
+   * nouveau par page.
+   *
+   * `--live` est VOLONTAIREMENT hors de la palette de domaine et hors du jeu
+   * semantique : il ne signale que la pression du temps. Lui donner un sens de
+   * statut le rendrait illisible partout ailleurs.
+   *
+   * `--dot-idle` est la case eteinte de la carte du programme. La maquette la
+   * definit ; sans elle la grille des 368 acquis n'a pas de fond.
+   */
+  --field: oklch(0.255 0.062 255.5);
+  --field-2: oklch(0.308 0.073 255.8);
+  --field-ink: oklch(0.963 0.012 259.8);
+  --field-mute: oklch(0.726 0.055 253.8);
+  --live: oklch(0.804 0.156 82.5);
+  --live-ink: oklch(0.305 0.062 85.6);
+  --dot-idle: oklch(0.877 0.026 253.6);
 }
 
 .dark {
@@ -154,6 +230,25 @@
   --sidebar-accent-foreground: oklch(0.95 0.01 245);
   --sidebar-border: oklch(1 0 0 / 12%);
   --sidebar-ring: oklch(0.6 0.08 240);
+  --card-sunk: oklch(0.286 0.053 255.8);
+  --line-soft: oklch(0.29 0.046 256.5);
+  --accent-wash: oklch(0.292 0.055 258.3);
+  --d-1: oklch(0.716 0.132 258.6);
+  --d-2: oklch(0.715 0.109 182.8);
+  --d-3: oklch(0.698 0.141 299.6);
+  --d-4: oklch(0.732 0.125 61.8);
+  --d-5: oklch(0.739 0.153 147.2);
+  --d-6: oklch(0.718 0.151 356.5);
+  --d-7: oklch(0.75 0.131 89.2);
+  --d-8: oklch(0.717 0.04 252);
+  --d-neutral: oklch(0.74 0.026 250);
+  --field: oklch(0.186 0.039 256.8);
+  --field-2: oklch(0.241 0.049 254.5);
+  --field-ink: oklch(0.947 0.02 260.2);
+  --field-mute: oklch(0.669 0.052 254.2);
+  --live: oklch(0.838 0.136 84.4);
+  --live-ink: oklch(0.243 0.05 87.2);
+  --dot-idle: oklch(0.328 0.05 254.8);
 }
 
 @layer base {

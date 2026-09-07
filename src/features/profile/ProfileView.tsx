@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { Lock } from "lucide-react";
 import { useSession } from "@/application/session";
+import { FieldHeader } from "@/components/field-header";
 import { SectionHeading } from "@/components/section-heading";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -31,11 +32,12 @@ export function ProfileView() {
 
   return (
     <div className="space-y-8">
-      <SectionHeading
-        title="Mon profil"
-        level={1}
-        description="Identité globale du compte. Votre parcours dans un programme donné reste dans Mon cursus."
-      />
+      {/*
+        LE PLUS SOBRE DES HUIT ONGLETS — resister a la tentation de le decorer.
+        Le bandeau porte l'identite et rien d'autre : aucun chiffre ne dit quoi
+        que ce soit d'utile sur un profil.
+      */}
+      <FieldHeader eyebrow={person.email} title={person.fullName} />
 
       <Card>
         <CardHeader>

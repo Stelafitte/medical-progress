@@ -10,8 +10,8 @@
  */
 import { useMemo, useState } from "react";
 import { useSearch } from "@tanstack/react-router";
-import { CalendarDays, Download, MessageSquare, Search } from "lucide-react";
-import { SectionHeading } from "@/components/section-heading";
+import { CalendarDays, ChevronDown, Download, MessageSquare, Search } from "lucide-react";
+import { FieldHeader } from "@/components/field-header";
 import {
   Accordion,
   AccordionContent,
@@ -32,13 +32,8 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  EmptyState,
-  MockBadge,
-  PanelCard,
-  ScopeNotice,
-  StatCard,
-} from "@/features/professional/mock-ui";
+import { EmptyState, MockBadge, PanelCard, ScopeNotice } from "@/features/professional/mock-ui";
+import { buildDomainColors, DOMAIN_NEUTRAL } from "@/features/dashboard/domainColor";
 import { useLearnerPassport } from "@/features/dashboard/useLearnerPassport";
 import { useSession } from "@/application/session";
 import { MASTERY_LABELS_FR, NATURE_LABELS_FR, summarizeProgress } from "@/domain/mastery";
@@ -53,7 +48,7 @@ import {
   type CompetenceListFilters,
   type CompetenceStatusFilter,
 } from "@/domain/competenceListView";
-import type { LearningResourceId, OutcomeNature } from "@/domain/types";
+import type { LearningResourceId, OutcomeNature, OutcomeThemeId } from "@/domain/types";
 import { OutcomeRow } from "@/features/passport/OutcomeRow";
 import { OutcomeScheduleSection } from "@/features/passport/OutcomeScheduleSection";
 import { ResourceMediaPlayer } from "@/features/resources/ResourceMediaPlayer";
@@ -323,9 +318,6 @@ export function CompetencesView() {
   const visible = filterCompetences(competences, filters, journalReconcilie);
   const summary = summarizeProgress(competences);
   const planById = new Map(data.plan.items.map((i) => [i.id, i] as const));
-  const declaredCount = competences.filter(
-    (c) => !c.meetsTarget && journalReconcilie.get(c.outcome.id)?.selfDeclaredAcquired,
-  ).length;
 
   /**
    * Les competences repliees PAR CHAPITRE.
@@ -345,6 +337,13 @@ export function CompetencesView() {
    */
   const HORS_CHAPITRE = "Hors chapitre";
   const chapitreDe = new Map(data.themes.map((t) => [t.id, t] as const));
+  /*
+   * LES HUIT TEINTES APPARAISSENT ICI ENSEMBLE POUR LA PREMIERE FOIS. C'est
+   * l'ecran ou la palette paie : un domaine porte la meme couleur ici et sur
+   * `/espace`, quel que soit l'ordre d'affichage, parce qu'elle est derivee de
+   * son identifiant. « Hors chapitre » n'est pas un domaine : il reste neutre.
+   */
+  const couleurParTheme = buildDomainColors(data.themes);
   const parChapitre = new Map<string, { label: string; position: number; items: typeof visible }>();
   for (const item of visible) {
     const theme = item.outcome.themeId ? chapitreDe.get(item.outcome.themeId) : undefined;
@@ -418,10 +417,14 @@ export function CompetencesView() {
         LE CALENDRIER A QUITTÉ CET ÉCRAN pour le Passeport : la description ne
         doit plus le promettre.
       */}
-      <SectionHeading
+      <FieldHeader
+        eyebrow={activeProgram.name}
         title="Mes compétences"
-        level={1}
-        description={`${activeProgram.name} — les compétences du programme, chapitre par chapitre, avec leurs contenus et mon journal d'acquisition.`}
+        figures={[
+          { value: summary.total, label: "suivies" },
+          { value: summary.atTarget, label: "au niveau cible" },
+          { value: summary.notStarted, label: "non commencées" },
+        ]}
       />
 
       <ScopeNotice>
@@ -431,19 +434,8 @@ export function CompetencesView() {
         pas encore branchée.
       </ScopeNotice>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Compétences suivies" value={summary.total} />
-        <StatCard
-          label="Au niveau cible"
-          value={`${summary.atTarget} (${summary.percentAtTarget} %)`}
-        />
-        <StatCard label="Déclarées, à valider" value={declaredCount} />
-        <StatCard label="Non commencées" value={summary.notStarted} />
-      </div>
-
       <PanelCard
         title="Liste de mes compétences"
-        description="Une seule liste : la nature (simulée ou réelle) est un attribut de la compétence."
         action={
           <Button
             type="button"
@@ -525,16 +517,69 @@ export function CompetencesView() {
             defaultValue={chapitreCible === undefined ? [] : [chapitreCible]}
           >
             {chapitres.map((chapitre) => (
-              <AccordionItem key={chapitre.cle} value={chapitre.cle}>
-                <AccordionTrigger className="text-left">
-                  <span className="flex flex-1 items-center justify-between gap-3 pr-2">
-                    <span className="font-medium">{chapitre.label}</span>
-                    <Badge variant="outline" className="font-normal">
-                      {chapitre.items.length}
-                    </Badge>
+              <AccordionItem
+                key={chapitre.cle}
+                value={chapitre.cle}
+                className="border-b-0"
+                style={
+                  {
+                    "--c": couleurParTheme.get(chapitre.cle as OutcomeThemeId) ?? DOMAIN_NEUTRAL,
+                  } as React.CSSProperties
+                }
+              >
+                <AccordionTrigger className="gap-3 py-3 text-left hover:no-underline [&>svg]:hidden">
+                  <span className="flex min-w-0 flex-1 items-stretch gap-3">
+                    {/*
+                      LA TUILE PORTE LE COMPTE. Une pastille de 8 px ne pesait
+                      rien ; un aplat qui porte un chiffre fait travailler la
+                      couleur, et c'est ce qui dit « competence » d'un coup
+                      d'oeil dans toute l'application.
+                    */}
+                    <span
+                      className="grid w-11 shrink-0 place-items-center rounded-lg py-2 text-white"
+                      style={{ backgroundColor: "var(--c)" }}
+                    >
+                      <b
+                        className="text-[17px] font-bold leading-none"
+                        style={{ fontVariantNumeric: "tabular-nums" }}
+                      >
+                        {chapitre.items.length}
+                      </b>
+                      <span className="mt-[3px] text-[9px] tracking-wider opacity-85">ACQUIS</span>
+                    </span>
+                    <span className="flex min-w-0 flex-1 flex-col justify-center gap-[5px]">
+                      <span className="font-display text-[16.5px] leading-tight tracking-[-0.01em]">
+                        {chapitre.label}
+                      </span>
+                      <span className="h-[3px] overflow-hidden rounded-sm bg-card-sunk" aria-hidden>
+                        <span
+                          className="block h-full rounded-sm"
+                          style={{
+                            width: `${Math.max(
+                              (chapitre.items.filter((i) => i.meetsTarget).length /
+                                chapitre.items.length) *
+                                100,
+                              3,
+                            )}%`,
+                            backgroundColor: "var(--c)",
+                          }}
+                        />
+                      </span>
+                    </span>
+                    <ChevronDown
+                      className="size-4 shrink-0 self-center text-muted-foreground transition-transform"
+                      aria-hidden
+                    />
                   </span>
                 </AccordionTrigger>
-                <AccordionContent>
+                <AccordionContent
+                  className="mb-2 px-3"
+                  style={{
+                    backgroundColor: "color-mix(in oklch, var(--c) 8%, var(--card))",
+                    borderTop: "1px solid color-mix(in oklch, var(--c) 22%, transparent)",
+                    borderBottom: "1px solid color-mix(in oklch, var(--c) 22%, transparent)",
+                  }}
+                >
                   <ul className="pt-2">
                     {chapitre.items.map((item) => (
                       <CompetenceRow
@@ -565,7 +610,8 @@ export function CompetencesView() {
         plan={data.plan}
         garder={(nature) => nature !== "knowledge"}
         title="Quand je dois les maîtriser"
-        description="Les jalons du programme qui portent des compétences. Dépliez un jalon pour voir ce qu'il demande, et déclarez au passage."
+        description="Les jalons du programme qui portent des compétences."
+        collapsible
       />
     </div>
   );

@@ -4,11 +4,17 @@
  * données de démonstration alignées sur le domaine des communications.
  */
 import { useState } from "react";
-import { SectionHeading } from "@/components/section-heading";
+import { FieldHeader } from "@/components/field-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { EmptyState, MockBadge, PanelCard, ScopeNotice, StatCard } from "@/features/professional/mock-ui";
+import {
+  EmptyState,
+  MockBadge,
+  PanelCard,
+  ScopeNotice,
+  StatCard,
+} from "@/features/professional/mock-ui";
 import { useSession } from "@/application/session";
 import {
   COMMUNICATION_NO_REAL_SEND_FR,
@@ -67,24 +73,20 @@ export function LearnerMessagesView() {
 
   return (
     <div className="space-y-8">
-      <SectionHeading
+      <FieldHeader
+        eyebrow={activeProgram.name}
         title="Mes messages"
-        level={1}
-        action={<MockBadge label="Simulé — aucune réception réelle" />}
-        description={`${activeProgram.name} — annonces, relances et convocations adressées à votre promotion.`}
+        figures={[
+          { value: DEMO_MESSAGES.length, label: "messages" },
+          { value: unread.length, label: "non lus" },
+        ]}
       />
 
       <ScopeNotice>{COMMUNICATION_NO_REAL_SEND_FR}</ScopeNotice>
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <StatCard label="Messages" value={DEMO_MESSAGES.length} />
-        <StatCard label="Non lus" value={unread.length} />
-        <StatCard label="Canaux" value="e-mail · application" hint="SMS non activé" />
-      </div>
-
       <PanelCard
         title="Boîte de réception"
-        description="Les messages sont générés par les campagnes du programme (démonstration)."
+        action={<MockBadge label="Simulé — aucune réception réelle" />}
       >
         {DEMO_MESSAGES.length === 0 ? (
           <EmptyState>Aucun message pour l'instant.</EmptyState>
@@ -95,8 +97,18 @@ export function LearnerMessagesView() {
               return (
                 <li key={message.id} className="space-y-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className={isRead ? "text-muted-foreground" : "font-medium"}>
+                    {/*
+                      LE NON-LU EST PORTE PAR LA GRAISSE ET UN MARQUEUR, jamais
+                      par la couleur seule : un daltonien, un ecran en plein
+                      soleil ou un mode contraste eleve la perdent.
+                    */}
+                    <span
+                      className={`size-2 shrink-0 rounded-full ${isRead ? "bg-transparent" : "bg-primary"}`}
+                      aria-hidden
+                    />
+                    <span className={isRead ? "text-muted-foreground" : "font-semibold"}>
                       {message.subject}
+                      {isRead ? null : <span className="sr-only"> (non lu)</span>}
                     </span>
                     <Badge variant="outline" className="font-normal">
                       {MESSAGE_CATEGORY_LABELS_FR[message.category]}
@@ -108,7 +120,11 @@ export function LearnerMessagesView() {
                       {new Date(message.receivedAt).toLocaleDateString("fr-FR")}
                     </span>
                     {isRead ? null : (
-                      <Button size="sm" variant="ghost" onClick={() => setReadIds([...readIds, message.id])}>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setReadIds([...readIds, message.id])}
+                      >
                         Marquer comme lu
                       </Button>
                     )}

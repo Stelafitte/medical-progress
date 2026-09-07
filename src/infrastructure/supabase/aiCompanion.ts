@@ -1,0 +1,102 @@
+import { getBrowserSupabaseClient } from "@/infrastructure/supabase/client";
+
+/**
+ * LE CONNECTEUR DU COMPAGNON IA.
+ *
+ * POURQUOI CE FICHIER EXISTE, ET PAS UNE METHODE DE PLUS DANS LE DEPOT.
+ * `ai-companion-chat` n'est pas une lecture de donnees : c'est un appel
+ * facture, lent, et qui peut echouer a mi-parcours. Le passer par le port
+ * `DataAccess` obligerait a decrire dans le mock un comportement qu'aucun mock
+ * ne peut simuler honnetement — et le depot rendrait alors du faux succes,
+ * exactement le mode de panne que ce projet traque partout ailleurs.
+ *
+ * LE DEPLIAGE DE `error.context` EST INDISPENSABLE. `functions.invoke` ne
+ * rend, sur une reponse non-2xx, qu'un generique « Edge Function returned a
+ * non-2xx status code ». Le message metier — plafond atteint, IA fermee, fil
+ * introuvable — est dans le corps de la reponse, accessible seulement par
+ * `error.context`. Sans ce depliage, toute erreur de l'assistant devient
+ * indistinctement « ca ne marche pas ».
+ */
+
+export type AiCitation = {
+  readonly resourceId: string;
+  readonly resourceTitle: string;
+  readonly sourcePath: string;
+  readonly segmentIndex: number;
+  readonly excerpt?: string;
+};
+
+export type AiAnswer = {
+  readonly answer: string;
+  readonly citations: readonly AiCitation[];
+  readonly grounded: boolean;
+  readonly credits: number;
+  readonly usage?: { readonly inputTokens: number; readonly outputTokens: number };
+};
+
+export type AiThreadScope = "knowledge" | "competence";
+
+function client() {
+  const c = getBrowserSupabaseClient();
+  if (!c) throw new Error("L'assistant nécessite une session connectée.");
+  return c;
+}
+
+/** Récupère le message métier caché derrière une erreur `functions.invoke`. */
+async function messageReel(error: unknown): Promise<string> {
+  const contexte = (error as { context?: unknown }).context;
+  if (contexte instanceof Response) {
+    try {
+      const corps = (await contexte.clone().json()) as { error?: unknown };
+      if (typeof corps.error === "string" && corps.error !== "") return corps.error;
+    } catch {
+      /* le corps n'est pas du JSON : on retombe sur le message generique */
+    }
+  }
+  return error instanceof Error ? error.message : "L'assistant n'a pas répondu.";
+}
+
+/**
+ * Ouvre un fil, ou rend celui qui existe deja pour cet acquis.
+ *
+ * `start_ai_thread` leve si le programme n'a pas de `program_ai_settings`
+ * activee : c'est voulu, l'IA est FERMEE PAR DEFAUT. Le message remonte tel
+ * quel a l'ecran plutot que d'etre traduit en « une erreur est survenue ».
+ */
+export async function startAiThread(input: {
+  enrollmentId: string;
+  scope: AiThreadScope;
+  title: string;
+  outcomeId?: string;
+}): Promise<string> {
+  const { data, error } = await client().rpc("start_ai_thread", {
+    p_enrollment_id: input.enrollmentId,
+    p_scope: input.scope,
+    p_title: input.title,
+    p_outcome_id: input.outcomeId ?? null,
+  });
+  if (error) throw new Error(error.message);
+  const fil = (Array.isArray(data) ? data[0] : data) as { id?: string } | null;
+  if (!fil?.id) throw new Error("Le fil n'a pas pu être ouvert.");
+  return fil.id;
+}
+
+/** Envoie un tour. `newSubject` force une nouvelle recherche dans le corpus. */
+export async function askCompanion(input: {
+  threadId: string;
+  question: string;
+  mode?: string;
+  newSubject?: boolean;
+}): Promise<AiAnswer> {
+  const { data, error } = await client().functions.invoke<AiAnswer>("ai-companion-chat", {
+    body: {
+      threadId: input.threadId,
+      question: input.question,
+      mode: input.mode ?? "ask",
+      newSubject: input.newSubject ?? false,
+    },
+  });
+  if (error) throw new Error(await messageReel(error));
+  if (!data) throw new Error("L'assistant n'a rien renvoyé.");
+  return data;
+}

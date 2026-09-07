@@ -39,12 +39,21 @@ export function OutcomeDeclarationSwitch({
   nature,
   targetMastery,
   declaredLevel,
+  showBadge = true,
 }: {
   readonly outcomeId: OutcomeId;
   readonly label: string;
   readonly nature: OutcomeNature;
   readonly targetMastery: MasteryLevel;
   readonly declaredLevel?: MasteryLevel;
+  /**
+   * FAUX quand l'écran affiche lui-même l'état de déclaration ailleurs dans sa
+   * grille. La pastille était INSÉRÉE DANS LE FLUX, à droite de l'interrupteur :
+   * une ligne déclarée poussait donc son énoncé plus loin que les autres, et
+   * rien ne s'alignait sur une même verticale. Un écran qui réserve la place de
+   * l'indicateur ailleurs met ceci à faux.
+   */
+  readonly showBadge?: boolean;
 }) {
   const declare = useDeclareOutcome();
   const switchId = useId();
@@ -64,10 +73,26 @@ export function OutcomeDeclarationSwitch({
         }
         aria-label={`Déclarer « ${label} » acquis au niveau ${MASTERY_LABELS_FR[targetMastery]}`}
       />
-      {declare_ ? (
-        <Badge variant="secondary" className="font-normal">
-          {MASTERY_LABELS_FR[targetMastery]} — déclaré
-          {nature === "real_competence" ? " · à faire valider" : ""}
+      {/*
+        LA PASTILLE EST COMPACTE (07/09). « Intermédiaire — déclaré · à faire
+        valider » etalait la colonne de gauche sur la moitie de la carte et
+        ecrasait l'intitule. Le detail reste lu par les lecteurs d'ecran et au
+        survol ; l'ecran, lui, n'a besoin que du fait.
+      */}
+      {declare_ && showBadge ? (
+        <Badge
+          variant="secondary"
+          className="shrink-0 font-normal"
+          title={`${MASTERY_LABELS_FR[targetMastery]} — déclaré${
+            nature === "real_competence" ? " · à faire valider" : ""
+          }`}
+        >
+          Déclaré
+          <span className="sr-only">
+            {" "}
+            au niveau {MASTERY_LABELS_FR[targetMastery]}
+            {nature === "real_competence" ? ", à faire valider par un encadrant" : ""}
+          </span>
         </Badge>
       ) : null}
       {declare.isError ? (

@@ -1,3 +1,4 @@
+import { ChevronDown } from "lucide-react";
 import { SectionHeading } from "@/components/section-heading";
 import type { AcquisitionPlanPresentation } from "@/application/acquisitionPlan";
 import { CalendarView } from "@/features/passport/views/CalendarView";
@@ -23,17 +24,42 @@ export function OutcomeScheduleSection({
   garder,
   title,
   description,
+  collapsible = false,
 }: {
   readonly plan: AcquisitionPlanPresentation;
   /** Vrai pour les natures que cet onglet porte. */
   readonly garder: (nature: AcquisitionPlanPresentation["items"][number]["nature"]) => boolean;
   readonly title: string;
   readonly description: string;
+  /**
+   * Replie par defaut. Cette chronologie REPETE ce que l'apprenant a deja vu
+   * sur `/espace` et dans le Passeport ; sur les onglets ou elle n'est qu'un
+   * rappel, elle ne doit pas occuper la moitie de l'ecran. Defaut `false` :
+   * les ecrans qui l'affichaient deplie ne changent pas.
+   */
+  readonly collapsible?: boolean;
 }) {
   const events = plan.events.filter((event) => event.natures.some(garder));
   const items = plan.items.filter((item) => garder(item.nature));
 
   if (events.length === 0) return null;
+
+  if (collapsible) {
+    return (
+      <details className="group rounded-xl border bg-card shadow-[var(--shadow-card)]">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          <span className="font-display text-[19px] font-medium tracking-[-0.015em]">{title}</span>
+          <ChevronDown
+            className="size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180"
+            aria-hidden
+          />
+        </summary>
+        <div className="px-4 pb-4">
+          <CalendarView events={events} items={items} />
+        </div>
+      </details>
+    );
+  }
 
   return (
     <section className="space-y-3">

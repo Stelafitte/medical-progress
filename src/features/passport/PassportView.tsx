@@ -1,5 +1,7 @@
 import { useMemo, useState } from "react";
 import { CheckCircle2, Target } from "lucide-react";
+import { useSession } from "@/application/session";
+import { FieldHeader } from "@/components/field-header";
 import { SectionHeading } from "@/components/section-heading";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -58,6 +60,7 @@ const IMPACTS: readonly PlanChangeImpact[] = [
 ];
 
 export function PassportView() {
+  const { activeProgram } = useSession();
   const { data, isPending } = useLearnerPassport();
   const [view, setView] = useState<PassportViewMode>("calendar");
   const [filter, setFilter] = useState<PlanFilter>("all");
@@ -121,10 +124,25 @@ export function PassportView() {
 
   return (
     <div className="space-y-10">
-      <SectionHeading
+      {/*
+        LES DEUX CHIFFRES QUI COMPTENT sur cet ecran : ce que porte le
+        programme, et en combien de jalons il est decoupe. Le nombre de jalons
+        est compte sur les LIBELLES DISTINCTS du retroplanning — c'est la
+        confusion exacte qui avait produit « Jalons restants : 367 » sur
+        l'ecran de progression.
+      */}
+      <FieldHeader
+        eyebrow={activeProgram.name}
         title="Mon Passeport Éducatif"
-        level={1}
-        description="Ma progression dans le temps : connaissances théoriques et compétences"
+        figures={[
+          { value: summary.total, label: "acquis" },
+          {
+            value: new Set(
+              plan.items.filter((i) => i.milestoneLabel !== null).map((i) => i.milestoneLabel),
+            ).size,
+            label: "jalons",
+          },
+        ]}
       />
 
       <section aria-labelledby="titre-deux-questions" className="space-y-4">
@@ -173,7 +191,6 @@ export function PassportView() {
           id="titre-plan"
           title="Mon parcours dans le temps"
           description="Mes objectifs et mes échéances, des prochaines actions jusqu'aux jalons du semestre."
-          action={<Badge variant="outline">Prototype — non enregistré</Badge>}
         />
 
         <div className="flex flex-wrap items-end gap-4">
@@ -292,6 +309,14 @@ export function PassportView() {
         onClose={() => setDialogItem(null)}
         onCreate={(request) => setRequests((prev) => [request, ...prev])}
       />
+      {/*
+        LE DRAPEAU EST RETROGRADE EN PETIT LIBELLE DE PIED DE PAGE. En badge
+        d'en-tete de section il criait plus fort que le contenu ; il doit se
+        lire, pas dominer.
+      */}
+      <p className="pt-2 text-center text-[11.5px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+        Prototype — non enregistré
+      </p>
     </div>
   );
 }

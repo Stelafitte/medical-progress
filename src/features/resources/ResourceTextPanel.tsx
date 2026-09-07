@@ -1,8 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
+import type { ReactNode } from "react";
 
 import { useDataAccess } from "@/application/session";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { LearningResourceId } from "@/domain/types";
+import { RankBadge } from "@/components/rank-badge";
+import type { KnowledgeRank, LearningResourceId } from "@/domain/types";
 
 /**
  * Le CONTENU DÉTAILLÉ d'un support, lu depuis `learning_resource_texts`.
@@ -53,9 +55,50 @@ export function ResourceTextPanel({ resourceId }: { resourceId: LearningResource
           key={`${segment.sourcePath}#${segment.segmentIndex}`}
           className="whitespace-pre-wrap text-sm leading-relaxed"
         >
-          {segment.content}
+          {avecRangs(segment.content)}
         </p>
       ))}
     </div>
   );
+}
+
+/**
+ * LES MARQUEURS DE RANG, RENDUS EN BADGES.
+ *
+ * Le texte du referentiel porte 1 017 marqueurs `[Rang A|B|C]` poses juste
+ * apres les titres de section — 542 A, 380 B, 95 C. Ils s'affichaient en TEXTE
+ * BRUT, crochets compris, au milieu de la prose : l'etudiant lisait
+ * « Syndromes coronariens aigus [Rang A] Un syndrome coronarien... » sans que
+ * rien ne distingue le marqueur du cours.
+ *
+ * ON NE TOUCHE QU'AUX MARQUEURS. Le decoupage du texte par section — chiffres
+ * romains, sous-sections A/B — est un chantier de DONNEES tenu par la session
+ * « referentiel », qui mesure d'abord la regularite des titres sur les
+ * 22 chapitres. Deviner ici ce qu'est un titre produirait un second decoupage
+ * concurrent, et un faux a chaque exception.
+ *
+ * LA REGEX EST VOLONTAIREMENT ETROITE : `[Rang X]` exactement, avec sa
+ * majuscule. Elle ne peut donc pas avaler un crochet du cours.
+ */
+const MARQUEUR_RANG = /\[Rang ([ABC])\]/g;
+
+function avecRangs(contenu: string): ReactNode[] {
+  const morceaux: ReactNode[] = [];
+  let curseur = 0;
+  let trouve: RegExpExecArray | null;
+  MARQUEUR_RANG.lastIndex = 0;
+  while ((trouve = MARQUEUR_RANG.exec(contenu)) !== null) {
+    if (trouve.index > curseur) morceaux.push(contenu.slice(curseur, trouve.index));
+    morceaux.push(
+      <RankBadge
+        key={`${trouve.index}-${trouve[1]}`}
+        rank={trouve[1] as KnowledgeRank}
+        className="mx-1"
+      />,
+    );
+    curseur = trouve.index + trouve[0].length;
+  }
+  if (curseur === 0) return [contenu];
+  if (curseur < contenu.length) morceaux.push(contenu.slice(curseur));
+  return morceaux;
 }
