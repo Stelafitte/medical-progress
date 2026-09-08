@@ -38,6 +38,40 @@ const EXTENSIONS: Readonly<Record<string, string>> = {
 /** Une heure, comme les figures : assez pour une session, pas plus. */
 const VALIDITE_SECONDES = 3600;
 
+/**
+ * UN SUFFIXE UNIQUE, SANS L API `randomUUID`.
+ *
+ * MON ERREUR DU 08/09, mesuree sur le telephone de Stef : cette API demande
+ * Safari 15.4 ou plus recent, et son iPhone est en dessous. L ecran rendait
+ * « ... is not a function » a la premiere photo. Le nom exact de l API n est
+ * pas ecrit ici : le test de contrat lit le CONTENU des fichiers, et le citer
+ * ferait echouer le fichier qui la corrige.
+ *
+ * LA LECON EST PLUS LARGE QUE LA LIGNE : toute la V1 est concue pour un
+ * telephone. Une API web recente doit etre verifiee contre CE terrain-la, pas
+ * contre le navigateur de developpement. Un test de contrat garde desormais la
+ * regle (`mobileContract.test.ts`).
+ *
+ * `getRandomValues` est disponible partout depuis iOS 6 et couvre le besoin :
+ * il ne s agit pas de produire un identifiant universel, seulement un nom qui
+ * ne collisionne pas dans le dossier d une seule personne. L horodatage suffit
+ * deja presque ; les huit octets ferment le cas de deux envois dans la meme
+ * milliseconde.
+ */
+function suffixeUnique(): string {
+  const octets = new Uint8Array(8);
+  const source = globalThis.crypto;
+  if (source !== undefined && typeof source.getRandomValues === "function") {
+    source.getRandomValues(octets);
+  } else {
+    for (let i = 0; i < octets.length; i += 1) {
+      octets[i] = Math.floor(Math.random() * 256);
+    }
+  }
+  const hexa = Array.from(octets, (octet) => octet.toString(16).padStart(2, "0")).join("");
+  return `${Date.now().toString(36)}-${hexa}`;
+}
+
 export type Avatar = {
   /** Chemin de l'objet, ou `null` si la personne n'a pas de photo. */
   readonly path: string | null;
@@ -120,7 +154,7 @@ export async function uploadOwnAvatar(fichier: File): Promise<string> {
   const c = client();
   const id = await identifiant();
   const extension = EXTENSIONS[fichier.type] ?? "jpg";
-  const chemin = `${id}/${crypto.randomUUID()}.${extension}`;
+  const chemin = `${id}/${suffixeUnique()}.${extension}`;
 
   const { data: precedent } = await c
     .from("profiles")

@@ -130,7 +130,7 @@ export function buildLearnerActivityRows(input: {
         validatedCount,
         awaitingCount,
         alertCount: input.alerts.filter((a) => a.enrollmentId === enrollment.id).length,
-        lastActivityAt: dates.at(-1),
+        lastActivityAt: dates[dates.length - 1],
         progressPercent: Math.min(100, Math.round((validatedCount / expected) * 100)),
       };
       return { ...base, marker: markerFor(base) };

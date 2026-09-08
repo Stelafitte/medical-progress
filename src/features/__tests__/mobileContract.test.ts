@@ -3,7 +3,7 @@
  * navigation mobile explicite, absence de largeur fixe bloquante,
  * zones tactiles suffisantes et action de retour au profil par défaut.
  */
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const read = (path: string) => readFileSync(new URL(`../../../${path}`, import.meta.url), "utf8");
@@ -68,5 +68,63 @@ describe("retour au profil de démonstration par défaut", () => {
 describe("médiathèque responsive", () => {
   it("prévoit une variante non tabulaire pour les petits écrans", () => {
     expect(/md:hidden|sm:hidden|hidden md:|hidden sm:/.test(mediaSection)).toBe(true);
+  });
+});
+
+/**
+ * LES API QUE LE TELEPHONE DE LA V1 NE CONNAIT PAS.
+ *
+ * MESURE LE 08/09 SUR LE TERRAIN REEL. `crypto.randomUUID()`, ajoute au
+ * televersement de la photo de profil, a rendu « crypto.randomUUID is not a
+ * function » a la premiere tentative depuis l'iPhone de Stef. Cette API demande
+ * Safari 15.4 ou plus recent. Le grep qui a suivi a trouve un second cas du
+ * meme millesime — `Array.prototype.at`, arrive dans la MEME version de Safari
+ * — sur l'ecran de pilotage, qui plantait donc lui aussi sans que personne ne
+ * l'ait remarque.
+ *
+ * POURQUOI CE TEST BALAIE TOUT `src`, ET NON UNE LISTE DE FICHIERS. Les autres
+ * contrats de ce fichier visent des ecrans nommes, parce qu'ils portent sur une
+ * mise en page. Celui-ci porte sur une INCOMPATIBILITE DE PLATEFORME : elle peut
+ * apparaitre dans n'importe quel fichier, et elle ne se voit ni au typage ni au
+ * developpement — seulement sur le telephone, en production, devant un
+ * utilisateur. Un contrat qui ne couvrirait que les fichiers deja connus
+ * laisserait passer le prochain.
+ *
+ * CE N'EST PAS UNE LISTE D'INTERDITS ARBITRAIRE : chaque entree a coute une
+ * panne constatee. Le jour ou le parc telephone aura bouge, on retirera des
+ * lignes — en le mesurant, pas en le supposant.
+ */
+const INTERDITS: ReadonlyArray<{ readonly motif: string; readonly raison: string }> = [
+  { motif: "crypto.randomUUID", raison: "Safari 15.4+ — panne constatee le 08/09" },
+  { motif: ".at(-", raison: "Array.prototype.at : Safari 15.4+, meme seuil" },
+];
+
+function fichiersSources(dossier: string): readonly string[] {
+  const trouves: string[] = [];
+  for (const entree of readdirSync(new URL(`../../../${dossier}`, import.meta.url), {
+    withFileTypes: true,
+  })) {
+    const chemin = `${dossier}/${entree.name}`;
+    if (entree.isDirectory()) {
+      // Les tests eux-memes tournent sous Node, jamais dans le navigateur.
+      if (entree.name === "__tests__") continue;
+      trouves.push(...fichiersSources(chemin));
+    } else if (/\.tsx?$/.test(entree.name) && !entree.name.endsWith(".test.ts")) {
+      trouves.push(chemin);
+    }
+  }
+  return trouves;
+}
+
+describe("API disponibles sur le telephone de la V1", () => {
+  it("n'utilise aucune API absente d'un Safari anterieur a 15.4", () => {
+    const fautifs: string[] = [];
+    for (const chemin of fichiersSources("src")) {
+      const contenu = read(chemin);
+      for (const { motif, raison } of INTERDITS) {
+        if (contenu.includes(motif)) fautifs.push(`${chemin} : ${motif} (${raison})`);
+      }
+    }
+    expect(fautifs).toEqual([]);
   });
 });
