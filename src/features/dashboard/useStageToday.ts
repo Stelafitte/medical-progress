@@ -71,6 +71,13 @@ export function useStageToday() {
 
   return {
     jour,
+    /*
+     * LE NOMBRE DE JOURS CONSIGNES depuis l'ouverture du carnet. Source reelle :
+     * `stage_log_entries`, une ligne par journee presente — l'existence de
+     * l'entree EST la presence (decision du 31/08). Aucun chiffre invente : sans
+     * carnet, il n'y a rien a compter et la tuile ne s'affiche pas.
+     */
+    joursConsignes: carnet?.entries.length ?? 0,
     isPending: carnets.isPending,
     /** Vrai quand la journee peut reellement etre enregistree. */
     ouvrable: carnet?.placementId !== undefined,

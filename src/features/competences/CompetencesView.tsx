@@ -343,7 +343,7 @@ export function CompetencesView() {
    * `/espace`, quel que soit l'ordre d'affichage, parce qu'elle est derivee de
    * son identifiant. « Hors chapitre » n'est pas un domaine : il reste neutre.
    */
-  const couleurParTheme = buildDomainColors(data.themes);
+  const couleurParTheme = buildDomainColors(data.themes, data.outcomes);
   const parChapitre = new Map<string, { label: string; position: number; items: typeof visible }>();
   for (const item of visible) {
     const theme = item.outcome.themeId ? chapitreDe.get(item.outcome.themeId) : undefined;
@@ -609,6 +609,11 @@ export function CompetencesView() {
       <OutcomeScheduleSection
         plan={data.plan}
         garder={(nature) => nature !== "knowledge"}
+        couleurDe={(themeId) =>
+          themeId === undefined
+            ? "var(--field)"
+            : (couleurParTheme.get(themeId as OutcomeThemeId) ?? "var(--field)")
+        }
         title="Quand je dois les maîtriser"
         description="Les jalons du programme qui portent des compétences."
         collapsible

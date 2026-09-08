@@ -4,7 +4,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Badge } from "@/components/ui/badge";
+import { EYEBROW, MilestoneHeading, TABULAIRE } from "@/components/milestone-heading";
 import type { AcquisitionPlanItem } from "@/domain/acquisitionPlan";
 import { STAGE_LABELS_FR } from "@/domain/acquisitionPlan";
 import { PlanOutcomeRow } from "@/features/passport/PlanOutcomeRow";
@@ -44,9 +44,12 @@ interface BarreJalon {
 export function GanttView({
   items,
   range,
+  couleurDe,
 }: {
   items: readonly AcquisitionPlanItem[];
   range: { start: string; end: string };
+  /** Fourni par le Passeport, pour que les quatre vues colorent a l'identique. */
+  couleurDe: (themeId: string | undefined) => string;
 }) {
   const start = new Date(range.start).getTime();
   const end = new Date(range.end).getTime();
@@ -68,9 +71,27 @@ export function GanttView({
     barre.items.push(item);
     parJalon.set(cle, barre);
   }
-  const jalons = [...parJalon.values()].sort(
-    (a, b) => a.startsOn.localeCompare(b.startsOn) || a.label.localeCompare(b.label),
-  );
+  /*
+   * LA BARRE PREND LA COULEUR DU DOMAINE DOMINANT du jalon, comme la tuile de
+   * la carte de synthese et celle du Kanban. Elle etait en `bg-primary/70` :
+   * vingt-neuf barres d'un seul bleu, ou la couleur ne disait rien.
+   */
+  const couleurDuJalon = (portes: readonly AcquisitionPlanItem[]) => {
+    const comptes = new Map<string, number>();
+    for (const item of portes) {
+      if (item.themeId === undefined) continue;
+      comptes.set(item.themeId, (comptes.get(item.themeId) ?? 0) + 1);
+    }
+    return couleurDe([...comptes.entries()].sort((a, b) => b[1] - a[1])[0]?.[0]);
+  };
+  const jalons = [...parJalon.values()]
+    .sort((a, b) => a.startsOn.localeCompare(b.startsOn) || a.label.localeCompare(b.label))
+    .map((jalon) => ({
+      ...jalon,
+      couleur: couleurDuJalon(jalon.items),
+      acquis: jalon.items.filter((item) => item.stage === "acquired").length,
+      aValider: jalon.items.filter((item) => item.stage === "to_validate").length,
+    }));
   const nonPlanifies = items.filter((item) => !item.startsOn || !item.dueOn);
 
   if (items.length === 0) {
@@ -79,7 +100,7 @@ export function GanttView({
 
   return (
     <div className="space-y-4">
-      <div className="overflow-x-auto rounded-lg border border-border bg-card p-4">
+      <div className="overflow-x-auto rounded-xl border bg-card shadow-[var(--shadow-card)] p-4">
         <div className="min-w-[42rem] space-y-3">
           <p className="flex justify-between text-xs text-muted-foreground">
             <span>{fmt(range.start)}</span>
@@ -97,8 +118,12 @@ export function GanttView({
                   </span>
                   <span className="relative block h-6 rounded bg-muted">
                     <span
-                      className="absolute inset-y-0 rounded bg-primary/70"
-                      style={{ left: `${left}%`, width: `${width}%` }}
+                      className="absolute inset-y-0 rounded"
+                      style={{
+                        left: `${left}%`,
+                        width: `${width}%`,
+                        backgroundColor: jalon.couleur,
+                      }}
                       role="img"
                       aria-label={`${jalon.label} : du ${fmt(jalon.startsOn)} au ${fmt(jalon.dueOn)}, ${jalon.items.length} acquis`}
                     />
@@ -127,29 +152,28 @@ export function GanttView({
         </p>
       ) : null}
 
-      <div className="rounded-lg border border-border bg-card p-2">
+      <div className="rounded-xl border bg-card shadow-[var(--shadow-card)] p-2">
         <Accordion type="multiple" className="w-full">
           {jalons.map((jalon) => (
             <AccordionItem key={jalon.cle} value={jalon.cle}>
-              <AccordionTrigger className="min-w-0 py-2 text-left text-sm">
-                <span className="flex min-w-0 flex-1 flex-col items-start gap-1 pr-2 sm:flex-row sm:items-center sm:gap-2">
-                  <span className="w-full min-w-0 break-words font-medium sm:w-auto sm:flex-1 sm:truncate">
-                    {jalon.label}
-                  </span>
-                  <span className="flex w-full min-w-0 items-center gap-2 sm:w-auto">
-                    <span className="shrink-0 text-xs text-muted-foreground">
-                      {fmt(jalon.startsOn)} → {fmt(jalon.dueOn)}
+              <AccordionTrigger className="min-w-0 gap-3 py-2 hover:no-underline">
+                <MilestoneHeading
+                  count={jalon.items.length}
+                  color={jalon.couleur}
+                  label={jalon.label}
+                  done={jalon.acquis}
+                  pending={jalon.aValider}
+                  total={jalon.items.length}
+                  trailing={
+                    <span
+                      className={`${EYEBROW} shrink-0 self-center text-muted-foreground`}
+                      style={TABULAIRE}
+                    >
+                      {fmt(jalon.dueOn)}
+                      {jalon.officielle ? " · officielle" : ""}
                     </span>
-                    {jalon.officielle ? (
-                      <Badge variant="outline" className="shrink-0 font-normal">
-                        Officielle
-                      </Badge>
-                    ) : null}
-                    <Badge variant="secondary" className="ms-auto shrink-0 font-normal">
-                      {jalon.items.length}
-                    </Badge>
-                  </span>
-                </span>
+                  }
+                />
               </AccordionTrigger>
               <AccordionContent>
                 <ul className="pt-1">
@@ -172,13 +196,12 @@ export function GanttView({
         {nonPlanifies.length > 0 ? (
           <Accordion type="multiple" className="w-full">
             <AccordionItem value="non-planifies">
-              <AccordionTrigger className="min-w-0 py-2 text-left text-sm">
-                <span className="flex min-w-0 flex-1 items-center justify-between gap-2 pr-2">
-                  <span>Sans jalon</span>
-                  <Badge variant="outline" className="font-normal">
-                    {nonPlanifies.length}
-                  </Badge>
-                </span>
+              <AccordionTrigger className="min-w-0 gap-3 py-2 hover:no-underline">
+                <MilestoneHeading
+                  count={nonPlanifies.length}
+                  color={couleurDe(undefined)}
+                  label="Sans jalon"
+                />
               </AccordionTrigger>
               <AccordionContent>
                 <ul className="pt-1">

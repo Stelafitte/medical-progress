@@ -2,10 +2,8 @@ import { Link } from "@tanstack/react-router";
 import { Lock } from "lucide-react";
 import { useSession } from "@/application/session";
 import { FieldHeader } from "@/components/field-header";
-import { SectionHeading } from "@/components/section-heading";
-import { Badge } from "@/components/ui/badge";
+import { EYEBROW, TABULAIRE } from "@/components/milestone-heading";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { ROLE_LABELS_FR, rolesInContext } from "@/domain/roles";
 import * as fx from "@/infrastructure/mock/fixtures";
@@ -31,7 +29,7 @@ export function ProfileView() {
     .filter((m) => m.enrollment || m.contextualRoles.length > 0);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-7">
       {/*
         LE PLUS SOBRE DES HUIT ONGLETS — resister a la tentation de le decorer.
         Le bandeau porte l'identite et rien d'autre : aucun chiffre ne dit quoi
@@ -39,38 +37,45 @@ export function ProfileView() {
       */}
       <FieldHeader eyebrow={person.email} title={person.fullName} />
 
-      <Card>
-        <CardHeader>
-          <div className="flex flex-wrap items-center gap-4">
-            <span
-              aria-hidden
-              className="grid size-14 place-items-center rounded-full hero-gradient text-lg font-semibold text-primary-foreground"
-            >
-              {initials(person.fullName)}
-            </span>
-            <div>
-              <CardTitle className="text-lg">{person.fullName}</CardTitle>
-              <CardDescription>
-                {isSimulated
-                  ? "Compte simulé — aucune donnée réelle"
-                  : "Compte connecté — données Supabase"}
-              </CardDescription>
-            </div>
-            <Badge variant="outline" className="ms-auto">
-              {isSimulated ? "Simulé" : "Connecté"}
-            </Badge>
+      {/* LA CARTE D'IDENTITE, SOULEVEE SUR LE BANDEAU comme la carte de
+        synthese du Passeport et celle de la vue d'ensemble. */}
+      <section className="-mt-[38px] overflow-hidden rounded-xl border bg-card shadow-[var(--shadow-card)]">
+        <div className="flex flex-wrap items-center gap-4 px-4 pb-3.5 pt-4">
+          <span
+            aria-hidden
+            className="hero-gradient grid size-14 shrink-0 place-items-center rounded-full text-lg font-semibold text-primary-foreground"
+          >
+            {initials(person.fullName)}
+          </span>
+          <div className="min-w-0">
+            <p className="font-display text-[19px] leading-tight tracking-[-0.015em]">
+              {person.fullName}
+            </p>
+            <p className="mt-1 text-[12.5px] text-muted-foreground">
+              {isSimulated
+                ? "Compte simulé — aucune donnée réelle"
+                : "Compte connecté — données Supabase"}
+            </p>
           </div>
-        </CardHeader>
-        <CardContent className="grid gap-6 md:grid-cols-2">
+          {/*
+            LE STATUT PASSE DE LA PASTILLE A L'ETIQUETTE. « Simulé » dans une
+            boite bordee pesait autant que le nom de la personne, juste a cote.
+          */}
+          <span className={`${EYEBROW} ms-auto text-muted-foreground`} style={TABULAIRE}>
+            {isSimulated ? "Simulé" : "Connecté"}
+          </span>
+        </div>
+
+        <div className="grid gap-6 border-t px-4 pb-4 pt-4 md:grid-cols-2">
           <div className="space-y-3">
-            <h3 className="text-sm font-medium">Mes informations</h3>
+            <p className={`${EYEBROW} text-muted-foreground`}>Mes informations</p>
             {isSimulated ? (
               <>
                 <Button type="button" variant="outline" disabled className="justify-start">
                   <Lock className="size-4" aria-hidden />
                   Modifier ma fiche
                 </Button>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-[12.5px] text-muted-foreground">
                   Indisponible en session simulée : aucune fiche réelle derrière ce compte.
                 </p>
               </>
@@ -84,66 +89,72 @@ export function ProfileView() {
             )}
           </div>
           <div className="space-y-1">
-            <Label htmlFor="profil-langue">Langue de l'interface</Label>
+            <Label
+              htmlFor="profil-langue"
+              className="block text-[12.5px] font-normal text-muted-foreground"
+            >
+              Langue de l'interface
+            </Label>
             <p
               id="profil-langue"
               className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm"
             >
               Français (fr-FR)
             </p>
-            <p className="text-xs text-muted-foreground">Préférence unique dans cette itération.</p>
+            <p className="text-[12.5px] text-muted-foreground">
+              Préférence unique dans cette itération.
+            </p>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </section>
 
       <section aria-labelledby="titre-appartenances">
-        <SectionHeading
+        {/* LE CHAPEAU « Roles contextualises du compte, en lecture seule »
+          SAUTE : la liste le montre d'elle-meme, rien n'y est modifiable. */}
+        <h2
           id="titre-appartenances"
-          title="Programmes, cohortes et rôles"
-          description="Rôles contextualisés du compte, en lecture seule."
-        />
-        <ul className="grid gap-4 md:grid-cols-2">
-          {memberships.map(({ program, cohort, enrollment, contextualRoles }) => (
-            <li key={program.id}>
-              <Card className="h-full">
-                <CardHeader>
-                  <Badge variant="secondary" className="w-fit font-mono text-xs">
-                    {program.code}
-                  </Badge>
-                  <CardTitle className="text-base">{program.name}</CardTitle>
-                  <CardDescription>
-                    {cohort ? cohort.label : "Aucune cohorte rattachée"}
-                    {enrollment ? ` · inscription ${enrollment.status}` : ""}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="flex flex-wrap gap-2">
-                  {contextualRoles.length > 0 ? (
-                    contextualRoles.map((role) => (
-                      <Badge key={role} variant="outline">
-                        {ROLE_LABELS_FR[role]}
-                      </Badge>
-                    ))
-                  ) : (
-                    <span className="text-sm text-muted-foreground">Aucun rôle</span>
-                  )}
-                </CardContent>
-              </Card>
-            </li>
-          ))}
-        </ul>
+          className="mb-3 font-display text-[21px] font-medium tracking-[-0.015em]"
+        >
+          Programmes, cohortes et rôles
+        </h2>
         {memberships.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Aucun programme rattaché à ce compte.</p>
-        ) : null}
+          <p className="text-[13px] text-muted-foreground">Aucun programme rattaché à ce compte.</p>
+        ) : (
+          <ul className="grid gap-3 md:grid-cols-2">
+            {memberships.map(({ program, cohort, enrollment, contextualRoles }) => (
+              <li
+                key={program.id}
+                className="rounded-xl border bg-card p-4 shadow-[var(--shadow-card)]"
+              >
+                <p className={`${EYEBROW} text-muted-foreground`} style={TABULAIRE}>
+                  {program.code}
+                </p>
+                <p className="mt-1.5 font-display text-[16.5px] leading-tight tracking-[-0.01em]">
+                  {program.name}
+                </p>
+                <p className="mt-1 text-[12.5px] text-muted-foreground">
+                  {cohort ? cohort.label : "Aucune cohorte rattachée"}
+                  {enrollment ? ` · inscription ${enrollment.status}` : ""}
+                </p>
+                <p className="mt-2 text-[13px] leading-snug text-muted-foreground">
+                  {contextualRoles.length > 0
+                    ? contextualRoles.map((role) => ROLE_LABELS_FR[role]).join(" · ")
+                    : "Aucun rôle"}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
 
       <AccountSecuritySection />
 
       <PassportVisibilitySection />
 
-      <p className="text-sm text-muted-foreground">
+      <p className="text-[12.5px] text-muted-foreground">
         Pour votre progression dans le programme sélectionné, ouvrez{" "}
-        <Link to="/espace/passeport" className="underline">
-          Campus Santé Augmenté
+        <Link to="/espace/passeport" className="font-medium text-primary underline">
+          Mon Passeport Éducatif
         </Link>
         .
       </p>

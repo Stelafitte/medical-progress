@@ -24,6 +24,7 @@ export function OutcomeScheduleSection({
   garder,
   title,
   description,
+  couleurDe,
   collapsible = false,
 }: {
   readonly plan: AcquisitionPlanPresentation;
@@ -31,6 +32,13 @@ export function OutcomeScheduleSection({
   readonly garder: (nature: AcquisitionPlanPresentation["items"][number]["nature"]) => boolean;
   readonly title: string;
   readonly description: string;
+  /**
+   * La couleur d'un jalon, resolue par l'onglet appelant. Elle ne se recalcule
+   * pas ici : deux appels a `buildDomainColors` sur des ensembles differents
+   * donneraient deux couleurs pour le meme domaine — le defaut corrige le
+   * 08/09 sur la vue d'ensemble.
+   */
+  readonly couleurDe: (themeId: string | undefined) => string;
   /**
    * Replie par defaut. Cette chronologie REPETE ce que l'apprenant a deja vu
    * sur `/espace` et dans le Passeport ; sur les onglets ou elle n'est qu'un
@@ -55,7 +63,7 @@ export function OutcomeScheduleSection({
           />
         </summary>
         <div className="px-4 pb-4">
-          <CalendarView events={events} items={items} />
+          <CalendarView events={events} items={items} couleurDe={couleurDe} />
         </div>
       </details>
     );
@@ -64,7 +72,7 @@ export function OutcomeScheduleSection({
   return (
     <section className="space-y-3">
       <SectionHeading title={title} level={2} description={description} />
-      <CalendarView events={events} items={items} />
+      <CalendarView events={events} items={items} couleurDe={couleurDe} />
     </section>
   );
 }

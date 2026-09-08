@@ -5,16 +5,9 @@
  */
 import { useState } from "react";
 import { FieldHeader } from "@/components/field-header";
-import { Badge } from "@/components/ui/badge";
+import { EYEBROW, TABULAIRE } from "@/components/milestone-heading";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  EmptyState,
-  MockBadge,
-  PanelCard,
-  ScopeNotice,
-  StatCard,
-} from "@/features/professional/mock-ui";
 import { useSession } from "@/application/session";
 import {
   COMMUNICATION_NO_REAL_SEND_FR,
@@ -72,7 +65,7 @@ export function LearnerMessagesView() {
   const unread = DEMO_MESSAGES.filter((m) => !readIds.includes(m.id));
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-7">
       <FieldHeader
         eyebrow={activeProgram.name}
         title="Mes messages"
@@ -82,60 +75,85 @@ export function LearnerMessagesView() {
         ]}
       />
 
-      <ScopeNotice>{COMMUNICATION_NO_REAL_SEND_FR}</ScopeNotice>
-
-      <PanelCard
-        title="Boîte de réception"
-        action={<MockBadge label="Simulé — aucune réception réelle" />}
-      >
-        {DEMO_MESSAGES.length === 0 ? (
-          <EmptyState>Aucun message pour l'instant.</EmptyState>
-        ) : (
-          <ul className="space-y-4">
-            {DEMO_MESSAGES.map((message) => {
-              const isRead = readIds.includes(message.id);
-              return (
-                <li key={message.id} className="space-y-1">
-                  <div className="flex flex-wrap items-center gap-2">
+      <section>
+        <h2 className="mb-3 font-display text-[21px] font-medium tracking-[-0.015em]">
+          Boîte de réception
+        </h2>
+        {/*
+          LE PERIMETRE EST RAPPELE DANS LA CARTE, PAS AU-DESSUS. Le bandeau
+          `ScopeNotice` flottait entre le titre de page et le contenu, encadre
+          et souligne d'une icone : il criait plus fort que les messages
+          eux-memes. Il redevient une note de pied, sous un filet, a l'interieur
+          de l'objet qu'il qualifie — le meme geste que sur le pave de stage.
+        */}
+        <div className="overflow-hidden rounded-xl border bg-card shadow-[var(--shadow-card)]">
+          {DEMO_MESSAGES.length === 0 ? (
+            <p className="px-4 py-6 text-center text-[13px] text-muted-foreground">
+              Aucun message pour l'instant.
+            </p>
+          ) : (
+            <ul className="divide-y divide-border">
+              {DEMO_MESSAGES.map((message) => {
+                const isRead = readIds.includes(message.id);
+                return (
+                  <li key={message.id} className="flex items-start gap-3 px-4 py-3.5">
                     {/*
                       LE NON-LU EST PORTE PAR LA GRAISSE ET UN MARQUEUR, jamais
                       par la couleur seule : un daltonien, un ecran en plein
                       soleil ou un mode contraste eleve la perdent.
                     */}
                     <span
-                      className={`size-2 shrink-0 rounded-full ${isRead ? "bg-transparent" : "bg-primary"}`}
+                      className={`mt-2 size-2 shrink-0 rounded-full ${isRead ? "bg-transparent" : "bg-live"}`}
                       aria-hidden
                     />
-                    <span className={isRead ? "text-muted-foreground" : "font-semibold"}>
-                      {message.subject}
-                      {isRead ? null : <span className="sr-only"> (non lu)</span>}
-                    </span>
-                    <Badge variant="outline" className="font-normal">
-                      {MESSAGE_CATEGORY_LABELS_FR[message.category]}
-                    </Badge>
-                    <Badge variant="outline" className="font-normal">
-                      {message.channel === "email" ? "e-mail" : "application"}
-                    </Badge>
-                    <span className="text-xs text-muted-foreground">
-                      {new Date(message.receivedAt).toLocaleDateString("fr-FR")}
-                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p
+                        className={`font-display text-[16.5px] leading-tight tracking-[-0.01em] ${
+                          isRead ? "text-muted-foreground" : ""
+                        }`}
+                      >
+                        {message.subject}
+                        {isRead ? null : <span className="sr-only"> (non lu)</span>}
+                      </p>
+                      <p className="mt-1.5 text-[13px] leading-snug text-muted-foreground">
+                        {message.body}
+                      </p>
+                      {/*
+                        LES QUATRE PASTILLES GRISES DEVIENNENT UNE SEULE LIGNE.
+                        Categorie, canal et date disaient trois choses de meme
+                        rang dans trois boites : un rang de badges pese autant
+                        que l'objet du message, qu'il est cense qualifier.
+                      */}
+                      <p className={`${EYEBROW} mt-2 text-muted-foreground`} style={TABULAIRE}>
+                        {MESSAGE_CATEGORY_LABELS_FR[message.category]} ·{" "}
+                        {message.channel === "email" ? "e-mail" : "application"} ·{" "}
+                        {new Date(message.receivedAt).toLocaleDateString("fr-FR")}
+                      </p>
+                    </div>
                     {isRead ? null : (
                       <Button
                         size="sm"
                         variant="ghost"
+                        className="shrink-0"
                         onClick={() => setReadIds([...readIds, message.id])}
                       >
                         Marquer comme lu
                       </Button>
                     )}
-                  </div>
-                  <p className="text-sm text-muted-foreground">{message.body}</p>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </PanelCard>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          <p className="border-t px-4 py-3 text-[12.5px] leading-relaxed text-muted-foreground">
+            {COMMUNICATION_NO_REAL_SEND_FR}
+          </p>
+        </div>
+      </section>
+
+      <p className={`${EYEBROW} pt-2 text-center text-muted-foreground`}>
+        Simulé — aucune réception réelle
+      </p>
     </div>
   );
 }

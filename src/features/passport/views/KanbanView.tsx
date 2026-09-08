@@ -4,12 +4,12 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { NatureBadge } from "@/components/mastery-badge";
+import { EYEBROW, MilestoneHeading, TABULAIRE } from "@/components/milestone-heading";
 import { PLAN_STAGES, STAGE_LABELS_FR, type AcquisitionPlanItem } from "@/domain/acquisitionPlan";
-import { groupByTheme } from "@/domain/outcomeGrouping";
+import { HORS_CHAPITRE_KEY, groupByTheme } from "@/domain/outcomeGrouping";
 import { PlanOutcomeRow } from "@/features/passport/PlanOutcomeRow";
 import type { OutcomeTheme } from "@/domain/types";
 
@@ -33,10 +33,13 @@ import type { OutcomeTheme } from "@/domain/types";
 export function KanbanView({
   items,
   themes,
+  couleurDe,
   onProposeChange,
 }: {
   items: readonly AcquisitionPlanItem[];
   themes: readonly OutcomeTheme[];
+  /** Fourni par le Passeport, pour que les quatre vues colorent a l'identique. */
+  couleurDe: (themeId: string | undefined) => string;
   onProposeChange: (item: AcquisitionPlanItem) => void;
 }) {
   return (
@@ -49,11 +52,16 @@ export function KanbanView({
           <section
             key={stage}
             aria-labelledby={headingId}
-            className="min-w-0 rounded-lg border border-border bg-card p-3"
+            className="min-w-0 rounded-xl border bg-card shadow-[var(--shadow-card)] p-3"
           >
-            <h3 id={headingId} className="mb-3 flex items-center gap-2 text-sm font-semibold">
+            <h3
+              id={headingId}
+              className="mb-3 flex items-baseline justify-between gap-2 font-display text-[15px] font-medium tracking-[-0.01em]"
+            >
               {STAGE_LABELS_FR[stage]}
-              <Badge variant="secondary">{columnItems.length}</Badge>
+              <span className={`${EYEBROW} text-muted-foreground`} style={TABULAIRE}>
+                {columnItems.length}
+              </span>
             </h3>
             {columnItems.length === 0 ? (
               <p className="text-sm text-muted-foreground">Aucun élément.</p>
@@ -61,13 +69,19 @@ export function KanbanView({
               <Accordion type="multiple" className="w-full">
                 {chapitres.map((chapitre) => (
                   <AccordionItem key={chapitre.key} value={chapitre.key}>
-                    <AccordionTrigger className="min-w-0 py-2 text-left text-sm">
-                      <span className="flex min-w-0 flex-1 items-center justify-between gap-2 pr-2">
-                        <span className="min-w-0 break-words">{chapitre.label}</span>
-                        <Badge variant="outline" className="font-normal">
-                          {chapitre.items.length}
-                        </Badge>
-                      </span>
+                    <AccordionTrigger className="min-w-0 gap-3 py-2 hover:no-underline">
+                      <MilestoneHeading
+                        count={chapitre.items.length}
+                        color={couleurDe(
+                          chapitre.key === HORS_CHAPITRE_KEY ? undefined : chapitre.key,
+                        )}
+                        label={chapitre.label}
+                        done={chapitre.items.filter((item) => item.stage === "acquired").length}
+                        pending={
+                          chapitre.items.filter((item) => item.stage === "to_validate").length
+                        }
+                        total={chapitre.items.length}
+                      />
                     </AccordionTrigger>
                     <AccordionContent>
                       {/*

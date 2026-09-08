@@ -170,7 +170,14 @@
   --d-6: oklch(0.544 0.17 358.1);
   --d-7: oklch(0.542 0.105 86.3);
   --d-8: oklch(0.522 0.039 253.9);
-  --d-neutral: oklch(0.52 0.035 254);
+  /*
+   * LE NEUTRE DOIT SE DISTINGUER DE `--d-8`. La huitieme teinte de la maquette
+   * — « information », #5a6b80 — est un gris-bleu ardoise a peine separable de
+   * l'ancien neutre (0.52 / 0.035 / 254 contre 0.522 / 0.039 / 253.9) : un
+   * domaine REELLEMENT colore se lisait donc comme un domaine sans couleur.
+   * Le neutre est desormais plus sombre et totalement desature.
+   */
+  --d-neutral: oklch(0.44 0.004 254);
   /*
    * LE BANDEAU SOMBRE, ouverture commune aux huit onglets (maquette v2).
    * Il absorbe la barre d'application et porte l'identite de la page plus ses
@@ -241,7 +248,7 @@
   --d-6: oklch(0.718 0.151 356.5);
   --d-7: oklch(0.75 0.131 89.2);
   --d-8: oklch(0.717 0.04 252);
-  --d-neutral: oklch(0.74 0.026 250);
+  --d-neutral: oklch(0.62 0.004 250);
   --field: oklch(0.186 0.039 256.8);
   --field-2: oklch(0.241 0.049 254.5);
   --field-ink: oklch(0.947 0.02 260.2);

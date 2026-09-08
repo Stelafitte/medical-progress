@@ -14,11 +14,17 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import type { OutcomeThemeId } from "@/domain/types";
-import { buildDomainColors, DOMAIN_NEUTRAL } from "@/features/dashboard/domainColor";
+import { buildDomainColors } from "@/features/dashboard/domainColor";
 import { useLearnerPassport } from "@/features/dashboard/useLearnerPassport";
 import { useStageToday } from "@/features/dashboard/useStageToday";
 
 const JOUR = 24 * 60 * 60 * 1000;
+
+/**
+ * LE FOND D'UN JALON DE CONNAISSANCES. Marine, jamais une teinte de domaine :
+ * la couleur ne designe qu'un domaine de COMPETENCE dans toute l'application.
+ */
+const FOND_CONNAISSANCE = "var(--field)";
 
 /**
  * L'ETIQUETTE EN PETITES CAPITALES ESPACEES. La maquette la compose en Archivo
@@ -76,7 +82,7 @@ export function DashboardView() {
   const videos = resources.filter((r) => r.format === "video").length;
   const connaissances = progress.filter((p) => p.outcome.nature === "knowledge").length;
   const competences = progress.length - connaissances;
-  const couleurParTheme = buildDomainColors(themes);
+  const couleurParTheme = buildDomainColors(themes, data.outcomes);
 
   const debut = cohort ? new Date(cohort.startsOn).getTime() : null;
   const fin = cohort ? new Date(cohort.endsOn).getTime() : null;
@@ -97,8 +103,25 @@ export function DashboardView() {
    * retard.
    */
   const echeance = (() => {
+    /*
+     * ON SAUTE CE QUI N'ATTEND PLUS QUE L'ENCADRANT (Stef, 08/09 : « la liste
+     * affichee est toujours la meme alors qu'on devrait voir les jalons
+     * suivants »).
+     *
+     * `to_validate` n'est pas `acquired` : une echeance entierement declaree
+     * restait donc « la prochaine » indefiniment, avec quatre lignes a zero,
+     * jusqu'a une contresignature qui peut ne jamais venir dans la semaine.
+     * L'etudiant n'avait plus rien a y faire et ne voyait pas la suite.
+     *
+     * La prochaine echeance est donc celle ou il reste quelque chose A FAIRE.
+     * Ce qui attend l'encadrant n'est pas perdu : il est rappele sous la liste.
+     */
     const premier = plan.items.find(
-      (item) => item.stage !== "acquired" && item.dueOn !== null && item.milestoneLabel !== null,
+      (item) =>
+        item.stage !== "acquired" &&
+        item.stage !== "to_validate" &&
+        item.dueOn !== null &&
+        item.milestoneLabel !== null,
     );
     if (premier === undefined || premier.dueOn === null) return null;
     const dueOn = premier.dueOn;
@@ -110,7 +133,26 @@ export function DashboardView() {
     }
     const jalons = [...parJalon.entries()]
       .map(([label, items]) => {
+        /*
+         * TROIS ETATS, PAS DEUX (Stef, 08/09 : « mettre a jour les jalons des
+         * qu'ils sont valides »).
+         *
+         * CE QUI NE MARCHAIT PAS. La ligne ne comptait que « acquis » contre
+         * « restant ». Or declarer une COMPETENCE REELLE ne fait PAS monter le
+         * niveau : `computeOutcomeProgress` ne retient la declaration que si
+         * l'acquis n'est pas une competence reelle, ou s'il est contresigne —
+         * c'est l'invariant du socle, et il est juste. L'acquis passait donc en
+         * `to_validate` sans quitter les « restants », et l'etudiant qui venait
+         * de se declarer ne voyait RIEN bouger. Il n'y a jamais eu de defaut de
+         * rafraichissement : l'ecran ne savait pas distinguer « pas encore
+         * fait » de « fait, en attente de l'encadrant ».
+         *
+         * ON NE TOUCHE PAS A L'INVARIANT : une declaration ne vaut toujours pas
+         * acquisition. On rend seulement visible ce que l'etudiant a fait.
+         */
         const restants = items.filter((item) => item.stage !== "acquired");
+        const aValider = items.filter((item) => item.stage === "to_validate");
+        const aFaire = restants.filter((item) => item.stage !== "to_validate");
         const comptes = new Map<OutcomeThemeId, number>();
         for (const item of items) {
           if (item.themeId === undefined) continue;
@@ -121,21 +163,30 @@ export function DashboardView() {
           label,
           items,
           restants,
+          aValider,
+          aFaire,
           acquis: items.length - restants.length,
+          /*
+           * UN JALON DE CONNAISSANCES EST EN MARINE. La teinte ne dit que le
+           * domaine de COMPETENCE ; un chapitre n'en est pas un. Il tombait
+           * jusqu'ici sur `--d-neutral`, devenu un gris sombre voisin de
+           * l'encre — donc indistinguable d'un acquis valide sur la carte.
+           */
           couleur:
             dominant === undefined
-              ? DOMAIN_NEUTRAL
-              : (couleurParTheme.get(dominant) ?? DOMAIN_NEUTRAL),
+              ? FOND_CONNAISSANCE
+              : (couleurParTheme.get(dominant) ?? FOND_CONNAISSANCE),
         };
       })
-      .filter((jalon) => jalon.restants.length > 0)
-      .sort((a, b) => b.restants.length - a.restants.length);
+      .filter((jalon) => jalon.aFaire.length > 0)
+      .sort((a, b) => b.aFaire.length - a.aFaire.length);
     if (jalons.length === 0) return null;
     const prioritaire = jalons[0];
     if (prioritaire === undefined) return null;
     return {
       dueOn,
-      total: jalons.reduce((n, jalon) => n + jalon.restants.length, 0),
+      total: jalons.reduce((n, jalon) => n + jalon.aFaire.length, 0),
+      enAttente: jalons.reduce((n, jalon) => n + jalon.aValider.length, 0),
       jalons,
       prioritaire,
     };
@@ -143,16 +194,37 @@ export function DashboardView() {
 
   const jours =
     echeance !== null ? Math.ceil((new Date(echeance.dueOn).getTime() - Date.now()) / JOUR) : null;
+  /* Le bouton primaire vise un acquis A FAIRE, jamais un deja declare. */
+  const depart = echeance?.prioritaire.aFaire[0];
+  /* Sur TOUT le plan, pas seulement l'echeance affichee. */
+  const enAttenteGlobal = plan.items.filter((item) => item.stage === "to_validate").length;
 
   /*
    * LA CARTE DU PROGRAMME. Un carre par acquis : les valides en encre, ceux de
    * la prochaine echeance dans la couleur de leur jalon, le reste eteint. Le
    * total vient du store — jamais un 368 grave dans le code.
    */
+  /*
+   * LA CARTE EST CUMULATIVE (Stef, 08/09 : « elle doit continuer a afficher les
+   * acquis obtenus depuis le debut et pas repartir a zero »).
+   *
+   * CE QUI N'ALLAIT PAS : elle ne comptait que les acquis VALIDES. Un etudiant
+   * qui venait d'en declarer trente-quatre voyait toujours « 1 » — son travail
+   * n'existait nulle part. Or une declaration n'est pas rien : c'est sa part,
+   * faite, en attente de l'encadrant.
+   *
+   * QUATRE ETATS, ET AUCUN NE MENT : valide (plein), declare en attente (meme
+   * famille, plus clair), prochaine echeance (couleur du jalon), a travailler
+   * (eteint). Le declare ne prend PAS la couleur du valide : l'invariant tient,
+   * la reconnaissance aussi.
+   */
   const cases: string[] = [];
-  for (let i = 0; i < summary.atTarget; i += 1) cases.push("var(--foreground)");
+  for (let i = 0; i < summary.atTarget; i += 1) cases.push("var(--success)");
+  for (let i = 0; i < enAttenteGlobal; i += 1) {
+    cases.push("color-mix(in oklch, var(--success) 40%, var(--dot-idle))");
+  }
   for (const jalon of echeance?.jalons ?? []) {
-    for (let i = 0; i < jalon.restants.length; i += 1) cases.push(jalon.couleur);
+    for (let i = 0; i < jalon.aFaire.length; i += 1) cases.push(jalon.couleur);
   }
   while (cases.length < summary.total) cases.push("var(--dot-idle)");
   cases.length = summary.total;
@@ -232,7 +304,7 @@ export function DashboardView() {
                       style={{ backgroundColor: "var(--c)" }}
                     >
                       <b className="text-[17px] font-bold leading-none" style={TABULAIRE}>
-                        {jalon.restants.length}
+                        {jalon.aFaire.length}
                       </b>
                       <span className="mt-[3px] text-[9px] tracking-wider opacity-85">ACQUIS</span>
                     </span>
@@ -240,11 +312,29 @@ export function DashboardView() {
                       <span className="font-display text-[16.5px] leading-tight tracking-[-0.01em]">
                         {jalon.label}
                       </span>
-                      <span className="h-[3px] overflow-hidden rounded-sm bg-card-sunk" aria-hidden>
+                      {/*
+                        DEUX SEGMENTS : l'acquis en plein, le declare-en-attente
+                        en demi-teinte. L'etudiant voit son geste, sans qu'on lui
+                        fasse croire qu'il est valide.
+                      */}
+                      <span
+                        className="flex h-[3px] overflow-hidden rounded-sm bg-card-sunk"
+                        aria-hidden
+                      >
                         <span
-                          className="block h-full rounded-sm"
+                          className="block h-full"
                           style={{
-                            width: `${Math.max((jalon.acquis / jalon.items.length) * 100, 3)}%`,
+                            width: `${Math.max(
+                              (jalon.acquis / jalon.items.length) * 100,
+                              jalon.acquis > 0 ? 3 : 0,
+                            )}%`,
+                            backgroundColor: "var(--c)",
+                          }}
+                        />
+                        <span
+                          className="block h-full opacity-40"
+                          style={{
+                            width: `${(jalon.aValider.length / jalon.items.length) * 100}%`,
                             backgroundColor: "var(--c)",
                           }}
                         />
@@ -338,6 +428,45 @@ export function DashboardView() {
               </AccordionItem>
             ))}
           </Accordion>
+
+          <div className="space-y-3 px-4 pb-4">
+            {/*
+              CE QUI ATTEND L'ENCADRANT est rappele ici, hors du decompte :
+              l'etudiant a fait sa part, la carte ne doit ni la lui compter
+              comme un acquis, ni la lui faire oublier.
+            */}
+            {enAttenteGlobal > 0 ? (
+              <p className="flex items-start gap-2 text-[13px] text-muted-foreground">
+                <Check className="mt-0.5 size-4 shrink-0 text-success" aria-hidden />
+                <span>
+                  {enAttenteGlobal} acquis déclaré{enAttenteGlobal > 1 ? "s" : ""} attend
+                  {enAttenteGlobal > 1 ? "ent" : ""} la validation de votre encadrant.{" "}
+                  <Link to="/espace/passeport" className="font-medium text-primary underline">
+                    Voir lesquels
+                  </Link>
+                </span>
+              </p>
+            ) : null}
+
+            {/*
+              LE SEUL BOUTON PRIMAIRE DE L'ECRAN. Il vise le jalon au plus fort
+              volume RESTANT A FAIRE, et atterrit sur son premier acquis — pas
+              sur une liste ou l'etudiant devra chercher par ou commencer.
+            */}
+            {depart ? (
+              <Button asChild className="h-auto min-h-11 w-full whitespace-normal px-3 text-center">
+                <Link
+                  to={depart.nature === "knowledge" ? "/espace/ressources" : "/espace/competences"}
+                  search={{ acquis: depart.code }}
+                >
+                  Commencer par « {echeance.prioritaire.label} »
+                </Link>
+              </Button>
+            ) : null}
+            <Button asChild variant="ghost" className="min-h-11 w-full">
+              <Link to="/espace/passeport">Voir toute la chronologie</Link>
+            </Button>
+          </div>
         </section>
       ) : null}
 
@@ -355,6 +484,14 @@ export function DashboardView() {
             </b>
             <span className="text-sm text-muted-foreground">
               acquis validé{summary.atTarget > 1 ? "s" : ""} sur {summary.total}
+              {enAttenteGlobal > 0 ? (
+                <>
+                  {" · "}
+                  <span className="font-medium text-foreground">
+                    {enAttenteGlobal} déclaré{enAttenteGlobal > 1 ? "s" : ""}
+                  </span>
+                </>
+              ) : null}
             </span>
           </p>
           <div
@@ -362,8 +499,8 @@ export function DashboardView() {
             style={{ gridTemplateColumns: "repeat(auto-fill, minmax(7px, 1fr))" }}
             role="img"
             aria-label={`${summary.total} acquis du programme, ${summary.atTarget} validé(s)${
-              echeance ? `, ${echeance.total} à échéance le ${dateFr(echeance.dueOn)}` : ""
-            }`}
+              enAttenteGlobal > 0 ? `, ${enAttenteGlobal} déclaré(s) en attente de validation` : ""
+            }${echeance ? `, ${echeance.total} à la prochaine échéance` : ""}`}
           >
             {cases.map((couleur, i) => (
               <span
@@ -373,10 +510,40 @@ export function DashboardView() {
               />
             ))}
           </div>
+          {/*
+            UNE LEGENDE, parce que quatre etats sans legende ne sont que quatre
+            gris pour qui n'a pas ecrit le code.
+          */}
+          <ul className="mb-3 flex flex-wrap gap-x-3 gap-y-1.5 text-[11px] text-muted-foreground">
+            {[
+              { color: "var(--success)", label: "validé" },
+              ...(enAttenteGlobal > 0
+                ? [
+                    {
+                      color: "color-mix(in oklch, var(--success) 40%, var(--dot-idle))",
+                      label: "déclaré, en attente",
+                    },
+                  ]
+                : []),
+              ...(echeance
+                ? [{ color: echeance.prioritaire.couleur, label: "prochaine échéance" }]
+                : []),
+              { color: "var(--dot-idle)", label: "à travailler" },
+            ].map((entree) => (
+              <li key={entree.label} className="inline-flex items-center gap-1.5">
+                <span
+                  className="block size-2 rounded-sm"
+                  style={{ backgroundColor: entree.color }}
+                  aria-hidden
+                />
+                {entree.label}
+              </li>
+            ))}
+          </ul>
           <p className="text-[12.5px] leading-relaxed text-muted-foreground">
             Chaque carré est un acquis.
             {echeance
-              ? ` Les ${echeance.total} colorés arrivent à échéance le ${dateFr(echeance.dueOn)}.`
+              ? ` Les ${echeance.total} de la prochaine échéance arrivent le ${dateFr(echeance.dueOn)}.`
               : ""}{" "}
             {plan.items.reduce((n, i) => n + i.countedEvidence, 0) === 0
               ? "Aucune preuve déposée pour l'instant — la première viendra de votre premier patient examiné en stage."
@@ -475,7 +642,7 @@ function CarteTravail({
  * rien serait pire que de ne rien promettre.
  */
 function PaveStage() {
-  const { jour, isPending, ouvrable, entree, enregistrer } = useStageToday();
+  const { jour, isPending, ouvrable, entree, joursConsignes, enregistrer } = useStageToday();
   const [recit, setRecit] = useState<string | null>(null);
 
   if (isPending) return <Skeleton className="h-40 w-full" />;
@@ -497,63 +664,93 @@ function PaveStage() {
       <h2 className="mb-3 font-display text-[21px] font-medium tracking-[-0.015em]">
         Suivi de stage
       </h2>
-      <div className="rounded-xl border bg-card p-4 shadow-[var(--shadow-card)]">
-        <div className="flex flex-wrap items-baseline gap-2">
-          <span className="font-display text-[22px] font-medium tracking-[-0.02em]">
-            {dateFr(jour)}
-          </span>
-          {entree ? (
-            <span className="ms-auto inline-flex items-center gap-1.5 text-sm font-medium text-success">
-              <Check className="size-4" aria-hidden />
-              Journée enregistrée
-            </span>
+      <article className="overflow-hidden rounded-xl border bg-card shadow-[var(--shadow-card)]">
+        {/*
+          LE MEME BANDEAU PLEIN QUE LES CARTES DU DESSUS. Ce bloc s'ouvrait sur
+          une petite tuile posee dans du blanc : trois sections voisines, deux
+          anatomies. Il porte donc desormais un bandeau marine pleine largeur,
+          memes marges et meme hauteur que ceux de « 317 connaissances » et
+          « 54 competences ».
+
+          MAIS PAS LE COMPTEUR DE JOURS. Un « 0 » en tres grand, en pleine
+          largeur, en tete du SEUL bloc qui demande une action, accueille mal :
+          317 et 54 donnent envie d'ouvrir, zero dit qu'on n'a rien fait. Le
+          bandeau porte la DATE, dans la composition des etiquettes ; le nombre
+          de jours reste discret a droite et n'apparait qu'au-dessus de zero.
+
+          `min-h` cale la hauteur sur celle des bandeaux voisins, qui portent
+          un chiffre de 30 px au-dessus de leur etiquette.
+        */}
+        <div className="flex min-h-[4.75rem] flex-wrap items-center justify-between gap-x-4 gap-y-1 bg-field px-4 py-3.5 text-field-ink">
+          <p className={EYEBROW}>Aujourd'hui · {dateFr(jour)}</p>
+          {ouvrable && joursConsignes > 0 ? (
+            <p className="text-[12.5px] text-field-mute" style={TABULAIRE}>
+              {joursConsignes} jour{joursConsignes > 1 ? "s" : ""} consigné
+              {joursConsignes > 1 ? "s" : ""}
+            </p>
           ) : null}
         </div>
 
-        {!ouvrable ? (
-          <>
-            <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">
-              Votre carnet de stage n'est pas encore ouvert : aucun terrain ne vous est rattaché
-              pour aujourd'hui. Vous pourrez valider vos journées dès qu'il le sera.
+        <div className="px-4 pb-4 pt-3.5">
+          {entree ? (
+            <p className="inline-flex items-center gap-1.5 text-[13px] font-medium text-success">
+              <Check className="size-3.5" aria-hidden />
+              Journée enregistrée
             </p>
-            <Link
-              to="/espace/stage"
-              className="mt-2.5 flex min-h-11 items-center gap-1.5 text-[13.5px] font-semibold text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              Ouvrir mon carnet de stage
-              <ArrowRight className="size-4" aria-hidden />
-            </Link>
-          </>
-        ) : (
-          <>
-            <Label htmlFor="recit-du-jour" className="mt-3 block text-[13px] text-muted-foreground">
-              Ce que vous avez vu, fait ou appris aujourd'hui.
-            </Label>
-            <Textarea
-              id="recit-du-jour"
-              value={valeur}
-              onChange={(e) => setRecit(e.target.value)}
-              placeholder="Deux lignes suffisent."
-              className="mt-2 min-h-28"
-            />
-            <Button
-              className="mt-3 min-h-11 w-full"
-              disabled={enregistrer.isPending}
-              onClick={() => enregistrer.mutate(valeur)}
-            >
-              {entree ? "Mettre à jour ma journée" : "Valider ma journée"}
-            </Button>
-            {enregistrer.isError ? (
-              <p className="mt-2 text-[13px] text-destructive">
-                {(enregistrer.error as Error).message}
+          ) : null}
+
+          {!ouvrable ? (
+            <>
+              <p className="mt-3 text-[13px] leading-relaxed text-muted-foreground">
+                Votre carnet de stage n'est pas encore ouvert : aucun terrain ne vous est rattaché
+                pour aujourd'hui. Vous pourrez valider vos journées dès qu'il le sera.
               </p>
-            ) : null}
-          </>
-        )}
-      </div>
-      <p className="mt-2 text-[12.5px] text-muted-foreground">
-        Les photos et la validation par votre encadrant sont dans l'onglet Stage.
-      </p>
+              <Link
+                to="/espace/stage"
+                className="mt-2.5 flex min-h-11 items-center gap-1.5 text-[13.5px] font-semibold text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                Ouvrir mon carnet de stage
+                <ArrowRight className="size-4" aria-hidden />
+              </Link>
+            </>
+          ) : (
+            <>
+              {/* LIBELLE DE CHAMP, pas chapeau de section : il appartient a la zone
+                de saisie, et le `htmlFor` le lui rattache pour de bon. */}
+              <Label
+                htmlFor="recit-du-jour"
+                className="mt-3 block text-[12.5px] font-normal text-muted-foreground"
+              >
+                Ce que vous avez vu, fait ou appris aujourd'hui
+              </Label>
+              <Textarea
+                id="recit-du-jour"
+                value={valeur}
+                onChange={(e) => setRecit(e.target.value)}
+                placeholder="Deux lignes suffisent."
+                className="mt-1.5 min-h-28"
+              />
+              <Button
+                className="mt-3 min-h-11 w-full"
+                disabled={enregistrer.isPending}
+                onClick={() => enregistrer.mutate(valeur)}
+              >
+                {entree ? "Mettre à jour ma journée" : "Valider ma journée"}
+              </Button>
+              {enregistrer.isError ? (
+                <p className="mt-2 text-[13px] text-destructive">
+                  {(enregistrer.error as Error).message}
+                </p>
+              ) : null}
+              {/* LA NOTE DE PIED RENTRE DANS LA CARTE : hors conteneur, en gris,
+                elle flottait sans appartenir a rien. */}
+              <p className="mt-3 border-t pt-3 text-[12.5px] text-muted-foreground">
+                Les photos et la validation par votre encadrant sont dans l'onglet Stage.
+              </p>
+            </>
+          )}
+        </div>
+      </article>
     </section>
   );
 }

@@ -15,6 +15,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, Inbox, RotateCcw } from "lucide-react";
+import { EYEBROW, TABULAIRE } from "@/components/milestone-heading";
 import { SectionHeading } from "@/components/section-heading";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -28,6 +29,16 @@ import { STAGE_LOG_STATUS_LABELS_FR, nextStageLogStatus, type StageLog } from "@
 import type { Enrollment, Person } from "@/domain/types";
 
 const DATE_FORMAT = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long" });
+
+/**
+ * LA PHRASE RESTE D'UN SEUL TENANT DANS LE SOURCE. `stageLogUi.test.ts` la
+ * cherche telle quelle dans le fichier : posee directement dans le JSX, elle
+ * s'est fait couper en deux lignes par le formateur (« … par » / « e-mail. »),
+ * et le contrat est tombe sans qu'aucun comportement ne change. Une constante
+ * la met hors de portee du retour a la ligne.
+ */
+const MENTION_TRANSMISSION =
+  "Transmission interne à l'application : aucun carnet n'est envoyé en pièce jointe par e-mail.";
 
 /** Nom réel de l'apprenant : `enrollments` fait le lien vers son compte. */
 function learnerNameOf(
@@ -281,46 +292,65 @@ export function StageLogsReceived() {
   if (isPending || !data) return <Skeleton className="h-40 w-full" />;
 
   return (
-    <section className="space-y-4" aria-labelledby="titre-recus">
-      <SectionHeading
+    <section aria-labelledby="titre-recus">
+      {/*
+        LA MEME ANATOMIE QUE LE RESTE DE L'ESPACE APPRENANT : titre en serif
+        sans chapeau, carte `rounded-xl` a l'ombre commune, tuile de compte en
+        aplat marine et chiffres tabulaires. Une pastille `Badge` pour le statut
+        pesait autant que le nom de l'etudiant, juste a cote.
+
+        LA MENTION SUR LA TRANSMISSION redescend en note de pied, dans la carte
+        qu'elle qualifie.
+      */}
+      <h2
         id="titre-recus"
-        title="Carnets reçus"
-        description="Transmission interne à l'application : aucun carnet n'est envoyé en pièce jointe par e-mail."
-      />
-      <ul className="grid gap-3">
-        {data.logs.map((log) => {
-          const validation = log.validations[0];
-          return (
-            <li key={log.id}>
-              <Card>
-                <CardHeader>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Inbox className="text-primary size-4" aria-hidden />
-                    <CardTitle className="text-base">
-                      {learnerNameOf(log, data.enrollments, data.people)}
-                    </CardTitle>
-                    <Badge variant="secondary" className="font-normal">
-                      {STAGE_LOG_STATUS_LABELS_FR[log.status]}
-                    </Badge>
-                  </div>
-                  <CardDescription>{log.entries.length} journée(s) déclarée(s)</CardDescription>
-                </CardHeader>
-                <CardContent className="text-muted-foreground text-sm">
-                  {validation
-                    ? `Validé par ${
-                        data.people.find((p) => p.id === validation.validatorPersonId)?.fullName ??
-                        "responsable"
-                      } le ${new Date(validation.decidedAt).toLocaleDateString("fr-FR")}.`
-                    : "En attente de validation du responsable de stage."}
-                </CardContent>
-              </Card>
-            </li>
-          );
-        })}
+        className="mb-3 font-display text-[21px] font-medium tracking-[-0.015em]"
+      >
+        Carnets reçus
+      </h2>
+      <div className="overflow-hidden rounded-xl border bg-card shadow-[var(--shadow-card)]">
         {data.logs.length === 0 ? (
-          <li className="text-muted-foreground text-sm">Aucun carnet reçu pour ce programme.</li>
-        ) : null}
-      </ul>
+          <p className="px-4 py-6 text-center text-[13px] text-muted-foreground">
+            Aucun carnet reçu pour ce programme.
+          </p>
+        ) : (
+          <ul className="divide-y divide-border">
+            {data.logs.map((log) => {
+              const validation = log.validations[0];
+              return (
+                <li key={log.id} className="flex items-start gap-3 px-4 py-3.5">
+                  <span className="grid w-11 shrink-0 place-items-center rounded-lg bg-field py-2 text-field-ink">
+                    <b className="text-[17px] font-bold leading-none" style={TABULAIRE}>
+                      {log.entries.length}
+                    </b>
+                    <span className="mt-[3px] text-[9px] tracking-wider opacity-85">JOURS</span>
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="flex items-center gap-2 font-display text-[16.5px] leading-tight tracking-[-0.01em]">
+                      <Inbox className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+                      {learnerNameOf(log, data.enrollments, data.people)}
+                    </p>
+                    <p className={`${EYEBROW} mt-1.5 text-muted-foreground`}>
+                      {STAGE_LOG_STATUS_LABELS_FR[log.status]}
+                    </p>
+                    <p className="mt-1.5 text-[12.5px] leading-snug text-muted-foreground">
+                      {validation
+                        ? `Validé par ${
+                            data.people.find((p) => p.id === validation.validatorPersonId)
+                              ?.fullName ?? "responsable"
+                          } le ${new Date(validation.decidedAt).toLocaleDateString("fr-FR")}.`
+                        : "En attente de validation du responsable de stage."}
+                    </p>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+        <p className="border-t px-4 py-3 text-[12.5px] leading-relaxed text-muted-foreground">
+          {MENTION_TRANSMISSION}
+        </p>
+      </div>
     </section>
   );
 }
