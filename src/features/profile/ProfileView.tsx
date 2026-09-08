@@ -7,8 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { ROLE_LABELS_FR, rolesInContext } from "@/domain/roles";
 import * as fx from "@/infrastructure/mock/fixtures";
-import { initials } from "@/lib/initials";
 import { AccountSecuritySection } from "./AccountSecuritySection";
+import { AvatarField } from "./AvatarField";
 import { IdentityForm } from "./IdentityForm";
 import { PassportVisibilitySection } from "./PassportVisibilitySection";
 
@@ -40,28 +40,19 @@ export function ProfileView() {
       {/* LA CARTE D'IDENTITE, SOULEVEE SUR LE BANDEAU comme la carte de
         synthese du Passeport et celle de la vue d'ensemble. */}
       <section className="-mt-[38px] overflow-hidden rounded-xl border bg-card shadow-[var(--shadow-card)]">
-        <div className="flex flex-wrap items-center gap-4 px-4 pb-3.5 pt-4">
-          <span
-            aria-hidden
-            className="hero-gradient grid size-14 shrink-0 place-items-center rounded-full text-lg font-semibold text-primary-foreground"
-          >
-            {initials(person.fullName)}
-          </span>
-          <div className="min-w-0">
-            <p className="font-display text-[19px] leading-tight tracking-[-0.015em]">
-              {person.fullName}
-            </p>
-            <p className="mt-1 text-[12.5px] text-muted-foreground">
-              {isSimulated
-                ? "Compte simulé — aucune donnée réelle"
-                : "Compte connecté — données Supabase"}
-            </p>
-          </div>
+        <div className="flex flex-wrap items-start gap-4 px-4 pb-3.5 pt-4">
+          {/*
+            LA PHOTO REMPLACE LE ROND D'INITIALES — qui reste le repli quand il
+            n'y en a pas. Le nom et l'etat du compte vivent avec elle : ils
+            partagent la meme colonne, et le champ de televersement doit se
+            poser sous le nom, pas a cote de lui.
+          */}
+          <AvatarField fullName={person.fullName} isSimulated={isSimulated} />
           {/*
             LE STATUT PASSE DE LA PASTILLE A L'ETIQUETTE. « Simulé » dans une
             boite bordee pesait autant que le nom de la personne, juste a cote.
           */}
-          <span className={`${EYEBROW} ms-auto text-muted-foreground`} style={TABULAIRE}>
+          <span className={`${EYEBROW} ms-auto pt-1 text-muted-foreground`} style={TABULAIRE}>
             {isSimulated ? "Simulé" : "Connecté"}
           </span>
         </div>
