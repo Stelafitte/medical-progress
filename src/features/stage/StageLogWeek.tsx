@@ -56,6 +56,43 @@ function addDays(date: Date, count: number): Date {
   return next;
 }
 
+/**
+ * L ETAT D UNE SEMAINE — et pourquoi ces couleurs-la.
+ *
+ * Demande de Stef (08/09) : l onglet est terne, on ne sait pas ou l on est
+ * quand on navigue. La couleur doit dire le temps. Deux affectations sur trois
+ * ont ete deplacees, et voici les raisons :
+ *
+ * - LE VERT EST DEJA PRIS sur cet ecran : il dit « journee enregistree ». Le
+ *   donner aussi a la semaine en cours ferait dire deux choses a une meme
+ *   couleur. La semaine en cours prend donc `--live`, le jeton reserve dans
+ *   tout le produit au TEMPS QUI PRESSE — c est exactement « c est maintenant ».
+ * - LE ROUGE DIRAIT FAUX. Dans le jeu semantique il vaut `--destructive` : une
+ *   erreur. Une semaine a venir n est pas une erreur, elle n a pas eu lieu. Et
+ *   puisqu elle devient non modifiable, un fond rouge se lirait « interdit » la
+ *   ou il faut lire « pas encore ». Elle reste donc eteinte : l absence de
+ *   couleur dit « rien a faire ici », ce qui est vrai.
+ * - L ORANGE SUR LE PASSE EST CONDITIONNEL. Une semaine passee incomplete
+ *   merite l avertissement : il reste a rattraper, et c est actionnable. Une
+ *   semaine passee complete merite le vert — c est la bonne nouvelle. Colorer
+ *   les deux pareil ferait ignorer la couleur en trois jours.
+ */
+type EtatSemaine = "passee_incomplete" | "passee_complete" | "en_cours" | "a_venir";
+
+const FOND_SEMAINE: Readonly<Record<EtatSemaine, string>> = {
+  passee_incomplete: "bg-warning/10 border-warning/35",
+  passee_complete: "bg-success/10 border-success/35",
+  en_cours: "bg-live/15 border-live/45",
+  a_venir: "bg-card-sunk",
+};
+
+const LIBELLE_SEMAINE: Readonly<Record<EtatSemaine, string>> = {
+  passee_incomplete: "Semaine passée — des journées manquent",
+  passee_complete: "Semaine passée — complète",
+  en_cours: "Semaine en cours",
+  a_venir: "Semaine à venir — pas encore",
+};
+
 const DAY_FORMAT = new Intl.DateTimeFormat("fr-FR", {
   weekday: "long",
   day: "numeric",
@@ -130,6 +167,45 @@ export function StageLogWeek({ enrollmentId, placementId, placementName }: Stage
 
   const validatedUpTo = lastValidatedDay(data);
 
+  /*
+   * ON NE DECLARE PAS SA PRESENCE A UN JOUR QUI N A PAS EU LIEU.
+   *
+   * DEFAUT RELEVE PAR STEF LE 08/09, et il etait entier : rien ne bornait le
+   * futur. `outOfPeriod` ne verifie que la periode du stage, `locked` que le
+   * passe deja contresigne — une journee de la semaine prochaine tombant dans
+   * le stage etait donc cochable. Un etudiant pouvait declarer sa presence a
+   * l avance, et l encadrant valider une periode sur des journees inventees.
+   *
+   * LA BASE NE L INTERDIT PAS : `save_stage_log_day` ne verifie que
+   * l appartenance a la periode. La borne est donc posee ici, ET elle devra
+   * l etre en base le jour ou une autre porte d ecriture existera — une regle
+   * qui ne vit qu a l ecran n est pas une regle.
+   *
+   * AUJOURD HUI EST INCLUS : la journee se consigne le soir meme, c est tout
+   * l objet du pave de la vue d ensemble.
+   */
+  const aujourdHui = isoDay(new Date());
+  const inFuture = (day: string) => day > aujourdHui;
+
+  /*
+   * L ETAT DE LA SEMAINE AFFICHEE. « Complete » se lit sur les jours OUVRABLES
+   * de la periode : compter samedi et dimanche rendrait toute semaine
+   * incomplete, et l avertissement serait ignore des la premiere.
+   */
+  const joursAConsigner = days.filter((date) => {
+    const day = isoDay(date);
+    const jourDeSemaine = date.getDay();
+    return !outOfPeriod(day) && jourDeSemaine !== 0 && jourDeSemaine !== 6;
+  });
+  const etatSemaine: EtatSemaine = (() => {
+    const debut = isoDay(days[0] ?? new Date());
+    const fin = isoDay(days[6] ?? new Date());
+    if (debut > aujourdHui) return "a_venir";
+    if (fin >= aujourdHui) return "en_cours";
+    const manquantes = joursAConsigner.filter((date) => !byDay.has(isoDay(date))).length;
+    return manquantes > 0 ? "passee_incomplete" : "passee_complete";
+  })();
+
   return (
     <section className="space-y-4">
       <header className="flex flex-wrap items-center justify-between gap-3">
@@ -162,17 +238,35 @@ export function StageLogWeek({ enrollmentId, placementId, placementName }: Stage
         </div>
       </header>
 
+      {/*
+        LE BANDEAU PORTE L ETAT, PAS LA LISTE. Un fond teinte sur les sept
+        lignes noierait la case a cocher, qui est le seul geste de l ecran. La
+        couleur se lit en tete, ou l on cherche « ou suis-je » apres avoir
+        navigue.
+      */}
+      <p
+        className={`flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-[12.5px] font-medium ${FOND_SEMAINE[etatSemaine]}`}
+      >
+        <span>{LIBELLE_SEMAINE[etatSemaine]}</span>
+        {etatSemaine === "passee_incomplete" ? (
+          <span className="text-muted-foreground shrink-0 font-normal">
+            {joursAConsigner.filter((date) => !byDay.has(isoDay(date))).length} à consigner
+          </span>
+        ) : null}
+      </p>
+
       <ul className="divide-border divide-y rounded-md border">
         {days.map((date) => {
           const day = isoDay(date);
           const stored = byDay.get(day);
           const present = stored !== undefined;
-          const disabled = busy || outOfPeriod(day);
+          const futur = inFuture(day);
+          const disabled = busy || outOfPeriod(day) || futur;
           const locked = validatedUpTo !== null && day <= validatedUpTo;
           const value = drafts[day] ?? stored ?? "";
 
           return (
-            <li key={day} className="space-y-2 p-3">
+            <li key={day} className={`space-y-2 p-3 ${futur ? "text-muted-foreground" : ""}`}>
               <div className="flex items-start gap-3">
                 <Checkbox
                   id={`day-${day}`}
@@ -189,6 +283,10 @@ export function StageLogWeek({ enrollmentId, placementId, placementName }: Stage
                   {outOfPeriod(day) ? (
                     <span className="text-muted-foreground block text-xs">
                       Hors période de stage
+                    </span>
+                  ) : futur ? (
+                    <span className="text-muted-foreground block text-xs">
+                      Pas encore — une journée se consigne le jour même ou après
                     </span>
                   ) : locked ? (
                     <span className="text-muted-foreground block text-xs">
