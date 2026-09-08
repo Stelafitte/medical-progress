@@ -35,6 +35,7 @@ import { useDeclareOutcome } from "@/features/passport/useDeclareOutcome";
  */
 export function OutcomeDeclarationSwitch({
   outcomeId,
+  code,
   label,
   nature,
   targetMastery,
@@ -42,6 +43,8 @@ export function OutcomeDeclarationSwitch({
   showBadge = true,
 }: {
   readonly outcomeId: OutcomeId;
+  /** Le code lu a l'ecran (« ECN-231-01 »), repris dans la confirmation. */
+  readonly code?: string;
   readonly label: string;
   readonly nature: OutcomeNature;
   readonly targetMastery: MasteryLevel;
@@ -69,6 +72,8 @@ export function OutcomeDeclarationSwitch({
           declare.mutate({
             outcomeId,
             level: coche ? targetMastery : "not_started",
+            nature,
+            ...(code === undefined ? {} : { code }),
           })
         }
         aria-label={`Déclarer « ${label} » acquis au niveau ${MASTERY_LABELS_FR[targetMastery]}`}

@@ -527,8 +527,27 @@ export const TRACK_LABELS_FR: Record<AcquisitionTrack, string> = {
   competence: "Plan d'acquisition des compétences",
 };
 
+/**
+ * LES QUATRE ETATS SONT CEUX DE L'APPRENANT, PAS CEUX DE L'ADMINISTRATION.
+ *
+ * « A PLANIFIER » MENTAIT (Stef, 08/09 : « tout est deja planifie par l admin,
+ * donc a quoi cela correspond-il ? »). `stageForProgress` ne regarde jamais le
+ * retroplanning : un acquis tombe dans `to_plan` des lors qu'il n'a ni preuve,
+ * ni declaration, et qu'il n'atteint pas la cible. Ses 333 acquis portent tous
+ * un jalon et une echeance — le Gantt et le Calendrier les datent.
+ *
+ * SUPPRIMER LA COLONNE, comme envisage, aurait cache 333 acquis sur 371 : neuf
+ * dixiemes du programme, et tout ce qui reste a faire. C'est le MOT qui etait
+ * faux, pas la colonne. « A travailler » est deja le vocabulaire de la vue
+ * d'ensemble — legende de la carte du programme, titre « Ce que je peux
+ * travailler ». Un seul mot pour une seule idee.
+ *
+ * A SAVOIR SUR « EN COURS » : elle exige `countedEvidence > 0`, donc au moins
+ * une preuve deposee. Tant qu'aucune preuve n'existe en base, cette colonne
+ * reste vide — ce n'est pas un defaut, c'est ce que dit la donnee.
+ */
 export const STAGE_LABELS_FR: Record<PlanItemStage, string> = {
-  to_plan: "À planifier",
+  to_plan: "À travailler",
   in_progress: "En cours",
   to_validate: "À valider",
   acquired: "Acquis",

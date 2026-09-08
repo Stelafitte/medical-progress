@@ -171,6 +171,7 @@ export function OutcomeRow({
             <div className="flex w-9 shrink-0 items-center">
               <OutcomeDeclarationSwitch
                 outcomeId={outcome.id}
+                code={outcome.code}
                 label={outcome.label}
                 nature={outcome.nature}
                 targetMastery={outcome.targetMastery}

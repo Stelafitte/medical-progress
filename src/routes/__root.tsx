@@ -10,6 +10,7 @@ import {
 import { useEffect, type ReactNode } from "react";
 
 import { PasswordRecoveryGate } from "@/application/password-recovery-gate";
+import { Toaster } from "@/components/ui/sonner";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 
@@ -144,6 +145,14 @@ function RootComponent() {
         {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
         <Outlet />
       </PasswordRecoveryGate>
+      {/*
+        LE PORTE-MESSAGES N'ETAIT MONTE NULLE PART (releve le 08/09). `sonner`
+        etait installe, et `PlatformGovernanceSections` comme
+        `PlatformPilotageView` appelaient deja `toast()` : sans ce composant,
+        leurs appels ne produisaient rien. Deux ecrans croyaient prevenir
+        l'utilisateur et ne prevenaient personne.
+      */}
+      <Toaster />
     </QueryClientProvider>
   );
 }
