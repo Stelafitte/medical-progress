@@ -20,7 +20,7 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, ChevronLeft, ChevronRight } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { EYEBROW, TABULAIRE } from "@/components/milestone-heading";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -76,19 +76,54 @@ function addDays(date: Date, count: number): Date {
  *   merite l avertissement : il reste a rattraper, et c est actionnable. Une
  *   semaine passee complete merite le vert — c est la bonne nouvelle. Colorer
  *   les deux pareil ferait ignorer la couleur en trois jours.
+ *
+ * SECOND PASSAGE (08/09, « la colorisation est minimaliste ») : la premiere
+ * version posait la teinte sur un filet de douze pixels au-dessus d une liste
+ * restee entierement neutre. Le motif etait juste — ne pas noyer la case a
+ * cocher — mais la conclusion trop timide : il ne restait presque rien a voir.
+ * Trois corrections, sans jamais poser d aplat sous la case :
+ *
+ * 1. LE FILET DEVIENT UN BANDEAU. Etat, plage de dates, reste a consigner et
+ *    navigation tiennent sur une meme surface teintee. La couleur occupe une
+ *    hauteur, la ou l oeil cherche « ou suis-je » apres avoir navigue.
+ * 2. ELLE DESCEND SUR CHAQUE LIGNE PAR UN LISERE de trois pixels, double d un
+ *    lavis tres clair. Elle designe alors une journee et non un bloc : vert,
+ *    elle est enregistree ; orange, elle est passee et manque.
+ * 3. LA MARQUE « PRESENT » CESSE D ETRE GRISE. Un badge secondaire repetait la
+ *    case cochee dans la seule teinte qui ne signifie rien ; elle prend le vert
+ *    du jeu semantique, et son pendant orange nomme la journee qui manque.
  */
 type EtatSemaine = "passee_incomplete" | "passee_complete" | "en_cours" | "a_venir";
 
+/** Le bandeau : la teinte y est franche, c est la seule grande surface. */
 const FOND_SEMAINE: Readonly<Record<EtatSemaine, string>> = {
-  passee_incomplete: "bg-warning/10 border-warning/35",
-  passee_complete: "bg-success/10 border-success/35",
-  en_cours: "bg-live/15 border-live/45",
+  passee_incomplete: "bg-warning/20 border-warning/45",
+  passee_complete: "bg-success/15 border-success/40",
+  en_cours: "bg-live/25 border-live/55",
   a_venir: "bg-card-sunk",
+};
+
+/** L encre du bandeau. Aucun jeton ne fournit d encre sombre pour `--success`
+ *  sur un lavis : `text-success` en petites capitales y suffit. */
+const ENCRE_SEMAINE: Readonly<Record<EtatSemaine, string>> = {
+  passee_incomplete: "text-warning-foreground",
+  passee_complete: "text-success",
+  en_cours: "text-live-ink",
+  a_venir: "text-muted-foreground",
+};
+
+/** La bordure de la liste, en rappel : la couleur enveloppe les sept lignes
+ *  sans passer dessous. */
+const BORDURE_SEMAINE: Readonly<Record<EtatSemaine, string>> = {
+  passee_incomplete: "border-warning/40",
+  passee_complete: "border-success/35",
+  en_cours: "border-live/50",
+  a_venir: "",
 };
 
 const LIBELLE_SEMAINE: Readonly<Record<EtatSemaine, string>> = {
   passee_incomplete: "Semaine passée — des journées manquent",
-  passee_complete: "Semaine passée — complète",
+  passee_complete: "Semaine passée — à jour",
   en_cours: "Semaine en cours",
   a_venir: "Semaine à venir — pas encore",
 };
@@ -188,34 +223,65 @@ export function StageLogWeek({ enrollmentId, placementId, placementName }: Stage
   const inFuture = (day: string) => day > aujourdHui;
 
   /*
-   * L ETAT DE LA SEMAINE AFFICHEE. « Complete » se lit sur les jours OUVRABLES
-   * de la periode : compter samedi et dimanche rendrait toute semaine
-   * incomplete, et l avertissement serait ignore des la premiere.
+   * UNE JOURNEE MANQUANTE EST UN JOUR OUVRABLE DEJA PASSE, DANS LA PERIODE,
+   * NON CONSIGNE ET PAS ENCORE CONTRESIGNE. Chacune des quatre conditions
+   * porte :
+   *
+   * - samedi et dimanche rendraient toute semaine incomplete, et
+   *   l avertissement serait ignore des la premiere ;
+   * - aujourd hui ferait virer la ligne du jour a l orange des le matin, alors
+   *   que la journee se consigne le soir ;
+   * - une periode deja validee par l encadrant ne manque de rien : l absence y
+   *   a ete constatee, pas oubliee. C est aussi pourquoi la semaine passee sans
+   *   manque se dit « a jour » et non « complete » — l etudiant a pu etre
+   *   absent, et ce n est pas un defaut.
    */
-  const joursAConsigner = days.filter((date) => {
+  const manquante = (date: Date) => {
     const day = isoDay(date);
     const jourDeSemaine = date.getDay();
-    return !outOfPeriod(day) && jourDeSemaine !== 0 && jourDeSemaine !== 6;
-  });
+    if (jourDeSemaine === 0 || jourDeSemaine === 6) return false;
+    if (outOfPeriod(day) || day >= aujourdHui) return false;
+    if (validatedUpTo !== null && day <= validatedUpTo) return false;
+    return !byDay.has(day);
+  };
+  const manquantes = days.filter(manquante).length;
+
   const etatSemaine: EtatSemaine = (() => {
     const debut = isoDay(days[0] ?? new Date());
     const fin = isoDay(days[6] ?? new Date());
     if (debut > aujourdHui) return "a_venir";
     if (fin >= aujourdHui) return "en_cours";
-    const manquantes = joursAConsigner.filter((date) => !byDay.has(isoDay(date))).length;
     return manquantes > 0 ? "passee_incomplete" : "passee_complete";
   })();
 
   return (
-    <section className="space-y-4">
-      <header className="flex flex-wrap items-center justify-between gap-3">
+    <section className="space-y-3" aria-label={`Carnet de la semaine — ${placementName}`}>
+      {/*
+        LE BANDEAU DE SEMAINE. Le nom du stage n y figure plus : la carte qui
+        contient ce composant l affiche deja en serif, quarante pixels plus
+        haut, et le repeter volait la place ou la couleur devait vivre. Il
+        reste dans le nom accessible de la section.
+      */}
+      <header
+        className={`flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3 ${FOND_SEMAINE[etatSemaine]}`}
+      >
         <div className="min-w-0">
-          <p className="font-medium">{placementName}</p>
-          <p className="text-muted-foreground text-sm">
+          <p className={`${EYEBROW} ${ENCRE_SEMAINE[etatSemaine]}`}>
+            {LIBELLE_SEMAINE[etatSemaine]}
+          </p>
+          <p
+            className="font-display mt-1 text-[16.5px] font-medium leading-tight tracking-[-0.01em]"
+            style={TABULAIRE}
+          >
             {RANGE_FORMAT.format(weekStart)} — {RANGE_FORMAT.format(addDays(weekStart, 6))}
           </p>
+          {manquantes > 0 ? (
+            <p className="text-muted-foreground mt-0.5 text-[12.5px]" style={TABULAIRE}>
+              {manquantes} journée{manquantes > 1 ? "s" : ""} à consigner
+            </p>
+          ) : null}
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex shrink-0 items-center gap-1">
           <Button
             variant="outline"
             size="icon"
@@ -238,35 +304,41 @@ export function StageLogWeek({ enrollmentId, placementId, placementName }: Stage
         </div>
       </header>
 
-      {/*
-        LE BANDEAU PORTE L ETAT, PAS LA LISTE. Un fond teinte sur les sept
-        lignes noierait la case a cocher, qui est le seul geste de l ecran. La
-        couleur se lit en tete, ou l on cherche « ou suis-je » apres avoir
-        navigue.
-      */}
-      <p
-        className={`flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-[12.5px] font-medium ${FOND_SEMAINE[etatSemaine]}`}
-      >
-        <span>{LIBELLE_SEMAINE[etatSemaine]}</span>
-        {etatSemaine === "passee_incomplete" ? (
-          <span className="text-muted-foreground shrink-0 font-normal">
-            {joursAConsigner.filter((date) => !byDay.has(isoDay(date))).length} à consigner
-          </span>
-        ) : null}
-      </p>
-
-      <ul className="divide-border divide-y rounded-md border">
+      <ul className={`overflow-hidden rounded-xl border ${BORDURE_SEMAINE[etatSemaine]}`}>
         {days.map((date) => {
           const day = isoDay(date);
           const stored = byDay.get(day);
           const present = stored !== undefined;
           const futur = inFuture(day);
+          const manque = manquante(date);
           const disabled = busy || outOfPeriod(day) || futur;
           const locked = validatedUpTo !== null && day <= validatedUpTo;
           const value = drafts[day] ?? stored ?? "";
 
+          /*
+            LA COULEUR DESCEND SUR LA LIGNE PAR SON BORD. Le lavis reste autour
+            de dix pour cent : la case a cocher est le seul geste de l ecran, il
+            lui faut un fond calme. Le lisere, lui, est franc — c est ce qui se
+            voit d un coup d oeil en descendant les sept lignes.
+
+            L OPACITE EST ECRITE EN ENTIER, jamais entre crochets : le
+            modificateur arbitraire se lit en POUR-CENT, si bien que `/[0.07]`
+            vaudrait sept centiemes de pour-cent et ne peindrait rien. Le defaut
+            serait invisible au compilateur comme aux tests.
+          */
+          const teinte = present
+            ? "border-l-success bg-success/10"
+            : manque
+              ? "border-l-warning bg-warning/12"
+              : futur
+                ? "text-muted-foreground border-l-transparent bg-card-sunk"
+                : "border-l-transparent";
+
           return (
-            <li key={day} className={`space-y-2 p-3 ${futur ? "text-muted-foreground" : ""}`}>
+            <li
+              key={day}
+              className={`space-y-2 border-t border-l-[3px] p-3 first:border-t-0 ${teinte}`}
+            >
               <div className="flex items-start gap-3">
                 <Checkbox
                   id={`day-${day}`}
@@ -278,23 +350,34 @@ export function StageLogWeek({ enrollmentId, placementId, placementName }: Stage
                     else saveDay.mutate({ occurredOn: day, narrative: "" });
                   }}
                 />
-                <label htmlFor={`day-${day}`} className="min-w-0 flex-1 text-sm">
-                  <span className="block first-letter:uppercase">{DAY_FORMAT.format(date)}</span>
+                <label htmlFor={`day-${day}`} className="min-w-0 flex-1">
+                  <span className="font-display block text-[15px] font-medium tracking-[-0.01em] first-letter:uppercase">
+                    {DAY_FORMAT.format(date)}
+                  </span>
                   {outOfPeriod(day) ? (
-                    <span className="text-muted-foreground block text-xs">
+                    <span className="text-muted-foreground mt-0.5 block text-[12.5px]">
                       Hors période de stage
                     </span>
                   ) : futur ? (
-                    <span className="text-muted-foreground block text-xs">
+                    <span className="text-muted-foreground mt-0.5 block text-[12.5px]">
                       Pas encore — une journée se consigne le jour même ou après
                     </span>
                   ) : locked ? (
-                    <span className="text-muted-foreground block text-xs">
+                    <span className="text-muted-foreground mt-0.5 block text-[12.5px]">
                       Période déjà validée par l'encadrant
                     </span>
                   ) : null}
                 </label>
-                {present ? <Badge variant="secondary">Présent</Badge> : null}
+                {present ? (
+                  <span
+                    className={`${EYEBROW} text-success inline-flex shrink-0 items-center gap-1`}
+                  >
+                    <Check className="size-3.5" aria-hidden />
+                    Présent
+                  </span>
+                ) : manque ? (
+                  <span className={`${EYEBROW} text-warning-foreground shrink-0`}>Manque</span>
+                ) : null}
               </div>
 
               {present && !locked ? (
