@@ -16,10 +16,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, Inbox, RotateCcw } from "lucide-react";
 import { EYEBROW, TABULAIRE } from "@/components/milestone-heading";
-import { SectionHeading } from "@/components/section-heading";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -105,30 +102,45 @@ export function StageLogsToValidate() {
   if (isPending || !data) return <Skeleton className="h-40 w-full" />;
 
   return (
-    <section className="space-y-4" aria-labelledby="titre-a-valider">
-      <SectionHeading
+    <section aria-labelledby="titre-a-valider">
+      {/*
+        MEME ANATOMIE QUE LE RESTE DE L ESPACE : titre en serif sans chapeau.
+        Ce que disait le chapeau — « vous validez la periode de votre choix » —
+        n est pas de la decoration, c est une affordance non evidente : elle
+        descend donc sous la liste, une seule fois, plutot que d etre repetee
+        sur chaque carnet.
+      */}
+      <h2
         id="titre-a-valider"
-        title="Carnets à valider"
-        description="Carnets des apprenants des groupes que vous encadrez. Vous validez la période de votre choix : une semaine, plusieurs, ou tout le stage."
-      />
-      <ul className="grid gap-3">
-        {data.logs.map((log) => (
-          <StageLogReviewCard
-            key={log.id}
-            log={log}
-            learnerName={learnerNameOf(log, data.enrollments, data.people)}
-            canValidate={!!nextStageLogStatus(log.status, "validate", rolesInActiveProgram)}
-            onDone={() =>
-              void queryClient.invalidateQueries({ queryKey: ["stage-logs-to-validate"] })
-            }
-          />
-        ))}
-        {data.logs.length === 0 ? (
-          <li className="text-muted-foreground text-sm">
+        className="mb-3 font-display text-[21px] font-medium tracking-[-0.015em]"
+      >
+        Carnets à valider
+      </h2>
+      {data.logs.length === 0 ? (
+        <div className="rounded-xl border bg-card p-4 shadow-[var(--shadow-card)]">
+          <p className="text-center text-[13px] text-muted-foreground">
             Aucun carnet dans vos groupes d'encadrement.
-          </li>
-        ) : null}
-      </ul>
+          </p>
+        </div>
+      ) : (
+        <ul className="grid gap-3">
+          {data.logs.map((log) => (
+            <StageLogReviewCard
+              key={log.id}
+              log={log}
+              learnerName={learnerNameOf(log, data.enrollments, data.people)}
+              canValidate={!!nextStageLogStatus(log.status, "validate", rolesInActiveProgram)}
+              onDone={() =>
+                void queryClient.invalidateQueries({ queryKey: ["stage-logs-to-validate"] })
+              }
+            />
+          ))}
+        </ul>
+      )}
+      <p className="mt-3 text-[12.5px] leading-relaxed text-muted-foreground">
+        Carnets des apprenants des groupes que vous encadrez. Vous validez la période de votre choix
+        : une semaine, plusieurs, ou tout le stage.
+      </p>
     </section>
   );
 }
@@ -174,100 +186,123 @@ function StageLogReviewCard({
   const periodValid = coversFrom.length > 0 && coversTo.length > 0 && coversFrom <= coversTo;
 
   return (
-    <li>
-      <Card>
-        <CardHeader>
-          <div className="flex flex-wrap items-center gap-2">
-            <CardTitle className="text-base">{learnerName}</CardTitle>
-            <Badge variant="secondary" className="font-normal">
-              {STAGE_LOG_STATUS_LABELS_FR[log.status]}
-            </Badge>
-          </div>
-          <CardDescription>
-            {days} journée(s) déclarée(s) sur l'ensemble du stage
-            {alreadyCovered
-              ? ` · déjà validé jusqu'au ${DATE_FORMAT.format(new Date(`${alreadyCovered}T00:00:00`))}`
-              : " · aucune période validée pour l'instant"}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {days === 0 ? (
-            <p className="text-muted-foreground text-sm">
-              Cet apprenant n'a déclaré aucune journée. Le carnet existe, il est vide — c'est
-              l'information utile.
-            </p>
-          ) : null}
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor={`from-${log.id}`}>Du</Label>
-              <Input
-                id={`from-${log.id}`}
-                type="date"
-                value={coversFrom}
-                onChange={(event) => setCoversFrom(event.target.value)}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor={`to-${log.id}`}>Au</Label>
-              <Input
-                id={`to-${log.id}`}
-                type="date"
-                value={coversTo}
-                onChange={(event) => setCoversTo(event.target.value)}
-              />
-            </div>
-          </div>
-
-          <p className="text-muted-foreground text-sm">
-            {inRange} journée(s) déclarée(s) dans cette période.
+    <li className="overflow-hidden rounded-xl border bg-card shadow-[var(--shadow-card)]">
+      {/*
+        LA TUILE PORTE LE COMPTE, comme partout ailleurs. Marine : un carnet
+        n est pas un domaine de competence, et la teinte ne dit que cela.
+      */}
+      <div className="flex items-start gap-3 px-4 pb-3.5 pt-4">
+        <span className="grid w-11 shrink-0 place-items-center rounded-lg bg-field py-2 text-field-ink">
+          <b className="text-[17px] font-bold leading-none" style={TABULAIRE}>
+            {days}
+          </b>
+          <span className="mt-[3px] text-[9px] tracking-wider opacity-85">JOURS</span>
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="font-display text-[16.5px] leading-tight tracking-[-0.01em]">
+            {learnerName}
           </p>
+          <p className={`${EYEBROW} mt-1.5 text-muted-foreground`}>
+            {STAGE_LOG_STATUS_LABELS_FR[log.status]}
+          </p>
+          <p className="mt-1.5 text-[12.5px] leading-snug text-muted-foreground">
+            {days === 0
+              ? "Aucune journée déclarée. Le carnet existe, il est vide — c'est l'information utile."
+              : alreadyCovered
+                ? `Déjà validé jusqu'au ${DATE_FORMAT.format(new Date(`${alreadyCovered}T00:00:00`))}.`
+                : "Aucune période validée pour l'instant."}
+          </p>
+        </div>
+      </div>
 
+      <div className="space-y-3 border-t px-4 pb-4 pt-4">
+        <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1.5">
-            <Label htmlFor={`comment-${log.id}`}>Commentaire (facultatif)</Label>
-            <Textarea
-              id={`comment-${log.id}`}
-              rows={2}
-              value={comment}
-              onChange={(event) => setComment(event.target.value)}
+            <Label
+              htmlFor={`from-${log.id}`}
+              className="block text-[12.5px] font-normal text-muted-foreground"
+            >
+              Du
+            </Label>
+            <Input
+              id={`from-${log.id}`}
+              type="date"
+              value={coversFrom}
+              onChange={(event) => setCoversFrom(event.target.value)}
             />
           </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              type="button"
-              size="sm"
-              className="gap-1"
-              disabled={!canValidate || !periodValid || decide.isPending}
-              onClick={() => decide.mutate("validated")}
+          <div className="space-y-1.5">
+            <Label
+              htmlFor={`to-${log.id}`}
+              className="block text-[12.5px] font-normal text-muted-foreground"
             >
-              <CheckCircle2 className="size-4" aria-hidden />
-              Valider cette période
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              className="gap-1"
-              disabled={!canValidate || !periodValid || decide.isPending}
-              onClick={() => decide.mutate("needs_revision")}
-            >
-              <RotateCcw className="size-4" aria-hidden />
-              Demander une correction
-            </Button>
+              Au
+            </Label>
+            <Input
+              id={`to-${log.id}`}
+              type="date"
+              value={coversTo}
+              onChange={(event) => setCoversTo(event.target.value)}
+            />
           </div>
+        </div>
 
-          <p className="text-muted-foreground text-xs">
-            La validation humaine est la seule source d'acquisition d'une compétence réelle.
+        <p className={`${EYEBROW} text-muted-foreground`} style={TABULAIRE}>
+          {inRange} journée{inRange > 1 ? "s" : ""} déclarée{inRange > 1 ? "s" : ""} dans cette
+          période
+        </p>
+
+        <div className="space-y-1.5">
+          <Label
+            htmlFor={`comment-${log.id}`}
+            className="block text-[12.5px] font-normal text-muted-foreground"
+          >
+            Commentaire (facultatif)
+          </Label>
+          <Textarea
+            id={`comment-${log.id}`}
+            rows={2}
+            value={comment}
+            onChange={(event) => setComment(event.target.value)}
+          />
+        </div>
+
+        {/*
+          UN SEUL BOUTON PRIMAIRE. « Demander une correction » est l autre issue,
+          pas l autre moitie : elle reste en contour.
+        */}
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            className="min-h-11 gap-1.5"
+            disabled={!canValidate || !periodValid || decide.isPending}
+            onClick={() => decide.mutate("validated")}
+          >
+            <CheckCircle2 className="size-4" aria-hidden />
+            Valider cette période
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            className="min-h-11 gap-1.5"
+            disabled={!canValidate || !periodValid || decide.isPending}
+            onClick={() => decide.mutate("needs_revision")}
+          >
+            <RotateCcw className="size-4" aria-hidden />
+            Demander une correction
+          </Button>
+        </div>
+
+        <p className="border-t pt-3 text-[12.5px] leading-relaxed text-muted-foreground">
+          La validation humaine est la seule source d'acquisition d'une compétence réelle.
+        </p>
+
+        {decide.error ? (
+          <p className="text-[13px] text-destructive">
+            {decide.error instanceof Error ? decide.error.message : "Validation impossible."}
           </p>
-
-          {decide.error ? (
-            <p className="text-destructive text-sm">
-              {decide.error instanceof Error ? decide.error.message : "Validation impossible."}
-            </p>
-          ) : null}
-        </CardContent>
-      </Card>
+        ) : null}
+      </div>
     </li>
   );
 }
