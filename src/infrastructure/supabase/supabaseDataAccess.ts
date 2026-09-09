@@ -1,5 +1,5 @@
 import type { SupabaseClient, User } from "@supabase/supabase-js";
-import type { PlanScheduleEntry } from "@/domain/acquisitionPlan";
+import type { PlanMilestoneId, PlanScheduleEntry } from "@/domain/acquisitionPlan";
 import {
   AI_FALLBACK_POLICIES,
   defaultProgramAiSettings,
@@ -104,6 +104,7 @@ type ProgramRow = {
   pre_post_tests_enabled: boolean;
   sessions_enabled: boolean;
   dpc_enabled: boolean;
+  learner_plan_shifts_enabled: boolean;
   target_mastery: Program["config"]["targetMastery"];
   locale: string;
   design_draft: Record<string, unknown> | null;
@@ -242,6 +243,7 @@ export function mapProgram(row: ProgramRow): Program {
       prePostTestsEnabled: row.pre_post_tests_enabled,
       sessionsEnabled: row.sessions_enabled,
       dpcEnabled: row.dpc_enabled,
+      learnerPlanShiftsEnabled: row.learner_plan_shifts_enabled,
       locale: row.locale,
     },
     createdAt: row.created_at,
@@ -830,7 +832,7 @@ const pendingPersonColumns =
   "id,program_id,first_name,last_name,login_email,institutional_id,origin,intended_cohort_id,status,invited_at,cancelled_at,activated_profile_id,created_at,updated_at";
 
 const programColumns =
-  "id,code,name,kind,institution,annual_learner_estimate,placements_enabled,simulation_enabled,audits_enabled,pre_post_tests_enabled,sessions_enabled,dpc_enabled,target_mastery,locale,design_draft,created_at,updated_at";
+  "id,code,name,kind,institution,annual_learner_estimate,placements_enabled,simulation_enabled,audits_enabled,pre_post_tests_enabled,sessions_enabled,dpc_enabled,learner_plan_shifts_enabled,target_mastery,locale,design_draft,created_at,updated_at";
 
 const assessmentModalityColumns =
   "id,program_id,name,mode,subtype,usage,notes,created_at,updated_at";
@@ -1138,6 +1140,20 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
           .maybeSingle();
         assertNoSupabaseError(error);
         return data ? mapProgram(data as ProgramRow) : undefined;
+      },
+      /*
+       * RENDRE LE PROGRAMME RELU, ET NON L'ARGUMENT ENVOYE. La RPC rend la
+       * ligne apres ecriture : c'est la base qui dit ce qui a ete enregistre,
+       * pas l'ecran qui reaffiche ce qu'il croyait avoir demande.
+       */
+      async setLearnerPlanShifts(programId: ProgramId, enabled: boolean) {
+        const { data, error } = await client.rpc("set_learner_plan_shifts", {
+          p_program_id: programId,
+          p_enabled: enabled,
+        });
+        assertNoSupabaseError(error);
+        if (!data) throw new Error("Réglage non enregistré.");
+        return mapProgram(data as ProgramRow);
       },
       async saveProgramDesignDraft(programId: ProgramId, draft: Record<string, unknown> | null) {
         const { error } = await client.rpc("save_program_design_draft", {
@@ -2160,6 +2176,7 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
           const fin = new Date(debut.getTime() + 6 * jour);
           entries.push({
             outcomeId: link.outcome_id as OutcomeId,
+            milestoneId: link.milestone_id as PlanMilestoneId,
             startsOn: debut.toISOString(),
             dueOn: fin.toISOString(),
             milestoneLabel: milestone.label,
@@ -2167,6 +2184,91 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
           });
         }
         return entries;
+      },
+      /*
+       * LE PLAN PERSONNEL — LECTURE ET ECRITURE REELLES (09/09).
+       *
+       * `learner_milestone_shifts` et `shift_milestone` existent en base depuis
+       * le 31/08 et n'avaient jamais ete appelees. Un etudiant ne modifie que
+       * SON calendrier : la cle est `(inscription, jalon)`, et
+       * `plan_milestones` — le retroplanning de la promotion — n'est jamais
+       * touchee.
+       *
+       * LES TROIS REFUS VIENNENT DE LA BASE, pas d'ici : jalon officiel
+       * (contrainte declarative), inscription qui n'est pas la sienne, et
+       * programme dont le reamenagement n'est pas ouvert. On remonte leur
+       * message tel quel — chacun dit ce qui manque.
+       */
+      async listMilestoneShifts(enrollmentId) {
+        const { data, error } = await client
+          .from("learner_milestone_shifts")
+          .select("milestone_id, shifted_due_on, shifted_starts_on")
+          .eq("enrollment_id", enrollmentId);
+        assertNoSupabaseError(error);
+        return (
+          (data ?? []) as {
+            milestone_id: string;
+            shifted_due_on: string;
+            shifted_starts_on: string | null;
+          }[]
+        ).map((row) => ({
+          milestoneId: row.milestone_id as PlanMilestoneId,
+          /*
+           * `shifted_due_on` EST UNE DATE SEULE. On la remonte a midi UTC et non
+           * a minuit : minuit bascule de jour des qu'un fuseau recule, et le
+           * jalon change de date a l'ecran sans que personne l'ait deplace.
+           * C'est le meme piege que celui note le 07/09 sur le carnet de stage.
+           */
+          shiftedDueOn: `${row.shifted_due_on}T12:00:00.000Z`,
+          /*
+           * PROPRIETE ABSENTE ET NON `undefined` EXPLICITE : `MilestoneShift`
+           * la declare optionnelle, et le projet est en
+           * `exactOptionalPropertyTypes`. Ici l'absence EST l'information —
+           * « aucun debut choisi » — contrairement au moteur IA du matin, ou
+           * le champ etait toujours present.
+           */
+          ...(row.shifted_starts_on
+            ? { shiftedStartsOn: `${row.shifted_starts_on}T12:00:00.000Z` }
+            : {}),
+        }));
+      },
+      async shiftMilestone(input) {
+        /*
+         * `p_starts_on: null` EXPLICITE quand l'appelant ne choisit pas de
+         * debut. La fonction remplace la ligne entiere : omettre la cle
+         * laisserait le defaut `null` jouer ici, mais l'ecrire rend visible
+         * que « pas de debut » EFFACE un debut choisi auparavant — c'est
+         * ainsi qu'on revient a la duree du retroplanning.
+         */
+        const { data, error } = await client.rpc("shift_milestone", {
+          p_enrollment_id: input.enrollmentId,
+          p_milestone_id: input.milestoneId,
+          p_due_on: input.dueOn,
+          p_starts_on: input.startsOn ?? null,
+        });
+        assertNoSupabaseError(error);
+        const row = (Array.isArray(data) ? data[0] : data) as {
+          milestone_id?: string;
+          shifted_due_on?: string;
+          shifted_starts_on?: string | null;
+        } | null;
+        if (!row?.milestone_id || !row.shifted_due_on) {
+          throw new Error("Le déplacement n’a pas été enregistré.");
+        }
+        return {
+          milestoneId: row.milestone_id as PlanMilestoneId,
+          shiftedDueOn: `${row.shifted_due_on}T12:00:00.000Z`,
+          ...(row.shifted_starts_on
+            ? { shiftedStartsOn: `${row.shifted_starts_on}T12:00:00.000Z` }
+            : {}),
+        };
+      },
+      async resetMilestoneShift(enrollmentId, milestoneId) {
+        const { error } = await client.rpc("reset_milestone_shift", {
+          p_enrollment_id: enrollmentId,
+          p_milestone_id: milestoneId,
+        });
+        assertNoSupabaseError(error);
       },
       async listMilestones(cohortId) {
         /*

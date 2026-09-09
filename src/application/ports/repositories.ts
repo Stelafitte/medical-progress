@@ -5,7 +5,12 @@
  * sélectif depuis un système historique) devra respecter ces interfaces sans
  * modifier l'UI ni la logique métier.
  */
-import type { PlanMilestone, PlanMilestoneId, PlanScheduleEntry } from "@/domain/acquisitionPlan";
+import type {
+  MilestoneShift,
+  PlanMilestone,
+  PlanMilestoneId,
+  PlanScheduleEntry,
+} from "@/domain/acquisitionPlan";
 import type { OutcomeSelfReport } from "@/domain/passport";
 import type { CohortOpeningReport } from "@/domain/cohortOpening";
 import type {
@@ -178,6 +183,19 @@ export interface ProgramRepository {
     programId: ProgramId,
     draft: Record<string, unknown> | null,
   ): Promise<void>;
+  /**
+   * Ouvre ou referme le REAMENAGEMENT DU PLAN par les apprenants du programme.
+   *
+   * UNE RPC ET NON UN `update`, parce que `programs` ne porte aucune policy
+   * d'ecriture : la table decrit ce qu'est un programme (son code, son
+   * etablissement), et l'ouvrir en ecriture pour un booleen ouvrirait le
+   * reste au meme mouvement.
+   *
+   * REFERMER N'EFFACE RIEN. Les decalages deja poses restent et continuent de
+   * s'appliquer au plan de leurs auteurs : refermer veut dire « on n'en pose
+   * plus », pas « on annule ce que les etudiants ont fait ».
+   */
+  setLearnerPlanShifts(programId: ProgramId, enabled: boolean): Promise<Program>;
   /**
    * Analyse IA (Edge Function `analyze-program-objectives`) d'un texte
    * d'objectifs pédagogiques : propose un référentiel candidat (connaissances
@@ -911,6 +929,38 @@ export interface AcquisitionPlanRepository {
    * pour un stage donné, et le même programme porte un rétroplanning différent
    * d'une promotion à l'autre.
    */
+  /**
+   * LES DECALAGES PERSONNELS d'un apprenant, par jalon.
+   *
+   * SEPARE DE `listPlanSchedule`, et non un parametre de plus : ce dernier rend
+   * le calendrier DE REFERENCE de la promotion, que les ecrans
+   * d'administration lisent aussi. Y melanger les dates d'un etudiant ferait
+   * lire a un administrateur un plan qui n'est celui de personne.
+   */
+  listMilestoneShifts(enrollmentId: EnrollmentId): Promise<readonly MilestoneShift[]>;
+  /**
+   * Deplace un jalon POUR CET APPRENANT SEUL. `plan_milestones` — le
+   * retroplanning de la promotion — n'est pas touchee.
+   *
+   * La base refuse : un jalon officiel (contrainte declarative), une inscription
+   * qui n'est pas la sienne, et un programme dont l'administrateur n'a pas
+   * ouvert le reamenagement. Le message remonte tel quel.
+   */
+  shiftMilestone(input: {
+    enrollmentId: EnrollmentId;
+    milestoneId: PlanMilestoneId;
+    /** Date seule, `YYYY-MM-DD` : la base attend un `date`, pas un horodatage. */
+    dueOn: string;
+    /**
+     * Debut choisi, meme format. OMIS = la duree du retroplanning est
+     * conservee et la fenetre glisse d'un bloc ; fourni = l'apprenant a tire
+     * une extremite et choisit sa duree. La base refuse une fin anterieure au
+     * debut, par la fonction ET par une contrainte.
+     */
+    startsOn?: string;
+  }): Promise<MilestoneShift>;
+  /** Revenir a la date de la promotion. Reste possible meme si le reglage se referme. */
+  resetMilestoneShift(enrollmentId: EnrollmentId, milestoneId: PlanMilestoneId): Promise<void>;
   listMilestones(cohortId: CohortId): Promise<readonly PlanMilestone[]>;
   createMilestone(input: CreatePlanMilestoneInput): Promise<PlanMilestone>;
   updateMilestone(input: UpdatePlanMilestoneInput): Promise<PlanMilestone>;

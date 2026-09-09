@@ -15,6 +15,7 @@ import type {
   OutcomeTheme,
   Placement,
   PlacementId,
+  Program,
   RoleAssignment,
   SupervisionGroup,
   SupervisionGroupId,
@@ -27,6 +28,8 @@ import {
   type ProgramAiSettings,
 } from "@/domain/programAi";
 import type { ProgramId } from "@/domain/types";
+import type { MilestoneShift, PlanMilestoneId } from "@/domain/acquisitionPlan";
+import type { EnrollmentId } from "@/domain/types";
 import { modalityFixturesFor } from "./assessmentModalityFixtures";
 import * as fx from "./fixtures";
 import * as pfx from "./professionalFixtures";
@@ -43,6 +46,12 @@ import * as hvg from "./dpcHvgFixtures";
 
 const clone = <T>(value: T): T => value;
 const ok = <T>(value: T): Promise<T> => Promise.resolve(clone(value));
+
+/**
+ * Les jalons deplaces en maquette, le temps de la session, par inscription.
+ * Vide au demarrage : la demonstration ne part pas sur un plan deja reamenage.
+ */
+const decalagesDeDemo = new Map<EnrollmentId, Map<PlanMilestoneId, MilestoneShift>>();
 
 /**
  * Reglages IA de la maquette. UN OBJET MUTABLE, volontairement : la maquette
@@ -91,18 +100,42 @@ export const mockDataAccess: DataAccess = {
     let cohorts: Cohort[] = [...fx.cohorts];
     let counter = 0;
     const designDrafts = new Map<string, Record<string, unknown>>();
+    const planShifts = new Map<string, boolean>();
+    /*
+     * LES DEUX REGLAGES EN MEMOIRE S'APPLIQUENT A LA LECTURE, EN UN SEUL
+     * ENDROIT. Sans cela l'interrupteur du plan repondrait « enregistre » et
+     * la relecture rendrait la valeur d'origine : l'ecran apprenant, qui lit
+     * `getProgram`, ne verrait jamais le changement.
+     */
+    const relu = (programme: Program): Program => {
+      const draft = designDrafts.get(programme.id);
+      const shifts = planShifts.get(programme.id);
+      const avecDraft = draft ? { ...programme, designDraft: draft } : programme;
+      return shifts === undefined
+        ? avecDraft
+        : { ...avecDraft, config: { ...avecDraft.config, learnerPlanShiftsEnabled: shifts } };
+    };
     return {
-      listPrograms: () => ok(fx.programs),
+      listPrograms: () => ok(fx.programs.map(relu)),
       getProgram: (id) => {
         const found = fx.programs.find((p) => p.id === id);
-        if (!found) return ok(undefined);
-        const draft = designDrafts.get(id);
-        return ok(draft ? { ...found, designDraft: draft } : found);
+        return ok(found ? relu(found) : undefined);
       },
       saveProgramDesignDraft: (programId, draft) => {
         if (draft) designDrafts.set(programId, draft);
         else designDrafts.delete(programId);
         return ok(undefined);
+      },
+      /*
+       * LE REGLAGE VIT EN MEMOIRE, LE TEMPS DE LA SESSION. La demonstration
+       * doit pouvoir montrer l'interrupteur et l'effet qu'il produit cote
+       * apprenant ; elle n'a pas de base pour s'en souvenir.
+       */
+      setLearnerPlanShifts: (programId, enabled) => {
+        const programme = fx.programs.find((p) => p.id === programId);
+        if (!programme) return Promise.reject(new Error("Programme introuvable."));
+        planShifts.set(programId, enabled);
+        return ok(relu(programme));
       },
       // Aucun appel IA réel en mock : pas d'infrastructure serveur ici.
       analyzeObjectivesForReferential: () =>
@@ -757,6 +790,36 @@ export const mockDataAccess: DataAccess = {
      * précisément ce qu'on est en train de corriger. Rendre une liste vide dit
      * la vérité — aucune promotion n'a encore de jalon.
      */
+    /*
+     * AUCUNE FIXTURE, MAIS UNE MEMOIRE DE SESSION. La maquette ne demarre sur
+     * aucun jalon deplace — en rendre un ferait croire a un reamenagement que
+     * personne n'a fait. En revanche ce que l'utilisateur deplace DOIT tenir :
+     * sans cela, il tire une barre, l'ecran la remet en place, et l'interaction
+     * passe pour cassee alors qu'elle marche.
+     */
+    listMilestoneShifts: (enrollmentId: EnrollmentId) =>
+      ok([...(decalagesDeDemo.get(enrollmentId)?.values() ?? [])]),
+    shiftMilestone: (input: {
+      enrollmentId: EnrollmentId;
+      milestoneId: PlanMilestoneId;
+      dueOn: string;
+      startsOn?: string;
+    }) => {
+      const decalage: MilestoneShift = {
+        milestoneId: input.milestoneId,
+        shiftedDueOn: input.dueOn,
+        ...(input.startsOn ? { shiftedStartsOn: input.startsOn } : {}),
+      };
+      const pourCetteInscription =
+        decalagesDeDemo.get(input.enrollmentId) ?? new Map<PlanMilestoneId, MilestoneShift>();
+      pourCetteInscription.set(input.milestoneId, decalage);
+      decalagesDeDemo.set(input.enrollmentId, pourCetteInscription);
+      return ok(decalage);
+    },
+    resetMilestoneShift: (enrollmentId: EnrollmentId, milestoneId: PlanMilestoneId) => {
+      decalagesDeDemo.get(enrollmentId)?.delete(milestoneId);
+      return ok(undefined);
+    },
     listMilestones: () => ok([]),
     createMilestone: () =>
       Promise.reject(new Error("Le rétroplanning exige une connexion à la base.")),

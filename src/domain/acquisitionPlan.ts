@@ -24,8 +24,84 @@ export type AcquisitionTrack = "knowledge" | "competence";
 export type PlanItemStage = "to_plan" | "in_progress" | "to_validate" | "acquired";
 
 /** Calendrier de référence d'un acquis (donnée de démonstration isolée). */
+/**
+ * LE DECALAGE PERSONNEL D'UN JALON.
+ *
+ * UN ETUDIANT NE MODIFIE QUE SON PROPRE CALENDRIER (Stef, 09/09) : « aucun
+ * impact sur le programme global et sur les autres calendriers des autres
+ * etudiants ». La table `plan_milestones` — le retroplanning de la promotion —
+ * n'est jamais touchee. Le decalage est une COUCHE par-dessus, propre a une
+ * inscription, lue pour elle seule.
+ *
+ * DEUX FORMES, DEUX SENS. `shiftedStartsOn` absent veut dire « j'ai deplace ce
+ * jalon, sa duree reste celle du retroplanning » — la fenetre glisse d'un bloc.
+ * Present, il veut dire « j'ai choisi ma fenetre » : l'etudiant a tire une
+ * extremite et la duree est desormais la sienne. La colonne est nullable en
+ * base pour porter exactement cette distinction, plutot qu'une valeur par
+ * defaut qui ferait passer une duree subie pour une duree choisie.
+ */
+export interface MilestoneShift {
+  readonly milestoneId: PlanMilestoneId;
+  readonly shiftedDueOn: IsoDateTime;
+  /** Absent = duree du retroplanning conservee. */
+  readonly shiftedStartsOn?: IsoDateTime;
+}
+
+/**
+ * LA DATE PERSONNELLE SI ELLE EXISTE, SINON CELLE DE LA PROMOTION.
+ *
+ * ECRITE UNE SEULE FOIS, ICI. Quatre vues lisent ce calendrier — Passeport,
+ * Calendrier, Gantt, Kanban — et le jour ou une seule oublierait la couche
+ * personnelle, l'etudiant verrait deux plans differents dans le meme ecran sans
+ * savoir lequel croire.
+ *
+ * SANS DEBUT CHOISI, LA DUREE DU JALON EST CONSERVEE, pas recalculee a une
+ * semaine : si le retroplanning lui donne trois jours, il en garde trois apres
+ * deplacement. Recalculer une semaine ferait grandir un jalon court a chaque
+ * decalage — un effet de bord invisible et cumulatif.
+ *
+ * AVEC UN DEBUT CHOISI, ON PREND LES DEUX DATES TELLES QUELLES. C'est
+ * l'etudiant qui a tire l'extremite ; recalculer quoi que ce soit reviendrait a
+ * corriger son geste.
+ */
+export function appliquerDecalages(
+  entries: readonly PlanScheduleEntry[],
+  shifts: readonly MilestoneShift[],
+): readonly PlanScheduleEntry[] {
+  if (shifts.length === 0) return entries;
+  const parJalon = new Map(shifts.map((shift) => [shift.milestoneId, shift]));
+  return entries.map((entry) => {
+    const decalage = parJalon.get(entry.milestoneId);
+    if (decalage === undefined) return entry;
+    const fin = new Date(decalage.shiftedDueOn).getTime();
+    if (decalage.shiftedStartsOn !== undefined) {
+      return {
+        ...entry,
+        startsOn: new Date(decalage.shiftedStartsOn).toISOString(),
+        dueOn: new Date(fin).toISOString(),
+      };
+    }
+    const duree = new Date(entry.dueOn).getTime() - new Date(entry.startsOn).getTime();
+    return {
+      ...entry,
+      startsOn: new Date(fin - duree).toISOString(),
+      dueOn: new Date(fin).toISOString(),
+    };
+  });
+}
+
 export interface PlanScheduleEntry {
   readonly outcomeId: OutcomeId;
+  /**
+   * LE JALON, PAR SON IDENTIFIANT ET NON PAR SON LIBELLE (09/09).
+   *
+   * Le libelle suffisait tant qu'on ne faisait qu'AFFICHER. Il ne suffit plus
+   * des lors qu'un apprenant peut DEPLACER son jalon : `shift_milestone` prend
+   * un uuid, et deux jalons peuvent porter le meme libelle dans deux
+   * promotions. Le Gantt regroupait ses barres sur `libelle|date` — une cle
+   * d'affichage, jamais une cle d'ecriture.
+   */
+  readonly milestoneId: PlanMilestoneId;
   readonly startsOn: IsoDateTime;
   readonly dueOn: IsoDateTime;
   readonly milestoneLabel: string;
@@ -503,6 +579,11 @@ export interface AcquisitionPlanItem {
   readonly startsOn: IsoDateTime | null;
   readonly dueOn: IsoDateTime | null;
   readonly milestoneLabel: string | null;
+  /**
+   * `null` quand aucun jalon ne porte cet acquis. Necessaire pour ecrire un
+   * decalage personnel : voir `PlanScheduleEntry.milestoneId`.
+   */
+  readonly milestoneId: PlanMilestoneId | null;
   /** Ce que l'apprenant a declare sur cet acquis, s'il l'a fait. */
   readonly declaredLevel?: MasteryLevel;
   /** Chapitre du Concepteur, pour replier les vues qui portent des centaines de lignes. */

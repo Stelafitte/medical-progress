@@ -563,6 +563,7 @@ export const auditEvents: readonly AuditEvent[] = [
 export const planSchedule: readonly PlanScheduleEntry[] = [
   {
     outcomeId: "out-echo-anat",
+    milestoneId: "mock-jalon-1",
     startsOn: "2026-06-15T00:00:00Z",
     dueOn: "2026-07-31T00:00:00Z",
     milestoneLabel: "Jalon 1 — Bases anatomiques validées",
@@ -570,6 +571,7 @@ export const planSchedule: readonly PlanScheduleEntry[] = [
   },
   {
     outcomeId: "out-echo-coupes",
+    milestoneId: "mock-jalon-2",
     startsOn: "2026-07-15T00:00:00Z",
     dueOn: "2026-09-10T00:00:00Z",
     milestoneLabel: "Jalon 2 — Coupes standard en simulation",
@@ -577,6 +579,7 @@ export const planSchedule: readonly PlanScheduleEntry[] = [
   },
   {
     outcomeId: "out-echo-fevg",
+    milestoneId: "mock-jalon-3",
     startsOn: "2026-08-03T00:00:00Z",
     dueOn: "2026-10-15T00:00:00Z",
     milestoneLabel: "Jalon 3 — FEVG en situation réelle",
@@ -584,6 +587,7 @@ export const planSchedule: readonly PlanScheduleEntry[] = [
   },
   {
     outcomeId: "out-echo-valve",
+    milestoneId: "mock-jalon-4",
     startsOn: "2026-09-01T00:00:00Z",
     dueOn: "2026-12-18T00:00:00Z",
     milestoneLabel: "Jalon 4 — Valvulopathie aortique",
@@ -591,6 +595,7 @@ export const planSchedule: readonly PlanScheduleEntry[] = [
   },
   {
     outcomeId: "out-dfasm-ecg",
+    milestoneId: "mock-jalon-5",
     startsOn: "2026-06-01T00:00:00Z",
     dueOn: "2026-09-30T00:00:00Z",
     milestoneLabel: "Jalon 1 — ECG de repos",
@@ -598,6 +603,7 @@ export const planSchedule: readonly PlanScheduleEntry[] = [
   },
   {
     outcomeId: "out-dfasm-douleur",
+    milestoneId: "mock-jalon-6",
     startsOn: "2026-06-20T00:00:00Z",
     dueOn: "2026-11-15T00:00:00Z",
     milestoneLabel: "Jalon 2 — Douleur thoracique en simulation",
@@ -605,6 +611,7 @@ export const planSchedule: readonly PlanScheduleEntry[] = [
   },
   {
     outcomeId: "out-dfasm-obs",
+    milestoneId: "mock-jalon-7",
     startsOn: "2026-09-01T00:00:00Z",
     dueOn: "2027-01-31T00:00:00Z",
     milestoneLabel: "Jalon 3 — Observation validée en service",

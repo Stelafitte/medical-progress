@@ -31,6 +31,7 @@ import {
 import type { OutcomeThemeId } from "@/domain/types";
 import { buildDomainColors } from "@/features/dashboard/domainColor";
 import { useLearnerPassport } from "@/features/dashboard/useLearnerPassport";
+import { useReamenagementDuPlan } from "@/features/passport/useReamenagementDuPlan";
 import { PlanChangeRequestDialog } from "./PlanChangeRequestDialog";
 import { CalendarView } from "./views/CalendarView";
 import { GanttView } from "./views/GanttView";
@@ -79,6 +80,11 @@ export function PassportView() {
   const [filter, setFilter] = useState<PlanFilter>("all");
   const [dialogItem, setDialogItem] = useState<AcquisitionPlanItem | null>(null);
   const [requests, setRequests] = useState<readonly PlanChangeRequest[]>([]);
+  /*
+   * `undefined` tant que le programme n'ouvre pas le reamenagement : le Gantt
+   * reste alors le diagramme de lecture qu'il a toujours ete.
+   */
+  const reamenagement = useReamenagementDuPlan(data?.shifts);
 
   const plan = data?.plan;
 
@@ -356,7 +362,17 @@ export function PassportView() {
             <CalendarView events={filteredEvents} items={plan.items} couleurDe={couleurDe} />
           </TabsContent>
           <TabsContent value="gantt" className="mt-5">
-            <GanttView items={filteredItems} range={plan.range} couleurDe={couleurDe} />
+            <GanttView
+              items={filteredItems}
+              range={plan.range}
+              couleurDe={couleurDe}
+              /*
+               * `undefined` QUAND LE PROGRAMME NE L'OUVRE PAS : le diagramme
+               * reste alors strictement celui d'avant, sans poignee ni
+               * mention de ce qui est interdit.
+               */
+              {...(reamenagement ? { reamenagement } : {})}
+            />
           </TabsContent>
           <TabsContent value="kanban" className="mt-5">
             <KanbanView

@@ -54,6 +54,20 @@ export type ProgramKind = "diu" | "dfasm" | "dpc" | "other";
 export interface ProgramConfig {
   /** Le programme s'appuie-t-il sur des stages / terrains cliniques ? */
   readonly placementsEnabled: boolean;
+  /**
+   * L'apprenant peut-il DEPLACER SES PROPRES jalons ?
+   *
+   * Reglage de programme, decide par l'administrateur (Stef, 09/09 : « si
+   * autorise par l'admin programme »). Absent = ferme, comme les autres
+   * modules optionnels : une plateforme qui n'a rien decide n'ouvre pas.
+   *
+   * CE QUE CELA N'OUVRE PAS. Un decalage vaut pour UNE inscription et ne
+   * touche ni `plan_milestones` — le retroplanning de la promotion — ni le
+   * plan des autres inscrits. Les jalons marques officiels restent
+   * indeplacables, et c'est une contrainte declarative de PostgreSQL, pas ce
+   * drapeau, qui le garantit.
+   */
+  readonly learnerPlanShiftsEnabled?: boolean;
   /** Simulation / ECOS activés (jamais l'identité du produit, juste un module). */
   readonly simulationEnabled: boolean;
   /** Validation humaine obligatoire pour toute compétence réelle. */

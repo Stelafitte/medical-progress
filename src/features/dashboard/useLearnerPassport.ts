@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useDataAccess, useSession } from "@/application/session";
 import { computeOutcomeProgress, summarizeProgress } from "@/domain/mastery";
 import { buildAcquisitionPlan } from "@/application/acquisitionPlan";
+import { appliquerDecalages } from "@/domain/acquisitionPlan";
 import { useLocalPlacements } from "@/application/placementDraftStore";
 import { mergePlacements } from "@/domain/placementDraft";
 
@@ -69,6 +70,25 @@ export function useLearnerPassport() {
        * resterait ouverte et l'etudiant croirait que rien n'a ete enregistre.
        */
       const selfReports = await data.passport.listSelfReports(activeEnrollment.id);
+
+      /*
+       * LE PLAN PERSONNEL DE CET APPRENANT (09/09).
+       *
+       * Lu a part, pour la meme raison que les chapitres et les declarations :
+       * au-dela de dix promesses `Promise.all` perd son inference de tuple.
+       *
+       * ON APPLIQUE LE DECALAGE ICI, UNE SEULE FOIS, avant de construire le
+       * plan. Les quatre vues — Passeport, Calendrier, Gantt, Kanban — partent
+       * ensuite du meme etat : le jour ou une seule oublierait cette couche,
+       * l'etudiant lirait deux calendriers differents dans le meme ecran sans
+       * savoir lequel croire. C'est exactement la lecon du 08/09 sur les
+       * couleurs de domaine, resolues une fois et descendues aux vues.
+       *
+       * `schedule` reste le calendrier DE REFERENCE de la promotion ; ce qui
+       * suit n'existe que pour cette inscription.
+       */
+      const shifts = await data.plan.listMilestoneShifts(activeEnrollment.id);
+      const scheduleDeLApprenant = appliquerDecalages(schedule, shifts);
       const declarationParAcquis = new Map(selfReports.map((r) => [r.outcomeId, r] as const));
 
       const placements = mergePlacements(storedPlacements, localPlacements);
@@ -81,7 +101,7 @@ export function useLearnerPassport() {
         progress,
         evidence,
         relations,
-        schedule,
+        schedule: scheduleDeLApprenant,
         placements,
         assignments,
         /*
@@ -116,6 +136,14 @@ export function useLearnerPassport() {
         progress,
         themes,
         selfReports,
+        /*
+         * LES DECALAGES, RENDUS TELS QUELS EN PLUS DU PLAN. Le plan porte deja
+         * les dates personnelles — elles y sont appliquees — mais il ne dit
+         * plus LESQUELLES viennent de l'apprenant. Le Gantt en a besoin pour
+         * proposer « revenir a la date de la promotion » sur les seuls jalons
+         * ou cela veut dire quelque chose.
+         */
+        shifts,
         // La promotion : son debut date tout le retroplanning, et c'est ce qui
         // permet a la Vue d'ensemble de dire ou l'on en est dans le stage.
         cohort,

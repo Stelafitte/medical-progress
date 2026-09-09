@@ -46,6 +46,7 @@ import {
   type PlanMilestoneId,
 } from "@/domain/acquisitionPlan";
 import { formatFrDate } from "@/features/administration/adminProgramViewModel";
+import { LearnerPlanShiftsToggle } from "@/features/administration/LearnerPlanShiftsToggle";
 import { MilestoneTemplateBar } from "@/features/administration/MilestoneTemplateBar";
 import { ProgramMilestoneGantt } from "@/features/administration/ProgramMilestoneGantt";
 import type { Cohort, CohortId, Outcome, OutcomeTheme, ProgramId } from "@/domain/types";
@@ -371,6 +372,8 @@ export function ProgramMilestonePlanner({
           </div>
         ) : null}
       </div>
+
+      <LearnerPlanShiftsToggle programId={programId} />
 
       <MilestoneTemplateBar
         programId={programId}

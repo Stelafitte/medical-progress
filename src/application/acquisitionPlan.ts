@@ -96,6 +96,7 @@ export function buildAcquisitionPlan(
       startsOn: entry ? entry.startsOn : null,
       dueOn: entry ? entry.dueOn : null,
       milestoneLabel: entry ? entry.milestoneLabel : null,
+      milestoneId: entry ? entry.milestoneId : null,
       officialDeadline: entry?.official ?? false,
       requiresThirdPartyValidation: progress.outcome.nature === "real_competence",
       countedEvidence: progress.countedEvidence.length,

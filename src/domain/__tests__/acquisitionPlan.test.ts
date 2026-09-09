@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  appliquerDecalages,
   approvalRuleForImpact,
   createPlanChangeRequest,
   progressPercent,
@@ -7,6 +8,7 @@ import {
   trackForNature,
   validatePlanChangeDraft,
 } from "@/domain/acquisitionPlan";
+import type { MilestoneShift, PlanMilestoneId, PlanScheduleEntry } from "@/domain/acquisitionPlan";
 import type { OutcomeProgress } from "@/domain/mastery";
 import type { Evidence, Outcome } from "@/domain/types";
 
@@ -104,5 +106,74 @@ describe("plan d'acquisition", () => {
     expect(request.simulated).toBe(true);
     expect(request.status).toBe("draft");
     expect(request.approvalRule).toBe("auto_accept");
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/* Le plan personnel de l'apprenant (09/09)                            */
+/* ------------------------------------------------------------------ */
+
+const JALON = "mil-1" as PlanMilestoneId;
+const AUTRE = "mil-2" as PlanMilestoneId;
+
+const entree = (over: Partial<PlanScheduleEntry> = {}): PlanScheduleEntry => ({
+  outcomeId: "out-1" as PlanScheduleEntry["outcomeId"],
+  milestoneId: JALON,
+  // Une fenetre de trois jours, deliberement PAS une semaine : c'est ce qui
+  // rend visible une duree recalculee au lieu d'etre conservee.
+  startsOn: "2026-10-01T12:00:00.000Z",
+  dueOn: "2026-10-04T12:00:00.000Z",
+  milestoneLabel: "Valvulopathies",
+  official: false,
+  ...over,
+});
+
+const decalage = (over: Partial<MilestoneShift> = {}): MilestoneShift => ({
+  milestoneId: JALON,
+  shiftedDueOn: "2026-10-18T12:00:00.000Z",
+  ...over,
+});
+
+describe("decalages personnels du plan", () => {
+  it("rend les entrees telles quelles quand aucun jalon n'est deplace", () => {
+    const entrees = [entree()];
+    expect(appliquerDecalages(entrees, [])).toBe(entrees);
+  });
+
+  it("deplace la fenetre EN CONSERVANT sa duree quand aucun debut n'est choisi", () => {
+    const [resultat] = appliquerDecalages([entree()], [decalage()]);
+    expect(resultat?.dueOn).toBe("2026-10-18T12:00:00.000Z");
+    // Trois jours avant la nouvelle fin, et non « une semaine avant » : un jalon
+    // court ne doit pas grandir a chaque deplacement.
+    expect(resultat?.startsOn).toBe("2026-10-15T12:00:00.000Z");
+  });
+
+  it("prend les deux dates telles quelles quand l'apprenant a choisi sa fenetre", () => {
+    const [resultat] = appliquerDecalages(
+      [entree()],
+      [decalage({ shiftedStartsOn: "2026-10-05T12:00:00.000Z" })],
+    );
+    expect(resultat?.startsOn).toBe("2026-10-05T12:00:00.000Z");
+    expect(resultat?.dueOn).toBe("2026-10-18T12:00:00.000Z");
+  });
+
+  it("ne touche que le jalon vise", () => {
+    const intacte = entree({
+      milestoneId: AUTRE,
+      outcomeId: "out-2" as PlanScheduleEntry["outcomeId"],
+    });
+    const [, resultat] = appliquerDecalages([entree(), intacte], [decalage()]);
+    expect(resultat).toBe(intacte);
+  });
+
+  it("deplace TOUS les acquis portes par le meme jalon", () => {
+    const resultat = appliquerDecalages(
+      [entree(), entree({ outcomeId: "out-2" as PlanScheduleEntry["outcomeId"] })],
+      [decalage()],
+    );
+    expect(resultat.map((e) => e.dueOn)).toEqual([
+      "2026-10-18T12:00:00.000Z",
+      "2026-10-18T12:00:00.000Z",
+    ]);
   });
 });

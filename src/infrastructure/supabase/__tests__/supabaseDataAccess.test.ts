@@ -64,6 +64,7 @@ describe("mapping du socle Supabase", () => {
       pre_post_tests_enabled: false,
       sessions_enabled: true,
       dpc_enabled: false,
+      learner_plan_shifts_enabled: true,
       target_mastery: "proficient",
       locale: "fr-FR",
       design_draft: null,
@@ -71,6 +72,8 @@ describe("mapping du socle Supabase", () => {
       updated_at: "2026-01-02T00:00:00Z",
     });
     expect(program.config.realCompetenceRequiresValidator).toBe(true);
+    // Le reglage du 09/09 : le drapeau SQL doit arriver jusqu'a la config.
+    expect(program.config.learnerPlanShiftsEnabled).toBe(true);
     expect(program.annualLearnerEstimate).toBe(400);
     expect(program.provenance.sourceSystem).toBe("native");
   });
