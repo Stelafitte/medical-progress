@@ -2,6 +2,7 @@ import "./lib/error-capture";
 
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
+import { servirPageAccueil } from "./public-page/accueil";
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
@@ -47,6 +48,19 @@ function isH3SwallowedErrorBody(body: string): boolean {
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
+      /*
+       * LA PAGE PUBLIQUE PASSE AVANT TOUT LE RESTE, et c'est le seul endroit
+       * ou elle peut passer. Rendue par le routeur, elle entrainait la coquille
+       * racine et donc le client Supabase : un visiteur sans compte payait le
+       * bundle d'une application qu'il ne peut pas ouvrir. Ici, il recoit une
+       * chaine HTML et rien d'autre.
+       *
+       * La fonction ne repond que pour `GET /` et `HEAD /`. Sur tout autre
+       * chemin elle rend `null`, et la delegation ci-dessous reprend la main.
+       */
+      const accueil = servirPageAccueil(request);
+      if (accueil !== null) return accueil;
+
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
       return await normalizeCatastrophicSsrResponse(response);

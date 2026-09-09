@@ -22,7 +22,7 @@ import {
   StatCard,
 } from "@/features/professional/mock-ui";
 import { CohortSelector } from "@/features/administration/CohortSelector";
-import { AiCreditsSection } from "@/features/administration/AiCreditsSection";
+import { ProgramAiSettingsSection } from "@/features/administration/ProgramAiSettingsSection";
 import { useProgramAdmin, personNameFor } from "@/features/administration/useProgramAdmin";
 import {
   buildPilotTimeline,
@@ -244,7 +244,24 @@ export function AdminDashboard() {
         </Button>
       </PanelCard>
 
-      <AiCreditsSection />
+      {/*
+        LE SEUL COMPTEUR IA DE CET ECRAN, ET IL EST REEL
+        (`program_ai_settings`, `program_ai_usage_this_month`).
+
+        `AiCreditsSection` etait montee ici jusqu'au 09/09 : une comptabilite
+        analytique de MAQUETTE — enveloppes par periode, paliers de modele,
+        mode vocal — dont rien n'existe en base, et dont le modele est
+        incompatible avec `monthly_credit_cap` (un plafond par apprenant et par
+        mois). Elle portait son badge, mais un badge n'empeche pas de lire un
+        chiffre : deux comptabilites IA l'une sous l'autre, dont une inventee,
+        se lisent comme deux mesures du meme objet.
+
+        DEBRANCHEE, PAS SUPPRIMEE (decision de Stef, 09/09) : le composant et
+        ses fixtures restent dans le depot. Le jour ou la repartition par
+        palier, par promotion et par mode aura une source reelle, la maquette
+        dit deja a quoi elle doit ressembler.
+      */}
+      <ProgramAiSettingsSection />
     </div>
   );
 }

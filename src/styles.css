@@ -62,6 +62,9 @@
   --color-card-sunk: var(--card-sunk);
   --color-line-soft: var(--line-soft);
   --color-accent-wash: var(--accent-wash);
+  --color-ground-2: var(--ground-2);
+  --color-ink-soft: var(--ink-soft);
+  --color-cta: var(--cta);
   --color-d-1: var(--d-1);
   --color-d-2: var(--d-2);
   --color-d-3: var(--d-3);
@@ -143,6 +146,34 @@
   --card-sunk: oklch(0.975 0.006 255.5);
   --line-soft: oklch(0.947 0.013 255.5);
   --accent-wash: oklch(0.943 0.021 259.2);
+  /*
+   * TROIS JETONS NES DE LA PAGE PUBLIQUE (09/09), mesures et non estimes : la
+   * palette de la maquette a ete convertie en oklch et comparee jeton par
+   * jeton a ce fichier. Vingt et un des vingt-quatre etaient DEJA la, dont les
+   * huit teintes de domaine a 0.000 pres — la maquette a ete composee sur ce
+   * systeme. Seuls ces trois-la manquaient vraiment.
+   *
+   * `--ground-2` est le fond des sections alternees. `--ground` de la maquette,
+   * lui, est `--surface` a 0.008 pres : on ne l'ajoute pas.
+   *
+   * `--ink-soft` est le texte courant d'un paragraphe de presentation, a
+   * +0.109 de clarte de `--secondary-foreground`. L'ecart est delibere : un
+   * texte lu d'une traite se pose plus clair qu'un libelle d'interface.
+   *
+   * `--cta` EST LA COULEUR D'ACTION, ET ELLE N'EST PAS `--accent`. Le jeton
+   * `--accent` de ce fichier est un lavis pale, celui de `hover:bg-accent` :
+   * lui donner la valeur de la maquette aurait repeint tous les survols de
+   * l'application. Elle n'est pas non plus `--d-1`, comme le proposait la
+   * maquette — `#1f5fbf` EST `--d-1` au millieme pres, c'est-a-dire la teinte
+   * du domaine « examen clinique », affichee dans la legende du meme ecran.
+   * LA TEINTE NE CODE QUE LE DOMAINE : la couleur d'action est donc decalee de
+   * 14 degres, assez pour ne coincider avec aucun des huit, trop peu pour se
+   * distinguer de ce qui a ete valide. Contraste mesure du blanc sur ce fond :
+   * 5.83:1, au-dessus du seuil AA pour du texte normal.
+   */
+  --ground-2: oklch(0.932 0.015 257.2);
+  --ink-soft: oklch(0.439 0.062 254.1);
+  --cta: oklch(0.5 0.15 245);
   /*
    * LES HUIT TEINTES DE DOMAINE. Valeurs reprises telles quelles de la
    * maquette v2 et converties en oklch — dans son ordre, `--d-1` a `--d-8`
@@ -238,6 +269,9 @@
   --sidebar-border: oklch(1 0 0 / 12%);
   --sidebar-ring: oklch(0.6 0.08 240);
   --card-sunk: oklch(0.286 0.053 255.8);
+  --ground-2: oklch(0.167 0.031 256.3);
+  --ink-soft: oklch(0.808 0.039 255.6);
+  --cta: oklch(0.718 0.132 257.9);
   --line-soft: oklch(0.29 0.046 256.5);
   --accent-wash: oklch(0.292 0.055 258.3);
   --d-1: oklch(0.716 0.132 258.6);

@@ -21,6 +21,11 @@ import type {
 } from "@/domain/types";
 import { scopeFromGrantFields } from "@/domain/accessGrant";
 import type { AssessmentModality } from "@/domain/assessmentModality";
+import {
+  defaultProgramAiSettings,
+  type AiFallbackPolicy,
+  type ProgramAiSettings,
+} from "@/domain/programAi";
 import type { ProgramId } from "@/domain/types";
 import { modalityFixturesFor } from "./assessmentModalityFixtures";
 import * as fx from "./fixtures";
@@ -38,6 +43,18 @@ import * as hvg from "./dpcHvgFixtures";
 
 const clone = <T>(value: T): T => value;
 const ok = <T>(value: T): Promise<T> => Promise.resolve(clone(value));
+
+/**
+ * Reglages IA de la maquette. UN OBJET MUTABLE, volontairement : la maquette
+ * doit se comporter comme la base sur le seul point qui compte pour l'ecran —
+ * ce qu'on enregistre, on le relit. Un mock en lecture seule ferait croire a un
+ * bouton « Enregistrer » sans effet, et personne ne saurait si le defaut vient
+ * de l'ecran ou du depot.
+ *
+ * Aucun fournisseur : la maquette n'a pas de cle, donc `enabled` y reste
+ * refusable comme en base.
+ */
+const mockProgramAiSettings = new Map<ProgramId, ProgramAiSettings>();
 
 /**
  * Terrains et groupes d'encadrement CRÉÉS PENDANT LA SESSION mock. En mémoire,
@@ -648,6 +665,29 @@ export const mockDataAccess: DataAccess = {
           .map((m) => toLearnerNarratedDeck(m))
           .filter((d): d is NonNullable<typeof d> => d !== undefined),
       ),
+  },
+  programAi: {
+    getSettings: (programId) =>
+      ok(mockProgramAiSettings.get(programId) ?? defaultProgramAiSettings(programId)),
+    saveSettings: (input: {
+      programId: ProgramId;
+      enabled: boolean;
+      monthlyCreditCap: number;
+      fallbackPolicy: AiFallbackPolicy;
+    }) => {
+      const precedent =
+        mockProgramAiSettings.get(input.programId) ?? defaultProgramAiSettings(input.programId);
+      const enregistre: ProgramAiSettings = {
+        ...precedent,
+        enabled: input.enabled,
+        monthlyCreditCap: input.monthlyCreditCap,
+        fallbackPolicy: input.fallbackPolicy,
+      };
+      mockProgramAiSettings.set(input.programId, enregistre);
+      return ok(enregistre);
+    },
+    getUsageThisMonth: () =>
+      ok({ creditsTotal: 0, messagesTotal: 0, learnersActive: 0, learnersAtCap: 0 }),
   },
   aiCredits: {
     listEntries: (programId) => ok(aicfx.aiCreditEntries.filter((e) => e.programId === programId)),

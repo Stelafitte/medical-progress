@@ -1,5 +1,11 @@
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import type { PlanScheduleEntry } from "@/domain/acquisitionPlan";
+import {
+  AI_FALLBACK_POLICIES,
+  defaultProgramAiSettings,
+  type AiFallbackPolicy,
+  type ProgramAiSettings,
+} from "@/domain/programAi";
 import type {
   CreateAssessmentModalityInput,
   CreateCohortInput,
@@ -125,6 +131,47 @@ type RoleAssignmentRow = {
 
 function assertNoSupabaseError(error: { message: string } | null): void {
   if (error) throw new Error(error.message);
+}
+
+interface ProgramAiSettingsRow {
+  program_id: string;
+  enabled: boolean;
+  monthly_credit_cap: number;
+  fallback_policy: string;
+  active_provider: string | null;
+}
+
+interface ProgramAiUsageRow {
+  credits_total: number;
+  messages_total: number;
+  apprenants_actifs: number;
+  apprenants_au_plafond: number;
+}
+
+/**
+ * `fallback_policy` ARRIVE EN TEXTE. On le compare a la liste du domaine plutot
+ * que de le forcer par un `as` : si l'enum gagne une valeur en base avant que
+ * l'ecran sache l'afficher, mieux vaut retomber sur `seuil` — le moins cher —
+ * que rendre un radio-groupe sans selection, ou pire, une politique inventee.
+ */
+function mapProgramAiSettings(row: ProgramAiSettingsRow): ProgramAiSettings {
+  const politique = AI_FALLBACK_POLICIES.find((valeur) => valeur === row.fallback_policy);
+  return {
+    programId: row.program_id as ProgramId,
+    enabled: row.enabled,
+    monthlyCreditCap: row.monthly_credit_cap,
+    fallbackPolicy: politique ?? "seuil",
+    /*
+     * `undefined` EXPLICITE, PAS UNE PROPRIETE ABSENTE. `ProgramAiSettings`
+     * declare `activeProvider: string | undefined` — un champ toujours
+     * present, parfois vide — et le projet est en
+     * `exactOptionalPropertyTypes` : un spread conditionnel produirait une
+     * propriete OPTIONNELLE, qui n'est pas le meme type. Le compilateur l'a
+     * refuse, et il avait raison : « pas de moteur » est une information, pas
+     * une absence d'information.
+     */
+    activeProvider: row.active_provider ?? undefined,
+  };
 }
 
 export function mapProgram(row: ProgramRow): Program {
@@ -806,6 +853,74 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
      * encadrant ne recoit donc que les carnets de ses groupes, meme si l'ecran
      * demande tout le programme.
      */
+    /**
+     * Reglage de l'assistant IA — LECTURE ET ECRITURE REELLES (09/09).
+     *
+     * LA LECTURE PASSE PAR LA TABLE, L'ECRITURE PAR UNE FONCTION. La table
+     * n'accorde que `select` a `authenticated` : il n'existe aucune policy
+     * d'ecriture, et c'est deliberé — `set_program_ai_settings` verifie
+     * `can_administer_program` et laisse `active_provider` intacte, ce qu'un
+     * `update` colonne par colonne ne garantirait pas.
+     *
+     * L'ERREUR DE LA BASE REMONTE TELLE QUELLE. Le declencheur
+     * `program_ai_settings_guard` refuse l'ouverture sans moteur avec une
+     * phrase qui dit ce qui manque ; la remplacer par un message generique
+     * couterait l'information au moment ou elle sert.
+     */
+    programAi: {
+      async getSettings(programId: ProgramId) {
+        const { data, error } = await client
+          .from("program_ai_settings")
+          .select("program_id, enabled, monthly_credit_cap, fallback_policy, active_provider")
+          .eq("program_id", programId)
+          .maybeSingle();
+        assertNoSupabaseError(error);
+        // Pas de ligne = pas d'IA. Voir `defaultProgramAiSettings`.
+        if (!data) return defaultProgramAiSettings(programId);
+        return mapProgramAiSettings(data as ProgramAiSettingsRow);
+      },
+      async saveSettings(input: {
+        programId: ProgramId;
+        enabled: boolean;
+        monthlyCreditCap: number;
+        fallbackPolicy: AiFallbackPolicy;
+      }) {
+        const { data, error } = await client.rpc("set_program_ai_settings", {
+          p_program_id: input.programId,
+          p_enabled: input.enabled,
+          p_monthly_credit_cap: input.monthlyCreditCap,
+          p_fallback_policy: input.fallbackPolicy,
+        });
+        assertNoSupabaseError(error);
+        if (!data) {
+          throw new Error("Le réglage n’a pas été enregistré : la base n’a rien renvoyé.");
+        }
+        return mapProgramAiSettings(data as ProgramAiSettingsRow);
+      },
+      async getUsageThisMonth(programId: ProgramId) {
+        const { data, error } = await client.rpc("program_ai_usage_this_month", {
+          p_program_id: programId,
+        });
+        assertNoSupabaseError(error);
+        /*
+         * UNE FONCTION `returns table` REND UN TABLEAU, meme pour une seule
+         * ligne. Aucune ligne reste une reponse possible si la fonction change
+         * un jour : on rend alors des zeros plutot que de laisser l'ecran
+         * planter sur une lecture de propriete indefinie.
+         */
+        const rows = (data ?? []) as ProgramAiUsageRow[];
+        const row = rows[0];
+        if (!row) {
+          return { creditsTotal: 0, messagesTotal: 0, learnersActive: 0, learnersAtCap: 0 };
+        }
+        return {
+          creditsTotal: row.credits_total,
+          messagesTotal: row.messages_total,
+          learnersActive: row.apprenants_actifs,
+          learnersAtCap: row.apprenants_au_plafond,
+        };
+      },
+    },
     stageLogs: {
       ...mockDataAccess.stageLogs,
       async listTemplates() {

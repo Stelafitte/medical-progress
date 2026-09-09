@@ -23,6 +23,7 @@ import type {
 import type { LearnerNarratedDeck, MediaResource } from "@/domain/mediaLibrary";
 import type { ContentAiProfile, LearnerAiResource, ProgramAiPolicy } from "@/domain/contentAi";
 import type { AiCreditBudget, AiCreditEntry } from "@/domain/aiCredits";
+import type { AiFallbackPolicy, ProgramAiSettings, ProgramAiUsage } from "@/domain/programAi";
 import type { EcosScenarioMock, LegacyModuleInventoryItem } from "@/domain/ecosMigration";
 import type {
   AdminDocument,
@@ -765,6 +766,36 @@ export interface ContentAiRepository {
  * Comptabilité des crédits IA par enseignement.
  * En production, seules des écritures serveur alimentent ce dépôt.
  */
+/**
+ * Reglage de l'assistant IA d'un programme — LECTURE ET ECRITURE REELLES (09/09).
+ *
+ * DEPOT A PART, et non des methodes ajoutees a `contentAi` ou `aiCredits` : ces
+ * deux-la decrivent une maquette (paliers de modele, enveloppes par periode,
+ * mode vocal) dont RIEN n'existe en base. Tout ce qui suit correspond a une
+ * colonne ou a une fonction reelle. Melanger les deux ferait un depot dont on
+ * ne saurait plus, methode par methode, ce qui est vrai.
+ */
+export interface ProgramAiRepository {
+  /**
+   * L'absence de ligne vaut REFUS, pas defaut : rendre les valeurs de
+   * `defaultProgramAiSettings` (assistant ferme) plutot que `undefined`, pour
+   * qu'aucun ecran n'ait a decider ce que signifie « pas de reglage ».
+   */
+  getSettings(programId: ProgramId): Promise<ProgramAiSettings>;
+  /**
+   * Rend le reglage TEL QU'IL A ETE ECRIT, pas celui envoye : la base peut
+   * refuser (ouverture sans moteur) ou completer. L'ecran affiche le retour.
+   */
+  saveSettings(input: {
+    programId: ProgramId;
+    enabled: boolean;
+    monthlyCreditCap: number;
+    fallbackPolicy: AiFallbackPolicy;
+  }): Promise<ProgramAiSettings>;
+  /** Consommation du mois en cours, agregee. Aucun contenu de message n'en sort. */
+  getUsageThisMonth(programId: ProgramId): Promise<ProgramAiUsage>;
+}
+
 export interface AiCreditsRepository {
   listEntries(programId: ProgramId): Promise<readonly AiCreditEntry[]>;
   getBudget(programId: ProgramId): Promise<AiCreditBudget | undefined>;
@@ -1040,6 +1071,7 @@ export interface DataAccess {
   readonly media: MediaLibraryRepository;
   readonly contentAi: ContentAiRepository;
   readonly aiCredits: AiCreditsRepository;
+  readonly programAi: ProgramAiRepository;
   readonly ecos: EcosMigrationRepository;
   readonly plan: AcquisitionPlanRepository;
   readonly passport: PassportRepository;
