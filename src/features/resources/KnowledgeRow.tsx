@@ -2,6 +2,8 @@ import { RankBadge } from "@/components/rank-badge";
 import type { LearningResourceId, MasteryLevel, Outcome } from "@/domain/types";
 import { AiCompanionInline } from "@/features/ai/AiCompanionInline";
 import { OutcomeRow } from "@/features/passport/OutcomeRow";
+import { OutcomeSectionsPanel } from "@/features/resources/OutcomeSectionsPanel";
+import { useProgramAiEnabled } from "@/features/resources/useProgramAiEnabled";
 
 export interface CoveringSupport {
   readonly id: LearningResourceId;
@@ -19,34 +21,25 @@ export interface CoveringDeck {
  * UNE connaissance du programme : de quoi la travailler, et la declaration de
  * l'apprenant.
  *
- * IL N'Y A PLUS QUE L'ASSISTANT ICI, et c'est une consequence de la donnee, pas
- * un choix d'ecran. RIEN, dans le schema, n'est rattache a un acquis : ni le
- * texte (`learning_resource_texts.resource_id`), ni les figures, ni les videos.
- * Tout pend au SUPPORT. Afficher le texte sous chaque savoir revenait donc a
- * proposer QUINZE FOIS le meme chapitre integral dans une meme liste — et
- * autant de fois les memes figures avant qu'elles ne remontent au chapitre.
+ * DEUX CHOSES SOUS LA LIGNE DEPLIEE, dans cet ordre (Stef, 09/09) :
+ * l'assistant quand il est ouvert, puis LE TEXTE DU COURS qui traite de cette
+ * connaissance, affiche directement, sans bouton.
  *
- * LE TEXTE ET LES MEDIAS SONT DONC AU NIVEAU DU CHAPITRE. C'est ce que fait le
- * livre imprime : un chapitre, un texte, et des connaissances qui le decoupent
- * intellectuellement sans le decouper materiellement.
+ * CE QUI A CHANGE DEPUIS LE 07/09, ET QUI RENDAIT CE TEXTE IMPOSSIBLE. A
+ * l'epoque, RIEN dans le schema n'etait rattache a un acquis : ni le texte
+ * (`learning_resource_texts.resource_id`), ni les figures, ni les videos — tout
+ * pendait au SUPPORT. Afficher le texte sous chaque savoir revenait donc a
+ * proposer QUINZE FOIS le meme chapitre integral dans une meme liste. Le
+ * decoupage 2026 (`course_sections`) et les rattachements par rubrique ou
+ * arbitrage (`outcome_sections`) ont leve cet obstacle : 269 savoirs sur 331
+ * ont desormais un texte PROPRE, de trois pages en median.
  *
- * CE QUI RENDRAIT LE TEXTE A L'ACQUIS, ET QUI N'EST PAS FAIT ICI : le texte des
- * chapitres EST structure — sections en chiffres romains, sous-sections A/B,
- * et 1 017 marqueurs `[Rang A|B|C]` poses apres les titres. Le decoupage par
- * section, puis la liaison section <-> acquis par RUBRIQUE (Definition,
- * Epidemiologie, Diagnostic positif...), est un chantier de DONNEES tenu par la
- * session « referentiel ». On ne construit pas ici un second decoupage
- * concurrent : deux correspondances pour la meme chose seraient pires
- * qu'aucune.
- *
- * CE QU'ON N'A PAS FAIT NON PLUS, ET DELIBEREMENT : classer les segments par
- * proximite lexicale avec l'enonce. Mesure du 07/09 sur le cas le plus facile
- * (196 legendes de figures, chapitre par chapitre) : SIX SUR NEUF sans aucun
- * recouvrement lexical, et le seul score confiant etait faux. La cause est
- * structurelle — l'enonce decrit ce qu'il faut SAVOIR, le texte decrit le
- * SUJET. Sur des segments de 4 000 caracteres ce serait pire : il y a toujours
- * assez de vocabulaire pour matcher n'importe quel enonce du chapitre, avec un
- * score plausible et une erreur invisible en relecture.
+ * LE RESTE DE L'ANCIENNE NOTE TIENT TOUJOURS, et il faut le garder en tete :
+ * les figures et les videos, elles, pendent encore au chapitre, et le
+ * rattachement par proximite lexicale reste INTERDIT — mesure du 07/09 sur le
+ * cas le plus facile (196 legendes) : six sur neuf sans aucun recouvrement, et
+ * le seul score confiant etait faux. Les legendes decrivent ce que l'image
+ * MONTRE, les connaissances ce qu'il faut SAVOIR.
  */
 export function KnowledgeRow({
   outcome,
@@ -65,6 +58,7 @@ export function KnowledgeRow({
   readonly open?: boolean;
   readonly onOpenChange?: (open: boolean) => void;
 }) {
+  const aiOuverte = useProgramAiEnabled();
   return (
     <OutcomeRow
       outcome={outcome}
@@ -79,15 +73,25 @@ export function KnowledgeRow({
       }
     >
       {supports.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          Aucun support ne traite encore cette connaissance — l'assistant n'aurait rien à lire.
+        <p className="text-muted-foreground text-sm">
+          Aucun support ne traite encore cette connaissance.
         </p>
       ) : (
-        <AiCompanionInline
-          sujet={`${outcome.code} — ${outcome.label}`}
-          scope="knowledge"
-          outcomeId={outcome.id}
-        />
+        <div className="space-y-3">
+          {/*
+            L'ASSISTANT DISPARAIT ENTIEREMENT quand l'IA est fermee sur le
+            programme (decision de Stef, 09/09) : on masque, on ne grise pas.
+            LE TEXTE, LUI, RESTE — c'est le cours, il ne depend d'aucun reglage.
+          */}
+          {aiOuverte ? (
+            <AiCompanionInline
+              sujet={`${outcome.code} — ${outcome.label}`}
+              scope="knowledge"
+              outcomeId={outcome.id}
+            />
+          ) : null}
+          <OutcomeSectionsPanel outcomeId={outcome.id} />
+        </div>
       )}
     </OutcomeRow>
   );

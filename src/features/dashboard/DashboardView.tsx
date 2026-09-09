@@ -730,8 +730,16 @@ function PaveStage() {
                 placeholder="Deux lignes suffisent."
                 className="mt-1.5 min-h-28"
               />
+              {/*
+                LE VERT DU JEU SEMANTIQUE, pas une couleur choisie ici (Stef,
+                09/09 : « plus positif »). `--success` est le meme jeton que la
+                marque « Present » du carnet de stage : consigner sa journee et
+                la marquer presente sont le meme geste, ils doivent avoir la
+                meme couleur. Un vert local aurait diverge au premier
+                ajustement de palette.
+              */}
               <Button
-                className="mt-3 min-h-11 w-full"
+                className="bg-success text-success-foreground hover:bg-success/90 mt-3 min-h-11 w-full"
                 disabled={enregistrer.isPending}
                 onClick={() => enregistrer.mutate(valeur)}
               >

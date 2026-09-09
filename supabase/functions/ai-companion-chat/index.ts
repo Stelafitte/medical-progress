@@ -16,10 +16,14 @@
 //   aucune policy d'écriture, volontairement (décision du 03/09). C'est cette
 //   fonction qui a vu la réponse et sait ce qu'elle a coûté.
 //
-// LES TROIS GARDE-FOUS VALIDÉS PAR STEF LE 04/09
+// LES QUATRE GARDE-FOUS (les trois premiers validés par Stef le 04/09)
 // 1. SEUIL DE PERTINENCE — sous `MIN_RANK`, on considère qu'on n'a rien
 //    trouvé. Aucun appel au fournisseur n'est fait : une question hors corpus
-//    coûte ZÉRO.
+//    coûte ZÉRO. DEPUIS LE 09/09, CE GARDE-FOU EST UN RÉGLAGE : il ne
+//    s'applique que sous la politique `seuil`, choisie par l'administrateur du
+//    programme (`program_ai_settings.fallback_policy`). Sous `chapitre`, il y a
+//    toujours du texte, donc toujours un appel — c'est le choix de qui paie, et
+//    ce n'était pas au développeur de le figer.
 // 2. RÉUTILISATION DES PASSAGES DU FIL — on ne relance PAS la recherche à
 //    chaque tour. Mesuré le 04/09 : « non je pense que c'est la réponse B »
 //    ramenait thrombose veineuse et dyslipidémies avec un rang de 1,4, au
@@ -33,11 +37,16 @@
 //    cela dans vos supports ». C'est le seul garde-fou qui ne dépend pas de
 //    la bonne volonté du modèle.
 //
-// LIMITE CONNUE DE LA V1, à ne pas oublier : la recherche ne filtre PAS
-// encore sur le `scope` du fil (`knowledge` / `competence`). Un fil ouvert
-// depuis « Mes compétences » cherche donc dans tout le corpus du programme.
-// À corriger dans `search_learning_resource_texts` quand les supports de
-// compétence seront distingués en base.
+// LE CORPUS EST CELUI DE 2026, ET IL EST TOUJOURS ANCRÉ (09/09).
+// `learning_resource_texts` — l'import 2022, en segments aveugles de 4 000
+// caractères — n'est plus lue nulle part ici. Elle reste en base comme archive :
+// à garder, ne pas supprimer.
+//
+// La limite notée en V1 — « la recherche ne filtre pas sur le scope du fil et
+// cherche donc dans tout le corpus du programme » — est levée par construction :
+// un fil porte désormais un ACQUIS (`outcome_id`) ou un CHAPITRE
+// (`resource_id`), et `search_course_sections` est cadrée sur un chapitre. Rien
+// ne cherche plus dans les vingt-trois chapitres à la fois.
 //
 // Entrée  : POST { threadId, question, mode?, newSubject? }
 // Sortie  : { answer, citations: [...], grounded, credits, usage }
@@ -63,8 +72,26 @@ const CORS_HEADERS = {
  */
 const MIN_RANK = 0.5;
 
-/** Nombre de passages envoyés au modèle. Mesuré : 5 passages ≈ 19 000 caractères. */
+/** Nombre de passages envoyés au modèle quand on cherche. */
 const PASSAGE_COUNT = 5;
+
+/**
+ * LE BUDGET DE CONTEXTE, en caractères — le garde-fou n°4, ajouté le 09/09.
+ *
+ * Il n'existait pas parce qu'il ne servait à rien : la recherche rendait cinq
+ * segments, soit ~19 000 caractères, et le plafond était mécanique. Avec le
+ * texte 2026, la politique « toujours répondre » peut vouloir dire UN CHAPITRE
+ * ENTIER — mesuré le 09/09 : 31 903 caractères en médiane sur les 58 savoirs en
+ * repli, jusqu'à 123 512 pour le plus gros. Une question à trente-cinq mille
+ * jetons, contre 1 456 aujourd'hui.
+ *
+ * ON COUPE SUR UNE FRONTIÈRE DE SECTION, jamais au milieu : un texte tronqué
+ * en cours de phrase se lit comme une donnée, et le modèle raisonne dessus.
+ *
+ * ET ON DIT CE QU'ON N'A PAS LU. Silencieux, ce serait la pire des trois
+ * options : l'étudiant croirait avoir interrogé tout le chapitre.
+ */
+const CONTEXT_BUDGET_CHARS = 24000;
 
 /** Tours de conversation renvoyés au modèle. Au-delà, le coût grimpe sans gain. */
 const HISTORY_TURNS = 6;
@@ -95,13 +122,63 @@ const RESPONSE_SCHEMA = {
   additionalProperties: false,
 };
 
+/**
+ * UN PASSAGE EST DÉSORMAIS UNE SECTION DU TEXTE 2026, plus un segment aveugle
+ * de 4 000 caractères. Il porte son numéro et son titre : le modèle sait donc
+ * ce qu'il cite, et l'étudiant retrouve le passage dans son livre.
+ *
+ * `rank` vaut 0 quand aucune recherche n'a eu lieu (politique « toujours
+ * répondre » ou relecture des passages cités) : c'est une absence de score,
+ * pas un mauvais score, et rien ne le compare alors à `MIN_RANK`.
+ */
 interface Passage {
-  readonly resourceId: string;
-  readonly resourceTitle: string;
-  readonly sourcePath: string;
-  readonly segmentIndex: number;
+  readonly sectionId: string;
+  readonly label: string;
   readonly content: string;
   readonly rank: number;
+}
+
+type FallbackPolicy = "seuil" | "sections_seules" | "chapitre";
+
+/** Le libellé d'une section, tel qu'il sera montré au modèle et à l'étudiant. */
+function labelDeSection(row: Record<string, unknown>): string {
+  const numero = String(row["numero"] ?? "").trim();
+  const titre = String(row["titre"] ?? "").trim();
+  if (numero !== "" && titre !== "") return `${numero} — ${titre}`;
+  return titre !== "" ? titre : numero;
+}
+
+function versPassage(row: Record<string, unknown>, rank: number): Passage {
+  return {
+    sectionId: String(row["section_id"] ?? row["id"]),
+    label: labelDeSection(row),
+    content: String(row["contenu"] ?? ""),
+    rank,
+  };
+}
+
+/**
+ * COUPE SUR UNE FRONTIÈRE DE SECTION, et rend ce qui n'a pas été lu.
+ *
+ * Une section seule qui dépasse déjà le budget est gardée quand même : la
+ * refuser rendrait l'assistant muet sur les chapitres les plus longs, c'est-à-
+ * dire ceux où l'étudiant en a le plus besoin. Le fournisseur, lui, coupera
+ * proprement s'il le faut.
+ */
+function tenirDansLeBudget(passages: Passage[]): { gardes: Passage[]; ecartes: string[] } {
+  const gardes: Passage[] = [];
+  const ecartes: string[] = [];
+  let total = 0;
+  for (const passage of passages) {
+    const taille = passage.content.length;
+    if (gardes.length > 0 && total + taille > CONTEXT_BUDGET_CHARS) {
+      ecartes.push(passage.label);
+      continue;
+    }
+    gardes.push(passage);
+    total += taille;
+  }
+  return { gardes, ecartes };
 }
 
 Deno.serve(async (req) => {
@@ -138,7 +215,7 @@ Deno.serve(async (req) => {
   //    n'appartient pas à l'appelant, et il n'y a rien d'autre à vérifier.
   const { data: thread, error: threadError } = await userClient
     .from("ai_threads")
-    .select("id, enrollment_id, program_id, scope, title")
+    .select("id, enrollment_id, program_id, scope, title, outcome_id, resource_id")
     .eq("id", threadId)
     .maybeSingle();
   if (threadError) return json({ error: `Fil illisible : ${threadError.message}` }, 500);
@@ -148,7 +225,7 @@ Deno.serve(async (req) => {
   //    n'est pas un plafond.
   const { data: settings } = await adminClient
     .from("program_ai_settings")
-    .select("enabled, monthly_credit_cap")
+    .select("enabled, monthly_credit_cap, fallback_policy")
     .eq("program_id", thread.program_id)
     .maybeSingle();
   if (!settings?.enabled) {
@@ -164,8 +241,22 @@ Deno.serve(async (req) => {
     );
   }
 
-  // 3. LES PASSAGES. Recherche seulement si le tour énonce un sujet ; sinon on
-  //    relit les segments cités par la dernière réponse. Voir le garde-fou n°2.
+  /*
+   * 3. LES SECTIONS DU COURS 2026.
+   *
+   * TROIS DÉCISIONS SE PRENNENT ICI, ET DANS CET ORDRE :
+   *
+   *   a. RELIRE OU CHERCHER — garde-fou n°2 : on ne relance pas la recherche à
+   *      chaque tour, sinon « non je pense que c'est la réponse B » emmène
+   *      l'assistant ailleurs (mesuré le 04/09).
+   *   b. SUR QUOI — le fil est ancré sur un ACQUIS (`outcome_id`) ou sur un
+   *      CHAPITRE (`resource_id`). C'est l'ancrage, et lui seul, qui décide du
+   *      texte lu. Un fil sans ancrage ne cherche nulle part : ce sont les
+   *      anciens fils, d'avant le 09/09.
+   *   c. FAUT-IL RÉPONDRE — c'est `fallback_policy`, réglée par
+   *      l'administrateur du programme. Ce n'est pas une décision de
+   *      développeur : c'est celle de qui paie.
+   */
   const { data: lastAssistant } = await userClient
     .from("ai_messages")
     .select("citations")
@@ -175,32 +266,88 @@ Deno.serve(async (req) => {
     .limit(1)
     .maybeSingle();
 
+  /*
+   * LES ANCIENS FILS DÉGRADENT PROPREMENT, sans purge en base. Leurs citations
+   * portent `{resourceId, segmentIndex}` — le format 2022 — et jamais
+   * `sectionId` : la liste est donc vide, `reuse` est faux, et le tour relance
+   * simplement une recherche sur le texte 2026. Aucune ligne à supprimer, aucun
+   * fil cassé : c'est mieux que la remise à zéro envisagée le 08/09.
+   */
   const previousCitations = Array.isArray(lastAssistant?.citations)
-    ? (lastAssistant!.citations as { resourceId?: string; segmentIndex?: number }[])
+    ? (lastAssistant!.citations as { sectionId?: string }[]).filter(
+        (c) => typeof c.sectionId === "string",
+      )
     : [];
   const reuse = !newSubject && previousCitations.length > 0;
 
+  const politique = (settings.fallback_policy ?? "seuil") as FallbackPolicy;
+  const outcomeId = thread.outcome_id as string | null;
+  const resourceIdDuFil = thread.resource_id as string | null;
+
   let passages: Passage[] = [];
+  let ecartes: string[] = [];
+
   if (reuse) {
-    passages = await readCitedPassages(userClient, previousCitations);
-  } else {
-    const { data: found, error: searchError } = await userClient.rpc(
-      "search_learning_resource_texts",
-      { p_program_id: thread.program_id, p_query: question, p_limit: PASSAGE_COUNT },
-    );
-    if (searchError) return json({ error: `Recherche impossible : ${searchError.message}` }, 500);
-    passages = ((found ?? []) as Record<string, unknown>[])
-      .map((row) => ({
-        resourceId: String(row["resource_id"]),
-        resourceTitle: String(row["resource_title"]),
-        sourcePath: String(row["source_path"]),
-        segmentIndex: Number(row["segment_index"]),
-        content: String(row["content"]),
-        rank: Number(row["rank"]),
-      }))
-      // GARDE-FOU N°1 : le seuil de pertinence.
-      .filter((p) => p.rank >= MIN_RANK);
+    passages = await readCitedSections(userClient, previousCitations);
+  } else if (outcomeId) {
+    const { data: rows, error: e1 } = await userClient.rpc("read_outcome_sections", {
+      p_outcome_id: outcomeId,
+    });
+    if (e1) return json({ error: `Lecture du cours impossible : ${e1.message}` }, 500);
+    const sections = (rows ?? []) as Record<string, unknown>[];
+    const origine = sections[0] ? String(sections[0]["origine"]) : undefined;
+
+    if (politique === "sections_seules" && origine === "chapitre") {
+      // Pas de texte PROPRE à cet acquis : on ne paie pas pour le chapitre.
+      passages = [];
+    } else if (politique === "seuil") {
+      /*
+       * LE SEUIL S'APPLIQUE AUX SECTIONS DE L'ACQUIS, pas à tout le chapitre :
+       * on cherche dans le chapitre puis on INTERSECTE avec ce que la voie de
+       * l'acquis a rendu. Chercher sans intersecter ferait répondre l'assistant
+       * à partir d'une section qui ne traite pas de la connaissance ouverte.
+       */
+      const resourceId = sections[0] ? String(sections[0]["resource_id"]) : null;
+      const permises = new Set(sections.map((row) => String(row["section_id"])));
+      if (resourceId) {
+        const { data: hits } = await userClient.rpc("search_course_sections", {
+          p_resource_id: resourceId,
+          p_query: question,
+          p_limit: PASSAGE_COUNT,
+        });
+        passages = ((hits ?? []) as Record<string, unknown>[])
+          .filter((row) => Number(row["rank"]) >= MIN_RANK)
+          .filter((row) => permises.has(String(row["section_id"])))
+          .map((row) => versPassage(row, Number(row["rank"])));
+      }
+    } else {
+      passages = sections.map((row) => versPassage(row, 0));
+    }
+  } else if (resourceIdDuFil) {
+    if (politique === "chapitre") {
+      const { data: rows, error: e2 } = await userClient.rpc("read_chapter_sections", {
+        p_resource_id: resourceIdDuFil,
+      });
+      if (e2) return json({ error: `Lecture du chapitre impossible : ${e2.message}` }, 500);
+      passages = ((rows ?? []) as Record<string, unknown>[]).map((row) => versPassage(row, 0));
+    } else {
+      const { data: hits, error: e3 } = await userClient.rpc("search_course_sections", {
+        p_resource_id: resourceIdDuFil,
+        p_query: question,
+        p_limit: PASSAGE_COUNT,
+      });
+      if (e3) return json({ error: `Recherche impossible : ${e3.message}` }, 500);
+      passages = ((hits ?? []) as Record<string, unknown>[])
+        // Le seuil ne s'applique qu'à la politique qui le demande.
+        .filter((row) => politique !== "seuil" || Number(row["rank"]) >= MIN_RANK)
+        .map((row) => versPassage(row, Number(row["rank"])));
+    }
   }
+
+  // GARDE-FOU N°4 : le budget de contexte, sur une frontière de section.
+  const borne = tenirDansLeBudget(passages);
+  passages = borne.gardes;
+  ecartes = borne.ecartes;
 
   // Rien de pertinent : on répond sans appeler le fournisseur. Coût ZÉRO.
   if (passages.length === 0) {
@@ -239,9 +386,7 @@ Deno.serve(async (req) => {
     .limit(HISTORY_TURNS);
   const turns = ((history ?? []) as { role: string; content: string }[]).reverse();
 
-  const corpus = passages
-    .map((p, i) => `[${i + 1}] ${p.resourceTitle} (segment ${p.segmentIndex})\n${p.content}`)
-    .join("\n\n---\n\n");
+  const corpus = passages.map((p, i) => `[${i + 1}] ${p.label}\n${p.content}`).join("\n\n---\n\n");
   const userContent = `PASSAGES DE COURS DISPONIBLES :\n\n${corpus}\n\n---\n\nQUESTION DE L'ÉTUDIANT : ${question}`;
 
   let result: { answer: string; citations: number[]; inputTokens: number; outputTokens: number };
@@ -294,19 +439,25 @@ Deno.serve(async (req) => {
 
   const citations = unique.map((n) => {
     const p = passages[n - 1]!;
-    return {
-      resourceId: p.resourceId,
-      resourceTitle: p.resourceTitle,
-      sourcePath: p.sourcePath,
-      segmentIndex: p.segmentIndex,
-    };
+    return { sectionId: p.sectionId, label: p.label };
   });
+
+  /*
+   * DIRE CE QU'ON N'A PAS LU. Le budget a pu écarter des sections ; l'étudiant
+   * doit le savoir, sinon il croit avoir interrogé tout le chapitre. La phrase
+   * est ajoutée à la réponse ENREGISTRÉE autant qu'à celle affichée : relire le
+   * fil plus tard doit dire la même chose que le jour même.
+   */
+  const reponse =
+    ecartes.length === 0
+      ? result.answer
+      : `${result.answer}\n\n_Sections non lues faute de place : ${ecartes.join(", ")}._`;
 
   const writeError = await writeTurns(
     adminClient,
     threadId,
     question,
-    result.answer,
+    reponse,
     mode,
     citations,
     result.inputTokens,
@@ -317,7 +468,7 @@ Deno.serve(async (req) => {
 
   return json(
     {
-      answer: result.answer,
+      answer: reponse,
       citations: citations.map((c, i) => ({ ...c, excerpt: passages[unique[i]! - 1]!.content })),
       grounded: true,
       credits: CREDITS_PER_TEXT_TURN,
@@ -332,35 +483,33 @@ Deno.serve(async (req) => {
  * dans `citations`, jamais le texte : les passages restent canoniques et rien
  * n'est dupliqué en base.
  */
-async function readCitedPassages(
+async function readCitedSections(
   client: ReturnType<typeof createClient>,
-  cited: { resourceId?: string; segmentIndex?: number }[],
+  cited: { sectionId?: string }[],
 ): Promise<Passage[]> {
-  const out: Passage[] = [];
-  for (const c of cited.slice(0, PASSAGE_COUNT)) {
-    if (!c.resourceId || typeof c.segmentIndex !== "number") continue;
-    const { data } = await client
-      .from("learning_resource_texts")
-      .select("resource_id, source_path, segment_index, content")
-      .eq("resource_id", c.resourceId)
-      .eq("segment_index", c.segmentIndex)
-      .maybeSingle();
-    if (!data) continue;
-    const { data: resource } = await client
-      .from("learning_resources")
-      .select("title")
-      .eq("id", c.resourceId)
-      .maybeSingle();
-    out.push({
-      resourceId: String(data["resource_id"]),
-      resourceTitle: String(resource?.["title"] ?? ""),
-      sourcePath: String(data["source_path"]),
-      segmentIndex: Number(data["segment_index"]),
-      content: String(data["content"]),
-      rank: 0,
-    });
-  }
-  return out;
+  const ids = cited
+    .slice(0, PASSAGE_COUNT)
+    .map((c) => c.sectionId)
+    .filter((id): id is string => typeof id === "string");
+  if (ids.length === 0) return [];
+  /*
+   * UNE SEULE REQUÊTE, ET LA RLS FAIT L'AUTORISATION. `course_sections` porte
+   * depuis le 08/09 une policy cadrée sur `can_read_resource` : une section
+   * devenue inaccessible — chapitre dépublié, inscription terminée — n'est
+   * simplement pas rendue, et le tour repart sur une recherche. On ne refait pas
+   * ici une règle d'autorisation qui existe déjà en base.
+   */
+  const { data } = await client
+    .from("course_sections")
+    .select("id, numero, titre, contenu")
+    .in("id", ids);
+  const rows = (data ?? []) as Record<string, unknown>[];
+  // On rend les sections dans l'ordre où elles avaient été citées.
+  const parId = new Map(rows.map((row) => [String(row["id"]), row] as const));
+  return ids
+    .map((id) => parId.get(id))
+    .filter((row): row is Record<string, unknown> => row !== undefined)
+    .map((row) => versPassage(row, 0));
 }
 
 /**

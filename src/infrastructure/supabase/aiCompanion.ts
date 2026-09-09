@@ -81,6 +81,31 @@ export async function startAiThread(input: {
   return fil.id;
 }
 
+/**
+ * Ouvre un fil sur un CHAPITRE plutot que sur un acquis (09/09).
+ *
+ * Fonction distincte et non un parametre de plus sur `start_ai_thread` : un
+ * parametre supplementaire aurait cree une surcharge en base, et PostgREST ne
+ * saurait plus laquelle des deux appeler. Le fil ainsi cree porte un
+ * `resource_id` et AUCUN `outcome_id` — c'est exactement ce que la fonction edge
+ * lit pour choisir entre le chapitre entier et les sections d'un acquis.
+ */
+export async function startAiThreadForResource(input: {
+  enrollmentId: string;
+  resourceId: string;
+  title: string;
+}): Promise<string> {
+  const { data, error } = await client().rpc("start_ai_thread_for_resource", {
+    p_enrollment_id: input.enrollmentId,
+    p_resource_id: input.resourceId,
+    p_title: input.title,
+  });
+  if (error) throw new Error(error.message);
+  const fil = (Array.isArray(data) ? data[0] : data) as { id?: string } | null;
+  if (!fil?.id) throw new Error("Le fil n'a pas pu être ouvert.");
+  return fil.id;
+}
+
 /** Envoie un tour. `newSubject` force une nouvelle recherche dans le corpus. */
 export async function askCompanion(input: {
   threadId: string;

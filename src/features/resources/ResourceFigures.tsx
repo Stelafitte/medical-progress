@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { ImageOff } from "lucide-react";
+import { Images, ImageOff } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Skeleton } from "@/components/ui/skeleton";
@@ -43,6 +44,19 @@ export function ResourceFigures({
   const ancre = useRef<HTMLElement>(null);
   const [visible, setVisible] = useState(false);
   const [echecs, setEchecs] = useState<ReadonlySet<string>>(new Set());
+  /*
+   * UNE FIGURE S'AFFICHE, PLUSIEURS SE DEMANDENT (regle de Stef, 09/09).
+   *
+   * La mesure qui la rend necessaire : 196 figures pour 23 chapitres, soit HUIT
+   * ET DEMIE par chapitre en moyenne, et jusqu'a 62 pour le chapitre 15. Les
+   * derouler d'emblee mettait entre l'etudiant et la liste de ses connaissances
+   * un mur d'images qu'il n'avait pas demande — sur telephone, plusieurs ecrans
+   * de defilement avant d'atteindre le premier savoir.
+   *
+   * L'exception d'une seule figure n'est pas une coquetterie : quand il n'y a
+   * qu'une image, le bouton coute un geste pour ne rien cacher.
+   */
+  const [deplie, setDeplie] = useState(false);
   const resignatureFaite = useRef(false);
 
   /*
@@ -106,34 +120,49 @@ export function ResourceFigures({
         <p className="text-sm text-destructive">Figures momentanément illisibles.</p>
       ) : !data || data.length === 0 ? null : (
         <>
-          <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-            {titre} · {data.length}
-          </p>
-          <ul className="grid gap-3 sm:grid-cols-2">
-            {data.map((figure) => (
-              <li key={figure.assetId} className="overflow-hidden rounded-lg border bg-card">
-                {echecs.has(figure.assetId) ? (
-                  <p className="flex min-h-32 flex-col items-center justify-center gap-2 bg-card-sunk px-3 text-center text-[12.5px] text-muted-foreground">
-                    <ImageOff className="size-5" aria-hidden />
-                    Image indisponible pour l'instant.
-                  </p>
-                ) : (
-                  <img
-                    src={figure.url}
-                    alt={figure.legende ?? `Figure ${figure.num}`}
-                    loading="lazy"
-                    decoding="async"
-                    onError={() => surEchec(figure.assetId)}
-                    className="block w-full bg-card-sunk object-contain"
-                  />
-                )}
-                <p className="px-3 py-2 text-[12.5px] leading-snug text-muted-foreground">
-                  <span className="font-semibold text-foreground">Fig. {figure.num}</span>
-                  {figure.legende ? ` — ${figure.legende}` : ""}
-                </p>
-              </li>
-            ))}
-          </ul>
+          {data.length > 1 && !deplie ? (
+            <Button
+              variant="outline"
+              className="h-auto min-h-11 w-full gap-2 whitespace-normal px-3 text-center"
+              onClick={() => setDeplie(true)}
+              aria-expanded={false}
+            >
+              <Images className="size-4 shrink-0" aria-hidden />
+              Afficher les figures ({data.length})
+            </Button>
+          ) : null}
+          {data.length === 1 || deplie ? (
+            <>
+              <p className="text-muted-foreground mb-2 text-[11px] font-semibold uppercase tracking-[0.12em]">
+                {titre} · {data.length}
+              </p>
+              <ul className="grid gap-3 sm:grid-cols-2">
+                {data.map((figure) => (
+                  <li key={figure.assetId} className="overflow-hidden rounded-lg border bg-card">
+                    {echecs.has(figure.assetId) ? (
+                      <p className="flex min-h-32 flex-col items-center justify-center gap-2 bg-card-sunk px-3 text-center text-[12.5px] text-muted-foreground">
+                        <ImageOff className="size-5" aria-hidden />
+                        Image indisponible pour l'instant.
+                      </p>
+                    ) : (
+                      <img
+                        src={figure.url}
+                        alt={figure.legende ?? `Figure ${figure.num}`}
+                        loading="lazy"
+                        decoding="async"
+                        onError={() => surEchec(figure.assetId)}
+                        className="block w-full bg-card-sunk object-contain"
+                      />
+                    )}
+                    <p className="px-3 py-2 text-[12.5px] leading-snug text-muted-foreground">
+                      <span className="font-semibold text-foreground">Fig. {figure.num}</span>
+                      {figure.legende ? ` — ${figure.legende}` : ""}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : null}
         </>
       )}
     </section>

@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   askCompanion,
   startAiThread,
+  startAiThreadForResource,
   type AiAnswer,
   type AiThreadScope,
 } from "@/infrastructure/supabase/aiCompanion";
@@ -91,10 +92,17 @@ export function AiCompanionInline({
   sujet,
   scope,
   outcomeId,
+  resourceId,
 }: {
   readonly sujet: string;
   readonly scope: AiThreadScope;
   readonly outcomeId?: string;
+  /**
+   * ANCRAGE SUR UN CHAPITRE plutot que sur un acquis (09/09). Les deux
+   * s'excluent : un fil porte l'un ou l'autre, jamais les deux, et c'est ce qui
+   * dit a la fonction edge quel texte lire. Quand il est fourni, il gagne.
+   */
+  readonly resourceId?: string;
 }) {
   const { activeEnrollment } = useSession();
   const [threadId, setThreadId] = useState<string | null>(null);
@@ -118,12 +126,18 @@ export function AiCompanionInline({
     try {
       const fil =
         threadId ??
-        (await startAiThread({
-          enrollmentId: activeEnrollment.id,
-          scope,
-          title: sujet,
-          ...(outcomeId === undefined ? {} : { outcomeId }),
-        }));
+        (resourceId === undefined
+          ? await startAiThread({
+              enrollmentId: activeEnrollment.id,
+              scope,
+              title: sujet,
+              ...(outcomeId === undefined ? {} : { outcomeId }),
+            })
+          : await startAiThreadForResource({
+              enrollmentId: activeEnrollment.id,
+              resourceId,
+              title: sujet,
+            }));
       if (threadId === null) setThreadId(fil);
       /*
        * `newSubject` au premier tour SEULEMENT : un fil a un sujet, et relancer

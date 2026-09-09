@@ -4,7 +4,7 @@ import type { AcquisitionPlanItem } from "@/domain/acquisitionPlan";
 import { useLearnerPassport } from "@/features/dashboard/useLearnerPassport";
 import { OutcomeRow } from "@/features/passport/OutcomeRow";
 import { ResourceMediaPlayer } from "@/features/resources/ResourceMediaPlayer";
-import { ResourceTextPanel } from "@/features/resources/ResourceTextPanel";
+import { ChapterTextPanel } from "@/features/resources/ChapterTextPanel";
 
 /**
  * LA LIGNE D'UN ACQUIS DU PLAN, avec son contenu pédagogique.
@@ -66,7 +66,16 @@ export function PlanOutcomeRow({
               {support.format === "video" ? (
                 <ResourceMediaPlayer resourceId={support.id} title={support.title} />
               ) : (
-                <ResourceTextPanel resourceId={support.id} />
+                /*
+                  TEXTE 2026 (09/09). Cet ecran lisait `learning_resource_texts` —
+                  l'import 2022, en segments aveugles de 4 000 caracteres, sans un
+                  seul titre. Decision de Stef : « tout DOIT etre du 2026 ». Le
+                  remplacement est ici volontairement A FORME EGALE : meme place,
+                  meme geste, autre source. Afficher a la place les sections
+                  PROPRES a l'acquis serait mieux, mais c'est un changement
+                  d'ecran que personne n'a demande sur cette vue-la.
+                */
+                <ChapterTextPanel resourceId={support.id} />
               )}
             </section>
           ))

@@ -6,6 +6,14 @@ import {
   type AiFallbackPolicy,
   type ProgramAiSettings,
 } from "@/domain/programAi";
+import {
+  COURSE_SECTION_KINDS,
+  OUTCOME_SECTION_ORIGINS,
+  type CourseSection,
+  type CourseSectionKind,
+  type OutcomeSectionOrigin,
+  type OutcomeSections,
+} from "@/domain/courseSections";
 import type {
   CreateAssessmentModalityInput,
   CreateCohortInput,
@@ -154,6 +162,45 @@ interface ProgramAiUsageRow {
  * l'ecran sache l'afficher, mieux vaut retomber sur `seuil` — le moins cher —
  * que rendre un radio-groupe sans selection, ou pire, une politique inventee.
  */
+interface CourseSectionRow {
+  section_id: string;
+  chapitre: number;
+  partie: string | null;
+  numero: string | null;
+  titre: string | null;
+  niveau: number | null;
+  ordre: number;
+  kind: string;
+  rubrique: string | null;
+  contenu: string;
+  n_caracteres: number;
+  origine?: string;
+}
+
+/**
+ * `kind` ET `origine` ARRIVENT EN TEXTE, et on les compare aux listes du
+ * domaine plutot que de les forcer par un `as`. La contrainte `check` en base
+ * les borne aujourd'hui ; le jour ou une cinquieme valeur apparaitra, mieux vaut
+ * un repli sur `section` qu'un type qui ment au reste du code.
+ */
+function mapCourseSection(row: CourseSectionRow): CourseSection {
+  const kind: CourseSectionKind =
+    COURSE_SECTION_KINDS.find((valeur) => valeur === row.kind) ?? "section";
+  return {
+    sectionId: row.section_id,
+    chapitre: row.chapitre,
+    partie: row.partie ?? "",
+    numero: row.numero ?? "",
+    titre: row.titre ?? "",
+    niveau: row.niveau ?? 1,
+    ordre: row.ordre,
+    kind,
+    rubrique: row.rubrique ?? undefined,
+    contenu: row.contenu,
+    nCaracteres: row.n_caracteres,
+  };
+}
+
 function mapProgramAiSettings(row: ProgramAiSettingsRow): ProgramAiSettings {
   const politique = AI_FALLBACK_POLICIES.find((valeur) => valeur === row.fallback_policy);
   return {
@@ -1896,6 +1943,42 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
        * policy autorise déjà reviendrait à écrire une seconde règle de lecture
        * à côté de la première, avec la certitude qu'elles divergent un jour.
        */
+      /*
+       * LE TEXTE 2026, PAR SES DEUX FONCTIONS. Elles sont `security invoker` :
+       * elles ne peuvent rendre aucune ligne que l'appelant n'aurait pas le droit
+       * de lire directement. Un chapitre non publie, ou d'un autre programme,
+       * rend donc ZERO LIGNE — pas une erreur, et c'est ce qu'il faut : l'ecran
+       * traite deja le vide comme une reponse valide.
+       */
+      async readChapterSections(resourceId) {
+        const { data, error } = await client.rpc("read_chapter_sections", {
+          p_resource_id: resourceId,
+        });
+        assertNoSupabaseError(error);
+        return ((data ?? []) as CourseSectionRow[]).map(mapCourseSection);
+      },
+      async readOutcomeSections(outcomeId) {
+        const { data, error } = await client.rpc("read_outcome_sections", {
+          p_outcome_id: outcomeId,
+        });
+        assertNoSupabaseError(error);
+        const rows = (data ?? []) as CourseSectionRow[];
+        /*
+         * L'ORIGINE EST LA MEME SUR TOUTES LES LIGNES — la fonction choisit UNE
+         * voie et rend son resultat. On lit celle de la premiere ligne plutot que
+         * de supposer : si la fonction changeait un jour et melangeait deux voies,
+         * mieux vaut afficher selon la premiere que selon une valeur codee ici.
+         */
+        const brute = rows[0]?.origine;
+        const origin: OutcomeSectionOrigin | undefined = OUTCOME_SECTION_ORIGINS.find(
+          (valeur) => valeur === brute,
+        );
+        const resultat: OutcomeSections = {
+          origin,
+          sections: rows.map(mapCourseSection),
+        };
+        return resultat;
+      },
       async listResourceTexts(resourceId) {
         const { data, error } = await client
           .from("learning_resource_texts")

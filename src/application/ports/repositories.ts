@@ -24,6 +24,7 @@ import type { LearnerNarratedDeck, MediaResource } from "@/domain/mediaLibrary";
 import type { ContentAiProfile, LearnerAiResource, ProgramAiPolicy } from "@/domain/contentAi";
 import type { AiCreditBudget, AiCreditEntry } from "@/domain/aiCredits";
 import type { AiFallbackPolicy, ProgramAiSettings, ProgramAiUsage } from "@/domain/programAi";
+import type { CourseSection, OutcomeSections } from "@/domain/courseSections";
 import type { EcosScenarioMock, LegacyModuleInventoryItem } from "@/domain/ecosMigration";
 import type {
   AdminDocument,
@@ -677,6 +678,27 @@ export interface LearningResourceRepository {
     resourceId: LearningResource["id"],
     outcomeIds: readonly OutcomeId[],
   ): Promise<number>;
+  /**
+   * LE TEXTE 2026 D'UN CHAPITRE, dans son ordre de lecture.
+   *
+   * Remplace `listResourceTexts` partout ou l'apprenant LIT (decision de Stef,
+   * 09/09 : « tout DOIT etre du 2026 »). L'ancienne methode reste au port : elle
+   * sert encore a l'import, et `learning_resource_texts` demeure l'archive de
+   * l'import 2022 — a garder, ne pas supprimer.
+   *
+   * La fonction en base est `security invoker` et porte en plus un predicat
+   * explicite `can_read_resource` : un inscrit d'un autre programme, ou un
+   * chapitre non publie, ne rendent RIEN plutot qu'une erreur.
+   */
+  readChapterSections(resourceId: LearningResourceId): Promise<readonly CourseSection[]>;
+  /**
+   * LE TEXTE PROPRE A UN ACQUIS, et la voie qui l'a trouve.
+   *
+   * `origin` est une CONDITION D'AFFICHAGE, pas une statistique : le repli
+   * `chapitre` ne doit jamais s'afficher sous un sous-item (voir
+   * `sectionsPropres`). L'ecran ne decide pas de cette regle, il l'applique.
+   */
+  readOutcomeSections(outcomeId: OutcomeId): Promise<OutcomeSections>;
   /** Demande une URL d'upload signée pour un fichier source (Edge Function `create-resource-upload-url`). */
   requestUploadUrl(input: RequestUploadUrlInput): Promise<UploadUrlResult>;
   /** Téléverse réellement un fichier vers l'URL signée obtenue via `requestUploadUrl`. */

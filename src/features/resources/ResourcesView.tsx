@@ -20,7 +20,9 @@ import { KNOWLEDGE_RANKS, type KnowledgeRank, type OutcomeId } from "@/domain/ty
 import { RankBadge } from "@/components/rank-badge";
 import { ResourceFigures } from "@/features/resources/ResourceFigures";
 import { ResourceMediaPlayer } from "@/features/resources/ResourceMediaPlayer";
-import { ResourceTextPanel } from "@/features/resources/ResourceTextPanel";
+import { ChapterTextPanel } from "@/features/resources/ChapterTextPanel";
+import { AiCompanionInline } from "@/features/ai/AiCompanionInline";
+import { useProgramAiEnabled } from "@/features/resources/useProgramAiEnabled";
 import { useLearnerPassport } from "@/features/dashboard/useLearnerPassport";
 import { ContentAiTutorPanel } from "@/features/resources/ContentAiTutorPanel";
 import {
@@ -423,6 +425,7 @@ export function ResourcesView() {
                     <ChapitreMedias
                       supports={supportsDuChapitre(chapitre.items, supportsParAcquis)}
                       decks={decksDuChapitre(chapitre.items, decksParAcquis)}
+                      titreChapitre={chapitre.label}
                     />
                     <ul>
                       {chapitre.items.map((outcome) => (
@@ -497,23 +500,37 @@ function decksDuChapitre(
 function ChapitreMedias({
   supports,
   decks,
+  titreChapitre,
 }: {
   readonly supports: readonly CoveringSupport[];
   readonly decks: readonly CoveringDeck[];
+  /** Nomme le fil d'assistant ouvert sur ce chapitre. */
+  readonly titreChapitre: string;
 }) {
   const [texteOuvert, setTexteOuvert] = useState(false);
+  const aiOuverte = useProgramAiEnabled();
   const videos = supports.filter((s) => s.format === "video");
   const textuels = supports.filter((s) => s.format !== "video");
+  /*
+   * UN SEUL CHAPITRE PORTE LE FIL. Un item du referentiel est presque toujours
+   * couvert par un support textuel unique ; dans le cas contraire, ancrer le fil
+   * sur le premier vaut mieux que d'en ouvrir plusieurs — l'etudiant pose une
+   * question sur « l'item 221 », pas sur l'un de ses supports.
+   */
+  const premierTextuel = textuels[0];
   if (textuels.length === 0 && videos.length === 0 && decks.length === 0) return null;
 
   return (
     <div className="space-y-4">
       {/*
-        LE TEXTE DU COURS EST ICI, UNE SEULE FOIS. Il etait sous chaque acquis,
-        donc propose quinze fois dans un meme chapitre, et ouvrant a chaque fois
-        le meme texte integral. Rien dans le schema ne le rattache a un acquis :
-        `learning_resource_texts` ne porte que `resource_id`. Un chapitre, un
-        texte — c'est ce que fait le livre imprime.
+        LE TEXTE DU COURS EST ICI, UNE SEULE FOIS — et c'est desormais celui de
+        l'edition 2026 (`course_sections`), avec ses titres et son ordre de
+        lecture. `learning_resource_texts` reste en base comme archive de
+        l'import 2022 : plus rien ne l'affiche. Decision de Stef, 09/09.
+
+        « Integral » ET NON « du chapitre » : le texte du chapitre se lit
+        maintenant a deux endroits — ici en entier, et par morceaux sous chaque
+        connaissance. Le mot doit dire lequel des deux on ouvre.
       */}
       {textuels.length > 0 ? (
         <>
@@ -524,12 +541,26 @@ function ChapitreMedias({
             aria-expanded={texteOuvert}
           >
             <FileText className="size-4 shrink-0" aria-hidden />
-            {texteOuvert ? "Masquer le texte du chapitre" : "Lire le texte du chapitre"}
+            {texteOuvert ? "Masquer le texte intégral" : "Lire le texte intégral"}
           </Button>
           {texteOuvert ? (
-            <div className="space-y-4 rounded-lg border bg-card px-3 py-3">
+            <div className="bg-card space-y-4 rounded-lg border px-3 py-3">
+              {/*
+                L'ASSISTANT DU CHAPITRE, ENTRE LE BOUTON ET LE TEXTE (Stef,
+                09/09). Sa place dit sa portee : il travaille sur le texte qui
+                s'ouvre en dessous, et non sur une connaissance en particulier.
+                Son fil porte un `resource_id` et aucun `outcome_id` — c'est ce
+                qui, cote serveur, fait lire le chapitre plutot qu'un acquis.
+              */}
+              {aiOuverte && premierTextuel !== undefined ? (
+                <AiCompanionInline
+                  sujet={titreChapitre}
+                  scope="knowledge"
+                  resourceId={premierTextuel.id}
+                />
+              ) : null}
               {textuels.map((support) => (
-                <ResourceTextPanel key={support.id} resourceId={support.id} />
+                <ChapterTextPanel key={support.id} resourceId={support.id} />
               ))}
             </div>
           ) : null}

@@ -557,6 +557,16 @@ export const mockDataAccess: DataAccess = {
         ];
         return ok(kept.length);
       },
+      /*
+       * LE TEXTE 2026 N'A PAS DE FIXTURE, ET C'EST VOLONTAIRE. `course_sections`
+       * porte le livre de l'editeur ; en inventer un extrait pour la maquette
+       * ferait lire a un testeur du faux cours de cardiologie, indiscernable du
+       * vrai. Zero section est d'ailleurs une reponse VALIDE cote ecran (quatre
+       * supports du programme n'ont pas de chapitre) : le mock rend donc le meme
+       * vide que la base rendrait, ce qui est la reponse honnete.
+       */
+      readChapterSections: () => ok([]),
+      readOutcomeSections: () => ok({ origin: undefined, sections: [] }),
       listResourceTexts: (resourceId) =>
         ok(
           texts
