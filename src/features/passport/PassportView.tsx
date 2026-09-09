@@ -32,7 +32,6 @@ import type { OutcomeThemeId } from "@/domain/types";
 import { buildDomainColors } from "@/features/dashboard/domainColor";
 import { useLearnerPassport } from "@/features/dashboard/useLearnerPassport";
 import { useReamenagementDuPlan } from "@/features/passport/useReamenagementDuPlan";
-import { PlanChangeRequestDialog } from "./PlanChangeRequestDialog";
 import { CalendarView } from "./views/CalendarView";
 import { GanttView } from "./views/GanttView";
 import { KanbanView } from "./views/KanbanView";
@@ -78,8 +77,6 @@ export function PassportView() {
   const { data, isPending } = useLearnerPassport();
   const [view, setView] = useState<PassportViewMode>("calendar");
   const [filter, setFilter] = useState<PlanFilter>("all");
-  const [dialogItem, setDialogItem] = useState<AcquisitionPlanItem | null>(null);
-  const [requests, setRequests] = useState<readonly PlanChangeRequest[]>([]);
   /*
    * `undefined` tant que le programme n'ouvre pas le reamenagement : le Gantt
    * reste alors le diagramme de lecture qu'il a toujours ete.
@@ -375,82 +372,32 @@ export function PassportView() {
             />
           </TabsContent>
           <TabsContent value="kanban" className="mt-5">
-            <KanbanView
-              items={filteredItems}
-              themes={data.themes}
-              couleurDe={couleurDe}
-              onProposeChange={setDialogItem}
-            />
+            <KanbanView items={filteredItems} themes={data.themes} couleurDe={couleurDe} />
           </TabsContent>
         </Tabs>
       </section>
 
-      <section aria-labelledby="titre-regles">
-        {/*
-          LE CHAPEAU « Prototype : aucune demande n'est enregistree » SAUTE : le
-          pied de page le dit deja pour tout l'ecran, et chaque demande le
-          repete sur sa propre ligne. Trois fois la meme phrase, c'est le ton
-          administratif que la maquette v2 corrige.
-        */}
-        <h2 id="titre-regles" className={TITRE_SECTION}>
-          Modifier mon plan
-        </h2>
-        <ul className="grid gap-3 md:grid-cols-3">
-          {IMPACTS.map((impact) => (
-            <li key={impact} className="rounded-xl border bg-card p-4 shadow-[var(--shadow-card)]">
-              <p className="text-sm font-medium">{IMPACT_LABELS_FR[impact]}</p>
-              <p className="mt-1 text-[13px] leading-snug text-muted-foreground">
-                {APPROVAL_RULE_LABELS_FR[approvalRuleForImpact(impact)]}
-              </p>
-            </li>
-          ))}
-        </ul>
+      {/*
+        « MODIFIER MON PLAN » EST RETIRE (Stef, 09/09).
 
-        <div className="mt-5">
-          <p className={`${EYEBROW} mb-2 text-muted-foreground`}>Mes demandes simulées</p>
-          {requests.length === 0 ? (
-            <p className="text-[13px] text-muted-foreground">
-              Aucune demande. Utilisez « Proposer une modification » sur un élément planifié.
-            </p>
-          ) : (
-            <ul className="divide-y divide-border overflow-hidden rounded-xl border bg-card shadow-[var(--shadow-card)]">
-              {requests.map((request) => {
-                const item = plan.items.find((i) => i.id === request.itemId);
-                return (
-                  <li key={request.id} className="flex flex-wrap items-center gap-2 px-4 py-3">
-                    <span className="font-mono text-xs" style={TABULAIRE}>
-                      {item?.code ?? request.itemId}
-                    </span>
-                    <span className="text-sm">
-                      {request.requestedDate
-                        ? `Nouvelle date : ${new Date(request.requestedDate).toLocaleDateString("fr-FR")}`
-                        : `Nouveau rythme : ${request.requestedPace}`}
-                    </span>
-                    <Badge variant="secondary">
-                      {PLAN_CHANGE_STATUS_LABELS_FR[request.status]}
-                    </Badge>
-                    <Badge variant="outline" className="ms-auto font-normal">
-                      {APPROVAL_RULE_LABELS_FR[request.approvalRule]}
-                    </Badge>
-                    <p className="w-full text-xs text-muted-foreground">
-                      Justification : {request.justification} · Demande simulée, non enregistrée.
-                    </p>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-          <p className="mt-2 text-xs text-muted-foreground">
-            Statuts prévus : {Object.values(PLAN_CHANGE_STATUS_LABELS_FR).join(" · ")}.
-          </p>
-        </div>
-      </section>
+        CE QUE CE BLOC PROPOSAIT : demander a l'administration un changement de
+        date ou de rythme, avec ses regles d'approbation — et « Mes demandes
+        simulees », « Demande simulee, non enregistree ». Une maquette honnete,
+        mais devenue SANS OBJET le soir meme : sous le modele retenu par Stef,
+        l'etudiant deplace lui-meme ses jalons dans le Gantt, des lors que
+        l'administrateur du programme a ouvert le reamenagement. Lui laisser un
+        formulaire pour demander une permission qu'il detient deja n'aurait pas
+        ete une maquette de trop : c'aurait ete une contradiction a l'ecran.
 
-      <PlanChangeRequestDialog
-        item={dialogItem}
-        onClose={() => setDialogItem(null)}
-        onCreate={(request) => setRequests((prev) => [request, ...prev])}
-      />
+        RETIRE ET NON REMPLACE. Le Gantt explique le geste la ou il se fait ;
+        une section de plus, ailleurs, redirait la meme chose loin de l'action.
+
+        CE QUI RESTE EN DOMAINE : `createPlanChangeRequest` et ses regles
+        d'approbation, testes, intacts. Le jour ou une demande devra remonter a
+        l'administration — pour un jalon OFFICIEL, que l'etudiant ne peut pas
+        deplacer — c'est de la qu'elle repartira.
+      */}
+
       {/*
         LA MENTION « Prototype — non enregistre » EST RETIREE (Stef, 09/09),
         comme celle de la vue d'ensemble et pour la meme raison : elle etait

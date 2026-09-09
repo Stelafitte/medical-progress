@@ -24,19 +24,11 @@ import { ChapterTextPanel } from "@/features/resources/ChapterTextPanel";
 import { AiCompanionInline } from "@/features/ai/AiCompanionInline";
 import { useProgramAiEnabled } from "@/features/resources/useProgramAiEnabled";
 import { useLearnerPassport } from "@/features/dashboard/useLearnerPassport";
-import { ContentAiTutorPanel } from "@/features/resources/ContentAiTutorPanel";
 import {
   KnowledgeRow,
   type CoveringDeck,
   type CoveringSupport,
 } from "@/features/resources/KnowledgeRow";
-import {
-  AI_GROUNDING_NOTICE_FR,
-  CITATION_KIND_LABELS_FR,
-  AI_STUDY_CTA_FR,
-  WEB_REFERENCE_CTA_FR,
-} from "@/domain/contentAi";
-import { MEDIA_KIND_LABELS_FR } from "@/domain/mediaLibrary";
 import { searchResources } from "@/domain/learnerLibrary";
 
 export function ResourcesView() {
@@ -74,7 +66,6 @@ export function ResourcesView() {
 
   const { outcomes } = data;
   const narratedDecks = searchResources(data.narratedDecks, search);
-  const aiResources = searchResources(data.aiResources, search);
 
   /**
    * LES CONNAISSANCES DU PROGRAMME, repliees par chapitre.
@@ -286,80 +277,30 @@ export function ResourcesView() {
         </section>
       ) : null}
 
-      {aiResources.length > 0 ? (
-        <section className="space-y-4">
-          <SectionHeading
-            title={AI_STUDY_CTA_FR}
-            level={2}
-            description="Chaque support validé peut être interrogé, transformé en QCM, en cas clinique guidé ou en révision adaptative. Les réponses sont maquettées et citent leur référence dans le contenu validé."
-          />
-          <p className="rounded-md border border-border bg-secondary/40 px-4 py-3 text-sm text-muted-foreground">
-            {AI_GROUNDING_NOTICE_FR}. Aucun traitement IA réel n'est effectué dans cette maquette.
-          </p>
-          <ul className="grid gap-4 md:grid-cols-2">
-            {aiResources.map((item) => (
-              <li key={item.mediaId}>
-                <Card className="flex h-full flex-col">
-                  <CardHeader>
-                    <div className="flex flex-wrap items-center gap-2">
-                      {item.kind === "web_page" ? (
-                        <Globe className="size-4 text-primary" aria-hidden />
-                      ) : (
-                        <BookOpen className="size-4 text-primary" aria-hidden />
-                      )}
-                      <Badge variant="outline" className="font-normal">
-                        {MEDIA_KIND_LABELS_FR[item.kind]}
-                      </Badge>
-                      <Badge variant="secondary" className="font-normal">
-                        {item.sourceVersion}
-                      </Badge>
-                    </div>
-                    <CardTitle className="text-base">{item.title}</CardTitle>
-                    <CardDescription>{item.module}</CardDescription>
-                  </CardHeader>
-                  <CardContent className="mt-auto space-y-3">
-                    <p className="text-xs text-muted-foreground">
-                      Références citables :{" "}
-                      {item.citations.length > 0
-                        ? `${CITATION_KIND_LABELS_FR[item.citations[0]!.kind]} — ${item.citations
-                            .map((c) => c.locator)
-                            .join(" · ")}`
-                        : "aucune"}
-                      .
-                    </p>
-                    <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-                      {item.canonicalUrl ? (
-                        <Button
-                          asChild
-                          variant="secondary"
-                          className="min-h-11 w-full gap-2 sm:w-auto"
-                        >
-                          <a href={item.canonicalUrl} target="_blank" rel="noreferrer noopener">
-                            <Globe className="size-4" aria-hidden />
-                            {WEB_REFERENCE_CTA_FR}
-                          </a>
-                        </Button>
-                      ) : null}
-                      {item.hasNarratedPlayer ? (
-                        <Button asChild className="min-h-11 w-full gap-2 sm:w-auto">
-                          <Link
-                            to="/espace/ressources/$resourceId/lecture"
-                            params={{ resourceId: item.mediaId }}
-                          >
-                            <PlayCircle className="size-4" aria-hidden />
-                            Consulter le cours
-                          </Link>
-                        </Button>
-                      ) : null}
-                      <ContentAiTutorPanel resource={item} />
-                    </div>
-                  </CardContent>
-                </Card>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
+      {/*
+        LE TUTEUR IA DE DEMONSTRATION EST DEBRANCHE DE CET ECRAN (Stef, 09/09).
+
+        CE QUI POSAIT PROBLEME : cette section — « Assistant (maquette) »,
+        « Simuler la prise de parole », « Aucun traitement IA reel n'est
+        effectue dans cette maquette » — vivait sur la MEME page que le vrai
+        assistant, celui qui lit le texte 2026 et coute des jetons. Deux IA
+        cote a cote, une vraie et une fausse, chacune avec ses boutons. La
+        maquette annoncait honnetement qu'elle etait fausse ; ce n'est pas
+        suffisant quand la vraie est a quelques centimetres.
+
+        CE QU'ON NE PERD PAS, MESURE : la liste venait de
+        `listLearnerAiResources`, qui n'a AUCUNE implementation Supabase — en
+        production elle rend une liste vide, ses fixtures etant indexees sur
+        des identifiants de maquette. La section ne s'affichait donc deja plus,
+        sauf en demonstration ; et le jour ou quelqu'un aurait seme une
+        politique de contenu, le faux tuteur serait apparu a cote du vrai sans
+        que personne l'ait decide. Les cours narres ont leur propre section,
+        plus haut, et elle est reelle.
+
+        DEBRANCHE, PAS SUPPRIME : `ContentAiTutorPanel` reste sur le disque.
+        Les modes qu'il esquisse — QCM, cas clinique guide, revision adaptative
+        — sont une feuille de route, pas du code mort.
+      */}
 
       <section className="space-y-3">
         <SectionHeading title="Les connaissances du programme" level={2} />

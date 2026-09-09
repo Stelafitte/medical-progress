@@ -34,13 +34,11 @@ export function KanbanView({
   items,
   themes,
   couleurDe,
-  onProposeChange,
 }: {
   items: readonly AcquisitionPlanItem[];
   themes: readonly OutcomeTheme[];
   /** Fourni par le Passeport, pour que les quatre vues colorent a l'identique. */
   couleurDe: (themeId: string | undefined) => string;
-  onProposeChange: (item: AcquisitionPlanItem) => void;
 }) {
   return (
     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -115,14 +113,16 @@ export function KanbanView({
                                     : "Non planifié"}
                                   {item.officialDeadline ? " · échéance officielle" : ""}
                                 </p>
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => onProposeChange(item)}
-                                >
-                                  Proposer une modification
-                                </Button>
+                                {/*
+                                  « PROPOSER UNE MODIFICATION » EST RETIRE
+                                  (09/09) : il ouvrait une demande SIMULEE a
+                                  l'administration, alors que l'etudiant
+                                  deplace desormais ses jalons lui-meme dans le
+                                  Gantt. Le bouton est parti avec le formulaire
+                                  qu'il ouvrait ; la ligne garde son echeance,
+                                  officielle ou non — c'est elle qui dit si un
+                                  jalon est deplacable.
+                                */}
                               </div>
                             }
                           />

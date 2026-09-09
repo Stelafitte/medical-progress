@@ -12,8 +12,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLearnerPassport } from "@/features/dashboard/useLearnerPassport";
 import { NarratedSlidesPlayer } from "@/features/resources/NarratedSlidesPlayer";
-import { ContentAiTutorPanel } from "@/features/resources/ContentAiTutorPanel";
-import { AI_GROUNDING_NOTICE_FR } from "@/domain/contentAi";
 
 export function NarratedReaderView({ resourceId }: { resourceId: string }) {
   const { data, isPending } = useLearnerPassport();
@@ -21,8 +19,6 @@ export function NarratedReaderView({ resourceId }: { resourceId: string }) {
   if (isPending || !data) return <Skeleton className="h-96 w-full" />;
 
   const deck = data.narratedDecks.find((item) => item.mediaId === resourceId);
-  /** Support IA correspondant : DTO apprenant, sans aucune donnée source. */
-  const aiResource = data.aiResources.find((item) => item.mediaId === resourceId);
   const outcomes = deck
     ? deck.outcomeIds
         .map((id) => data.outcomes.find((o) => o.id === id))
@@ -72,13 +68,14 @@ export function NarratedReaderView({ resourceId }: { resourceId: string }) {
 
       <NarratedSlidesPlayer deck={deck} focused />
 
-      {aiResource ? (
-        <section className="space-y-2 rounded-md border border-border p-3">
-          <h2 className="text-sm font-medium">Étudier ce cours avec l'IA</h2>
-          <p className="text-xs text-muted-foreground">{AI_GROUNDING_NOTICE_FR}.</p>
-          <ContentAiTutorPanel resource={aiResource} />
-        </section>
-      ) : null}
+      {/*
+        « ETUDIER CE COURS AVEC L'IA » EST DEBRANCHE (Stef, 09/09), pour la
+        meme raison que sur « Mes ressources » : c'etait le tuteur de
+        DEMONSTRATION, monte a quelques centimetres du vrai assistant. Sa
+        source, `listLearnerAiResources`, n'a aucune implementation Supabase et
+        rendait deja une liste vide en production. `ContentAiTutorPanel` reste
+        sur le disque, debranche.
+      */}
 
       <section className="space-y-2">
         <h2 className="text-sm font-medium">Objectifs travaillés</h2>
