@@ -18,11 +18,25 @@ import { getBrowserSupabaseClient } from "@/infrastructure/supabase/client";
  * indistinctement « ca ne marche pas ».
  */
 
+/**
+ * CE TYPE EST LA MOITIE CLIENTE D'UN CONTRAT ECRIT DEUX FOIS.
+ *
+ * L'autre moitie vit dans `supabase/functions/ai-companion-chat/index.ts`, et
+ * RIEN NE VERIFIE QUE LES DEUX CONCORDENT : la fonction edge se deploie a part,
+ * `tsc` ne la voit pas. Le 09/09, la bascule sur le texte 2026 a change le
+ * format des citations cote serveur sans toucher a ce type : le champ
+ * `resourceTitle` arrivait `undefined`, `titreLisible` appelait `.includes` sur
+ * rien, et l'exception pendant le rendu TUAIT LA PAGE — Safari affichait
+ * « Page did not load » en plein ecran, sans rien qui pointe vers la cause.
+ *
+ * TOUTE MODIFICATION DE CE TYPE DOIT ETRE FAITE DANS LE MEME SOUFFLE QUE LA
+ * FONCTION EDGE, et l'ecran doit tolerer un champ absent plutot que de s'y fier.
+ */
 export type AiCitation = {
-  readonly resourceId: string;
-  readonly resourceTitle: string;
-  readonly sourcePath: string;
-  readonly segmentIndex: number;
+  /** Section de `course_sections` citee par le modele. */
+  readonly sectionId: string;
+  /** Libelle d'affichage : « I.E.1 — Epidemiologie ». Peut etre vide. */
+  readonly label: string;
   readonly excerpt?: string;
 };
 

@@ -44,25 +44,6 @@ const MODES: readonly { id: Mode; label: string; consigne: (sujet: string) => st
 ];
 
 /**
- * LE TITRE DU SUPPORT EST UN SLUG EN BASE — « chapitre-1-item-221-atherome-… ».
- * L'afficher tel quel revient a demander a un etudiant de lire un identifiant de
- * fichier. On le remet en francais. AUCUNE INVENTION : on reformate ce que la
- * base contient, et si le motif ne correspond pas, le libelle passe tel quel.
- */
-function titreLisible(brut: string): string {
-  if (brut === "" || brut.includes(" ")) return brut;
-  const mots = brut.split("-").filter((m) => m !== "");
-  const rendu = mots
-    .map((mot, i) => {
-      if (mot === "chapitre" || mot === "item") return mot.charAt(0).toUpperCase() + mot.slice(1);
-      if (/^\d+$/.test(mot)) return mot;
-      return i === 0 ? mot.charAt(0).toUpperCase() + mot.slice(1) : mot;
-    })
-    .join(" ");
-  return rendu.replace(/^(Chapitre \d+)\s(Item \d+)\s/, "$1 · $2 — ");
-}
-
-/**
  * L'ASSISTANT, DANS LE CONTINUUM DU DEPLIAGE.
  *
  * PLUS DE PANNEAU, PLUS DE BOUTON D'OUVERTURE (Stef, 07/09). La feuille laterale
@@ -203,11 +184,20 @@ export function AiCompanionInline({
                 {tour.reponse && tour.reponse.citations.length > 0 ? (
                   <ul className="space-y-0.5">
                     {tour.reponse.citations.map((c) => (
-                      <li key={`${c.resourceId}-${c.segmentIndex}`}>
+                      <li key={c.sectionId}>
                         <details className="group">
                           <summary className="min-h-11 cursor-pointer list-none py-1.5 text-[12.5px] text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                            <span className="font-medium text-foreground">
-                              {titreLisible(c.resourceTitle)}
+                            <span className="text-foreground font-medium">
+                              {/*
+                                `??` ET NON UNE CONFIANCE DANS LE CHAMP. La
+                                fonction edge se deploie separement : le jour ou
+                                les deux versions se croisent, un libelle absent
+                                doit donner une ligne fade, jamais une exception
+                                de rendu qui emporte la page.
+                              */}
+                              {c.label === undefined || c.label === ""
+                                ? "Passage du cours"
+                                : c.label}
                             </span>
                             {c.excerpt ? " · lire le passage" : ""}
                           </summary>
