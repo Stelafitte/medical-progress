@@ -408,9 +408,25 @@ export function AppShell() {
         <Outlet />
       </main>
 
+      {/*
+        LE PIED DE PAGE DISAIT « DONNEES DE DEMONSTRATION » — SUR TOUTES LES
+        PAGES, Y COMPRIS EN SESSION SUPABASE REELLE (09/09).
+        C'etait vrai en aout ; ce ne l'est plus. Le referentiel, les jalons, le
+        carnet de stage, les preuves et les messages sont en base, et un
+        etudiant qui lit « donnees de demonstration » sous son propre carnet
+        n'a aucune raison de faire confiance a ce qu'il vient d'y ecrire.
+        C'est le meme retrait que celui du mot « prototype » demande par Stef
+        le meme jour sur la vue d'ensemble.
+
+        CE QU'ON GARDE, PARCE QUE C'EST LA REGLE ET NON UN CONSTAT : aucune
+        donnee de patient n'a sa place ici. Formulee comme une consigne et non
+        comme une promesse — la plateforme ne peut pas garantir ce qu'un
+        etudiant tape dans un champ libre, elle peut dire ce qui s'y fait.
+      */}
       <footer className="border-t border-border bg-card">
         <div className="mx-auto max-w-6xl px-4 py-6 text-xs text-muted-foreground sm:px-6">
-          Socle multi-programmes — données de démonstration, aucune donnée de santé réelle.
+          Socle multi-programmes — aucune donnée de patient ne doit être saisie sur cette
+          plateforme.
         </div>
       </footer>
     </div>

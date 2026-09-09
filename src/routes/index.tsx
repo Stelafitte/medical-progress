@@ -95,9 +95,18 @@ function HomePage() {
           ))}
         </div>
 
+        {/*
+          ⚠️ CE PARAGRAPHE ANNONCAIT TROIS CHOSES DEVENUES FAUSSES (constate le
+          09/09) : « aucune base de donnees, aucune authentification reelle,
+          aucun appel d'intelligence artificielle ». Les trois sont dementies
+          depuis — Supabase depuis fin aout, l'authentification reelle avec, et
+          l'assistant IA qui repond en production depuis le 03/09.
+          C'etait la premiere phrase que lisait un visiteur sur la page
+          d'accueil d'une plateforme en ligne.
+        */}
         <p className="mt-12 rounded-xl border border-border bg-surface p-5 text-sm text-muted-foreground">
-          Cette première itération fonctionne avec des données de démonstration : aucune base de
-          données, aucune authentification réelle, aucun appel d'intelligence artificielle.
+          Le socle fonctionne sur une base de données réelle, avec authentification et un assistant
+          adossé au texte des cours. Aucune donnée de patient n'y a sa place.
         </p>
       </main>
 
