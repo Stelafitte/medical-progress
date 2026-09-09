@@ -250,6 +250,14 @@ export function AiCompanionInline({
           aria-label="Votre message à l'assistant"
         />
         <Button
+          /*
+            `type="button"` EXPLICITE. Un bouton sans type vaut `submit` : hors
+            formulaire il ne fait rien, mais le jour ou ce bloc serait pose dans
+            un `<form>` il ferait naviguer la page au lieu d'envoyer la question.
+            Les autres boutons de ce fichier le portent deja ; celui-ci l'avait
+            perdu.
+          */
+          type="button"
           className="mt-2 min-h-11 w-full gap-2"
           disabled={enCours || saisie.trim() === ""}
           onClick={() => void envoyer(saisie)}

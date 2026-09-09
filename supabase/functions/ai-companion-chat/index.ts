@@ -281,6 +281,32 @@ Deno.serve(async (req) => {
   const reuse = !newSubject && previousCitations.length > 0;
 
   const politique = (settings.fallback_policy ?? "seuil") as FallbackPolicy;
+
+  /*
+   * ON CHERCHE AVEC LE SUJET DU FIL, PAS AVEC LE TEXTE ENVOYE — sauf en mode
+   * « Je demande », ou les deux coincident.
+   *
+   * MESURE DU 09/09 sur le chapitre 221, et c'est le defaut que Stef a vu :
+   *
+   *   « Comment se forme la plaque d'atherome ? »          -> 1,400
+   *   « facteurs de risque cardiovasculaire »              -> 1,500
+   *   la consigne « Pose-moi une question ouverte sur... » -> 0,400
+   *   « signes d'une appendicite aigue » (hors sujet)      -> 0,400
+   *
+   * LA CONSIGNE OBTIENT EXACTEMENT LA NOTE DU HORS-SUJET. En « Interroge-moi »
+   * et en « QCM », ce n'est pas une question que l'etudiant envoie, c'est un
+   * ordre : « pose-moi une question ouverte sur X, attends ma reponse, puis
+   * corrige-la ». Les mots utiles y sont noyes dans du vocabulaire de pilotage.
+   * AUCUN SEUIL NE PEUT DISTINGUER LES DEUX — ce n'est pas la barre qui etait
+   * mal placee, c'est ce qu'on mesurait.
+   *
+   * Le titre du fil, lui, EST le sujet : « ECN-221-01 — Definition de
+   * l'atherome ». On mesure donc lui.
+   */
+  const sujetDeRecherche =
+    mode === "ask" || typeof thread.title !== "string" || thread.title.trim() === ""
+      ? question
+      : String(thread.title);
   const outcomeId = thread.outcome_id as string | null;
   const resourceIdDuFil = thread.resource_id as string | null;
 
@@ -297,27 +323,39 @@ Deno.serve(async (req) => {
     const sections = (rows ?? []) as Record<string, unknown>[];
     const origine = sections[0] ? String(sections[0]["origine"]) : undefined;
 
-    if (politique === "sections_seules" && origine === "chapitre") {
+    /*
+     * L'ANCRAGE EST LE FILTRE — correction du 09/09, apres le test de Stef.
+     *
+     * Quand l'acquis a un texte PROPRE (rattachement arbitre ou rubrique), on
+     * SAIT deja quelles sections le traitent : elles sont affichees sous le
+     * bloc, l'etudiant les a sous les yeux. Chercher pour retrouver ce qu'on
+     * connait deja n'ajoute qu'une occasion de se tromper — et c'est
+     * exactement ce qui s'est produit : l'assistant repondait « je ne trouve
+     * pas cela dans vos supports » pendant que le passage etait affiche
+     * dessous.
+     *
+     * LE SEUIL GARDE SON SENS LA OU LE DOUTE EXISTE : un acquis SANS texte
+     * propre (58 sur 331), ou un fil ouvert sur un chapitre entier. C'est le
+     * seul endroit ou l'on ignore de quoi parle l'etudiant.
+     */
+    const aTextePropre = origine === "manuel" || origine === "rubrique";
+
+    if (aTextePropre) {
+      passages = sections.map((row) => versPassage(row, 0));
+    } else if (politique === "sections_seules") {
       // Pas de texte PROPRE à cet acquis : on ne paie pas pour le chapitre.
       passages = [];
     } else if (politique === "seuil") {
-      /*
-       * LE SEUIL S'APPLIQUE AUX SECTIONS DE L'ACQUIS, pas à tout le chapitre :
-       * on cherche dans le chapitre puis on INTERSECTE avec ce que la voie de
-       * l'acquis a rendu. Chercher sans intersecter ferait répondre l'assistant
-       * à partir d'une section qui ne traite pas de la connaissance ouverte.
-       */
+      // Repli : les sections rendues SONT le chapitre, donc rien à intersecter.
       const resourceId = sections[0] ? String(sections[0]["resource_id"]) : null;
-      const permises = new Set(sections.map((row) => String(row["section_id"])));
       if (resourceId) {
         const { data: hits } = await userClient.rpc("search_course_sections", {
           p_resource_id: resourceId,
-          p_query: question,
+          p_query: sujetDeRecherche,
           p_limit: PASSAGE_COUNT,
         });
         passages = ((hits ?? []) as Record<string, unknown>[])
           .filter((row) => Number(row["rank"]) >= MIN_RANK)
-          .filter((row) => permises.has(String(row["section_id"])))
           .map((row) => versPassage(row, Number(row["rank"])));
       }
     } else {
@@ -333,7 +371,7 @@ Deno.serve(async (req) => {
     } else {
       const { data: hits, error: e3 } = await userClient.rpc("search_course_sections", {
         p_resource_id: resourceIdDuFil,
-        p_query: question,
+        p_query: sujetDeRecherche,
         p_limit: PASSAGE_COUNT,
       });
       if (e3) return json({ error: `Recherche impossible : ${e3.message}` }, 500);

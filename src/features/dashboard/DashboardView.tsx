@@ -583,9 +583,14 @@ export function DashboardView() {
 
       <PaveStage />
 
-      <p className={`${EYEBROW} pt-2 text-center text-muted-foreground`}>
-        Prototype — non enregistré
-      </p>
+      {/*
+        LA MENTION « Prototype — non enregistre » EST RETIREE (Stef, 09/09), et
+        elle etait devenue FAUSSE dans le sens le plus genant : depuis le 07/09
+        le carnet de stage ecrit reellement en base, et les declarations d'acquis
+        aussi. Dire a l'etudiant que rien n'est enregistre pendant que tout l'est
+        est pire qu'un ecran de maquette — il pourrait croire que son travail ne
+        compte pas, et le refaire.
+      */}
     </div>
   );
 }

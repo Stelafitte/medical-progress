@@ -436,13 +436,19 @@ export function PassportView() {
         onCreate={(request) => setRequests((prev) => [request, ...prev])}
       />
       {/*
-        LE DRAPEAU EST RETROGRADE EN PETIT LIBELLE DE PIED DE PAGE. En badge
-        d'en-tete de section il criait plus fort que le contenu ; il doit se
-        lire, pas dominer.
+        LA MENTION « Prototype — non enregistre » EST RETIREE (Stef, 09/09),
+        comme celle de la vue d'ensemble et pour la meme raison : elle etait
+        devenue FAUSSE. Les declarations d'acquis sont ecrites en base
+        (`outcome_self_reports`) et le carnet de stage aussi depuis le 07/09.
+        Dire a l'etudiant que rien n'est enregistre pendant que tout l'est est
+        pire qu'un ecran de maquette : il pourrait croire que son travail ne
+        compte pas, et le refaire.
+
+        Elle avait deja ete RETROGRADEE une fois, de badge d'en-tete a libelle
+        de pied de page. Le bon geste n'etait pas de l'attenuer mais de la
+        dater : une mention de maquette doit disparaitre le jour ou l'ecran
+        devient reel, pas retrecir.
       */}
-      <p className={`${EYEBROW} pt-2 text-center text-muted-foreground`}>
-        Prototype — non enregistré
-      </p>
     </div>
   );
 }
