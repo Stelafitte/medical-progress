@@ -6,7 +6,9 @@ import {
   containsUnsafeMarkup,
   extractVariables,
   previewCampaign,
+  nonLus,
   renderForRecipient,
+  renderReceivedMessage,
   resolveAudience,
   scanPatientData,
   scheduleCampaign,
@@ -520,5 +522,60 @@ describe("garanties du module", () => {
     ]) {
       expect(source.includes(forbidden), `interdit : ${forbidden}`).toBe(false);
     }
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/* La boite de reception de l'apprenant (09/09)                        */
+/* ------------------------------------------------------------------ */
+
+const MOI = {
+  fullName: "Camille Martin",
+  programTitle: "DFASM Cardiologie",
+  cohortTitle: "Promotion 2026",
+};
+
+describe("message recu par l'apprenant", () => {
+  it("rend les variables avec les valeurs du destinataire", () => {
+    expect(renderReceivedMessage("Bonjour {{firstName}} {{lastName}}", MOI)).toBe(
+      "Bonjour Camille Martin",
+    );
+    // Le defaut mesure en base le 09/09 : la campagne stocke la variable brute.
+    expect(renderReceivedMessage("Essai Campus — {{programTitle}}", MOI)).toBe(
+      "Essai Campus — DFASM Cardiologie",
+    );
+    expect(renderReceivedMessage("{{cohortTitle}}", MOI)).toBe("Promotion 2026");
+  });
+
+  it("LAISSE VISIBLE une variable inconnue plutot que de l'effacer", () => {
+    // Un `{{prenom}}` qu'on voit est un defaut qu'on corrige ; une chaine vide
+    // passe inapercue. Meme regle que la fonction d'envoi.
+    expect(renderReceivedMessage("Bonjour {{prenom}}", MOI)).toBe("Bonjour {{prenom}}");
+  });
+
+  it("laisse visible une variable connue mais non resolue", () => {
+    expect(renderReceivedMessage("{{cohortTitle}}", { ...MOI, cohortTitle: "" })).toBe(
+      "{{cohortTitle}}",
+    );
+    expect(renderReceivedMessage("{{lastName}}", { ...MOI, fullName: "Camille" })).toBe(
+      "{{lastName}}",
+    );
+  });
+
+  it("tolere les espaces dans les accolades et rend toutes les occurrences", () => {
+    expect(renderReceivedMessage("{{ firstName }}, {{firstName}}", MOI)).toBe("Camille, Camille");
+  });
+
+  it("compte les non lus", () => {
+    const message = (readAt: string | null) => ({
+      deliveryId: "d1",
+      subject: "s",
+      body: "b",
+      channel: "email" as const,
+      receivedAt: "2026-09-01T00:00:00Z",
+      readAt,
+    });
+    expect(nonLus([message(null), message("2026-09-02T00:00:00Z"), message(null)])).toBe(2);
+    expect(nonLus([])).toBe(0);
   });
 });

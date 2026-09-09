@@ -25,7 +25,16 @@ import type {
 import type { DirectoryFilter, DirectoryRow, EnrollmentStatus } from "./directory";
 import { filterDirectoryRows } from "./directory";
 import { detectPatientDataMarkers } from "./dpcProgramDraft";
-import type { CohortId, Id, IsoDateTime, PersonId, ProgramId, Provenance, RoleName } from "./types";
+import type {
+  CohortId,
+  Id,
+  IsoDateTime,
+  MessageDeliveryId,
+  PersonId,
+  ProgramId,
+  Provenance,
+  RoleName,
+} from "./types";
 
 /* ------------------------------------------------------------------ */
 /* 1. Identifiants et libellés                                         */
@@ -144,6 +153,33 @@ export interface DeliveryAttempt {
 }
 
 export type PreferenceSource = "learner" | "administrator" | "import" | "bounce";
+
+/**
+ * UN MESSAGE RECU PAR L'APPRENANT — la boite de reception, cote domaine.
+ *
+ * `deliveryId` ET NON `campaignId` : c'est l'identifiant que « marquer comme
+ * lu » prend, et deux apprenants d'une meme campagne ont deux livraisons
+ * distinctes. Confondre les deux ferait qu'ouvrir un message le marquerait lu
+ * pour tout le monde.
+ *
+ * `readAt` NULLABLE PLUTOT QU'UN BOOLEEN : `null` dit « non lu » aussi bien
+ * qu'un `false`, et garde en plus QUAND. C'est la forme de la colonne, et elle
+ * permettra de dire un jour « recu il y a trois jours, jamais ouvert ».
+ */
+export interface LearnerMessage {
+  readonly deliveryId: MessageDeliveryId;
+  readonly subject: string;
+  readonly body: string;
+  readonly channel: MessageChannel;
+  /** Date d'envoi reelle ; a defaut, la mise en file. */
+  readonly receivedAt: IsoDateTime;
+  readonly readAt: IsoDateTime | null;
+}
+
+/** Les non lus, pour la pastille de la navigation. */
+export function nonLus(messages: readonly LearnerMessage[]): number {
+  return messages.filter((message) => message.readAt === null).length;
+}
 
 export interface CommunicationPreference {
   readonly personId: PersonId;
@@ -533,6 +569,48 @@ function variableValue(name: AllowedVariable, ctx: VariableContext): string | un
     case "coordinatorName":
       return ctx.snapshot.coordinatorName || undefined;
   }
+}
+
+/**
+ * LE MESSAGE TEL QUE SON DESTINATAIRE DOIT LE LIRE, cote apprenant (09/09).
+ *
+ * ⚠️ POURQUOI CETTE FONCTION EXISTE, ET LE DEFAUT QU'ELLE CORRIGE. La campagne
+ * est stockee AVEC SES VARIABLES : le premier envoi reel porte, en base, le
+ * sujet « Essai Campus — {{programTitle}} ». La substitution se fait a l'envoi,
+ * dans la fonction edge, et n'est ecrite NULLE PART — `communication_deliveries`
+ * ne garde ni sujet ni corps rendus. Une boite de reception qui lit la campagne
+ * telle quelle afficherait donc les accolades a l'etudiant.
+ *
+ * ON REND A LA LECTURE, ET C'EST EXACT ICI : le lecteur EST le destinataire.
+ * Son nom, son programme et sa promotion sont les valeurs memes que l'envoi a
+ * utilisees. Aucune approximation, aucune colonne de plus.
+ *
+ * DEUX FONCTIONS DE RENDU, ET C'EST ASSUME. `renderForRecipient` ci-dessous
+ * sert l'APERCU de l'administrateur : elle inspecte, refuse les variables
+ * patient, rapporte chaque anomalie. Celle-ci ne rapporte rien — l'etudiant n'a
+ * rien a corriger. Elles partagent la regle qui compte : une variable inconnue
+ * ou non resolue reste VISIBLE. Un `{{prenom}}` qu'on voit est un defaut qu'on
+ * corrige ; une chaine vide passe inapercue.
+ */
+export function renderReceivedMessage(
+  text: string,
+  values: {
+    readonly fullName: string;
+    readonly programTitle: string;
+    readonly cohortTitle?: string;
+  },
+): string {
+  const parts = values.fullName.trim().split(/\s+/);
+  const connues: Record<string, string | undefined> = {
+    firstName: parts[0],
+    lastName: parts.length > 1 ? parts.slice(1).join(" ") : undefined,
+    programTitle: values.programTitle,
+    cohortTitle: values.cohortTitle,
+  };
+  return text.replace(VARIABLE_RE, (whole, rawName: string) => {
+    const valeur = connues[rawName.trim()];
+    return valeur === undefined || valeur.trim() === "" ? whole : valeur;
+  });
 }
 
 /** Rendu d'un aperçu PAR DESTINATAIRE (aucun envoi, aucun effet de bord). */

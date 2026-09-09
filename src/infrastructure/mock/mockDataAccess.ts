@@ -767,6 +767,22 @@ export const mockDataAccess: DataAccess = {
    * mais il repond avec la meme forme que Supabase pour que les ecrans se
    * developpent sans base.
    */
+  /*
+   * LA BOITE EST VIDE EN MAQUETTE, ET C'EST LA CORRECTION DU 09/09.
+   *
+   * Elle rendait TROIS MESSAGES ECRITS EN DUR — « Ouverture du module
+   * Doppler », « Convocation a l'atelier de simulation » — servis a de vrais
+   * etudiants en production. Pas une table vide qu'on aurait pu lire comme
+   * « rien recu » : du contenu invente, date, plausible, indiscernable d'un
+   * vrai message. C'est la troisieme nature de mock decrite le 04/09, la seule
+   * qui MENT au lieu de se taire.
+   *
+   * Une liste vide dit la verite : la maquette n'a recu aucun message.
+   */
+  messages: {
+    listMyMessages: () => ok([]),
+    markRead: () => ok(undefined),
+  },
   passport: {
     declareOutcomeLevel: (input) =>
       ok({

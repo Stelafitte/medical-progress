@@ -21,6 +21,13 @@ export type SupervisionGroupId = Id<"SupervisionGroup">;
 export type EvidenceId = Id<"Evidence">;
 export type LearningResourceId = Id<"LearningResource">;
 export type AuditEventId = Id<"AuditEvent">;
+/**
+ * LA LIVRAISON, ET NON LA CAMPAGNE. Une campagne part a cent personnes ; ce
+ * qu'un apprenant ouvre, marque lu et supprime un jour, c'est SA ligne. La
+ * table `communication_deliveries` porte deja cette maille (campagne x
+ * personne) depuis le 04/09.
+ */
+export type MessageDeliveryId = Id<"MessageDelivery">;
 
 /** ISO 8601 (UTC). */
 export type IsoDateTime = string;

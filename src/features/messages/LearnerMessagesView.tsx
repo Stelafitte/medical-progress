@@ -1,68 +1,107 @@
-/**
- * Mes messages — point de réception apprenant (100 % simulé).
- * Aucun envoi, aucune réception réelle : les éléments listés proviennent de
- * données de démonstration alignées sur le domaine des communications.
- */
-import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+
 import { FieldHeader } from "@/components/field-header";
 import { EYEBROW, TABULAIRE } from "@/components/milestone-heading";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useSession } from "@/application/session";
-import {
-  COMMUNICATION_NO_REAL_SEND_FR,
-  MESSAGE_CATEGORY_LABELS_FR,
-  type MessageCategory,
-} from "@/domain/communication";
+import { useDataAccess, useSession } from "@/application/session";
+import { nonLus, renderReceivedMessage } from "@/domain/communication";
+import type { MessageDeliveryId } from "@/domain/types";
 
-interface DemoMessage {
-  readonly id: string;
-  readonly subject: string;
-  readonly body: string;
-  readonly category: MessageCategory;
-  readonly receivedAt: string;
-  readonly channel: "email" | "in_app";
-}
-
-const DEMO_MESSAGES: readonly DemoMessage[] = [
-  {
-    id: "msg-1",
-    subject: "Ouverture du module Doppler",
-    body: "Le cours sonorisé « Bases physiques du Doppler » est disponible dans vos ressources.",
-    category: "announcement",
-    receivedAt: "2026-08-18T09:00:00Z",
-    channel: "in_app",
-  },
-  {
-    id: "msg-2",
-    subject: "Rappel : dépôt de votre carnet de stage",
-    body: "Votre encadrant attend la contre-signature de deux gestes enregistrés cette semaine.",
-    category: "reminder",
-    receivedAt: "2026-08-21T07:30:00Z",
-    channel: "email",
-  },
-  {
-    id: "msg-3",
-    subject: "Convocation à l'atelier de simulation",
-    body: "Atelier ECOS le 3 septembre, 14 h, plateau de simulation — présence obligatoire.",
-    category: "convocation",
-    receivedAt: "2026-08-24T16:15:00Z",
-    channel: "email",
-  },
-];
-
+/**
+ * MES MESSAGES — la boîte de réception réelle de l'apprenant (09/09).
+ *
+ * ⚠️ CE QUE CET ÉCRAN AFFICHAIT JUSQU'ICI. Trois messages ÉCRITS EN DUR dans ce
+ * fichier — « Ouverture du module Doppler », « Rappel : dépôt de votre carnet de
+ * stage », « Convocation à l'atelier de simulation », datés d'août 2026 —
+ * servis à de vrais étudiants en production. Ce n'était pas une table vide ni un
+ * écran à construire : du contenu inventé, plausible, indiscernable d'un vrai
+ * message. C'est la troisième nature de maquette décrite le 04/09, et la seule
+ * qui MENT au lieu de se taire.
+ *
+ * CE QUI EXISTAIT DÉJÀ. `communication_campaigns` et `communication_deliveries`
+ * sont en base depuis le 04/09, avec un envoi réel déjà passé, et l'index
+ * `communication_deliveries_person_idx` posé pour cette lecture précisément.
+ * L'écran ne les avait jamais lues.
+ *
+ * LE TROU EXACT, MESURÉ AU BANC AVANT DE LE BOUCHER : l'apprenant avait le
+ * droit de lire SA ligne de livraison, mais pas la campagne qui porte l'objet et
+ * le corps. Il voyait qu'on lui avait écrit, jamais ce qu'on lui avait écrit.
+ * Une policy de plus, appuyée sur une fonction `security definer` — sans elle,
+ * les deux policies se regardent et PostgreSQL refuse les DEUX lectures.
+ *
+ * CE QUI DISPARAÎT AVEC LES FAUX MESSAGES : la mention « Simulé — aucune
+ * réception réelle » et la catégorie. La catégorie n'existe pas en base (elle
+ * vivait sur le modèle de message, pas sur la campagne) : l'afficher demanderait
+ * de la deviner, et deviner est exactement ce qu'on vient de retirer de cet
+ * écran.
+ *
+ * ⚠️ LES VARIABLES SONT RENDUES À LA LECTURE. La campagne est stockée avec
+ * ses `{{...}}` — le premier envoi réel porte en base « Essai Campus —
+ * {{programTitle}} » — et la substitution faite à l'envoi n'est écrite nulle
+ * part. Sans ce rendu, l'étudiant lirait les accolades. On le fait ici parce
+ * qu'ici, et seulement ici, le lecteur EST le destinataire : son nom, son
+ * programme et sa promotion sont exactement les valeurs qu'a utilisées l'envoi.
+ *
+ * LA MARQUE « LU » A SON PROPRE BOUTON, elle ne se déclenche pas en ouvrant. La
+ * règle vient du carnet de stage (07/09) : une écriture qui n'existe qu'en effet
+ * de bord d'un autre geste devient inatteignable — et ici, marquer lu en
+ * survolant priverait l'étudiant du seul repère qui lui reste dans une liste.
+ */
 export function LearnerMessagesView() {
-  const { activeProgram, activeEnrollment } = useSession();
-  const [readIds, setReadIds] = useState<readonly string[]>([]);
+  const data = useDataAccess();
+  const { activeProgram, activeEnrollment, person } = useSession();
+  const queryClient = useQueryClient();
+
+  const {
+    data: messages,
+    isPending,
+    isError,
+  } = useQuery({
+    queryKey: ["learner-messages", activeProgram.id],
+    queryFn: () => data.messages.listMyMessages(),
+  });
+
+  /*
+   * LA PROMOTION, LUE A PART, POUR LA SEULE VARIABLE `{{cohortTitle}}`. Sans
+   * elle le rendu laisserait ces accolades-la visibles — ce qui reste correct
+   * (une variable non resolue doit se voir) mais evitable : la session connait
+   * deja l'inscription, il ne manquait que le libelle.
+   */
+  const { data: cohorte } = useQuery({
+    queryKey: ["cohort", activeEnrollment?.cohortId ?? "none"],
+    queryFn: () => data.programs.getCohort(activeEnrollment!.cohortId),
+    enabled: Boolean(activeEnrollment),
+  });
+
+  const marquer = useMutation({
+    mutationFn: (deliveryId: MessageDeliveryId) => data.messages.markRead(deliveryId),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["learner-messages"] }),
+    onError: (reason) =>
+      toast.error(reason instanceof Error ? reason.message : "Message non marqué comme lu."),
+  });
 
   if (!activeEnrollment) {
     return (
       <p className="text-sm text-muted-foreground">Aucune inscription active pour ce programme.</p>
     );
   }
-  if (!activeProgram) return <Skeleton className="h-64 w-full" />;
+  if (isPending) return <Skeleton className="h-64 w-full" />;
+  if (isError) {
+    return <p className="text-destructive text-sm">Boîte de réception momentanément illisible.</p>;
+  }
 
-  const unread = DEMO_MESSAGES.filter((m) => !readIds.includes(m.id));
+  const valeurs = {
+    fullName: person.fullName,
+    programTitle: activeProgram.name,
+    ...(cohorte ? { cohortTitle: cohorte.label } : {}),
+  };
+  const recus = (messages ?? []).map((message) => ({
+    ...message,
+    subject: renderReceivedMessage(message.subject, valeurs),
+    body: renderReceivedMessage(message.body, valeurs),
+  }));
 
   return (
     <div className="space-y-7">
@@ -70,8 +109,8 @@ export function LearnerMessagesView() {
         eyebrow={activeProgram.name}
         title="Mes messages"
         figures={[
-          { value: DEMO_MESSAGES.length, label: "messages" },
-          { value: unread.length, label: "non lus" },
+          { value: recus.length, label: recus.length > 1 ? "messages" : "message" },
+          { value: nonLus(recus), label: "non lus" },
         ]}
       />
 
@@ -87,55 +126,62 @@ export function LearnerMessagesView() {
           de l'objet qu'il qualifie — le meme geste que sur le pave de stage.
         */}
         <div className="overflow-hidden rounded-xl border bg-card shadow-[var(--shadow-card)]">
-          {DEMO_MESSAGES.length === 0 ? (
-            <p className="px-4 py-6 text-center text-[13px] text-muted-foreground">
-              Aucun message pour l'instant.
+          {recus.length === 0 ? (
+            /*
+              LE VIDE DIT CE QU'IL ATTEND. « Aucun message » tout court laisse
+              l'etudiant se demander si l'ecran fonctionne ; nommer ce qui
+              arrivera ici fait la difference entre une boite vide et une boite
+              cassee.
+            */
+            <p className="px-4 py-6 text-center text-[13px] leading-relaxed text-muted-foreground">
+              Aucun message reçu pour l'instant.
+              <br />
+              Les annonces et convocations de votre programme apparaîtront ici.
             </p>
           ) : (
             <ul className="divide-y divide-border">
-              {DEMO_MESSAGES.map((message) => {
-                const isRead = readIds.includes(message.id);
+              {recus.map((message) => {
+                const lu = message.readAt !== null;
                 return (
-                  <li key={message.id} className="flex items-start gap-3 px-4 py-3.5">
+                  <li key={message.deliveryId} className="flex items-start gap-3 px-4 py-3.5">
                     {/*
                       LE NON-LU EST PORTE PAR LA GRAISSE ET UN MARQUEUR, jamais
                       par la couleur seule : un daltonien, un ecran en plein
                       soleil ou un mode contraste eleve la perdent.
                     */}
                     <span
-                      className={`mt-2 size-2 shrink-0 rounded-full ${isRead ? "bg-transparent" : "bg-live"}`}
+                      className={`mt-2 size-2 shrink-0 rounded-full ${lu ? "bg-transparent" : "bg-live"}`}
                       aria-hidden
                     />
                     <div className="min-w-0 flex-1">
                       <p
                         className={`font-display text-[16.5px] leading-tight tracking-[-0.01em] ${
-                          isRead ? "text-muted-foreground" : ""
+                          lu ? "text-muted-foreground" : ""
                         }`}
                       >
                         {message.subject}
-                        {isRead ? null : <span className="sr-only"> (non lu)</span>}
-                      </p>
-                      <p className="mt-1.5 text-[13px] leading-snug text-muted-foreground">
-                        {message.body}
+                        {lu ? null : <span className="sr-only"> (non lu)</span>}
                       </p>
                       {/*
-                        LES QUATRE PASTILLES GRISES DEVIENNENT UNE SEULE LIGNE.
-                        Categorie, canal et date disaient trois choses de meme
-                        rang dans trois boites : un rang de badges pese autant
-                        que l'objet du message, qu'il est cense qualifier.
+                        `whitespace-pre-line` : le corps vient d'un courriel
+                        redige par un enseignant, avec ses retours a la ligne.
+                        Les ecraser collerait deux paragraphes en un bloc.
                       */}
+                      <p className="mt-1.5 whitespace-pre-line text-[13px] leading-snug text-muted-foreground">
+                        {message.body}
+                      </p>
                       <p className={`${EYEBROW} mt-2 text-muted-foreground`} style={TABULAIRE}>
-                        {MESSAGE_CATEGORY_LABELS_FR[message.category]} ·{" "}
                         {message.channel === "email" ? "e-mail" : "application"} ·{" "}
                         {new Date(message.receivedAt).toLocaleDateString("fr-FR")}
                       </p>
                     </div>
-                    {isRead ? null : (
+                    {lu ? null : (
                       <Button
                         size="sm"
                         variant="ghost"
                         className="shrink-0"
-                        onClick={() => setReadIds([...readIds, message.id])}
+                        disabled={marquer.isPending}
+                        onClick={() => marquer.mutate(message.deliveryId)}
                       >
                         Marquer comme lu
                       </Button>
@@ -146,14 +192,11 @@ export function LearnerMessagesView() {
             </ul>
           )}
           <p className="border-t px-4 py-3 text-[12.5px] leading-relaxed text-muted-foreground">
-            {COMMUNICATION_NO_REAL_SEND_FR}
+            Vous recevez ici les messages adressés par l'équipe de votre programme. Cette boîte ne
+            permet pas de répondre : utilisez l'adresse indiquée dans le message.
           </p>
         </div>
       </section>
-
-      <p className={`${EYEBROW} pt-2 text-center text-muted-foreground`}>
-        Simulé — aucune réception réelle
-      </p>
     </div>
   );
 }

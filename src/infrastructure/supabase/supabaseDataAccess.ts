@@ -59,6 +59,14 @@ import type {
   SupervisionGroup,
   SupervisionGroupId,
 } from "@/domain/types";
+/*
+ * `MessageChannel` EST IMPORTE EXPLICITEMENT, ET IL LE FAUT : le DOM en declare
+ * un homonyme (celui des `MessagePort`), et sans cet import TypeScript prend le
+ * type global sans rien signaler d'autre qu'une incompatibilite obscure a
+ * l'assignation. Le compilateur l'a attrape ; a l'oeil, c'etait invisible.
+ */
+import type { MessageChannel } from "@/domain/communication";
+import type { MessageDeliveryId } from "@/domain/types";
 import type {
   StageLog,
   StageLogEntryId,
@@ -2070,6 +2078,81 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
      * perdue au rechargement, et une liste vide. L'ecran aurait donc coche, dit
      * merci, et n'aurait rien ecrit — le pire des trois etats possibles.
      */
+    /*
+     * MES MESSAGES — la boite reelle (09/09).
+     *
+     * UNE JOINTURE POSTGREST, PAS UNE FONCTION `security definer`. La policy
+     * `communication_campaigns_select_recipient`, posee le meme jour, autorise
+     * un destinataire a lire LA campagne qui le concerne : la lecture est donc
+     * cadree par la base, structurellement, et non par la prudence du code qui
+     * suit. C'est la lecon du 08/09 — deux fonctions proposees en `definer`
+     * ouvraient l'ouvrage entier.
+     *
+     * AUCUN FILTRE `person_id` ICI, MEME PAS PAR PRUDENCE. La RLS le fait, et
+     * un filtre de plus donnerait l'illusion que c'est LUI qui protege.
+     *
+     * ⚠️ ON FILTRE SUR DEUX STATUTS, PAS UN. `comm_delivery_status` en compte
+     * SIX — `queued`, `sent`, `delivered`, `failed`, `cancelled`,
+     * `suppressed` — et `sent` seul aurait FAIT DISPARAITRE de la boite tout
+     * message dont l'accuse de reception a progresse jusqu'a `delivered` : le
+     * message le mieux acheminé aurait ete le seul invisible. Les quatre autres
+     * ne sont pas des messages recus, et les afficher promettrait a l'apprenant
+     * un courrier qu'il n'a jamais eu.
+     */
+    messages: {
+      async listMyMessages() {
+        const { data, error } = await client
+          .from("communication_deliveries")
+          .select(
+            "id, status, sent_at, created_at, read_at, campaign:communication_campaigns(subject, body, channel)",
+          )
+          .in("status", ["sent", "delivered"])
+          .order("created_at", { ascending: false });
+        assertNoSupabaseError(error);
+        type Ligne = {
+          id: string;
+          sent_at: string | null;
+          created_at: string;
+          read_at: string | null;
+          /*
+           * PostgREST rend une relation « to-one » tantot comme objet, tantot
+           * comme tableau d'un element selon la version et la forme de la cle.
+           * On accepte les deux plutot que de parier.
+           */
+          campaign:
+            | { subject: string; body: string; channel: MessageChannel }
+            | { subject: string; body: string; channel: MessageChannel }[]
+            | null;
+        };
+        return ((data ?? []) as Ligne[]).flatMap((row) => {
+          const campagne = Array.isArray(row.campaign) ? row.campaign[0] : row.campaign;
+          /*
+           * SANS CAMPAGNE LISIBLE, ON N'AFFICHE RIEN. Le cas ne devrait pas se
+           * produire depuis la policy du 09/09 ; s'il se produit, une ligne
+           * « (sans objet) » serait un message fantome de plus — exactement ce
+           * qu'on vient de retirer de cet ecran.
+           */
+          if (!campagne) return [];
+          return [
+            {
+              deliveryId: row.id as MessageDeliveryId,
+              subject: campagne.subject,
+              body: campagne.body,
+              channel: campagne.channel,
+              /* L'envoi reel fait foi ; la mise en file ne sert que de repli. */
+              receivedAt: row.sent_at ?? row.created_at,
+              readAt: row.read_at,
+            },
+          ];
+        });
+      },
+      async markRead(deliveryId: MessageDeliveryId) {
+        const { error } = await client.rpc("mark_message_read", {
+          p_delivery_id: deliveryId,
+        });
+        assertNoSupabaseError(error);
+      },
+    },
     passport: {
       /**
        * Poser ou corriger son niveau. TOUT PASSE PAR LA FONCTION : la table

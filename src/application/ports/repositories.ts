@@ -46,6 +46,7 @@ import type {
   ProfessionalMessage,
   SupervisionAlert,
 } from "@/domain/supervision";
+import type { LearnerMessage } from "@/domain/communication";
 import type { StageLog, StageLogId, StageLogTemplate } from "@/domain/stageLog";
 import type { CohortStatisticsSnapshot } from "@/domain/statistics";
 import type {
@@ -81,6 +82,7 @@ import type {
   LearningResourceId,
   KnowledgeRank,
   MasteryLevel,
+  MessageDeliveryId,
   Outcome,
   OutcomeTheme,
   OutcomeThemeId,
@@ -910,6 +912,25 @@ export interface ApplyMilestoneTemplateInput {
   readonly dryRun?: boolean;
 }
 
+/**
+ * LA BOITE DE RECEPTION DE L'APPRENANT.
+ *
+ * AUCUN ARGUMENT DE PERIMETRE, ET C'EST VOULU. « Mes messages » veut dire ceux
+ * de la personne connectee : la RLS de `communication_deliveries` compare
+ * `person_id` a `auth.uid()`, et passer un identifiant en parametre laisserait
+ * croire qu'on peut demander la boite de quelqu'un d'autre — ce que la base
+ * refuserait, mais que la signature aurait promis.
+ *
+ * PAS D'ENVOI ICI. Un apprenant recoit ; il ne repond pas. Le jour ou il devra,
+ * ce sera une autre table et un autre garde-fou — pas une methode de plus sur
+ * une lecture.
+ */
+export interface LearnerMessagesRepository {
+  listMyMessages(): Promise<readonly LearnerMessage[]>;
+  /** Idempotent : relire un message deja lu ne repousse pas l'heure. */
+  markRead(deliveryId: MessageDeliveryId): Promise<void>;
+}
+
 export interface AcquisitionPlanRepository {
   /** Calendrier de référence des acquis d'un programme. */
   /**
@@ -1146,6 +1167,7 @@ export interface DataAccess {
   readonly programAi: ProgramAiRepository;
   readonly ecos: EcosMigrationRepository;
   readonly plan: AcquisitionPlanRepository;
+  readonly messages: LearnerMessagesRepository;
   readonly passport: PassportRepository;
   readonly stageLogs: StageLogRepository;
   readonly supervision: SupervisionRepository;
