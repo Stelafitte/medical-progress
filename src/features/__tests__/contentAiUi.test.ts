@@ -55,11 +55,43 @@ describe("dépôt d'un support — périmètre v1", () => {
   });
 });
 
-describe("apprenant — Étudier avec l'IA", () => {
-  it("est proposé dans les ressources et dans l'écran de lecture", () => {
-    expect(RESOURCES).toContain("ContentAiTutorPanel");
-    expect(READER).toContain("ContentAiTutorPanel");
-    expect(RESOURCES).toContain("AI_STUDY_CTA_FR");
+/**
+ * ⚠️ CE BLOC A ETE INVERSE LE 09/09, ET C'EST VOLONTAIRE.
+ *
+ * Il verrouillait le contraire : « Etudier avec l'IA est PROPOSE dans les
+ * ressources et dans l'ecran de lecture ». Ce contrat etait juste tant que le
+ * tuteur de demonstration etait la seule IA du produit. Il ne l'est plus : le
+ * VRAI assistant (`AiCompanionInline`) repond en production depuis le 03/09,
+ * et laisser le tuteur maquette a quelques centimetres de lui mettait deux IA
+ * cote a cote, une vraie et une fausse. Stef a tranche le 09/09 : on debranche.
+ *
+ * ON TESTE L'IMPORT ET LA BALISE, PAS LE NOM. Un simple
+ * `not.toContain("ContentAiTutorPanel")` serait passe AU VERT PAR ACCIDENT
+ * avant cette correction, et il ECHOUERAIT aujourd'hui : les commentaires des
+ * deux ecrans nomment le composant pour expliquer pourquoi il n'y est plus.
+ * C'est le defaut de tout test qui lit du texte source — il ne distingue pas
+ * un composant monte d'un composant cite. Viser l'import et `<Balise` le
+ * distingue.
+ *
+ * LE COMPOSANT RESTE SUR LE DISQUE : les trois tests suivants le gardent
+ * intact (citation obligatoire, mention de maquette, vocal sans micro). Ses
+ * modes — QCM, cas clinique guide, revision adaptative — sont une feuille de
+ * route, pas du code mort.
+ */
+describe("apprenant — le tuteur IA de démonstration est débranché", () => {
+  it("n'est monté ni dans les ressources ni dans l'écran de lecture", () => {
+    for (const source of [RESOURCES, READER]) {
+      expect(source).not.toContain('from "@/features/resources/ContentAiTutorPanel"');
+      expect(source).not.toContain("<ContentAiTutorPanel");
+    }
+    expect(RESOURCES).not.toContain("AI_STUDY_CTA_FR");
+  });
+
+  it("laisse la place au VRAI assistant, lui bien monté", () => {
+    expect(RESOURCES).toContain('from "@/features/ai/AiCompanionInline"');
+    expect(RESOURCES).toContain("<AiCompanionInline");
+    // Et il ne s'affiche que si le programme a ouvert l'IA (reglage du 09/09).
+    expect(RESOURCES).toContain("useProgramAiEnabled");
   });
 
   it("cite systématiquement une référence et signale la maquette", () => {
