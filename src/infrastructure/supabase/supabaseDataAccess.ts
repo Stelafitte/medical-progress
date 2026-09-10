@@ -52,6 +52,8 @@ import type {
   PersonId,
   Placement,
   PlacementId,
+  PlacementAssignment,
+  PlacementAssignmentId,
   Program,
   ProgramId,
   RoleAssignment,
@@ -322,6 +324,66 @@ export function mapPlacement(row: PlacementRow): Placement {
     department: row.department,
     capacity: row.capacity,
   };
+}
+
+/*
+ * AFFECTATION DE STAGE — DERIVEE, JAMAIS STOCKEE (10/09).
+ *
+ * `list_placement_assignments` construit ces lignes a partir des groupes
+ * d'encadrement ; aucune table `placement_assignments` n'existe. Voir la
+ * migration 20260910100000 pour le pourquoi.
+ */
+type PlacementAssignmentRow = {
+  id: string;
+  placement_id: string;
+  enrollment_id: string;
+  supervisor_person_id: string;
+  starts_on: string;
+  ends_on: string;
+  status: string;
+};
+
+export function mapPlacementAssignment(row: PlacementAssignmentRow): PlacementAssignment {
+  return {
+    id: row.id as PlacementAssignmentId,
+    /*
+     * UNE AFFECTATION DERIVEE N'A PAS DE DATE DE CREATION : elle n'a jamais ete
+     * ecrite. On expose le debut de la periode plutot qu'une date inventee ou
+     * l'instant de la lecture — qui, lui, changerait a chaque appel.
+     */
+    createdAt: row.starts_on,
+    provenance: nativeProvenance,
+    placementId: row.placement_id as PlacementId,
+    enrollmentId: row.enrollment_id as EnrollmentId,
+    supervisorPersonId: row.supervisor_person_id as PersonId,
+    startsOn: row.starts_on,
+    endsOn: row.ends_on,
+    status: row.status as PlacementAssignment["status"],
+  };
+}
+
+/**
+ * L'appel unique derriere les trois lectures d'affectation.
+ *
+ * Les trois filtres sont NULLABLES cote base : chaque porte n'en renseigne que
+ * ce qu'elle connait. Passer `null` explicitement plutot que d'omettre la cle
+ * evite qu'un jour PostgREST se retrouve devant deux signatures possibles.
+ */
+async function listPlacementAssignments(
+  client: SupabaseClient,
+  filtres: {
+    programId?: ProgramId;
+    supervisorPersonId?: PersonId;
+    enrollmentId?: EnrollmentId;
+  },
+): Promise<readonly PlacementAssignment[]> {
+  const { data, error } = await client.rpc("list_placement_assignments", {
+    p_program_id: filtres.programId ?? null,
+    p_supervisor_person_id: filtres.supervisorPersonId ?? null,
+    p_enrollment_id: filtres.enrollmentId ?? null,
+  });
+  assertNoSupabaseError(error);
+  return ((data ?? []) as PlacementAssignmentRow[]).map(mapPlacementAssignment);
 }
 
 type SupervisionGroupRow = {
@@ -1045,17 +1107,75 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
       },
     },
     /**
+     * ENCADREMENT — les deux lectures qui donnent un NOM aux affectations.
+     *
+     * Sans elles, brancher les affectations ne se voit pas : `useSupervision`
+     * obtient les bons `enrollmentIds`, puis demande au depot `supervision`
+     * qui sont ces gens — et ce depot n'etait surcharge NULLE PART, donc les
+     * deux appels tombaient sur le mock, dont les fixtures sont indexees sur
+     * des identifiants de maquette. Avec de vrais identifiants, le mock ne
+     * trouve rien : l'ecran affichait une affectation sans personne en face.
+     *
+     * Les AUTRES lectures de `supervision` (alertes, cas, confirmations,
+     * bilans, messagerie) restent au mock A DESSEIN : elles n'ont aucune table
+     * en base. Elles filtrent toutes sur `programId`, donc avec l'identifiant
+     * reel de DFASM-CARDIO elles rendent VIDE — un ecran vide, jamais du faux
+     * credible.
+     */
+    supervision: {
+      ...mockDataAccess.supervision,
+      async listEnrollmentsByIds(ids) {
+        /* `in` sur une liste vide leve cote PostgREST : on coupe court. */
+        if (ids.length === 0) return [];
+        const { data, error } = await client
+          .from("enrollments")
+          .select("id,person_id,program_id,cohort_id,status,created_at,updated_at")
+          .in("id", ids);
+        assertNoSupabaseError(error);
+        return ((data ?? []) as EnrollmentRow[]).map(mapEnrollment);
+      },
+      /**
+       * `profiles` NE PORTE AUCUNE ADRESSE (colonne absente ; la RLS ne la
+       * donne qu'au titulaire via `auth.getUser()`). On rend donc `email: ""`,
+       * comme `administration.listPeople` le fait deja, plutot que d'inventer
+       * une adresse. Aucun ecran d'encadrement n'affiche l'adresse d'un
+       * apprenant : seul le NOM est lu, par `learnerName()`.
+       *
+       * Le perimetre est borne par la policy `profiles_select_scoped` :
+       * `can_read_profile` accorde la lecture au personnel du programme, et
+       * `is_program_staff` inclut `placement_supervisor`.
+       */
+      async listPeopleByIds(ids) {
+        if (ids.length === 0) return [];
+        const { data, error } = await client
+          .from("profiles")
+          .select("id,full_name,created_at,updated_at")
+          .in("id", ids);
+        assertNoSupabaseError(error);
+        return ((data ?? []) as ProfileRow[]).map((row) => ({
+          id: row.id,
+          fullName: row.full_name,
+          email: "",
+          createdAt: row.created_at,
+          updatedAt: row.updated_at,
+          provenance: nativeProvenance,
+        }));
+      },
+    },
+    /**
      * Terrains de stage — LECTURE REELLE (07/09).
      *
      * `placements` n'accepte aucune ecriture directe : la migration
      * 20260831093000 revoque tout et n'accorde que le `select` aux
      * authentifies. La creation passera par la fonction `create_placement`.
      *
-     * Les AFFECTATIONS n'ont pas encore de stockage : la seule table en
-     * `%assignment%` est `role_assignments`, et le modele retenu le 31/08 fait
-     * porter le rattachement des etudiants par les GROUPES d'encadrement
-     * (`supervision_group_members`). On rend donc une liste VIDE plutot que les
-     * fixtures du mock : un ecran vide se lit, une affectation inventee non.
+     * LES AFFECTATIONS SONT DERIVEES DES GROUPES depuis le 10/09 (option 1
+     * choisie par Stef). Il n'existe toujours AUCUNE table
+     * `placement_assignments`, et il ne doit pas y en avoir : le rattachement
+     * d'un etudiant a un encadrant est porte par les groupes, qui gouvernent
+     * deja la RLS des carnets. Les dates viennent de la promotion, comme pour
+     * le carnet ; le statut se calcule. Les trois lectures ci-dessous sont la
+     * meme requete vue par trois portes.
      */
     placements: {
       ...mockDataAccess.placements,
@@ -1068,14 +1188,18 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
         assertNoSupabaseError(error);
         return ((data ?? []) as PlacementRow[]).map(mapPlacement);
       },
-      async listAssignmentsForProgram() {
-        return [];
+      async listAssignmentsForProgram(programId: ProgramId) {
+        return listPlacementAssignments(client, { programId });
       },
-      async listAssignmentsForEnrollment() {
-        return [];
+      async listAssignmentsForEnrollment(enrollmentId: EnrollmentId) {
+        /*
+         * L'APPRENANT N'A PAS DE `programId` SOUS LA MAIN a cet appel : c'est
+         * pour cela que les trois filtres de la fonction acceptent NULL.
+         */
+        return listPlacementAssignments(client, { enrollmentId });
       },
-      async listAssignmentsForSupervisor() {
-        return [];
+      async listAssignmentsForSupervisor(personId: PersonId, programId: ProgramId) {
+        return listPlacementAssignments(client, { programId, supervisorPersonId: personId });
       },
       /**
        * Ecriture : la migration 20260831093000 revoque tout et n'accorde que le
