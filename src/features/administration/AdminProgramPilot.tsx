@@ -26,7 +26,6 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState, MockBadge, PanelCard, ScopeNotice } from "@/features/professional/mock-ui";
-import { AdminCommunications } from "@/features/administration/AdminCommunications";
 import { CohortSelector } from "@/features/administration/CohortSelector";
 import { AssessmentModalitySection } from "@/features/administration/AssessmentModalitySection";
 import { PlacementSection } from "@/features/administration/PlacementSection";
@@ -671,18 +670,22 @@ function LearnerManagementPanel({
       </div>
 
       <div className="border-border space-y-2 rounded-lg border p-4">
-        <h3 className="text-sm font-semibold">Outil de communication complet</h3>
+        <h3 className="text-sm font-semibold">Communication interne</h3>
+        {/* L'OUTIL COMPLET N'EST PLUS INCRUSTE ICI (10/09). Depuis qu'il porte
+            un onglet a lui dans la barre d'administration, l'incruster une
+            seconde fois afficherait deux fois le meme annuaire, avec deux
+            selections independantes et deux barres d'action superposees --
+            et l'une des deux enverrait pour de vrai. Un lien, pas un double. */}
         <p className="text-muted-foreground text-xs">
-          L'intégralité de l'outil de communication est disponible ici, sans quitter la gestion des
-          apprenants. La même page existe en plein écran pour un travail de rédaction long.
+          L'annuaire des destinataires et les envois ont leur propre onglet, dans la barre
+          d'administration du programme.
         </p>
         <Button asChild variant="outline" size="sm" className="min-h-11">
           <Link to="/espace/administration/communications">
-            Ouvrir en plein écran
+            Ouvrir la communication interne
             <ArrowRight className="ms-1 size-4" aria-hidden />
           </Link>
         </Button>
-        <AdminCommunications />
       </div>
     </div>
   );

@@ -99,7 +99,6 @@ describe("périmètre visible", () => {
 describe("aucune opération réelle", () => {
   const files = [
     "src/features/supervision/SupervisionMessages.tsx",
-    "src/features/administration/AdminCommunications.tsx",
     "src/features/administration/AdminDocuments.tsx",
     "src/features/administration/PlatformAdminView.tsx",
   ].map((p) => [p, read(p)] as const);
@@ -112,10 +111,24 @@ describe("aucune opération réelle", () => {
     }
   });
 
-  it("affiche explicitement l'absence d'envoi réel", () => {
+  /* ⚠️ CE CONTRAT A PERDU LA MOITIE DE SON OBJET LE 10/09, ET C'EST VOULU.
+     Il gardait un assistant de communication « simule » qui devait ANNONCER ne
+     rien envoyer. Cet assistant a ete supprime : il ne savait rien envoyer, ses
+     listes etaient vides faute de donnees de maquette, et il portait le meme
+     vocabulaire que l'ecran qui, lui, agit -- Stef s'y est trouve bloque en
+     croyant utiliser le vrai outil. Ce qui reste garde est le vocabulaire du
+     domaine, encore lu par d'autres ecrans. La garde de l'ecran REEL est plus
+     bas : « envois reels de la communication interne ». */
+  it("le domaine continue de nommer l'absence d'envoi là où elle subsiste", () => {
     expect(read("src/domain/administration.ts")).toContain("Aucun envoi réel");
-    expect(read("src/features/administration/AdminCommunications.tsx")).toContain(
-      "NO_REAL_SEND_FR",
+  });
+
+  it("l'assistant simulé ne réapparaît pas", () => {
+    /* Le remettre reintroduirait deux ecrans au meme vocabulaire, dont un seul
+       agit. Si un jour il revient, que ce soit une decision, pas un oubli. */
+    expect(routeFiles).not.toContain("espace.administration.communications.simule.tsx");
+    expect(read("src/routes/espace.administration.communications.tsx")).toContain(
+      "CommunicationDirectorySection",
     );
   });
 
@@ -123,6 +136,47 @@ describe("aucune opération réelle", () => {
     expect(read("src/features/administration/AccessGrantSection.tsx")).toContain(
       "RETENTION_TBD_FR",
     );
+  });
+});
+
+describe("envois reels de la communication interne", () => {
+  const dialogues = read("src/features/administration/CommunicationSendDialogs.tsx");
+  const annuaire = read("src/features/administration/CommunicationDirectorySection.tsx");
+  const connecteur = read("src/infrastructure/supabase/communicationDirectory.ts");
+
+  it("n'ecrit jamais directement dans les tables de campagne", () => {
+    /* La regle du 04/09 tient : l'ecriture appartient a ce qui a vu le
+       resultat SMTP. Le navigateur cree un BROUILLON par fonction, et rien
+       d'autre. Une policy `insert` ouverte serait un retour en arriere. */
+    for (const source of [dialogues, annuaire, connecteur]) {
+      expect(source).not.toContain('.from("communication_campaigns")');
+      expect(source).not.toContain('.from("communication_deliveries")');
+      expect(source).not.toContain('.from("notification_rules")');
+    }
+    expect(connecteur).toContain('rpc("create_communication_campaign"');
+  });
+
+  it("le mode essai precede l'envoi, et le bouton reel en depend", () => {
+    /* Sans cette dependance, on enverrait sans avoir jamais vu le nombre reel
+       de destinataires -- et un envoi ne se rattrape pas. */
+    expect(dialogues).toContain("runCampaign(id, true)");
+    expect(dialogues).toContain("disabled={!essai");
+  });
+
+  it("l'adresse en clair ne remonte jamais dans l'annuaire", () => {
+    /* `program_directory` ne rend qu'un masque. Un ecran qui afficherait
+       vingt-sept adresses serait un fichier d'adresses a copier. */
+    expect(connecteur).toContain("email_masked");
+    expect(annuaire).toContain("emailMasked");
+    expect(annuaire).not.toContain("row.email");
+  });
+
+  it("le vivier et les comptes ne partent pas vers la meme fonction", () => {
+    /* Les deux fonctions edge attendent un parametre du meme nom pour des
+       identifiants differents : c'est le domaine qui les repartit. */
+    expect(dialogues).toContain("planFirstLogin");
+    expect(dialogues).toContain("invitePeople");
+    expect(dialogues).toContain("resendFirstLogin");
   });
 });
 

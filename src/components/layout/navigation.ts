@@ -17,6 +17,7 @@ import {
   Layers,
   LayoutDashboard,
   Mail,
+  MessagesSquare,
   SlidersHorizontal,
 
   Notebook,
@@ -149,6 +150,12 @@ export const PROGRAM_ADMIN_NAV: readonly NavEntry[] = [
     to: "/espace/administration/encadrement",
     label: "Équipe d'encadrement",
     icon: Users,
+    exact: false,
+  },
+  {
+    to: "/espace/administration/communications",
+    label: "Communication interne",
+    icon: MessagesSquare,
     exact: false,
   },
   {
