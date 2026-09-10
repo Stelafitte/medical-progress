@@ -183,13 +183,16 @@ export function isSupervisorOfEnrollment(
   return supervisedEnrollmentIds(assignments, supervisorPersonId).includes(enrollmentId);
 }
 
-/** Filtre générique de périmètre : ne conserve que les objets d'inscriptions encadrées. */
-export function scopedToSupervisedEnrollments<T extends { readonly enrollmentId: EnrollmentId }>(
-  items: readonly T[],
-  enrollmentIds: readonly EnrollmentId[],
-): readonly T[] {
-  return items.filter((i) => enrollmentIds.includes(i.enrollmentId));
-}
+/*
+ * `scopedToSupervisedEnrollments` A ETE RETIRE le 10/09. Il filtrait APRES
+ * COUP des listes chargees pour tout le programme -- alertes, cas,
+ * confirmations, bilans -- qui etaient toutes des listes de maquette. Ces
+ * listes ont disparu : ce qui reste est demande PAR IDENTIFIANTS
+ * D'INSCRIPTION (`listEnrollmentsByIds`, `listSelfReports` par etudiant), donc
+ * le perimetre est dans la requete, plus dans un filtre qu'on pouvait oublier
+ * d'appliquer. Un filtre de perimetre qui ne filtre plus rien est une fausse
+ * garantie : mieux vaut qu'il n'existe pas.
+ */
 
 /* ------------------------------------------------------------------ */
 /* Règles pures d'action                                               */

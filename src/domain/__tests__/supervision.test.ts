@@ -6,7 +6,6 @@ import {
   evaluateBulkValidation,
   isSupervisorOfEnrollment,
   realCompetenceRequiresHumanValidation,
-  scopedToSupervisedEnrollments,
   supervisedEnrollmentIds,
 } from "../supervision";
 import {
@@ -57,11 +56,6 @@ describe("périmètre du responsable de stage", () => {
   it("ne retient que les inscriptions de ses propres affectations", () => {
     expect(supervisedEnrollmentIds([mine, other], "per-sup")).toEqual(["enr-1"]);
     expect(isSupervisorOfEnrollment([mine, other], "per-sup", "enr-2")).toBe(false);
-  });
-
-  it("filtre toute liste sur les inscriptions encadrées", () => {
-    const items = [{ enrollmentId: "enr-1" as const }, { enrollmentId: "enr-2" as const }];
-    expect(scopedToSupervisedEnrollments(items, ["enr-1"])).toHaveLength(1);
   });
 });
 

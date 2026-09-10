@@ -77,7 +77,16 @@ describe("périmètre visible", () => {
   it("l'encadrant ne charge que ses affectations", () => {
     const hook = read("src/features/supervision/useSupervision.ts");
     expect(hook).toContain("listAssignmentsForSupervisor");
-    expect(hook).toContain("scopedToSupervisedEnrollments");
+    /*
+     * LE PERIMETRE EST DANS LA REQUETE, PLUS DANS UN FILTRE APRES COUP (10/09).
+     * `scopedToSupervisedEnrollments` ne gardait que des listes de maquette
+     * chargees pour tout le programme ; elles ont disparu. Ce qui reste est
+     * demande par identifiants d'inscription -- une liste qu'on n'a jamais
+     * chargee ne peut pas fuir.
+     */
+    expect(hook).toContain("supervisedEnrollmentIds");
+    expect(hook).toContain("listEnrollmentsByIds(enrollmentIds)");
+    expect(hook).not.toContain("scopedToSupervisedEnrollments");
   });
 
   it("l'administration ne charge que le programme actif", () => {
@@ -143,9 +152,7 @@ describe("validation humaine et decision", () => {
        d'encadrement ne puissent pas en donner quatre versions -- et la base le
        refuse de toute façon. */
     expect(competences).toContain("competencesDuProgramme");
-    expect(read("src/features/supervision/useSupervision.ts")).toContain(
-      'nature !== "knowledge"',
-    );
+    expect(read("src/features/supervision/useSupervision.ts")).toContain('nature !== "knowledge"');
   });
 
   it("la décision de carnet porte sur une période de présence", () => {
