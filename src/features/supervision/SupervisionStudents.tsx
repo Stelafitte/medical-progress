@@ -13,8 +13,17 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { EmptyState, MockBadge, PanelCard, ScopeNotice } from "@/features/professional/mock-ui";
-import { learnerName, useSupervision } from "@/features/supervision/useSupervision";
+import { aConfirmer, learnerName, useSupervision } from "@/features/supervision/useSupervision";
 
+/**
+ * Mes étudiants.
+ *
+ * DEUX RENDUS POUR UNE SEULE DONNEE (10/09) : le tableau obligeait à faire
+ * défiler horizontalement pour atteindre « Ouvrir », ce qui rend le bouton
+ * introuvable au téléphone -- et les tests de Stef se font au téléphone ou sur
+ * tablette. Sous 640 px on passe donc en cartes, chaque carte portant son
+ * bouton pleine largeur. Au-dessus, le tableau reste : il compare mieux.
+ */
 export function SupervisionStudents() {
   const { data, isPending } = useSupervision();
   const [query, setQuery] = useState("");
@@ -27,10 +36,7 @@ export function SupervisionStudents() {
         enrollment,
         name: learnerName(data, enrollment.id),
         assignment: data.assignments.find((a) => a.enrollmentId === enrollment.id),
-        alerts: data.alerts.filter((a) => a.enrollmentId === enrollment.id).length,
-        confirmations: data.confirmations.filter(
-          (c) => c.enrollmentId === enrollment.id && c.decision === "pending",
-        ).length,
+        confirmations: aConfirmer(data, enrollment.id),
         logs: data.logsToValidate.filter((l) => l.enrollmentId === enrollment.id).length,
       }))
       .filter((row) => row.name.toLowerCase().includes(query.trim().toLowerCase()));
@@ -39,6 +45,10 @@ export function SupervisionStudents() {
   if (isPending || !data) return <Skeleton className="h-72 w-full" />;
 
   const detail = rows.find((r) => r.enrollment.id === selected) ?? null;
+  const terrain = (enrollmentId: string) => {
+    const affectation = data.assignments.find((a) => a.enrollmentId === enrollmentId);
+    return data.placements.find((p) => p.id === affectation?.placementId)?.name ?? "—";
+  };
 
   return (
     <div className="space-y-6">
@@ -66,58 +76,80 @@ export function SupervisionStudents() {
         />
       </div>
 
-      <div className="surface-panel overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Étudiant</TableHead>
-              <TableHead>Stage</TableHead>
-              <TableHead className="text-right">Carnets à décider</TableHead>
-              <TableHead className="text-right">Compétences à confirmer</TableHead>
-              <TableHead className="text-right">Alertes</TableHead>
-              <TableHead className="text-right">Fiche</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.map((row) => (
-              <TableRow key={row.enrollment.id}>
-                <TableCell className="font-medium">{row.name}</TableCell>
-                <TableCell>
-                  {data.placements.find((p) => p.id === row.assignment?.placementId)?.name ?? "—"}
-                </TableCell>
-                <TableCell className="text-right">{row.logs}</TableCell>
-                <TableCell className="text-right">{row.confirmations}</TableCell>
-                <TableCell className="text-right">
-                  {row.alerts > 0 ? (
-                    <Badge variant="destructive" className="font-normal">
-                      {row.alerts}
-                    </Badge>
-                  ) : (
-                    "0"
-                  )}
-                </TableCell>
-                <TableCell className="text-right">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setSelected(row.enrollment.id)}
-                  >
-                    Ouvrir
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-        {rows.length === 0 ? (
+      {rows.length === 0 ? (
+        <div className="surface-panel">
           <EmptyState>Aucun étudiant ne correspond au filtre.</EmptyState>
-        ) : null}
-      </div>
+        </div>
+      ) : (
+        <>
+          {/* TELEPHONE : une carte par étudiant, bouton pleine largeur. */}
+          <ul className="space-y-3 sm:hidden">
+            {rows.map((row) => (
+              <li key={row.enrollment.id} className="surface-panel space-y-3 p-4">
+                <div className="space-y-1">
+                  <p className="font-medium">{row.name}</p>
+                  <p className="text-sm text-muted-foreground">{terrain(row.enrollment.id)}</p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Badge variant="secondary" className="font-normal">
+                    {row.logs} carnet(s) à décider
+                  </Badge>
+                  <Badge variant="secondary" className="font-normal">
+                    {row.confirmations} compétence(s) à confirmer
+                  </Badge>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => setSelected(row.enrollment.id)}
+                >
+                  Ouvrir la fiche
+                </Button>
+              </li>
+            ))}
+          </ul>
+
+          {/* TABLETTE ET PC : le tableau, qui compare mieux. */}
+          <div className="surface-panel hidden sm:block">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Étudiant</TableHead>
+                  <TableHead>Stage</TableHead>
+                  <TableHead className="text-right">Carnets à décider</TableHead>
+                  <TableHead className="text-right">Compétences à confirmer</TableHead>
+                  <TableHead className="text-right">Fiche</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rows.map((row) => (
+                  <TableRow key={row.enrollment.id}>
+                    <TableCell className="font-medium">{row.name}</TableCell>
+                    <TableCell>{terrain(row.enrollment.id)}</TableCell>
+                    <TableCell className="text-right">{row.logs}</TableCell>
+                    <TableCell className="text-right">{row.confirmations}</TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setSelected(row.enrollment.id)}
+                      >
+                        Ouvrir
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </>
+      )}
 
       {detail ? (
         <PanelCard
           title={`Fiche — ${detail.name}`}
-          description="Synthèse d'encadrement (démonstration, aucune donnée patient)."
+          description="Synthèse d'encadrement."
           action={
             <Button size="sm" variant="ghost" onClick={() => setSelected(null)}>
               Fermer
@@ -126,12 +158,12 @@ export function SupervisionStudents() {
         >
           <dl className="grid gap-3 sm:grid-cols-2">
             <div>
-              <dt className="text-xs uppercase text-muted-foreground">Connaissances</dt>
-              <dd>Progression suivie dans le passeport de l'étudiant.</dd>
+              <dt className="text-xs uppercase text-muted-foreground">Stage</dt>
+              <dd>{terrain(detail.enrollment.id)}</dd>
             </div>
             <div>
-              <dt className="text-xs uppercase text-muted-foreground">Compétences simulées</dt>
-              <dd>Séances de simulation enregistrées dans le programme.</dd>
+              <dt className="text-xs uppercase text-muted-foreground">Activité de stage</dt>
+              <dd>{detail.logs} carnet(s) soumis à décider.</dd>
             </div>
             <div>
               <dt className="text-xs uppercase text-muted-foreground">Compétences réelles</dt>
@@ -141,21 +173,8 @@ export function SupervisionStudents() {
               </dd>
             </div>
             <div>
-              <dt className="text-xs uppercase text-muted-foreground">Activité de stage</dt>
-              <dd>{detail.logs} carnet(s) soumis à décider.</dd>
-            </div>
-            <div>
-              <dt className="text-xs uppercase text-muted-foreground">Dernier contact</dt>
-              <dd>
-                {data.messages.length > 0
-                  ? new Date(data.messages[0]!.sentAt).toLocaleDateString("fr-FR")
-                  : "—"}{" "}
-                (messagerie simulée)
-              </dd>
-            </div>
-            <div>
-              <dt className="text-xs uppercase text-muted-foreground">Alertes</dt>
-              <dd>{detail.alerts} signal(aux) actif(s).</dd>
+              <dt className="text-xs uppercase text-muted-foreground">Connaissances</dt>
+              <dd>Progression suivie dans le passeport de l'étudiant.</dd>
             </div>
           </dl>
         </PanelCard>

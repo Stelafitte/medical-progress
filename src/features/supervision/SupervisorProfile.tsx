@@ -6,6 +6,7 @@ import { MockBadge, PanelCard, ScopeNotice } from "@/features/professional/mock-
 import { useSupervision } from "@/features/supervision/useSupervision";
 import { useSession } from "@/application/session";
 import { ROLE_LABELS_FR } from "@/domain/roles";
+import { AccountCredentialsSection } from "@/features/profile/AccountCredentialsSection";
 
 const NOTIFICATION_PREFS: readonly { key: string; label: string; enabled: boolean }[] = [
   { key: "new_log", label: "Nouveau carnet soumis", enabled: true },
@@ -53,6 +54,8 @@ export function SupervisorProfile() {
           </div>
         </dl>
       </PanelCard>
+
+      <AccountCredentialsSection currentEmail={person.email} />
 
       <PanelCard title="Terrains et périodes d'encadrement">
         <ul className="space-y-2">

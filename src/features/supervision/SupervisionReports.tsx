@@ -1,147 +1,259 @@
 import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+
 import { SectionHeading } from "@/components/section-heading";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
-import { EmptyState, MockBadge, PanelCard, ScopeNotice } from "@/features/professional/mock-ui";
-import { learnerName, useSupervision } from "@/features/supervision/useSupervision";
-import { canSignPlacementReport } from "@/domain/supervision";
-import { useSession } from "@/application/session";
+import { Textarea } from "@/components/ui/textarea";
+import { PanelCard, ScopeNotice } from "@/features/professional/mock-ui";
+import {
+  competencesDuProgramme,
+  learnerName,
+  useSupervision,
+} from "@/features/supervision/useSupervision";
+import { useDataAccess, useSession } from "@/application/session";
+import type { StageLogId } from "@/domain/stageLog";
 
-const APPRAISAL_LABEL: Record<string, string> = {
-  insuffisant: "insuffisant",
-  satisfaisant: "satisfaisant",
-  "très satisfaisant": "très satisfaisant",
-};
+/**
+ * BILAN DE FIN DE STAGE (10/09).
+ *
+ * ⚠️ AUCUNE TABLE `placement_reports` N'EXISTE, et on n'en cree pas une. La
+ * decision finale est une VALIDATION DE PERIODE couvrant tout le stage :
+ * `stage_log_validations` porte deja `covers_from` / `covers_to`, une decision
+ * et un commentaire, et valider du premier au dernier jour EST valider le
+ * stage. Ajouter une seconde table de decision aurait cree deux verites sur la
+ * meme question -- exactement ce qu'on a refuse pour les affectations.
+ *
+ * CE QUE LE TABLEAU SYNTHETISE, ET CE QU'IL NE FAIT PAS. Il compte : jours
+ * declares, competences confirmees, notes d'experience laissees, echanges
+ * ouverts. Il NE JUGE PAS l'implication -- l'analyse des commentaires par l'IA
+ * est un chantier a part, et un chiffre presente comme un jugement serait pire
+ * qu'un chiffre brut.
+ *
+ * LES JOURS ATTENDUS SONT DES JOURS OUVRES DE LA PERIODE, alternance
+ * « semaine on / semaine off » non deduite : elle n'est modelisee nulle part.
+ * Le ratio est donc un plancher, jamais un taux d'absenteisme.
+ */
+
+function joursOuvres(debut: string, fin: string): number {
+  let n = 0;
+  const d = new Date(debut);
+  const f = new Date(fin);
+  while (d <= f) {
+    const jour = d.getDay();
+    if (jour !== 0 && jour !== 6) n += 1;
+    d.setDate(d.getDate() + 1);
+  }
+  return n;
+}
 
 export function SupervisionReports() {
-  const { rolesInActiveProgram, activeProgram } = useSession();
-  const { data, isPending } = useSupervision();
-  const [reviewed, setReviewed] = useState<readonly string[]>([]);
-  const [signed, setSigned] = useState<readonly string[]>([]);
-  const [transmitted, setTransmitted] = useState<readonly string[]>([]);
+  const data = useDataAccess();
+  const queryClient = useQueryClient();
+  const { activeProgram } = useSession();
+  const { data: scope, isPending } = useSupervision();
+  const [ouvert, setOuvert] = useState<StageLogId | null>(null);
+  const [motif, setMotif] = useState("");
 
-  if (isPending || !data) return <Skeleton className="h-72 w-full" />;
+  const enrollmentIds = scope?.enrollmentIds ?? [];
 
-  const canSign = canSignPlacementReport(rolesInActiveProgram);
+  const { data: notes } = useQuery({
+    queryKey: ["experience-notes", "encadrement", enrollmentIds.join(",")],
+    enabled: enrollmentIds.length > 0,
+    queryFn: async () => {
+      const paires = await Promise.all(
+        enrollmentIds.map(async (id) => [id, await data.passport.listExperienceNotes(id)] as const),
+      );
+      return new Map(paires);
+    },
+  });
+
+  const { data: fils } = useQuery({
+    queryKey: ["discussion-threads", "programme", activeProgram.id],
+    queryFn: () => data.discussions.listThreadsForProgram(activeProgram.id),
+  });
+
+  const clore = useMutation({
+    mutationFn: (input: {
+      stageLogId: StageLogId;
+      coversFrom: string;
+      coversTo: string;
+      decision: "validated" | "needs_revision";
+      comment: string;
+    }) => data.stageLogs.validateStageLogBlock(input),
+    onSuccess: () => {
+      toast.success("Décision de fin de stage enregistrée.");
+      setOuvert(null);
+      setMotif("");
+      void queryClient.invalidateQueries({ queryKey: ["supervision"] });
+    },
+    onError: (raison) =>
+      toast.error(raison instanceof Error ? raison.message : "Décision non enregistrée."),
+  });
+
+  if (isPending || !scope) return <Skeleton className="h-72 w-full" />;
+
+  const competences = competencesDuProgramme(scope);
+
+  const bilans = scope.logsToValidate
+    .filter((log) => log.periodStartsOn && log.periodEndsOn)
+    .map((log) => {
+      const debut = log.periodStartsOn!.slice(0, 10);
+      const fin = log.periodEndsOn!.slice(0, 10);
+      const declarees = scope.declarations.get(log.enrollmentId) ?? [];
+      const confirmees = declarees.filter((d) => d.validatedAt !== undefined).length;
+      const echanges = (fils ?? []).filter((f) => f.enrollmentId === log.enrollmentId).length;
+      const cloture = log.validations.find(
+        (v) => v.coversFrom.slice(0, 10) === debut && v.coversTo.slice(0, 10) === fin,
+      );
+      return {
+        log,
+        nom: learnerName(scope, log.enrollmentId),
+        debut,
+        fin,
+        jours: log.entries.length,
+        attendus: joursOuvres(debut, fin),
+        confirmees,
+        notes: (notes?.get(log.enrollmentId) ?? []).length,
+        echanges,
+        cloture,
+      };
+    })
+    .sort((a, b) => a.nom.localeCompare(b.nom, "fr"));
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <SectionHeading
-        title="Bilans de fin de stage"
+        title="Bilans de stage"
         level={1}
-        action={<MockBadge />}
-        description="Volumes, objectifs, compétences, appréciation et réserves, puis signature simulée."
+        description="La synthèse de chaque étudiant, et la décision qui clôt son stage."
       />
 
       <ScopeNotice>
-        La signature est explicitement <strong>simulée</strong> et sans valeur juridique. La
-        transmission est interne à l'application : aucune pièce n'est envoyée par e-mail.
+        Les chiffres ci-dessous décrivent une activité déclarée, pas un jugement. La décision finale
+        reste la vôtre.
       </ScopeNotice>
 
-      {data.reports.length === 0 ? (
-        <EmptyState>Aucun bilan à préparer sur votre périmètre.</EmptyState>
-      ) : (
-        <div className="grid gap-4">
-          {data.reports.map((report) => {
-            const isReviewed = reviewed.includes(report.id);
-            const isSigned = report.signature.signed || signed.includes(report.id);
-            return (
-              <PanelCard
-                key={report.id}
-                title={`Bilan — ${learnerName(data, report.enrollmentId)}`}
-                description={`${activeProgram.name} · appréciation : ${APPRAISAL_LABEL[report.appraisal]}`}
-                action={
-                  <Badge variant={isSigned ? "secondary" : "outline"} className="font-normal">
-                    {isSigned ? "signé (simulé)" : "non signé"}
-                  </Badge>
-                }
-              >
-                <div className="grid gap-4 sm:grid-cols-3">
-                  <ReportBlock title="Volumes" lines={report.volumes} />
-                  <ReportBlock title="Objectifs" lines={report.objectives} />
-                  <ReportBlock title="Compétences" lines={report.competences} />
+      <PanelCard
+        title="Synthèse par étudiant"
+        description="Jours déclarés, compétences confirmées, traces écrites et échanges."
+      >
+        {bilans.length === 0 ? (
+          <p className="text-muted-foreground text-sm">Aucun carnet ouvert sur votre périmètre.</p>
+        ) : (
+          <ul className="divide-border divide-y">
+            {bilans.map((b) => (
+              <li key={b.log.id} className="py-3 first:pt-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-medium">{b.nom}</span>
+                  {b.cloture ? (
+                    <Badge variant={b.cloture.decision === "validated" ? "secondary" : "outline"}>
+                      {b.cloture.decision === "validated" ? "stage validé" : "correction demandée"}
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="font-normal">
+                      non clos
+                    </Badge>
+                  )}
                 </div>
-                <p>
-                  <span className="font-medium">Commentaire : </span>
-                  {report.supervisorComment}
-                </p>
-                {report.reservations ? (
-                  <p className="text-destructive">
-                    <span className="font-medium">Réserves : </span>
-                    {report.reservations}
-                  </p>
+                <dl className="mt-2 grid gap-2 text-sm sm:grid-cols-4">
+                  <div>
+                    <dt className="text-muted-foreground text-xs uppercase">Jours déclarés</dt>
+                    <dd>
+                      {b.jours} <span className="text-muted-foreground">/ {b.attendus} ouvrés</span>
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted-foreground text-xs uppercase">
+                      Compétences confirmées
+                    </dt>
+                    <dd>
+                      {b.confirmees}{" "}
+                      <span className="text-muted-foreground">/ {competences.length}</span>
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted-foreground text-xs uppercase">Notes d'expérience</dt>
+                    <dd>{b.notes}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted-foreground text-xs uppercase">Échanges ouverts</dt>
+                    <dd>{b.echanges}</dd>
+                  </div>
+                </dl>
+
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="mt-3"
+                  onClick={() => {
+                    setMotif("");
+                    setOuvert(ouvert === b.log.id ? null : b.log.id);
+                  }}
+                >
+                  {ouvert === b.log.id ? "Fermer" : "Clore le stage"}
+                </Button>
+
+                {ouvert === b.log.id ? (
+                  <div className="mt-3 space-y-3 rounded-xl border p-4">
+                    <p className="text-sm">
+                      Décision portant sur toute la période du{" "}
+                      {new Date(b.debut).toLocaleDateString("fr-FR")} au{" "}
+                      {new Date(b.fin).toLocaleDateString("fr-FR")}.
+                    </p>
+                    <div className="space-y-2">
+                      <label htmlFor={`motif-${b.log.id}`} className="block text-sm font-medium">
+                        Appréciation — obligatoire pour demander une correction
+                      </label>
+                      <Textarea
+                        id={`motif-${b.log.id}`}
+                        value={motif}
+                        onChange={(e) => setMotif(e.target.value)}
+                        placeholder="Ce que vous retenez du stage de cet étudiant."
+                      />
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        size="sm"
+                        disabled={clore.isPending}
+                        onClick={() =>
+                          clore.mutate({
+                            stageLogId: b.log.id,
+                            coversFrom: b.debut,
+                            coversTo: b.fin,
+                            decision: "validated",
+                            comment: motif.trim(),
+                          })
+                        }
+                      >
+                        Valider le stage
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={clore.isPending || motif.trim().length === 0}
+                        onClick={() =>
+                          clore.mutate({
+                            stageLogId: b.log.id,
+                            coversFrom: b.debut,
+                            coversTo: b.fin,
+                            decision: "needs_revision",
+                            comment: motif.trim(),
+                          })
+                        }
+                      >
+                        Demander une correction
+                      </Button>
+                    </div>
+                  </div>
                 ) : null}
-
-                <div className="flex items-start gap-2">
-                  <Checkbox
-                    id={`revue-${report.id}`}
-                    checked={isReviewed}
-                    onCheckedChange={(v) =>
-                      setReviewed((prev) =>
-                        v === true ? [...prev, report.id] : prev.filter((x) => x !== report.id),
-                      )
-                    }
-                  />
-                  <label htmlFor={`revue-${report.id}`} className="text-sm">
-                    J'ai relu la synthèse complète avant signature
-                  </label>
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    size="sm"
-                    disabled={!canSign || !isReviewed || isSigned}
-                    onClick={() => setSigned((prev) => [...prev, report.id])}
-                  >
-                    Signer (signature simulée)
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={!isSigned || transmitted.includes(report.id)}
-                    onClick={() => setTransmitted((prev) => [...prev, report.id])}
-                  >
-                    Transmettre à l'administration (interne)
-                  </Button>
-                  <Button size="sm" variant="outline" disabled={!isSigned}>
-                    Demander le certificat de complétude
-                  </Button>
-                </div>
-                {transmitted.includes(report.id) ? (
-                  <p className="text-sm text-muted-foreground">
-                    Démonstration : bilan disponible dans l'espace sécurisé de l'administration du
-                    programme. Aucun envoi externe.
-                  </p>
-                ) : null}
-              </PanelCard>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function ReportBlock({
-  title,
-  lines,
-}: {
-  title: string;
-  lines: readonly { label: string; value: string }[];
-}) {
-  return (
-    <div>
-      <p className="text-xs uppercase tracking-wide text-muted-foreground">{title}</p>
-      <ul className="mt-1 space-y-1">
-        {lines.map((l) => (
-          <li key={l.label} className="flex justify-between gap-2">
-            <span>{l.label}</span>
-            <span className="text-muted-foreground">{l.value}</span>
-          </li>
-        ))}
-      </ul>
+              </li>
+            ))}
+          </ul>
+        )}
+      </PanelCard>
     </div>
   );
 }

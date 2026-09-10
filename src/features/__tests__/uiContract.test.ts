@@ -121,12 +121,29 @@ describe("profil — sécurité non active", () => {
     expect(security).toContain("Disponible après activation du compte");
     for (const label of [
       "Authentification à deux facteurs",
-      "Changement de mot de passe",
+      /* « Changement de mot de passe » A QUITTE CETTE LISTE le 10/09 : il n'est
+         plus decrit comme a venir, il est fait -- dans
+         `AccountCredentialsSection`, garde par le contrat ci-dessous. */
       "Mot de passe oublié et récupération",
       "Sessions actives et révocation",
     ]) {
       expect(security).toContain(label);
     }
+  });
+});
+
+describe("profil — identifiants réellement modifiables", () => {
+  const identifiants = read("src/features/profile/AccountCredentialsSection.tsx");
+
+  it("change l'adresse et le mot de passe par Supabase, sans stockage local", () => {
+    expect(identifiants).toContain("auth.updateUser({ email: voulue })");
+    expect(identifiants).toContain("auth.updateUser({ password })");
+    expect(identifiants).not.toContain("localStorage");
+    expect(identifiants).not.toContain("sessionStorage");
+  });
+
+  it("dit que l'adresse ne change qu'après confirmation", () => {
+    expect(identifiants).toContain("lien de confirmation");
   });
 });
 

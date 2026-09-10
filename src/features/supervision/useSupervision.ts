@@ -6,7 +6,7 @@
  */
 import { useQuery } from "@tanstack/react-query";
 import { useDataAccess, useSession } from "@/application/session";
-import { scopedToSupervisedEnrollments, supervisedEnrollmentIds } from "@/domain/supervision";
+import { supervisedEnrollmentIds } from "@/domain/supervision";
 import { useLocalPlacements } from "@/application/placementDraftStore";
 import { mergePlacements } from "@/domain/placementDraft";
 
@@ -24,28 +24,31 @@ export function useSupervision() {
         activeProgram.id,
       );
       const enrollmentIds = supervisedEnrollmentIds(assignments, person.id);
-      const [
-        storedPlacements,
-        outcomes,
-        enrollments,
-        alerts,
-        cases,
-        confirmations,
-        reports,
-        messages,
-        logsToValidate,
-      ] = await Promise.all([
-        data.placements.listPlacements(activeProgram.id),
-        data.outcomes.listOutcomes(activeProgram.id),
-        data.supervision.listEnrollmentsByIds(enrollmentIds),
-        data.supervision.listAlerts(activeProgram.id),
-        data.supervision.listCaseDiscussions(activeProgram.id),
-        data.supervision.listCompetenceConfirmations(activeProgram.id),
-        data.supervision.listPlacementReports(activeProgram.id),
-        data.supervision.listMessages(activeProgram.id),
-        data.stageLogs.listLogsToValidate(activeProgram.id),
-      ]);
+      const [storedPlacements, outcomes, enrollments, messages, logsToValidate] = await Promise.all(
+        [
+          data.placements.listPlacements(activeProgram.id),
+          data.outcomes.listOutcomes(activeProgram.id),
+          data.supervision.listEnrollmentsByIds(enrollmentIds),
+          data.supervision.listMessages(activeProgram.id),
+          data.stageLogs.listLogsToValidate(activeProgram.id),
+        ],
+      );
       const learners = await data.supervision.listPeopleByIds(enrollments.map((e) => e.personId));
+      /*
+       * LES DECLARATIONS, LUES ICI ET UNE SEULE FOIS (10/09).
+       *
+       * `listCompetenceConfirmations` etait un depot de MAQUETTE : il filtrait
+       * sur `programId` et rendait donc VIDE avec l'identifiant reel. La vue
+       * d'ensemble et « Mes etudiants » annonçaient 0 competence a confirmer
+       * pendant que l'onglet Competences, lui branche sur `outcome_self_reports`,
+       * en montrait des dizaines. Deux chiffres pour la meme question, c'est un
+       * chiffre de trop : ils viennent desormais de la meme lecture.
+       */
+      const declarations = new Map(
+        await Promise.all(
+          enrollmentIds.map(async (id) => [id, await data.passport.listSelfReports(id)] as const),
+        ),
+      );
 
       return {
         assignments,
@@ -55,10 +58,7 @@ export function useSupervision() {
         placements: mergePlacements(storedPlacements, localPlacements),
         outcomes,
         logsToValidate,
-        alerts: scopedToSupervisedEnrollments(alerts, enrollmentIds),
-        cases: scopedToSupervisedEnrollments(cases, enrollmentIds),
-        confirmations: scopedToSupervisedEnrollments(confirmations, enrollmentIds),
-        reports: scopedToSupervisedEnrollments(reports, enrollmentIds),
+        declarations,
         messages,
       };
     },
@@ -71,4 +71,17 @@ export type SupervisionScope = NonNullable<ReturnType<typeof useSupervision>["da
 export function learnerName(scope: SupervisionScope, enrollmentId: string): string {
   const enrollment = scope.enrollments.find((e) => e.id === enrollmentId);
   return scope.learners.find((p) => p.id === enrollment?.personId)?.fullName ?? "Apprenant";
+}
+
+/** Les competences du programme -- les connaissances ne se confirment pas. */
+export function competencesDuProgramme(scope: SupervisionScope) {
+  return scope.outcomes.filter((o) => o.nature !== "knowledge");
+}
+
+/** Ce que cet etudiant a declare et qui attend la confirmation de l'encadrant. */
+export function aConfirmer(scope: SupervisionScope, enrollmentId: string): number {
+  const declarees = scope.declarations.get(enrollmentId) ?? [];
+  const competences = new Set(competencesDuProgramme(scope).map((o) => o.id as string));
+  return declarees.filter((d) => competences.has(d.outcomeId) && d.validatedAt === undefined)
+    .length;
 }

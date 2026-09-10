@@ -1162,6 +1162,22 @@ export interface PassportRepository {
   /** Les declarations d'une inscription. */
   listSelfReports(enrollmentId: EnrollmentId): Promise<readonly OutcomeSelfReport[]>;
   /**
+   * L'ENCADRANT CONFIRME une declaration. `validate_outcome_declaration`
+   * existe en base depuis le 31/08 et n'etait appelee par AUCUNE ligne de
+   * code : c'est le geste central de l'encadrement, et il n'avait pas de
+   * bouton. La base refuse d'elle-meme une CONNAISSANCE -- « la V1 ne teste
+   * pas les connaissances » -- donc l'ecran n'a pas a re-verifier la nature.
+   */
+  validateOutcomeDeclaration(input: {
+    readonly enrollmentId: EnrollmentId;
+    readonly outcomeId: OutcomeId;
+  }): Promise<OutcomeSelfReport>;
+  /** Retirer une confirmation posee par erreur. Reversible. */
+  revokeOutcomeValidation(input: {
+    readonly enrollmentId: EnrollmentId;
+    readonly outcomeId: OutcomeId;
+  }): Promise<OutcomeSelfReport>;
+  /**
    * Les notes d'experience de l'apprenant, INDEPENDANTES de ses declarations.
    * Lisibles par l'encadrement : c'est le corpus de la future analyse.
    */

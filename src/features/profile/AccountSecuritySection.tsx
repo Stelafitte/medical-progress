@@ -1,4 +1,4 @@
-import { KeyRound, Lock, MonitorSmartphone, ShieldCheck, MailQuestion } from "lucide-react";
+import { Lock, MonitorSmartphone, ShieldCheck, MailQuestion } from "lucide-react";
 import { SectionHeading } from "@/components/section-heading";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -25,14 +25,6 @@ const ITEMS: ReadonlyArray<{
     description:
       "Second facteur prévu (application d'authentification ou clé). Aucun facteur n'est configurable tant que le backend d'authentification n'est pas actif.",
     action: "Configurer la double authentification",
-  },
-  {
-    id: "securite-mdp",
-    icon: KeyRound,
-    title: "Changement de mot de passe",
-    description:
-      "Le changement se fera exclusivement côté serveur authentifié. Aucun champ de mot de passe n'est proposé dans cette itération.",
-    action: "Changer mon mot de passe",
   },
   {
     id: "securite-recuperation",

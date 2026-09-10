@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { ROLE_LABELS_FR, rolesInContext } from "@/domain/roles";
 import * as fx from "@/infrastructure/mock/fixtures";
+import { AccountCredentialsSection } from "./AccountCredentialsSection";
 import { AccountSecuritySection } from "./AccountSecuritySection";
 import { AvatarField } from "./AvatarField";
 import { IdentityForm } from "./IdentityForm";
@@ -136,6 +137,8 @@ export function ProfileView() {
           </ul>
         )}
       </section>
+
+      <AccountCredentialsSection currentEmail={person.email} />
 
       <AccountSecuritySection />
 

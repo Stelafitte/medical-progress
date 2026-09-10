@@ -793,6 +793,25 @@ export const mockDataAccess: DataAccess = {
         note: input.note ?? "",
       }),
     listSelfReports: () => ok([]),
+    /* En session simulee, confirmer ne fait que rendre la declaration confirmee :
+       aucune persistance, comme le reste du mock. */
+    validateOutcomeDeclaration: (input) =>
+      ok({
+        enrollmentId: input.enrollmentId,
+        outcomeId: input.outcomeId,
+        declaredLevel: "autonomous" as const,
+        declaredAt: new Date().toISOString(),
+        note: "",
+        validatedAt: new Date().toISOString(),
+      }),
+    revokeOutcomeValidation: (input) =>
+      ok({
+        enrollmentId: input.enrollmentId,
+        outcomeId: input.outcomeId,
+        declaredLevel: "autonomous" as const,
+        declaredAt: new Date().toISOString(),
+        note: "",
+      }),
     /*
      * Le mock ne garde PAS les notes : une note qu'on croit ecrite et qui
      * disparait est exactement le defaut qu'on repare ici. En session simulee,

@@ -38,7 +38,11 @@ describe("protection des routes", () => {
   );
 
   it("chaque écran d'encadrement est gardé par canAccessSupervision", () => {
-    expect(supervisionRoutes.length).toBeGreaterThanOrEqual(9);
+    /* SEPT, ET PLUS NEUF (10/09) : « Cas et questions » et « Alertes » ont ete
+       supprimes -- le premier n'avait aucun contenu, le second devenait une
+       seconde boite que personne n'ouvre. Le compte reste verrouille pour que
+       la disparition d'un onglet passe par une decision, pas par un oubli. */
+    expect(supervisionRoutes.length).toBeGreaterThanOrEqual(7);
     for (const file of supervisionRoutes) {
       const source = read(`src/routes/${file}`);
       expect(source).toContain("canAccessSupervision");
@@ -113,22 +117,42 @@ describe("aucune opération réelle", () => {
   });
 });
 
-describe("validation humaine et signature", () => {
-  it("la signature de bilan est annoncée comme simulée", () => {
+/*
+ * CES TROIS CONTRATS GARDAIENT LA MAQUETTE (« signature simulée »,
+ * `canSignPlacementReport`, `evaluateBulkValidation`) : ils verifiaient que les
+ * ecrans d'encadrement ANNONÇAIENT ne rien faire. Depuis le 10/09 ils font, et
+ * la garde change de sens -- elle verifie desormais que le geste passe par la
+ * base, et par la seule fonction habilitee. Ce qui doit rester impossible n'a
+ * pas change : une competence confirmee sans decision humaine, une connaissance
+ * validee, un stage clos sans ecriture.
+ */
+describe("validation humaine et decision", () => {
+  it("le bilan de fin de stage écrit une vraie décision, jamais une signature simulée", () => {
     const reports = read("src/features/supervision/SupervisionReports.tsx");
-    expect(reports).toContain("signature simulée");
-    expect(reports).toContain("canSignPlacementReport");
+    expect(reports).toContain("validateStageLogBlock");
+    expect(reports).not.toContain("signature simulée");
   });
 
   it("aucune compétence réelle sans confirmation humaine", () => {
     const competences = read("src/features/supervision/SupervisionCompetences.tsx");
-    expect(competences).toContain("canConfirmRealCompetence");
-    expect(competences).toContain("validation humaine");
+    /* La confirmation est un geste humain explicite, porte par la fonction
+       `validate_outcome_declaration` : aucun chemin ne valide en masse. */
+    expect(competences).toContain("validateOutcomeDeclaration");
+    /* Les connaissances theoriques sont hors champ. Le filtre vit dans
+       `competencesDuProgramme`, une seule fois, pour que les quatre ecrans
+       d'encadrement ne puissent pas en donner quatre versions -- et la base le
+       refuse de toute façon. */
+    expect(competences).toContain("competencesDuProgramme");
+    expect(read("src/features/supervision/useSupervision.ts")).toContain(
+      'nature !== "knowledge"',
+    );
   });
 
-  it("la validation groupée exige la revue de la synthèse", () => {
+  it("la décision de carnet porte sur une période de présence", () => {
     const logs = read("src/features/supervision/SupervisionLogs.tsx");
-    expect(logs).toContain("evaluateBulkValidation");
-    expect(logs).toContain("Synthèse des");
+    expect(logs).toContain("PresenceCalendar");
+    const calendrier = read("src/features/supervision/PresenceCalendar.tsx");
+    expect(calendrier).toContain("validateStageLogBlock");
+    expect(calendrier).toContain("coversFrom");
   });
 });

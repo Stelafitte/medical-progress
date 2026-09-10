@@ -7,7 +7,6 @@
  * route reste protégée indépendamment de la navigation.
  */
 import {
-  AlertTriangle,
   BadgeCheck,
   BookOpen,
   ClipboardCheck,
@@ -20,7 +19,6 @@ import {
   Mail,
   SlidersHorizontal,
 
-  MessagesSquare,
   Notebook,
   BarChart3,
   Route,
@@ -87,8 +85,6 @@ export const SUPERVISION_NAV: readonly NavEntry[] = [
     icon: BadgeCheck,
     exact: false,
   },
-  { to: "/espace/encadrement/cas", label: "Cas et questions", icon: MessagesSquare, exact: false },
-  { to: "/espace/encadrement/alertes", label: "Alertes", icon: AlertTriangle, exact: false },
   {
     to: "/espace/encadrement/bilans",
     label: "Bilans de stage",

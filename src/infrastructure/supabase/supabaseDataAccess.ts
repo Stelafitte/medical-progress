@@ -2475,6 +2475,22 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
         assertNoSupabaseError(error);
         return mapSelfReport(data as SelfReportRow);
       },
+      async validateOutcomeDeclaration(input) {
+        const { data, error } = await client.rpc("validate_outcome_declaration", {
+          p_enrollment_id: input.enrollmentId,
+          p_outcome_id: input.outcomeId,
+        });
+        assertNoSupabaseError(error);
+        return mapSelfReport(data as SelfReportRow);
+      },
+      async revokeOutcomeValidation(input) {
+        const { data, error } = await client.rpc("revoke_outcome_validation", {
+          p_enrollment_id: input.enrollmentId,
+          p_outcome_id: input.outcomeId,
+        });
+        assertNoSupabaseError(error);
+        return mapSelfReport(data as SelfReportRow);
+      },
       async listSelfReports(enrollmentId) {
         const { data, error } = await client
           .from("outcome_self_reports")
