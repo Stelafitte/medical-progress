@@ -72,6 +72,16 @@ describe("actions d'encadrement", () => {
     expect(canSignPlacementReport(["administrator"])).toBe(false);
   });
 
+  /*
+   * LE RESPONSABLE DE STAGE FAIT TOUT CE QUE FAIT L'ENCADRANT (décision de
+   * Stef, 10/09), et clôt le stage en plus. La clôture n'étant restreinte à
+   * personne, ce contrat garde l'inclusion, pas une exclusivité.
+   */
+  it("le responsable de stage a les droits de l'encadrant", () => {
+    expect(canConfirmRealCompetence(["placement_manager"])).toBe(true);
+    expect(canSignPlacementReport(["placement_manager"])).toBe(true);
+  });
+
   it("aucune validation groupée silencieuse", () => {
     expect(bulkValidationRequiresSummaryReview()).toBe(true);
     const withoutReview = evaluateBulkValidation(["placement_supervisor"], {
@@ -97,6 +107,10 @@ describe("accès par espace", () => {
     role: "placement_supervisor",
     scope: { kind: "placement", programId: "prog-a", placementId: "pla-1" },
   });
+  const managerA = role({
+    role: "placement_manager",
+    scope: { kind: "placement", programId: "prog-a", placementId: "pla-1" },
+  });
   const programAdminA = role({
     role: "administrator",
     scope: { kind: "program", programId: "prog-a" },
@@ -108,6 +122,9 @@ describe("accès par espace", () => {
     expect(canAccessLearnerSpace([learner], "prog-b")).toBe(false);
     expect(canAccessSupervision([supervisorA], "prog-a")).toBe(true);
     expect(canAccessSupervision([supervisorA], "prog-b")).toBe(false);
+    /* Le responsable de stage entre dans le meme espace, sur son terrain. */
+    expect(canAccessSupervision([managerA], "prog-a")).toBe(true);
+    expect(canAccessSupervision([managerA], "prog-b")).toBe(false);
     expect(canAccessProgramAdministration([programAdminA], "prog-a")).toBe(true);
     expect(canAccessProgramAdministration([programAdminA], "prog-b")).toBe(false);
   });

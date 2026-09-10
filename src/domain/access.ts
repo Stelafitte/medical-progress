@@ -41,8 +41,14 @@ export function canAccessPlatformAdministration(assignments: readonly RoleAssign
 }
 
 /**
- * Espace responsable de stage : au moins une portée stage dans le programme
- * sélectionné. Le périmètre reste limité aux affectations de cet encadrant.
+ * Espace d'encadrement : au moins une portée terrain dans le programme
+ * sélectionné.
+ *
+ * DEUX ROLES Y ENTRENT depuis le 10/09 (décision de Stef) : l'ENCADRANT, dont
+ * le périmètre est celui de ses groupes, et le RESPONSABLE DE STAGE, qui
+ * répond du terrain entier. Le second fait tout ce que fait le premier — la
+ * différence de périmètre est portée par `supervises_enrollment()` en base,
+ * pas par cet écran.
  */
 export function canAccessSupervision(
   assignments: readonly RoleAssignment[],
@@ -50,7 +56,7 @@ export function canAccessSupervision(
 ): boolean {
   return assignments.some(
     (a) =>
-      a.role === "placement_supervisor" &&
+      (a.role === "placement_supervisor" || a.role === "placement_manager") &&
       a.scope.kind === "placement" &&
       a.scope.programId === programId,
   );

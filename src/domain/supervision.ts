@@ -198,14 +198,20 @@ export function isSupervisorOfEnrollment(
 /* Règles pures d'action                                               */
 /* ------------------------------------------------------------------ */
 
-const VALIDATOR_ROLES: readonly RoleName[] = ["placement_supervisor", "teacher"];
+/* Le responsable de stage valide comme l'encadrant, et clôt le stage en plus
+   (décision de Stef, 10/09) : la clôture n'est restreinte à personne. */
+const VALIDATOR_ROLES: readonly RoleName[] = [
+  "placement_supervisor",
+  "placement_manager",
+  "teacher",
+];
 
 export function canConfirmRealCompetence(roles: readonly RoleName[]): boolean {
   return roles.some((r) => VALIDATOR_ROLES.includes(r));
 }
 
 export function canSignPlacementReport(roles: readonly RoleName[]): boolean {
-  return roles.includes("placement_supervisor");
+  return roles.includes("placement_supervisor") || roles.includes("placement_manager");
 }
 
 /** Invariant : une compétence réelle exige toujours une validation humaine. */

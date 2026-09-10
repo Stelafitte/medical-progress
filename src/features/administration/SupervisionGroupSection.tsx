@@ -139,6 +139,13 @@ function buildCandidates(args: {
       .filter(
         (assignment) =>
           assignment.role !== "learner" &&
+          /*
+           * NI LE RESPONSABLE DE TERRAIN. Il repond du terrain, il n encadre
+           * pas les etudiants : le proposer a cocher ferait esperer une
+           * validation de carnet que `stage_log_validations.validator_role`
+           * refuse. Ajoute le 10/09 avec le role lui-meme.
+           */
+          assignment.role !== "placement_manager" &&
           (assignment.scope.kind === "platform" || assignment.scope.programId === args.programId),
       )
       .map((assignment) => assignment.personId as string),
@@ -243,6 +250,7 @@ export function SupervisionGroupSection({
       (assignment) =>
         assignment.personId === personId &&
         (assignment.role === "placement_supervisor" ||
+          assignment.role === "placement_manager" ||
           assignment.role === "teacher" ||
           assignment.role === "administrator") &&
         // La portée « plateforme » n'a pas de programme : elle vaut partout.
