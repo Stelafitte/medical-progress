@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLearnerPassport } from "@/features/dashboard/useLearnerPassport";
 import { useDataAccess, useSession } from "@/application/session";
+import { StageGroupChoice } from "@/features/stage/StageGroupChoice";
 import { StageLogWeek } from "@/features/stage/StageLogWeek";
 import { StageLogsToValidate } from "@/features/stage/StageLogReviewSection";
 import type { PlacementId } from "@/domain/types";
@@ -102,7 +103,8 @@ export function StageView() {
           {myLogs.map((log) => {
             const placement = placements.find((p) => p.id === log.placementId);
             return (
-              <li key={log.id}>
+              <li key={log.id} className="space-y-3">
+                {log.placementId ? <StageGroupChoice placementId={log.placementId} /> : null}
                 <section className="overflow-hidden rounded-xl border bg-card shadow-[var(--shadow-card)]">
                   {/*
                     LA MEME ANATOMIE QUE LES AUTRES SECTIONS : tuile de compte en

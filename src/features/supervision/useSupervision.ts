@@ -24,15 +24,22 @@ export function useSupervision() {
         activeProgram.id,
       );
       const enrollmentIds = supervisedEnrollmentIds(assignments, person.id);
-      const [storedPlacements, outcomes, enrollments, messages, logsToValidate] = await Promise.all(
-        [
+      const [storedPlacements, outcomes, enrollments, messages, logsToValidate, groups, weeks] =
+        await Promise.all([
           data.placements.listPlacements(activeProgram.id),
           data.outcomes.listOutcomes(activeProgram.id),
           data.supervision.listEnrollmentsByIds(enrollmentIds),
           data.supervision.listMessages(activeProgram.id),
           data.stageLogs.listLogsToValidate(activeProgram.id),
-        ],
-      );
+          /*
+           * LES GROUPES ET LEUR CALENDRIER. Lus par l'encadrant, pas seulement
+           * par l'administration : c'est le groupe qui dit a quelles semaines
+           * ses etudiants etaient attendus dans le service. La RLS borne la
+           * portee -- `is_program_staff` inclut `placement_supervisor`.
+           */
+          data.placements.listSupervisionGroups(activeProgram.id),
+          data.placements.listSupervisionGroupWeeks(activeProgram.id),
+        ]);
       const learners = await data.supervision.listPeopleByIds(enrollments.map((e) => e.personId));
       /*
        * LES DECLARATIONS, LUES ICI ET UNE SEULE FOIS (10/09).
@@ -59,6 +66,8 @@ export function useSupervision() {
         outcomes,
         logsToValidate,
         declarations,
+        groups,
+        weeks,
         messages,
       };
     },
@@ -84,4 +93,22 @@ export function aConfirmer(scope: SupervisionScope, enrollmentId: string): numbe
   const competences = new Set(competencesDuProgramme(scope).map((o) => o.id as string));
   return declarees.filter((d) => competences.has(d.outcomeId) && d.validatedAt === undefined)
     .length;
+}
+
+/**
+ * Le calendrier « en service / chez soi » d'un etudiant, par le groupe dont il
+ * est membre. `undefined` quand aucune semaine n'a ete posee : le calendrier de
+ * presence le dit alors, plutot que de deviner.
+ */
+export function semainesDeLEtudiant(
+  scope: SupervisionScope,
+  enrollmentId: string,
+): ReadonlyMap<string, "on" | "off"> | undefined {
+  const groupe = scope.groups.find((g) =>
+    (g.memberEnrollmentIds as readonly string[]).includes(enrollmentId),
+  );
+  if (!groupe) return undefined;
+  const siennes = scope.weeks.filter((w) => w.groupId === groupe.id);
+  if (siennes.length === 0) return undefined;
+  return new Map(siennes.map((w) => [w.weekStart, w.kind] as const));
 }

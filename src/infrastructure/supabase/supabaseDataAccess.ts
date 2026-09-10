@@ -1397,6 +1397,52 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
         assertNoSupabaseError(error);
         return mapPlacement(data as PlacementRow);
       },
+      /**
+       * LES SEMAINES DU STAGE, lues pour TOUT le programme d un coup.
+       *
+       * La policy `supervision_group_weeks_select` borne deja la portee au
+       * programme de la personne : filtrer ici sur les groupes qu on connait
+       * ferait une seconde verite a tenir d accord avec la RLS. On demande
+       * donc tout ce que la base accepte de rendre.
+       */
+      async listSupervisionGroupWeeks(programId: ProgramId) {
+        const { data, error } = await client
+          .from("supervision_group_weeks")
+          .select("group_id, week_start, kind, supervision_groups!inner(program_id)")
+          .eq("supervision_groups.program_id", programId)
+          .order("week_start");
+        assertNoSupabaseError(error);
+        return ((data ?? []) as { group_id: string; week_start: string; kind: string }[]).map(
+          (row) => ({
+            groupId: row.group_id as SupervisionGroupId,
+            weekStart: row.week_start.slice(0, 10),
+            kind: row.kind as "on" | "off",
+          }),
+        );
+      },
+      async joinSupervisionGroup(groupId) {
+        const { error } = await client.rpc("join_supervision_group", {
+          p_group_id: groupId,
+        });
+        assertNoSupabaseError(error);
+      },
+      async setSupervisionGroupWeek(input) {
+        const { error } = await client.rpc("set_supervision_group_week", {
+          p_group_id: input.groupId,
+          p_week_start: input.weekStart,
+          p_kind: input.kind,
+        });
+        assertNoSupabaseError(error);
+      },
+      async generateSupervisionGroupWeeks(input) {
+        const { data, error } = await client.rpc("generate_supervision_group_weeks", {
+          p_group_id: input.groupId,
+          p_first_kind: input.firstKind,
+          p_period: input.period,
+        });
+        assertNoSupabaseError(error);
+        return (data as number) ?? 0;
+      },
       async listSupervisionGroups(programId: ProgramId) {
         const { data, error } = await client
           .from("supervision_groups")

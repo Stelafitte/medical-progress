@@ -320,6 +320,19 @@ export interface SupervisionGroup extends Entity<SupervisionGroupId> {
   readonly supervisorPersonIds: readonly PersonId[];
 }
 
+/**
+ * UNE SEMAINE DU STAGE, POUR UN GROUPE. `on` = les etudiants du groupe sont
+ * dans le service ; `off` = ils travaillent chez eux. L ABSENCE DE LIGNE n est
+ * pas `off` : c est « pas encore renseigne », et les deux ne se peignent pas
+ * pareil dans le calendrier de presence.
+ */
+export interface SupervisionGroupWeek {
+  readonly groupId: SupervisionGroupId;
+  /** Le lundi de la semaine, `YYYY-MM-DD`. */
+  readonly weekStart: string;
+  readonly kind: "on" | "off";
+}
+
 /* ------------------------------------------------------------------ */
 /* Sources d'equipe d'encadrement */
 /* ------------------------------------------------------------------ */

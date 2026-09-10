@@ -189,13 +189,24 @@ export function SupervisionGroupSection({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [supervisorDraft, setSupervisorDraft] = useState<readonly string[] | null>(null);
+  const [groupId, setGroupId] = useState<string | null>(null);
+  const [memberDraft, setMemberDraft] = useState<readonly string[] | null>(null);
   const [newSupervisor, setNewSupervisor] = useState(EMPTY_SUPERVISOR);
   const [added, setAdded] = useState<string | null>(null);
   const dataAccess = useDataAccess();
   const { person } = useSession();
 
   const cohort = cohorts.find((c) => c.id === cohortId);
-  const group = groups.find((g) => g.cohortId === cohortId);
+  /*
+   * PLUSIEURS GROUPES PAR PROMOTION (10/09). L'ecran n'en connaissait qu'un
+   * seul -- `groups.find(...)` -- ce qui rendait impossible la seule chose que
+   * Stef a decrite : deux moities qui alternent, l'une dans le service pendant
+   * que l'autre travaille chez elle. La base, elle, l'autorisait depuis le
+   * 31/08 : `unique (cohort_id, label)`, donc autant de groupes qu'on veut,
+   * pourvu qu'ils portent des noms distincts.
+   */
+  const groupesDeLaPromo = groups.filter((g) => g.cohortId === cohortId);
+  const group = groupesDeLaPromo.find((g) => g.id === groupId) ?? groupesDeLaPromo[0];
   const inscrits = enrollments.filter((e) => e.cohortId === cohortId);
   const targetPlacementId = placementId ?? placements[0]?.id ?? null;
 
@@ -250,20 +261,36 @@ export function SupervisionGroupSection({
   const createGroup = () =>
     run(async () => {
       if (!cohort || !targetPlacementId) return;
+      const premier = groupesDeLaPromo.length === 0;
       const created = await dataAccess.placements.createSupervisionGroup({
         cohortId: cohort.id,
         placementId: targetPlacementId as PlacementId,
-        label: cohort.label,
+        /*
+         * `unique (cohort_id, label)` : un second groupe portant le nom de la
+         * promotion serait refuse par la base. On suffixe donc a partir du
+         * deuxieme, sans renommer le premier -- renommer casserait les reperes
+         * de qui l'utilise deja.
+         */
+        label: premier
+          ? cohort.label
+          : `${cohort.label} — groupe ${String.fromCharCode(65 + groupesDeLaPromo.length)}`,
       });
-      // Le groupe naît vide : on y met immédiatement tous les inscrits de la
-      // promotion. Un seul geste pour l'utilisateur, deux appels ici.
-      await dataAccess.placements.setSupervisionGroupMembers(
-        created.id,
-        inscrits.map((e) => e.id as EnrollmentId),
-      );
-      // Le carnet existe DÈS maintenant, vide : un étudiant qui n'a rien écrit
-      // doit rester visible pour son encadrant, sinon personne ne le relance.
-      await dataAccess.stageLogs.openStageLogsForGroup(created.id);
+      if (premier) {
+        // Le premier groupe rassemble toute la promotion : c'est le cas
+        // ordinaire, un seul geste pour l'utilisateur.
+        await dataAccess.placements.setSupervisionGroupMembers(
+          created.id,
+          inscrits.map((e) => e.id as EnrollmentId),
+        );
+        // Le carnet existe DÈS maintenant, vide : un étudiant qui n'a rien
+        // écrit doit rester visible pour son encadrant.
+        await dataAccess.stageLogs.openStageLogsForGroup(created.id);
+      }
+      // UN GROUPE SUPPLEMENTAIRE NAIT VIDE, et c'est voulu : on le cree pour
+      // separer la promotion, pas pour la dupliquer. Ses membres se cochent
+      // ensuite, et le meme etudiant ne doit pas se retrouver dans les deux.
+      setGroupId(created.id);
+      setMemberDraft(null);
     }, "Constitution du groupe impossible.");
 
   const syncMembers = () =>
@@ -334,6 +361,40 @@ export function SupervisionGroupSection({
       await dataAccess.stageLogs.openStageLogsForGroup(group.id);
     }, "Ouverture des carnets impossible.");
 
+  /** Le nom porte par une inscription, pour cocher des personnes et non des identifiants. */
+  const nomDeLInscription = (enrollmentId: string) => {
+    const inscription = enrollments.find((e) => e.id === enrollmentId);
+    return people.find((p) => p.id === inscription?.personId)?.fullName ?? "Apprenant sans profil";
+  };
+
+  const membresCoches = memberDraft ?? group?.memberEnrollmentIds ?? [];
+
+  /** L'autre groupe de la promotion ou cet inscrit figure deja, s'il y en a un. */
+  const autreGroupeDe = (enrollmentId: string) =>
+    groupesDeLaPromo.find(
+      (g) =>
+        g.id !== group?.id && (g.memberEnrollmentIds as readonly string[]).includes(enrollmentId),
+    );
+
+  const basculerMembre = (enrollmentId: string) =>
+    setMemberDraft(
+      membresCoches.includes(enrollmentId)
+        ? membresCoches.filter((id) => id !== enrollmentId)
+        : [...membresCoches, enrollmentId],
+    );
+
+  const saveMembers = () =>
+    run(async () => {
+      if (!group) return;
+      await dataAccess.placements.setSupervisionGroupMembers(
+        group.id,
+        membresCoches as readonly EnrollmentId[],
+      );
+      // Idempotent : ouvre le carnet des seuls nouveaux venus.
+      await dataAccess.stageLogs.openStageLogsForGroup(group.id);
+      setMemberDraft(null);
+    }, "Enregistrement des membres impossible.");
+
   const newSupervisorReady =
     newSupervisor.firstName.trim().length > 0 &&
     newSupervisor.lastName.trim().length > 0 &&
@@ -392,6 +453,44 @@ export function SupervisionGroupSection({
         </div>
       ) : (
         <div className="space-y-5">
+          {/*
+            LE CHOIX DU GROUPE, et la porte pour en ouvrir un second. Une
+            promotion qui alterne par moities a DEUX groupes : celui qui est
+            dans le service cette semaine, et celui qui travaille chez lui.
+          */}
+          <div className="flex flex-wrap items-end gap-3">
+            {groupesDeLaPromo.length > 1 ? (
+              <div className="space-y-1.5">
+                <Label htmlFor="supervision-groupe">Groupe</Label>
+                <Select
+                  value={group.id}
+                  onValueChange={(next) => {
+                    setGroupId(next);
+                    setMemberDraft(null);
+                    setSupervisorDraft(null);
+                  }}
+                >
+                  <SelectTrigger id="supervision-groupe" className="min-w-64">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {groupesDeLaPromo.map((g) => (
+                      <SelectItem key={g.id} value={g.id}>
+                        {g.label} — {g.memberEnrollmentIds.length} étudiant(s)
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : null}
+            <Button variant="outline" onClick={createGroup} disabled={busy || !targetPlacementId}>
+              {busy ? "Constitution…" : "Ajouter un groupe"}
+            </Button>
+            <p className="text-muted-foreground text-[12.5px]">
+              Un groupe supplémentaire naît vide : cochez ensuite qui en fait partie.
+            </p>
+          </div>
+
           <dl className="grid gap-2 text-sm sm:grid-cols-3">
             <div>
               <dt className="text-muted-foreground">Terrain</dt>
@@ -427,7 +526,12 @@ export function SupervisionGroupSection({
             </div>
           ) : null}
 
-          {missing > 0 ? (
+          {/*
+            « TOUT LE MONDE DANS LE GROUPE » N'A DE SENS QUE S'IL N'Y EN A QU'UN.
+            Des qu'une promotion est coupee en deux, ce bouton y remettrait
+            l'autre moitie : on le retire, et le choix se fait a la case.
+          */}
+          {missing > 0 && groupesDeLaPromo.length === 1 ? (
             <div className="space-y-2">
               <p className="text-sm">
                 {missing} inscrit(s) de cette promotion ne sont pas encore dans le groupe.
@@ -437,6 +541,60 @@ export function SupervisionGroupSection({
               </Button>
             </div>
           ) : null}
+
+          <div className="space-y-2">
+            <p className="text-sm font-medium">Qui fait partie de ce groupe</p>
+            {inscrits.length === 0 ? (
+              <p className="text-muted-foreground text-sm">Aucun inscrit dans cette promotion.</p>
+            ) : (
+              <>
+                <ul className="grid gap-1.5 sm:grid-cols-2">
+                  {inscrits.map((inscription) => {
+                    const ailleurs = autreGroupeDe(inscription.id);
+                    const coche = membresCoches.includes(inscription.id);
+                    return (
+                      <li key={inscription.id} className="flex items-start gap-2">
+                        <Checkbox
+                          id={`membre-${inscription.id}`}
+                          checked={coche}
+                          onCheckedChange={() => basculerMembre(inscription.id)}
+                        />
+                        <label htmlFor={`membre-${inscription.id}`} className="text-sm">
+                          <span className="block">{nomDeLInscription(inscription.id)}</span>
+                          {ailleurs ? (
+                            <span
+                              className={
+                                coche
+                                  ? "text-destructive block text-[12px]"
+                                  : "text-muted-foreground block text-[12px]"
+                              }
+                            >
+                              {coche
+                                ? `déjà dans « ${ailleurs.label} » — il serait dans les deux`
+                                : `dans « ${ailleurs.label} »`}
+                            </span>
+                          ) : null}
+                        </label>
+                      </li>
+                    );
+                  })}
+                </ul>
+                {memberDraft ? (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button onClick={saveMembers} disabled={busy}>
+                      {busy ? "Enregistrement…" : "Enregistrer les membres"}
+                    </Button>
+                    <Button variant="ghost" onClick={() => setMemberDraft(null)} disabled={busy}>
+                      Annuler
+                    </Button>
+                    <span className="text-muted-foreground text-[12.5px]">
+                      {membresCoches.length} coché(s) — les carnets manquants s'ouvriront.
+                    </span>
+                  </div>
+                ) : null}
+              </>
+            )}
+          </div>
 
           <div className="space-y-2">
             <Label>Qui encadre ce groupe</Label>

@@ -110,6 +110,7 @@ import type {
   RoleAssignment,
   SupervisionGroup,
   SupervisionGroupId,
+  SupervisionGroupWeek,
 } from "@/domain/types";
 import type { GrantableRole, GrantScopeKind } from "@/domain/accessGrant";
 import type {
@@ -454,6 +455,38 @@ export interface PlacementRepository {
     groupId: SupervisionGroupId,
     personIds: readonly PersonId[],
   ): Promise<void>;
+
+  /**
+   * LE CALENDRIER « SEMAINE EN SERVICE / SEMAINE CHEZ SOI » des groupes du
+   * programme. Sans lui, le calendrier de presence ne sait pas distinguer une
+   * journee manquee d une semaine ou personne n etait attendu.
+   */
+  listSupervisionGroupWeeks(programId: ProgramId): Promise<readonly SupervisionGroupWeek[]>;
+
+  /**
+   * L ETUDIANT SE PLACE LUI-MEME dans un groupe de sa promotion, et peut en
+   * changer en cours de stage. Aucun identifiant d etudiant en argument : la
+   * fonction serveur retrouve l inscription depuis `auth.uid()`, donc personne
+   * ne peut placer quelqu un d autre.
+   */
+  joinSupervisionGroup(groupId: SupervisionGroupId): Promise<void>;
+
+  /** Pose ou corrige UNE semaine. `kind` a `null` efface la ligne. */
+  setSupervisionGroupWeek(input: {
+    readonly groupId: SupervisionGroupId;
+    readonly weekStart: string;
+    readonly kind: "on" | "off" | null;
+  }): Promise<void>;
+
+  /**
+   * Pose l alternance reguliere sur toute la periode de la promotion et
+   * REMPLACE le calendrier existant du groupe. Rend le nombre de semaines.
+   */
+  generateSupervisionGroupWeeks(input: {
+    readonly groupId: SupervisionGroupId;
+    readonly firstKind: "on" | "off";
+    readonly period: number;
+  }): Promise<number>;
 }
 
 export interface CreatePlacementInput {

@@ -16,6 +16,7 @@ import { ScopeNotice, StatCard } from "@/features/professional/mock-ui";
 import { PlacementSection } from "@/features/administration/PlacementSection";
 import { StageLogTemplatesSection } from "@/features/administration/StageLogTemplatesSection";
 import { SupervisionGroupSection } from "@/features/administration/SupervisionGroupSection";
+import { SupervisionWeeksSection } from "@/features/administration/SupervisionWeeksSection";
 import type { ProgramId } from "@/domain/types";
 import { useProgramAdmin } from "@/features/administration/useProgramAdmin";
 import { defaultPilotCohortId } from "@/features/administration/adminProgramViewModel";
@@ -85,6 +86,13 @@ export function AdminStages() {
             onChanged={() => void refetch()}
           />
         }
+      />
+
+      <SupervisionWeeksSection
+        programId={programId}
+        cohorts={data.cohorts}
+        cohortId={selectedId ?? ""}
+        groups={data.groups}
       />
 
       <StageLogTemplatesSection />

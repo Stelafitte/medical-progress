@@ -5,7 +5,11 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useDataAccess } from "@/application/session";
-import { learnerName, type SupervisionScope } from "@/features/supervision/useSupervision";
+import {
+  learnerName,
+  semainesDeLEtudiant,
+  type SupervisionScope,
+} from "@/features/supervision/useSupervision";
 import type { StageLog } from "@/domain/stageLog";
 import type { ValidateStageLogBlockInput } from "@/application/ports/repositories";
 
@@ -74,7 +78,7 @@ function semainesDeLaPeriode(debut: string, fin: string): readonly Semaine[] {
   return semaines;
 }
 
-type EtatJour = "declare" | "avenir" | "manquant" | "hors";
+type EtatJour = "declare" | "avenir" | "manquant" | "off" | "hors";
 
 function etatsDeLaSemaine(
   semaine: Semaine,
@@ -82,12 +86,24 @@ function etatsDeLaSemaine(
   debut: string,
   fin: string,
   aujourdhui: string,
+  rythme: "on" | "off" | undefined,
 ): readonly EtatJour[] {
+  /*
+   * LE REPLI, QUAND AUCUN CALENDRIER N'A ETE POSE. Sans les semaines on/off,
+   * on ne peut pas distinguer une journee manquee d'une semaine ou personne
+   * n'etait attendu : une semaine entierement vide est alors traitee comme une
+   * semaine off, ce qui masque une semaine en service oubliee. Des que
+   * l'administration a pose le calendrier, ce repli ne sert plus.
+   */
   const auMoinsUn = semaine.jours.some((j) => declares.has(j.cle));
   return semaine.jours.map((j) => {
-    if (declares.has(j.cle)) return "declare";
     if (j.cle < debut || j.cle > fin) return "hors";
+    /* Une journee declaree pendant une semaine off reste declaree : c'est
+       l'etudiant qui est venu, pas le calendrier qui a tort. */
+    if (declares.has(j.cle)) return "declare";
+    if (rythme === "off") return "off";
     if (j.cle > aujourdhui) return "avenir";
+    if (rythme === "on") return "manquant";
     return auMoinsUn ? "manquant" : "hors";
   });
 }
@@ -96,14 +112,16 @@ const COULEUR: Record<EtatJour, string> = {
   declare: "bg-emerald-500",
   avenir: "bg-muted",
   manquant: "bg-amber-500",
+  off: "bg-sky-200 dark:bg-sky-900",
   hors: "bg-muted/40",
 };
 
 const LEGENDE: readonly { etat: EtatJour; texte: string }[] = [
   { etat: "declare", texte: "journée déclarée" },
   { etat: "manquant", texte: "journée passée non renseignée" },
+  { etat: "off", texte: "semaine de travail personnel" },
   { etat: "avenir", texte: "à venir" },
-  { etat: "hors", texte: "hors période ou semaine sans déclaration" },
+  { etat: "hors", texte: "hors période" },
 ];
 
 export function PresenceCalendar({ scope }: { scope: SupervisionScope }) {
@@ -134,6 +152,7 @@ export function PresenceCalendar({ scope }: { scope: SupervisionScope }) {
             fin,
             declares,
             recits,
+            rythme: semainesDeLEtudiant(scope, log.enrollmentId),
             semaines: semainesDeLaPeriode(debut, fin),
           };
         })
@@ -192,7 +211,14 @@ export function PresenceCalendar({ scope }: { scope: SupervisionScope }) {
                   {c.nom}
                 </th>
                 {c.semaines.map((s) => {
-                  const etats = etatsDeLaSemaine(s, c.declares, c.debut, c.fin, aujourdhui);
+                  const etats = etatsDeLaSemaine(
+                    s,
+                    c.declares,
+                    c.debut,
+                    c.fin,
+                    aujourdhui,
+                    c.rythme?.get(cle(s.lundi)),
+                  );
                   const clef = cle(s.lundi);
                   const selectionnee = ouvert?.logId === c.log.id && ouvert.lundi === clef;
                   return (
@@ -235,6 +261,14 @@ export function PresenceCalendar({ scope }: { scope: SupervisionScope }) {
         ))}
       </ul>
 
+      {carnets.some((c) => c.rythme === undefined) ? (
+        <p className="text-muted-foreground text-[12px] leading-relaxed">
+          Aucun calendrier « semaine en service / semaine chez soi » n'a encore été posé pour au
+          moins un groupe. En attendant, une semaine sans aucune déclaration est comptée comme une
+          semaine de travail personnel — ce qui peut masquer une semaine en service oubliée.
+        </p>
+      ) : null}
+
       {ouvert
         ? (() => {
             const c = carnets.find((x) => x.log.id === ouvert.logId);
@@ -245,6 +279,12 @@ export function PresenceCalendar({ scope }: { scope: SupervisionScope }) {
               <div className="space-y-3 rounded-xl border p-4">
                 <p className="font-medium">
                   {c.nom} — semaine du {s.lundi.toLocaleDateString("fr-FR")}
+                  {c.rythme?.get(ouvert.lundi) === "off" ? (
+                    <span className="text-muted-foreground font-normal">
+                      {" "}
+                      · semaine de travail personnel
+                    </span>
+                  ) : null}
                 </p>
                 <ul className="space-y-2">
                   {s.jours.map((j, i) => {

@@ -405,6 +405,12 @@ export const mockDataAccess: DataAccess = {
     },
     listSupervisionGroups: (programId) =>
       ok(createdGroups.filter((g) => g.programId === programId)),
+    /* Le calendrier des semaines n'existe qu'en base : en session simulee il
+       est vide, et le calendrier de presence retombe sur son repli documente. */
+    listSupervisionGroupWeeks: () => ok([]),
+    joinSupervisionGroup: () => ok(undefined),
+    setSupervisionGroupWeek: () => ok(undefined),
+    generateSupervisionGroupWeeks: () => ok(0),
     createSupervisionGroup: (input) => {
       const placement = [...fx.placements, ...createdPlacements].find(
         (p) => p.id === input.placementId,
