@@ -63,6 +63,7 @@ export function canValidateEvidence(
 export const ROLE_LABELS_FR: Record<RoleName, string> = {
   learner: "Apprenant",
   placement_supervisor: "Encadrant de stage",
+  placement_manager: "Responsable de terrain de stage",
   teacher: "Enseignant",
   administrator: "Administrateur",
 };

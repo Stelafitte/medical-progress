@@ -171,7 +171,22 @@ export interface Enrollment extends Entity<EnrollmentId> {
   readonly status: "active" | "suspended" | "completed" | "withdrawn";
 }
 
-export type RoleName = "learner" | "placement_supervisor" | "teacher" | "administrator";
+/**
+ * ⚠️ CETTE UNION DOIT SUIVRE L ENUM `role_name` DE LA BASE, qui compte cinq
+ * valeurs depuis la migration 20260910220000. Un role lu en base et absent
+ * d ici ne provoque aucune erreur : il traverse le code comme une chaine que
+ * personne ne reconnait, et ressort en blanc a l ecran. C est exactement ce qui
+ * arrivait a « Responsable de terrain de stage » avant le 10/09 au soir.
+ *
+ * `placement_manager` repond DU terrain, la ou `placement_supervisor` suit des
+ * groupes. Depuis la migration 20260910250000 il EST dans `is_program_staff()`
+ * et dans `supervises_enrollment()` : il fait tout ce que fait un encadrant,
+ * plus la validation du stage et l envoi de messages. Son droit passe par la
+ * portee de son role, jamais par `supervision_group_supervisors` : deux chemins
+ * vers le meme droit finiraient par diverger.
+ */
+export type RoleName =
+  "learner" | "placement_supervisor" | "placement_manager" | "teacher" | "administrator";
 
 /**
  * Portée d'un rôle : un rôle n'est jamais purement global.
