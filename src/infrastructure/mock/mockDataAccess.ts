@@ -812,6 +812,7 @@ export const mockDataAccess: DataAccess = {
    */
   discussions: {
     listThreads: () => ok([]),
+    listThreadsForProgram: () => ok([]),
     listMessages: () => ok([]),
     postMessage: () => {
       throw new Error("Les échanges ne sont pas disponibles en session simulée.");

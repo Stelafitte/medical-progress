@@ -1,78 +1,136 @@
 import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { MessagesSquare } from "lucide-react";
+
 import { SectionHeading } from "@/components/section-heading";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { EYEBROW, TABULAIRE } from "@/components/milestone-heading";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Textarea } from "@/components/ui/textarea";
-import { EmptyState, MockBadge, PanelCard, ScopeNotice } from "@/features/professional/mock-ui";
-import { useSupervision } from "@/features/supervision/useSupervision";
-import { NO_REAL_SEND_FR } from "@/domain/administration";
+import { useDataAccess, useSession } from "@/application/session";
+import { ThreadConversation, nonLu, sujetDuFil } from "@/features/discussions/ThreadPanel";
+import type { DiscussionThreadId } from "@/domain/types";
 
+/**
+ * MESSAGERIE DE L'ENCADRANT — les fils de ses étudiants (10/09).
+ *
+ * ⚠️ CE QUE CET ÉCRAN AFFICHAIT JUSQU'ICI. Un formulaire « Préparer un
+ * message » qui n'expédiait rien, un « Historique simulé » alimenté par des
+ * fixtures de maquette, et un bandeau « Simulé — aucun envoi ». Constaté par
+ * Stef en testant la boucle de bout en bout : ses deux vrais messages, envoyés
+ * depuis « Mes compétences » et depuis le carnet, n'apparaissaient nulle part.
+ * L'écran ne mentait pas sur son état — il le disait — mais il occupait la
+ * place de la seule chose qui compte ici.
+ *
+ * LE PÉRIMÈTRE N'EST PAS CALCULÉ ICI, et c'est structurel : on demande TOUS les
+ * fils du programme, et la policy `discussion_threads_select` s'appuie sur
+ * `supervises_enrollment()` — l'encadrant ne reçoit que les fils de ses
+ * groupes. Le filtrer côté écran aurait créé une seconde vérité à tenir
+ * d'accord avec la RLS ; c'est exactement ce qu'on a refusé pour les
+ * affectations.
+ *
+ * PAS DE « NOUVEAU MESSAGE ». Un fil pend à une compétence ou à une journée de
+ * carnet : il n'y a pas de conversation « à propos de rien ». L'encadrant peut
+ * ouvrir un fil de sa propre initiative — décision de Stef — mais depuis
+ * l'objet concerné, pas depuis une page blanche. Tant que l'écran étudiant de
+ * l'encadrant n'existe pas, il répond aux fils qu'on lui adresse.
+ */
 export function SupervisionMessages() {
-  const { data, isPending } = useSupervision();
-  const [subject, setSubject] = useState("");
-  const [body, setBody] = useState("");
-  const [prepared, setPrepared] = useState<string | null>(null);
+  const data = useDataAccess();
+  const queryClient = useQueryClient();
+  const { activeProgram } = useSession();
+  const [ouvert, setOuvert] = useState<DiscussionThreadId | null>(null);
 
-  if (isPending || !data) return <Skeleton className="h-64 w-full" />;
+  const { data: fils, isPending } = useQuery({
+    queryKey: ["discussion-threads", "programme", activeProgram.id],
+    queryFn: () => data.discussions.listThreadsForProgram(activeProgram.id),
+  });
+
+  const marquer = useMutation({
+    mutationFn: (threadId: DiscussionThreadId) => data.discussions.markThreadRead(threadId),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["discussion-threads"] }),
+  });
+
+  if (isPending) return <Skeleton className="h-64 w-full" />;
+
+  const liste = fils ?? [];
+  const enAttente = liste.filter(nonLu).length;
 
   return (
     <div className="space-y-6">
       <SectionHeading
-        title="Messagerie et notifications"
+        title="Messagerie"
         level={1}
-        action={<MockBadge label="Simulé — aucun envoi" />}
-        description="Échanges avec les étudiants encadrés et l'administration du programme."
+        description="Les échanges ouverts par vos étudiants, à propos d'une compétence ou d'une journée de stage."
       />
 
-      <ScopeNotice>{NO_REAL_SEND_FR}</ScopeNotice>
-
-      <PanelCard title="Préparer un message" description="Aucune expédition dans cette maquette.">
-        <div>
-          <label htmlFor="sujet" className="mb-1 block text-sm font-medium">
-            Objet
-          </label>
-          <Input id="sujet" value={subject} onChange={(e) => setSubject(e.target.value)} />
-        </div>
-        <div>
-          <label htmlFor="corps" className="mb-1 block text-sm font-medium">
-            Message
-          </label>
-          <Textarea id="corps" value={body} onChange={(e) => setBody(e.target.value)} />
-        </div>
-        <Button
-          size="sm"
-          disabled={subject.trim().length === 0 || body.trim().length === 0}
-          onClick={() => setPrepared("Message préparé (non envoyé) — démonstration.")}
-        >
-          Préparer l'envoi
-        </Button>
-        {prepared ? <p className="text-sm text-muted-foreground">{prepared}</p> : null}
-      </PanelCard>
-
-      <PanelCard title="Historique simulé" description="Messages et relances de démonstration.">
-        {data.messages.length === 0 ? (
-          <EmptyState>Aucun message dans ce programme.</EmptyState>
+      <div className="bg-card overflow-hidden rounded-xl border shadow-[var(--shadow-card)]">
+        {liste.length === 0 ? (
+          /*
+            LE VIDE DIT CE QU'IL ATTEND, et d'où ça viendra. « Aucun message »
+            seul laisserait l'encadrant se demander si l'écran fonctionne.
+          */
+          <p className="text-muted-foreground px-4 py-6 text-center text-[13px] leading-relaxed">
+            Aucun échange pour l'instant.
+            <br />
+            Vos étudiants ouvrent un échange depuis une compétence ou une journée de leur carnet.
+          </p>
         ) : (
-          <ul className="space-y-3">
-            {data.messages.map((m) => (
-              <li key={m.id} className="space-y-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-medium">{m.subject}</span>
-                  <Badge variant="outline" className="font-normal">
-                    {m.kind === "reminder" ? "relance" : "message"}
-                  </Badge>
-                  <span className="text-xs text-muted-foreground">
-                    {new Date(m.sentAt).toLocaleDateString("fr-FR")}
+          <ul className="divide-border divide-y">
+            {liste.map((fil) => (
+              <li key={fil.id}>
+                <button
+                  type="button"
+                  className="hover:bg-muted/40 flex w-full items-start gap-3 px-4 py-3.5 text-start"
+                  aria-expanded={ouvert === fil.id}
+                  onClick={() => {
+                    const suivant = ouvert === fil.id ? null : fil.id;
+                    setOuvert(suivant);
+                    if (suivant && nonLu(fil)) marquer.mutate(fil.id);
+                  }}
+                >
+                  <span
+                    className={`mt-2 size-2 shrink-0 rounded-full ${
+                      nonLu(fil) ? "bg-live" : "bg-transparent"
+                    }`}
+                    aria-hidden
+                  />
+                  <span className="min-w-0 flex-1">
+                    {/*
+                      LE NOM DE L'ÉTUDIANT D'ABORD : l'encadrant suit des
+                      personnes, pas des sujets. L'apprenant, lui, voit ses
+                      propres fils et n'a besoin que de l'objet.
+                    */}
+                    <span
+                      className={`font-display block text-[16.5px] leading-tight tracking-[-0.01em] ${
+                        nonLu(fil) ? "" : "text-muted-foreground"
+                      }`}
+                    >
+                      {fil.learnerName ?? "Apprenant"}
+                      {nonLu(fil) ? <span className="sr-only"> (non lu)</span> : null}
+                    </span>
+                    <span className="text-muted-foreground mt-0.5 block text-[13px] leading-snug">
+                      {sujetDuFil(fil)}
+                    </span>
+                    <span
+                      className={`${EYEBROW} text-muted-foreground mt-2 block`}
+                      style={TABULAIRE}
+                    >
+                      <MessagesSquare className="me-1 inline size-3" aria-hidden />
+                      dernier message le {new Date(fil.lastMessageAt).toLocaleDateString("fr-FR")}
+                    </span>
                   </span>
-                </div>
-                <p className="text-sm text-muted-foreground">{m.body}</p>
+                </button>
+                {ouvert === fil.id ? (
+                  <ThreadConversation fil={fil} contexte={fil.contextBody} />
+                ) : null}
               </li>
             ))}
           </ul>
         )}
-      </PanelCard>
+        <p className="text-muted-foreground border-t px-4 py-3 text-[12.5px] leading-relaxed">
+          Vous voyez les échanges des étudiants de vos groupes d'encadrement
+          {enAttente > 0 ? ` — ${enAttente} en attente de votre lecture.` : "."}
+        </p>
+      </div>
     </div>
   );
 }

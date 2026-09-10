@@ -1180,6 +1180,14 @@ export interface PassportRepository {
 export interface DiscussionRepository {
   /** Les fils d'une inscription, du plus recemment actif au plus ancien. */
   listThreads(enrollmentId: EnrollmentId): Promise<readonly DiscussionThread[]>;
+  /**
+   * TOUS les fils du programme QUE J'AI LE DROIT DE LIRE — la lecture de
+   * l'encadrant. Le perimetre n'est PAS calcule ici : la policy
+   * `discussion_threads_select` s'appuie sur `supervises_enrollment()`, donc un
+   * encadrant ne recoit que les fils de ses groupes meme s'il demande tout le
+   * programme. Structurel, pas declaratif — la meme regle que les carnets.
+   */
+  listThreadsForProgram(programId: ProgramId): Promise<readonly DiscussionThread[]>;
   /** Les messages d'un fil, dans l'ordre. */
   listMessages(threadId: DiscussionThreadId): Promise<readonly DiscussionMessage[]>;
   /**

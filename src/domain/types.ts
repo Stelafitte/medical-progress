@@ -357,6 +357,8 @@ export interface DiscussionThread {
    * figee ferait repondre l'encadrant a une version perimee.
    */
   readonly contextBody?: string;
+  /** L'apprenant dont il s'agit — seul l'encadrant en a besoin. */
+  readonly learnerName?: string;
 }
 
 export interface DiscussionMessage {

@@ -9,127 +9,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { useDataAccess, useSession } from "@/application/session";
 import type { DiscussionThread, DiscussionThreadId, EnrollmentId, OutcomeId } from "@/domain/types";
-
-/** Le plafond de `discussion_messages.body`, redit ici pour compter AVANT
- *  l'envoi : au-dela, la base refuse et l'apprenant perdrait son texte. */
-const MESSAGE_MAX = 10000;
-
-/** Le fil porte-t-il quelque chose que JE n'ai pas encore lu ? */
-function nonLu(fil: DiscussionThread): boolean {
-  return fil.readAt === null || new Date(fil.readAt) < new Date(fil.lastMessageAt);
-}
-
-/**
- * LE SUJET D'UN FIL EST L'OBJET AUQUEL IL PEND, jamais une ligne d'objet saisie.
- * C'est ce qui distingue ces echanges d'une messagerie : on ne parle pas « de
- * rien », on parle d'une competence ou d'une journee.
- */
-function sujet(fil: DiscussionThread): string {
-  if (fil.outcomeLabel) {
-    return fil.outcomeCode ? `${fil.outcomeCode} — ${fil.outcomeLabel}` : fil.outcomeLabel;
-  }
-  if (fil.occurredOn) {
-    return `Journée du ${new Date(fil.occurredOn).toLocaleDateString("fr-FR", {
-      day: "numeric",
-      month: "long",
-    })}`;
-  }
-  return "Échange";
-}
-
-function FilOuvert({
-  fil,
-  enrollmentId,
-  contexte,
-}: {
-  fil: DiscussionThread;
-  enrollmentId: EnrollmentId;
-  contexte: string | undefined;
-}) {
-  const data = useDataAccess();
-  const queryClient = useQueryClient();
-  const { person } = useSession();
-  const [brouillon, setBrouillon] = useState("");
-
-  const { data: messages, isPending } = useQuery({
-    queryKey: ["discussion-messages", fil.id],
-    queryFn: () => data.discussions.listMessages(fil.id),
-  });
-
-  const envoi = useMutation({
-    mutationFn: (body: string) =>
-      data.discussions.postMessage({
-        enrollmentId,
-        ...(fil.outcomeId ? { outcomeId: fil.outcomeId } : {}),
-        ...(fil.stageLogEntryId ? { stageLogEntryId: fil.stageLogEntryId } : {}),
-        body,
-      }),
-    onSuccess: () => {
-      setBrouillon("");
-      void queryClient.invalidateQueries({ queryKey: ["discussion-messages", fil.id] });
-      void queryClient.invalidateQueries({ queryKey: ["discussion-threads"] });
-    },
-    onError: (raison) =>
-      toast.error(raison instanceof Error ? raison.message : "Message non envoyé."),
-  });
-
-  return (
-    <div className="space-y-3 border-t px-4 py-3.5">
-      {/*
-        LE CONTEXTE EST RELU, PAS RECOPIE. Le recit d'une journee se complete
-        souvent apres coup : une copie figee au moment du clic ferait repondre
-        l'encadrant a une version perimee du texte.
-      */}
-      {contexte && contexte.trim().length > 0 ? (
-        <blockquote className="border-s-2 ps-3 text-[13px] leading-snug text-muted-foreground">
-          {contexte}
-        </blockquote>
-      ) : null}
-
-      {isPending ? (
-        <Skeleton className="h-20 w-full" />
-      ) : (
-        <ul className="space-y-3">
-          {(messages ?? []).map((message) => {
-            const deMoi = message.authorPersonId === person.id;
-            return (
-              <li key={message.id} className="text-[13px] leading-snug">
-                <p className={`${EYEBROW} text-muted-foreground`} style={TABULAIRE}>
-                  {deMoi ? "Moi" : (message.authorName ?? "Encadrant")} ·{" "}
-                  {new Date(message.createdAt).toLocaleString("fr-FR", {
-                    day: "2-digit",
-                    month: "short",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </p>
-                <p className="mt-1 whitespace-pre-line text-foreground">{message.body}</p>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-
-      <div className="space-y-2">
-        <Textarea
-          value={brouillon}
-          rows={2}
-          maxLength={MESSAGE_MAX}
-          aria-label={`Répondre — ${sujet(fil)}`}
-          placeholder="Votre message…"
-          onChange={(event) => setBrouillon(event.target.value)}
-        />
-        <Button
-          size="sm"
-          disabled={brouillon.trim().length === 0 || envoi.isPending}
-          onClick={() => envoi.mutate(brouillon)}
-        >
-          Envoyer
-        </Button>
-      </div>
-    </div>
-  );
-}
+import {
+  MESSAGE_MAX,
+  ThreadConversation,
+  nonLu,
+  sujetDuFil,
+} from "@/features/discussions/ThreadPanel";
 
 /**
  * LE COMPOSEUR D'UN FIL QUI N'EXISTE PAS ENCORE.
@@ -323,7 +208,7 @@ export function LearnerChatSection({
                         nonLu(fil) ? "" : "text-muted-foreground"
                       }`}
                     >
-                      {sujet(fil)}
+                      {sujetDuFil(fil)}
                       {nonLu(fil) ? <span className="sr-only"> (non lu)</span> : null}
                     </span>
                     <span
@@ -336,9 +221,8 @@ export function LearnerChatSection({
                   </span>
                 </button>
                 {ouverture === fil.id ? (
-                  <FilOuvert
+                  <ThreadConversation
                     fil={fil}
-                    enrollmentId={enrollmentId}
                     contexte={
                       fil.contextBody ?? (fil.outcomeId ? contextes.get(fil.outcomeId) : undefined)
                     }

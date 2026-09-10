@@ -579,11 +579,13 @@ type DiscussionThreadRow = {
   outcomes: { code: string; label: string } | null;
   stage_log_entries: { occurred_on: string; narrative: string } | null;
   discussion_thread_reads: { read_at: string }[] | null;
+  enrollments: { profiles: { full_name: string } | null } | null;
 };
 
 const discussionThreadColumns =
   "id,program_id,enrollment_id,outcome_id,stage_log_entry_id,opened_by,created_at,last_message_at," +
-  "outcomes(code,label),stage_log_entries(occurred_on,narrative),discussion_thread_reads(read_at)";
+  "outcomes(code,label),stage_log_entries(occurred_on,narrative)," +
+  "discussion_thread_reads(read_at),enrollments(profiles(full_name))";
 
 function mapDiscussionThread(row: DiscussionThreadRow): DiscussionThread {
   return {
@@ -596,6 +598,7 @@ function mapDiscussionThread(row: DiscussionThreadRow): DiscussionThread {
     createdAt: row.created_at,
     lastMessageAt: row.last_message_at,
     readAt: row.discussion_thread_reads?.[0]?.read_at ?? null,
+    ...(row.enrollments?.profiles ? { learnerName: row.enrollments.profiles.full_name } : {}),
     ...(row.outcomes ? { outcomeCode: row.outcomes.code, outcomeLabel: row.outcomes.label } : {}),
     ...(row.stage_log_entries
       ? {
@@ -2439,6 +2442,22 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
           .from("discussion_threads")
           .select(discussionThreadColumns)
           .eq("enrollment_id", enrollmentId)
+          .order("last_message_at", { ascending: false });
+        assertNoSupabaseError(error);
+        return ((data ?? []) as unknown as DiscussionThreadRow[]).map(mapDiscussionThread);
+      },
+      /**
+       * LA LECTURE DE L'ENCADRANT. On demande TOUT le programme et on laisse la
+       * RLS trancher : `discussion_threads_select` passe par
+       * `supervises_enrollment()`, donc il ne recoit que les fils de ses
+       * groupes. Calculer le perimetre ici serait une seconde verite a tenir
+       * d'accord avec la premiere.
+       */
+      async listThreadsForProgram(programId) {
+        const { data, error } = await client
+          .from("discussion_threads")
+          .select(discussionThreadColumns)
+          .eq("program_id", programId)
           .order("last_message_at", { ascending: false });
         assertNoSupabaseError(error);
         return ((data ?? []) as unknown as DiscussionThreadRow[]).map(mapDiscussionThread);
