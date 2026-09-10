@@ -14,7 +14,6 @@ const passportRoute = read("src/routes/espace.passeport.tsx");
 const resourcesRoute = read("src/routes/espace.ressources.tsx");
 const profileView = read("src/features/profile/ProfileView.tsx");
 const security = read("src/features/profile/AccountSecuritySection.tsx");
-const visibility = read("src/features/profile/PassportVisibilitySection.tsx");
 const shell = read("src/components/layout/app-shell.tsx");
 
 describe("terminologie", () => {
@@ -131,29 +130,14 @@ describe("profil — sécurité non active", () => {
   });
 });
 
-describe("profil — présentation du passeport", () => {
-  it("limite les préférences au partage et à l'export personnels", () => {
-    expect(visibility).toContain("Partage et export personnels");
-    expect(visibility).toContain("dossier institutionnel");
-    expect(visibility).toContain("Démonstration — non enregistré");
-    expect(visibility).not.toContain("localStorage");
-  });
-
-  it("propose les huit contrôles de partage demandés", () => {
-    for (const label of [
-      "Connaissances",
-      "Compétences simulées",
-      "Compétences réelles",
-      "Preuves",
-      "Validations",
-      "Expériences de stage",
-      "Historique",
-      "Prochains jalons",
-    ]) {
-      expect(visibility).toContain(label);
-    }
-  });
-});
+/*
+ * LE CONTRAT « profil — presentation du passeport » EST RETIRE avec le
+ * composant qu'il gardait (10/09). Il verrouillait la formulation de huit
+ * interrupteurs qui n'ecrivaient nulle part : un test qui lit du TEXTE SOURCE
+ * continue de passer sur un composant qui n'est plus monte -- le piege deja
+ * rencontre le 09/09 avec `ContentAiTutorPanel`. Le garder aurait fait croire
+ * que la fonctionnalite est couverte.
+ */
 
 describe("passeport — trois vues", () => {
   /**

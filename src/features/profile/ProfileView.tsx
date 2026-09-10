@@ -10,7 +10,6 @@ import * as fx from "@/infrastructure/mock/fixtures";
 import { AccountSecuritySection } from "./AccountSecuritySection";
 import { AvatarField } from "./AvatarField";
 import { IdentityForm } from "./IdentityForm";
-import { PassportVisibilitySection } from "./PassportVisibilitySection";
 
 export function ProfileView() {
   const { person, programs, enrollments, roles, isSimulated, reloadSession } = useSession();
@@ -140,7 +139,20 @@ export function ProfileView() {
 
       <AccountSecuritySection />
 
-      <PassportVisibilitySection />
+      {/*
+        « PRESENTATION DE MON PASSEPORT » EST RETIREE (Stef, 10/09 : « a quoi
+        cela correspond, ca sert a quelque chose ? »).
+
+        REPONSE MESUREE : non. Les huit interrupteurs alimentaient un `useState`
+        que RIEN ne lisait — zero reference ailleurs dans le code — et
+        `buildJournalExportHtml`, le vrai export, ne prend aucun filtre de
+        partage. Le badge « Demonstration — non enregistre » ne mentait pas,
+        mais l'ecran promettait a l'etudiant un reglage qui n'existe pas.
+
+        LE BRANCHER AURAIT ETE UNE VRAIE FONCTIONNALITE : une table de
+        preferences, ET l'export qui les honore. Personne ne l'a demandee. Une
+        promesse vide coute plus qu'un ecran plus court.
+      */}
 
       <p className="text-[12.5px] text-muted-foreground">
         Pour votre progression dans le programme sélectionné, ouvrez{" "}

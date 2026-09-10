@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
-import { ArrowLeft, Boxes, HeartPulse, Mail, Menu, RotateCcw, UserRound } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { ArrowLeft, HeartPulse, Mail, Menu, RotateCcw, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -111,6 +110,16 @@ export function AppShell() {
     space.entries.some((entry) => entry.to === "/espace/profil"),
   );
 
+  /*
+   * « ARCHITECTURE » A ETE RETIRE DE LA NAVIGATION (Stef, 10/09).
+   *
+   * Il etait garde par `IS_DEV`, et il s'affichait POURTANT sur le telephone
+   * d'un etudiant et dans l'espace encadrant : le bundle en ligne porte donc
+   * `import.meta.env.DEV === true`. Un ecran interne ne doit pas dependre d'un
+   * drapeau de compilation qu'une seule commande de trop suffit a inverser --
+   * `build:dev` au lieu de `build`. On retire le lien ; la route reste, non
+   * referencee, jusqu'a suppression du fichier.
+   */
   const nonLus = useUnreadMessages();
 
   const defaultPersonName = people[0]?.fullName ?? "profil par défaut";
@@ -202,20 +211,6 @@ export function AppShell() {
                     ))}
                   </div>
                 ))}
-                {IS_DEV ? (
-                  <Link
-                    to="/espace/architecture"
-                    className={linkClass}
-                    activeProps={activeClass}
-                    onClick={() => setMobileOpen(false)}
-                  >
-                    <Boxes className="size-4" aria-hidden />
-                    Architecture
-                    <Badge variant="outline" className="ml-1 text-[10px]">
-                      dev
-                    </Badge>
-                  </Link>
-                ) : null}
                 {profilDejaDansLaNav ? null : (
                   <div className="border-t border-border pt-4">
                     <Link
@@ -434,17 +429,6 @@ export function AppShell() {
                 ))}
               </li>
             ))}
-            {IS_DEV ? (
-              <li>
-                <Link to="/espace/architecture" className={linkClass} activeProps={activeClass}>
-                  <Boxes className="size-4" aria-hidden />
-                  Architecture
-                  <Badge variant="outline" className="ml-1 text-[10px]">
-                    dev
-                  </Badge>
-                </Link>
-              </li>
-            ) : null}
           </ul>
         </nav>
       </header>
