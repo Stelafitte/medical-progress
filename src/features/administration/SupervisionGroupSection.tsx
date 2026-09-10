@@ -84,6 +84,8 @@ interface SupervisorCandidate {
   /** `null` tant que la personne ne s'est jamais connectée : case désactivée. */
   readonly profileId: string | null;
   readonly invited: boolean;
+  /** Deviendra encadrante du terrain toute seule, à sa première connexion. */
+  readonly autoEncadrant: boolean;
 }
 
 function buildCandidates(args: {
@@ -115,6 +117,7 @@ function buildCandidates(args: {
     email: person.loginEmail,
     profileId: person.activatedProfileId ?? null,
     invited: person.invitedAt !== undefined,
+    autoEncadrant: person.intendedRole === "placement_supervisor",
   }));
 
   const known = new Set(fromStaging.map((c) => c.profileId).filter((id) => id !== null));
@@ -156,6 +159,7 @@ function buildCandidates(args: {
           : emailFromStaging(person, args.pendingPeople),
       profileId: person.id,
       invited: true,
+      autoEncadrant: false,
     }));
 
   return [...fromStaging, ...fromProfiles].sort((a, b) =>
@@ -630,6 +634,17 @@ export function SupervisionGroupSection({
                               ? "Invitée, en attente de première connexion"
                               : "Jamais invitée"}
                             — ne peut pas encore encadrer : c'est la connexion qui crée le compte.
+                            {/*
+                              RIEN A COCHER POUR ELLE, MEME PLUS TARD. Depuis la
+                              migration 20260910200000, une personne rapportee par
+                              la source d equipe rejoint TOUS les groupes du
+                              terrain a l activation de son compte. Laisser croire
+                              qu il faudra revenir la cocher ferait attendre un
+                              geste qui n existe pas.
+                            */}
+                            {candidate.autoEncadrant
+                              ? " Elle rejoindra ensuite tous les groupes de ce terrain d'elle-même : il reste seulement à l'inviter."
+                              : ""}
                           </span>
                         ) : isChecked && !canValidateLogs(candidate.profileId) ? (
                           <span className="text-destructive block text-xs">

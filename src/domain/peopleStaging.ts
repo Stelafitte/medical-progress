@@ -27,8 +27,20 @@ export interface PendingPerson {
   readonly lastName: string;
   readonly loginEmail: string;
   readonly institutionalId?: string;
-  readonly origin: "individual" | "import";
+  /**
+   * `sync` : rapportee par une source d equipe externe (UMCV, 10/09). Le type
+   * l ignorait alors que la base l accepte depuis la migration
+   * 20260910160000 -- une valeur qui existe en base et pas dans le type est un
+   * mensonge qui finit par surprendre a l ecran.
+   */
+  readonly origin: "individual" | "import" | "sync";
   readonly intendedCohortId?: CohortId;
+  /**
+   * CE QUE LA PERSONNE DEVIENDRA A L ACTIVATION de son compte (migration
+   * 20260910200000). `placement_supervisor` : elle sera encadrante du terrain
+   * et rattachee a TOUS ses groupes, sans geste d administration.
+   */
+  readonly intendedRole?: "learner" | "placement_supervisor";
   readonly status: PendingPersonStatus;
   readonly invitedAt?: IsoDateTime;
   readonly cancelledAt?: IsoDateTime;

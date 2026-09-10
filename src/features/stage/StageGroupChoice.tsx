@@ -66,10 +66,16 @@ export function StageGroupChoice({ placementId }: { readonly placementId: Placem
     (g.memberEnrollmentIds as readonly string[]).includes(activeEnrollment.id),
   );
 
-  /* Un seul groupe sur ce terrain : il n'y a rien à choisir, et proposer un
-     choix qui n'en est pas un ferait douter. */
-  if (candidats.length < 2 && mien) return null;
+  /*
+   * ON AFFICHE DES QU'IL EXISTE UN GROUPE, meme s'il n'y en a qu'un (correction
+   * du 10/09, apres test de Stef). Cacher le bloc quand il n'y a rien a choisir
+   * paraissait sobre ; a l'usage, l'etudiant ne voyait plus DU TOUT a quel
+   * groupe il appartenait, et ne pouvait pas verifier ce que l'administration
+   * avait pose. C'est le bouton « Changer » qui disparait quand il n'y a qu'un
+   * groupe, pas l'information.
+   */
   if (candidats.length === 0) return null;
+  const choixPossible = candidats.length > 1;
 
   const compte = (groupId: string) => {
     const siennes = (semaines.data ?? []).filter((w) => w.groupId === groupId);
@@ -92,20 +98,27 @@ export function StageGroupChoice({ placementId }: { readonly placementId: Placem
             <strong>Vous n'avez pas encore indiqué votre groupe.</strong>
           )}
         </p>
-        <Button
-          size="sm"
-          variant={mien ? "ghost" : "default"}
-          className="ms-auto"
-          onClick={() => setOuvert(!ouvert)}
-        >
-          {ouvert ? "Fermer" : mien ? "Changer" : "Choisir mon groupe"}
-        </Button>
+        {choixPossible || !mien ? (
+          <Button
+            size="sm"
+            variant={mien ? "ghost" : "default"}
+            className="ms-auto"
+            onClick={() => setOuvert(!ouvert)}
+          >
+            {ouvert ? "Fermer" : mien ? "Changer" : "Choisir mon groupe"}
+          </Button>
+        ) : (
+          <span className="text-muted-foreground ms-auto text-[12.5px]">
+            seul groupe de ce terrain
+          </span>
+        )}
       </div>
 
       <p className="text-muted-foreground mt-2 text-[12.5px] leading-relaxed">
-        Votre groupe détermine les semaines où l'on vous attend dans le service. Vous pouvez en
-        changer en cours de stage&nbsp;: vos journées déjà écrites sont conservées, et les semaines
-        passées restent lues avec le groupe qui était le vôtre à ce moment-là.
+        Votre groupe détermine les semaines où l'on vous attend dans le service.
+        {choixPossible
+          ? " Vous pouvez en changer en cours de stage : vos journées déjà écrites sont conservées, et les semaines passées restent lues avec le groupe qui était le vôtre à ce moment-là."
+          : " Ce terrain n'a qu'un groupe pour votre promotion : il n'y a rien à choisir."}
       </p>
 
       {ouvert ? (

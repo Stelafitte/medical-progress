@@ -890,8 +890,9 @@ type PendingPersonRow = {
   last_name: string;
   login_email: string;
   institutional_id: string | null;
-  origin: "individual" | "import";
+  origin: "individual" | "import" | "sync";
   intended_cohort_id: string | null;
+  intended_role: "learner" | "placement_supervisor" | null;
   status: PendingPersonStatus;
   invited_at: string | null;
   cancelled_at: string | null;
@@ -913,6 +914,7 @@ export function mapPendingPerson(row: PendingPersonRow): PendingPerson {
     updatedAt: row.updated_at,
     ...(row.institutional_id ? { institutionalId: row.institutional_id } : {}),
     ...(row.intended_cohort_id ? { intendedCohortId: row.intended_cohort_id } : {}),
+    ...(row.intended_role ? { intendedRole: row.intended_role } : {}),
     ...(row.invited_at ? { invitedAt: row.invited_at } : {}),
     ...(row.cancelled_at ? { cancelledAt: row.cancelled_at } : {}),
     ...(row.activated_profile_id ? { activatedProfileId: row.activated_profile_id } : {}),
@@ -1079,7 +1081,7 @@ async function loadSourceAssetsByResource(
 }
 
 const pendingPersonColumns =
-  "id,program_id,first_name,last_name,login_email,institutional_id,origin,intended_cohort_id,status,invited_at,cancelled_at,activated_profile_id,created_at,updated_at";
+  "id,program_id,first_name,last_name,login_email,institutional_id,origin,intended_cohort_id,intended_role,status,invited_at,cancelled_at,activated_profile_id,created_at,updated_at";
 
 const programColumns =
   "id,code,name,kind,institution,annual_learner_estimate,placements_enabled,simulation_enabled,audits_enabled,pre_post_tests_enabled,sessions_enabled,dpc_enabled,learner_plan_shifts_enabled,target_mastery,locale,design_draft,created_at,updated_at";
