@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDataAccess, useSession } from "@/application/session";
 import { LearnerChatSection } from "@/features/messages/LearnerChatSection";
+import { useUnreadMessages } from "@/features/messages/useUnreadMessages";
 import { nonLus, renderReceivedMessage } from "@/domain/communication";
 import type { MessageDeliveryId } from "@/domain/types";
 
@@ -102,6 +103,10 @@ export function LearnerMessagesView() {
     enabled: ancre.competence !== undefined,
   });
 
+  /* Le meme compteur que la pastille du bandeau, sur les memes cles de cache :
+     aucune requete de plus, et les deux chiffres ne peuvent pas diverger. */
+  const compteurs = useUnreadMessages();
+
   const marquer = useMutation({
     mutationFn: (deliveryId: MessageDeliveryId) => data.messages.markRead(deliveryId),
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["learner-messages"] }),
@@ -150,9 +155,16 @@ export function LearnerMessagesView() {
       <FieldHeader
         eyebrow={activeProgram.name}
         title="Mes messages"
+        /*
+          LES DEUX SOURCES COMPTEES SEPAREMENT, et pas fondues en un total :
+          une annonce et un echange ne se traitent pas pareil — l'une se marque
+          lue d'un bouton, l'autre en s'ouvrant. Un chiffre unique dirait « il y
+          a quelque chose », sans dire OU.
+        */
         figures={[
           { value: recus.length, label: recus.length > 1 ? "messages" : "message" },
-          { value: nonLus(recus), label: "non lus" },
+          { value: nonLus(recus), label: "annonces non lues" },
+          { value: compteurs.echanges, label: "échanges non lus" },
         ]}
       />
 

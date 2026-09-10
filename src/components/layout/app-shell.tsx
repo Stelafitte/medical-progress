@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
-import { ArrowLeft, Boxes, HeartPulse, Menu, RotateCcw, UserRound } from "lucide-react";
+import { ArrowLeft, Boxes, HeartPulse, Mail, Menu, RotateCcw, UserRound } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { useUnreadMessages } from "@/features/messages/useUnreadMessages";
 import { ProgramSwitcher } from "@/components/program-switcher";
 import { isRouteWithinSpaces, landingRouteFor, navSpacesFor } from "@/components/layout/navigation";
 import { useSession } from "@/application/session";
@@ -109,6 +110,8 @@ export function AppShell() {
   const profilDejaDansLaNav = spaces.some((space) =>
     space.entries.some((entry) => entry.to === "/espace/profil"),
   );
+
+  const nonLus = useUnreadMessages();
 
   const defaultPersonName = people[0]?.fullName ?? "profil par défaut";
 
@@ -257,6 +260,27 @@ export function AppShell() {
             <div className="hidden sm:block">
               <ProgramSwitcher />
             </div>
+            {/*
+              LA PASTILLE DE NON-LUS, A COTE DU PROFIL (Stef, 10/09).
+              ELLE N APPARAIT QUE S IL Y A QUELQUE CHOSE A LIRE. Une enveloppe
+              permanente a zero occupe la barre sans rien dire : le seul moment
+              ou cet element sert, c est quand il compte.
+              ELLE NE COUTE AUCUNE REQUETE SUR LA MESSAGERIE : le compteur lit
+              les memes cles de cache que l ecran.
+            */}
+            {nonLus.total > 0 && nonLus.destination ? (
+              <Button asChild variant="ghost" size="sm" className="relative shrink-0 px-2">
+                <Link to={nonLus.destination} aria-label={`${nonLus.total} message(s) non lu(s)`}>
+                  <Mail className="size-5" aria-hidden />
+                  <span
+                    aria-hidden
+                    className="bg-live text-primary-foreground absolute -end-0.5 -top-0.5 grid min-w-4 place-items-center rounded-full px-1 text-[10px] font-semibold leading-4"
+                  >
+                    {nonLus.total > 9 ? "9+" : nonLus.total}
+                  </span>
+                </Link>
+              </Button>
+            ) : null}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
