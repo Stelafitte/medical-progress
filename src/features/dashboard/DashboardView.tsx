@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { ArrowRight, Check, ChevronDown } from "lucide-react";
+import { ArrowRight, Check, ChevronDown, MessagesSquare } from "lucide-react";
 import { useState } from "react";
 
 import { useSession } from "@/application/session";
@@ -754,6 +754,26 @@ function PaveStage() {
                 <p className="mt-2 text-[13px] text-destructive">
                   {(enregistrer.error as Error).message}
                 </p>
+              ) : null}
+              {/*
+                ECHANGER SUR CETTE JOURNEE — a COTE du recit, jamais a sa place
+                (Stef, 10/09). Le recit reste ce que l'apprenant consigne pour
+                lui et pour l'analyse a venir ; l'echange est un autre geste,
+                qui part vers « Mes messages » EN EMPORTANT LA JOURNEE. Le fil
+                y affiche le recit RELU, non recopie : une journee se complete
+                souvent apres coup, et une copie figee ferait repondre
+                l'encadrant a une version perimee.
+
+                LE BOUTON N'APPARAIT QU'UNE FOIS LA JOURNEE ENREGISTREE : sans
+                ligne en base, il n'y a aucun objet auquel rattacher le fil.
+              */}
+              {entree ? (
+                <Button asChild variant="outline" className="mt-2 min-h-11 w-full">
+                  <Link to="/espace/messages" search={{ journee: entree.id }}>
+                    <MessagesSquare className="size-4" aria-hidden />
+                    Échanger avec mon tuteur
+                  </Link>
+                </Button>
               ) : null}
               {/* LA NOTE DE PIED RENTRE DANS LA CARTE : hors conteneur, en gris,
                 elle flottait sans appartenir a rien. */}

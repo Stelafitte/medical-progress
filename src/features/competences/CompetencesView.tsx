@@ -8,8 +8,8 @@
  * ne modifient jamais le niveau calculé : la progression reste dérivée des
  * preuves et une compétence réelle exige une validation humaine tierce.
  */
-import { useMemo, useState } from "react";
-import { useSearch } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useSearch } from "@tanstack/react-router";
 import { CalendarDays, ChevronDown, Download, MessageSquare, Search } from "lucide-react";
 import { FieldHeader } from "@/components/field-header";
 import {
@@ -48,16 +48,16 @@ import {
   type CompetenceListFilters,
   type CompetenceStatusFilter,
 } from "@/domain/competenceListView";
-import type { LearningResourceId, OutcomeNature, OutcomeThemeId } from "@/domain/types";
+import type { LearningResourceId, OutcomeId, OutcomeNature, OutcomeThemeId } from "@/domain/types";
 import { OutcomeRow } from "@/features/passport/OutcomeRow";
 import { OutcomeScheduleSection } from "@/features/passport/OutcomeScheduleSection";
 import { ResourceMediaPlayer } from "@/features/resources/ResourceMediaPlayer";
 import { ChapterTextPanel } from "@/features/resources/ChapterTextPanel";
+import { useCompetenceJournal } from "@/application/competenceJournalStore";
 import {
-  saveExperienceNote,
-  sendJournalMessage,
-  useCompetenceJournal,
-} from "@/application/competenceJournalStore";
+  EXPERIENCE_NOTE_MAX,
+  useSaveExperienceNote,
+} from "@/features/competences/useSaveExperienceNote";
 
 function formatDate(iso?: string): string {
   if (!iso) return "—";
@@ -78,56 +78,67 @@ function DeclarationNotice({ item }: { item: OutcomeProgress }) {
   );
 }
 
-function TutorThread({
-  entry,
-  onSend,
-}: {
-  entry: CompetenceJournalEntry;
-  onSend: (body: string) => void;
-}) {
-  const [draft, setDraft] = useState("");
+/**
+ * « MON EXPERIENCE D'ACQUISITION » — un vrai champ, enregistre en base.
+ *
+ * IL EST INDEPENDANT DE LA DECLARATION, et c'est tout son objet : le texte le
+ * plus utile est celui de quelqu'un qui n'est PAS encore pret a se declarer
+ * competent (« j'ai fait quatre interrogatoires, je bute sur les antecedents
+ * familiaux »). L'ecrire dans `outcome_self_reports.note` aurait exige un
+ * niveau declare — la plateforme aurait declare une competence a la place de
+ * l'apprenant. Voir la migration 20260910140000.
+ *
+ * ETAT LOCAL PENDANT LA FRAPPE, ecriture a la SORTIE du champ. Enregistrer a
+ * chaque lettre ferait autant d'appels que de caracteres ; relire la valeur du
+ * serveur pendant la frappe ferait sauter le curseur.
+ *
+ * LA MENTION N'EST PAS UNE PRECAUTION, C'EST UNE CONDITION. Ces notes seront
+ * lues par l'encadrement — c'est la raison meme de leur stockage (analyse a
+ * venir, cf. objectifs de dev). Un champ intitule « Mon experience » sans rien
+ * dire laisserait croire a un journal intime. C'est le defaut du 09/09 (« un
+ * contenu credible et faux ») retourne dans l'autre sens.
+ */
+function ExperienceNoteField({ outcomeId, initial }: { outcomeId: OutcomeId; initial: string }) {
+  const [texte, setTexte] = useState(initial);
+  const [dernierEnvoi, setDernierEnvoi] = useState(initial);
+  const enregistrement = useSaveExperienceNote();
+
+  /* La note relue depuis le serveur reprend la main SI l'apprenant n'a rien
+     tape depuis — sinon on ecraserait sa frappe en cours. */
+  useEffect(() => {
+    if (texte === dernierEnvoi) {
+      setTexte(initial);
+      setDernierEnvoi(initial);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initial]);
+
   return (
-    <div className="space-y-2 rounded-md border border-border bg-muted/30 p-3">
-      <p className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-        <MessageSquare className="size-4" aria-hidden /> Échange avec mon tuteur
-        <MockBadge label="Simulé" />
+    <div className="space-y-1">
+      <Label htmlFor={`note-${outcomeId}`} className="text-xs">
+        Mon expérience d'acquisition
+      </Label>
+      <Textarea
+        id={`note-${outcomeId}`}
+        value={texte}
+        rows={3}
+        maxLength={EXPERIENCE_NOTE_MAX}
+        placeholder="Contexte, gestes réalisés, difficultés, ce qu'il me reste à consolider…"
+        onChange={(event) => setTexte(event.target.value)}
+        onBlur={() => {
+          /* Rien a envoyer si le texte n'a pas bouge : un aller-retour reseau
+             pour un champ seulement survole serait du bruit. */
+          if (texte === dernierEnvoi) return;
+          setDernierEnvoi(texte);
+          enregistrement.mutate({ outcomeId, body: texte });
+        }}
+      />
+      <p className="text-muted-foreground text-xs">
+        Vos encadrants peuvent lire vos notes.
+        {texte.length > EXPERIENCE_NOTE_MAX - 500
+          ? ` ${EXPERIENCE_NOTE_MAX - texte.length} caractères restants.`
+          : ""}
       </p>
-      {entry.messages.length === 0 ? (
-        <p className="text-xs text-muted-foreground">
-          Aucun échange pour cette compétence. Posez une question à votre tuteur.
-        </p>
-      ) : (
-        <ul className="space-y-2">
-          {entry.messages.map((message) => (
-            <li key={message.id} className="text-xs">
-              <span className="font-medium">{message.author === "learner" ? "Moi" : "Tuteur"}</span>{" "}
-              <span className="text-muted-foreground">
-                · {new Date(message.sentAt).toLocaleString("fr-FR")}
-              </span>
-              <p className="text-foreground">{message.body}</p>
-            </li>
-          ))}
-        </ul>
-      )}
-      <div className="flex flex-col gap-2 sm:flex-row">
-        <Input
-          value={draft}
-          onChange={(event) => setDraft(event.target.value)}
-          placeholder="Question ou précision pour le tuteur…"
-          aria-label="Message au tuteur"
-        />
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => {
-            onSend(draft);
-            setDraft("");
-          }}
-          disabled={draft.trim().length === 0}
-        >
-          Envoyer
-        </Button>
-      </div>
     </div>
   );
 }
@@ -137,11 +148,14 @@ function CompetenceRow({
   planItem,
   entry,
   supports,
+  experienceNote,
   spotlight = false,
 }: {
   item: OutcomeProgress;
   planItem: AcquisitionPlanItem | undefined;
   entry: CompetenceJournalEntry;
+  /** La note reelle, lue en base — et non celle du magasin en memoire. */
+  experienceNote: string;
   /** Arrivée d'un lien profond : la ligne s'ouvre et l'écran défile jusqu'à elle. */
   spotlight?: boolean;
   /** Supports qui traitent CETTE competence — les 4 videos, aujourd'hui. */
@@ -255,22 +269,21 @@ function CompetenceRow({
 
         {openJournal ? (
           <div className="space-y-3">
-            <div className="space-y-1">
-              <Label htmlFor={`note-${item.outcome.id}`} className="text-xs">
-                Mon expérience d'acquisition
-              </Label>
-              <Textarea
-                id={`note-${item.outcome.id}`}
-                value={entry.experienceNote}
-                rows={3}
-                placeholder="Contexte, gestes réalisés, difficultés, ce qu'il me reste à consolider…"
-                onChange={(event) => saveExperienceNote(item.outcome.id, event.target.value)}
-              />
-            </div>
-            <TutorThread
-              entry={entry}
-              onSend={(body) => sendJournalMessage(item.outcome.id, "learner", body)}
-            />
+            <ExperienceNoteField outcomeId={item.outcome.id} initial={experienceNote} />
+            {/*
+              LE FIL N'EST PLUS ICI, ET C'EST UNE DECISION DE STEF (10/09).
+              Il vivait en memoire, sous un badge « Simule » : rien n'etait
+              envoye, rien n'etait recu. L'echange se fait desormais dans « Mes
+              messages », pave « Mes echanges », et le bouton l'ouvre SUR CETTE
+              COMPETENCE — sans quoi l'apprenant perdrait le contexte de ce qu'il
+              regardait et devrait retrouver son fil dans une liste.
+            */}
+            <Button asChild variant="outline" size="sm" className="w-full sm:w-auto">
+              <Link to="/espace/messages" search={{ competence: item.outcome.id }}>
+                <MessageSquare className="size-4" aria-hidden />
+                Échanger avec mon tuteur
+              </Link>
+            </Button>
           </div>
         ) : null}
       </div>
@@ -311,6 +324,9 @@ export function CompetencesView() {
    * garde ce qui lui appartient (la note d'experience, le fil avec le tuteur), et
    * l'etat de declaration vient d'ou il doit venir.
    */
+  /* Les notes d'experience REELLES, lues en base, indexees par acquis. */
+  const notesParAcquis = new Map(data.experienceNotes.map((n) => [n.outcomeId, n.body] as const));
+
   const journalReconcilie = new Map(
     competences.map((c) => {
       const entree = journalById.get(c.outcome.id) ?? {
@@ -320,7 +336,23 @@ export function CompetencesView() {
         messages: [],
       };
       const declare = c.declaredLevel !== undefined && c.declaredLevel !== "not_started";
-      return [c.outcome.id, { ...entree, selfDeclaredAcquired: declare }] as const;
+      /*
+       * LA NOTE VIENT DE LA BASE, PLUS DU MAGASIN EN MEMOIRE.
+       *
+       * Sans cette ligne, l'export de la liste (`competenceListView`) aurait
+       * cesse en SILENCE de contenir le recit d'experience : il lit
+       * `entry.experienceNote`, que plus personne n'alimente depuis que le
+       * champ ecrit dans `outcome_experience_notes`. Le meme piege que le
+       * 09/09 — un ecran qui continue de fonctionner en disant moins.
+       */
+      return [
+        c.outcome.id,
+        {
+          ...entree,
+          selfDeclaredAcquired: declare,
+          experienceNote: notesParAcquis.get(c.outcome.id) ?? "",
+        },
+      ] as const;
     }),
   );
 
@@ -605,6 +637,7 @@ export function CompetencesView() {
                           }
                         }
                         supports={supportsParAcquis.get(item.outcome.id) ?? []}
+                        experienceNote={notesParAcquis.get(item.outcome.id) ?? ""}
                       />
                     ))}
                   </ul>

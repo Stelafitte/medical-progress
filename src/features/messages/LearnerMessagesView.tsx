@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useSearch } from "@tanstack/react-router";
 import { toast } from "sonner";
 
 import { FieldHeader } from "@/components/field-header";
@@ -6,6 +7,7 @@ import { EYEBROW, TABULAIRE } from "@/components/milestone-heading";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDataAccess, useSession } from "@/application/session";
+import { LearnerChatSection } from "@/features/messages/LearnerChatSection";
 import { nonLus, renderReceivedMessage } from "@/domain/communication";
 import type { MessageDeliveryId } from "@/domain/types";
 
@@ -53,6 +55,8 @@ export function LearnerMessagesView() {
   const data = useDataAccess();
   const { activeProgram, activeEnrollment, person } = useSession();
   const queryClient = useQueryClient();
+  /** Lien profond depuis « Échanger avec mon tuteur ». */
+  const ancre = useSearch({ from: "/espace/messages" });
 
   const {
     data: messages,
@@ -73,6 +77,29 @@ export function LearnerMessagesView() {
     queryKey: ["cohort", activeEnrollment?.cohortId ?? "none"],
     queryFn: () => data.programs.getCohort(activeEnrollment!.cohortId),
     enabled: Boolean(activeEnrollment),
+  });
+
+  /*
+   * LES NOTES D'EXPERIENCE, pour afficher en tete d'un fil de competence le
+   * texte dont on parle. RELUES, jamais recopiees dans le premier message :
+   * l'apprenant complete sa note apres coup, et une copie figee ferait repondre
+   * l'encadrant a une version perimee.
+   */
+  const { data: notes } = useQuery({
+    queryKey: ["experience-notes", activeEnrollment?.id ?? "none"],
+    queryFn: () => data.passport.listExperienceNotes(activeEnrollment!.id),
+    enabled: Boolean(activeEnrollment),
+  });
+
+  /*
+   * LES ACQUIS, LUS SEULEMENT SI ON ARRIVE PAR UN LIEN DE COMPETENCE : c'est la
+   * seule facon de nommer le sujet d'un fil qui n'existe pas encore. Sur la
+   * messagerie ouverte normalement, cette lecture ne part pas.
+   */
+  const { data: acquis } = useQuery({
+    queryKey: ["outcomes", activeProgram.id],
+    queryFn: () => data.outcomes.listOutcomes(activeProgram.id),
+    enabled: ancre.competence !== undefined,
   });
 
   const marquer = useMutation({
@@ -102,6 +129,21 @@ export function LearnerMessagesView() {
     subject: renderReceivedMessage(message.subject, valeurs),
     body: renderReceivedMessage(message.body, valeurs),
   }));
+
+  /*
+   * LE SUJET D'UN FIL PAS ENCORE OUVERT. Pour une journee de carnet on ne va
+   * PAS chercher sa date : il faudrait une lecture de plus pour un libelle qui
+   * ne vit que le temps du premier message — apres quoi le fil porte lui-meme
+   * son sujet, joint par la requete.
+   */
+  const acquisAncre = ancre.competence
+    ? (acquis ?? []).find((o) => o.id === ancre.competence)
+    : undefined;
+  const sujetAncre = acquisAncre
+    ? `${acquisAncre.code} — ${acquisAncre.label}`
+    : ancre.journee
+      ? "Nouvel échange à propos d'une journée de stage"
+      : undefined;
 
   return (
     <div className="space-y-7">
@@ -192,11 +234,25 @@ export function LearnerMessagesView() {
             </ul>
           )}
           <p className="border-t px-4 py-3 text-[12.5px] leading-relaxed text-muted-foreground">
-            Vous recevez ici les messages adressés par l'équipe de votre programme. Cette boîte ne
-            permet pas de répondre : utilisez l'adresse indiquée dans le message.
+            Vous recevez ici les messages adressés par l'équipe de votre programme. On ne répond pas
+            à une annonce&nbsp;: pour écrire à vos encadrants, utilisez «&nbsp;Mes échanges&nbsp;»
+            ci-dessous.
           </p>
         </div>
       </section>
+
+      {/*
+        DEUX PAVES, PARCE QU'IL Y A DEUX MODELES EN BASE. Les annonces sont des
+        CAMPAGNES (diffusion, aucune reponse possible) ; les echanges sont des
+        FILS (un auteur par message, ancres sur une competence ou une journee).
+        Une liste unique aurait laisse croire qu'on peut repondre a tout.
+      */}
+      <LearnerChatSection
+        enrollmentId={activeEnrollment.id}
+        contextes={new Map((notes ?? []).map((n) => [n.outcomeId as string, n.body] as const))}
+        ancre={ancre}
+        {...(sujetAncre ? { sujetAncre } : {})}
+      />
     </div>
   );
 }
