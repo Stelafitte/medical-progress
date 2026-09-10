@@ -91,6 +91,25 @@ export function AppShell() {
     ? allSpaces.filter((space) => space.key === "platform_admin")
     : allSpaces.filter((space) => space.key !== "platform_admin");
 
+  /*
+   * « MON PROFIL » N'EST DANS AUCUNE NAVIGATION SAUF `LEARNER_NAV`.
+   *
+   * Le bloc de pied du menu mobile l'ajoutait donc pour tout le monde : sans
+   * lui, un administrateur de programme n'aurait aucun acces a sa fiche. Mais
+   * chez l'APPRENANT il faisait doublon — l'entree de `LEARNER_NAV` puis le
+   * bloc de pied, deux fois « Mon profil » dans le meme menu (constate par
+   * Stef le 10/09).
+   *
+   * On garde donc le bloc, et on ne l'ajoute que si aucune entree visible n'y
+   * mene deja. Retirer l'entree de `LEARNER_NAV` aurait ete l'autre correctif
+   * possible, et il aurait ete FAUX : le bloc de pied n'existe que dans le
+   * `SheetContent` mobile, l'apprenant aurait perdu « Mon profil » dans la
+   * barre laterale desktop.
+   */
+  const profilDejaDansLaNav = spaces.some((space) =>
+    space.entries.some((entry) => entry.to === "/espace/profil"),
+  );
+
   const defaultPersonName = people[0]?.fullName ?? "profil par défaut";
 
   /** L'admin plateforme peut quitter un programme pour revenir au bandeau général. */
@@ -194,17 +213,19 @@ export function AppShell() {
                     </Badge>
                   </Link>
                 ) : null}
-                <div className="border-t border-border pt-4">
-                  <Link
-                    to="/espace/profil"
-                    className={linkClass}
-                    activeProps={activeClass}
-                    onClick={() => setMobileOpen(false)}
-                  >
-                    <UserRound className="size-4" aria-hidden />
-                    Mon profil
-                  </Link>
-                </div>
+                {profilDejaDansLaNav ? null : (
+                  <div className="border-t border-border pt-4">
+                    <Link
+                      to="/espace/profil"
+                      className={linkClass}
+                      activeProps={activeClass}
+                      onClick={() => setMobileOpen(false)}
+                    >
+                      <UserRound className="size-4" aria-hidden />
+                      Mon profil
+                    </Link>
+                  </div>
+                )}
               </nav>
             </SheetContent>
           </Sheet>
