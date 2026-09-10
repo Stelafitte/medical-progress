@@ -810,6 +810,26 @@ export const mockDataAccess: DataAccess = {
    * et l'ecran dit qu'il n'y a pas encore d'echange -- ce qui est vrai. C'est
    * la lecon du 09/09 sur « Mes messages », appliquee d'avance cette fois.
    */
+  /*
+   * AUCUNE SOURCE EN SESSION SIMULEE, et surtout aucun faux jeton. Un ecran
+   * qui montrerait une source « UMCV » configuree alors qu'aucune ne l'est
+   * ferait croire la chaine branchee. L'ecran dira donc qu'il n'y a rien --
+   * ce qui est vrai.
+   */
+  encadrementSources: {
+    listSources: () => ok([]),
+    listRuns: () => ok([]),
+    setSource: () => {
+      throw new Error("La configuration d'une source n'est pas disponible en session simulée.");
+    },
+    testSource: () => {
+      throw new Error("Le test d'une source n'est pas disponible en session simulée.");
+    },
+    syncSource: () => {
+      throw new Error("La synchronisation n'est pas disponible en session simulée.");
+    },
+  },
+
   discussions: {
     listThreads: () => ok([]),
     listThreadsForProgram: () => ok([]),

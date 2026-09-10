@@ -13,6 +13,11 @@ import type {
 } from "@/domain/acquisitionPlan";
 import type { OutcomeSelfReport } from "@/domain/passport";
 import type {
+  EncadrementSource,
+  EncadrementSourceId,
+  EncadrementSyncPreview,
+  EncadrementSyncReport,
+  EncadrementSyncRun,
   DiscussionMessage,
   DiscussionThread,
   DiscussionThreadId,
@@ -1204,6 +1209,30 @@ export interface DiscussionRepository {
   markThreadRead(threadId: DiscussionThreadId): Promise<void>;
 }
 
+/**
+ * LES SOURCES D'EQUIPE D'ENCADREMENT.
+ *
+ * `setSource` prend le jeton EN CLAIR une seule fois, le temps de l'appel : la
+ * fonction SQL le range dans Vault et ne le rend jamais. Aucune methode de ce
+ * depot ne peut RELIRE un jeton -- c'est voulu, et c'est verifie en base.
+ */
+export interface EncadrementSourceRepository {
+  listSources(programId: ProgramId): Promise<readonly EncadrementSource[]>;
+  listRuns(sourceId: EncadrementSourceId): Promise<readonly EncadrementSyncRun[]>;
+  /** Pose ou remplace la source ET son jeton. Rend l'identifiant de la source. */
+  setSource(input: {
+    readonly programId: ProgramId;
+    readonly placementId: PlacementId;
+    readonly label: string;
+    readonly endpointUrl: string;
+    readonly token: string;
+  }): Promise<EncadrementSourceId>;
+  /** Appelle la source SANS RIEN ECRIRE : c'est « Tester la connexion ». */
+  testSource(sourceId: EncadrementSourceId): Promise<EncadrementSyncPreview>;
+  /** Appelle la source ET applique : ajouts au vivier, retraits PROPOSES. */
+  syncSource(sourceId: EncadrementSourceId): Promise<EncadrementSyncReport>;
+}
+
 export interface DataAccess {
   readonly programs: ProgramRepository;
   readonly people: PeopleRepository;
@@ -1222,6 +1251,7 @@ export interface DataAccess {
   readonly messages: LearnerMessagesRepository;
   readonly passport: PassportRepository;
   readonly discussions: DiscussionRepository;
+  readonly encadrementSources: EncadrementSourceRepository;
   readonly stageLogs: StageLogRepository;
   readonly supervision: SupervisionRepository;
   readonly administration: AdministrationRepository;

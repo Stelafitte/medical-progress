@@ -52,6 +52,11 @@ import type {
   PersonId,
   Placement,
   PlacementId,
+  EncadrementSource,
+  EncadrementSourceId,
+  EncadrementSyncPreview,
+  EncadrementSyncReport,
+  EncadrementSyncRun,
   DiscussionMessage,
   DiscussionMessageId,
   DiscussionThread,
@@ -567,6 +572,86 @@ function mapSelfReport(row: SelfReportRow): OutcomeSelfReport {
  * ou aucune. C'est ce qui permet de dire « non lu » sans exposer a l'apprenant
  * l'heure a laquelle son encadrant a ouvert le fil.
  */
+type EncadrementSourceRow = {
+  id: string;
+  program_id: string;
+  placement_id: string;
+  label: string;
+  endpoint_url: string;
+  token_hint: string;
+  active: boolean;
+  last_sync_at: string | null;
+};
+
+function mapEncadrementSource(row: EncadrementSourceRow): EncadrementSource {
+  return {
+    id: row.id as EncadrementSourceId,
+    programId: row.program_id as ProgramId,
+    placementId: row.placement_id as PlacementId,
+    label: row.label,
+    endpointUrl: row.endpoint_url,
+    tokenHint: row.token_hint,
+    active: row.active,
+    lastSyncAt: row.last_sync_at,
+  };
+}
+
+type EncadrementRunRow = {
+  id: string;
+  source_id: string;
+  started_at: string;
+  status: "running" | "succeeded" | "failed";
+  members_seen: number;
+  people_added: number;
+  removals_proposed: number;
+  unchanged: number;
+  error_message: string | null;
+};
+
+function mapEncadrementRun(row: EncadrementRunRow): EncadrementSyncRun {
+  return {
+    id: row.id,
+    sourceId: row.source_id as EncadrementSourceId,
+    startedAt: row.started_at,
+    status: row.status,
+    membersSeen: row.members_seen,
+    peopleAdded: row.people_added,
+    removalsProposed: row.removals_proposed,
+    unchanged: row.unchanged,
+    errorMessage: row.error_message,
+  };
+}
+
+/**
+ * LE MESSAGE UTILE EST DANS LE CORPS, PAS DANS L'ERREUR.
+ *
+ * `functions.invoke` rend « Edge Function returned a non-2xx status code » --
+ * vrai et inutilisable. La fonction, elle, repond `{ error: "..." }` en clair
+ * (« La source refuse ce jeton... »). Sans cette extraction, l'administrateur
+ * lirait un message technique la ou il y a une explication.
+ */
+async function messageDeFonctionEdge(erreur: unknown, corps: unknown): Promise<string> {
+  const duCorps = (corps as { error?: string } | null)?.error;
+  if (typeof duCorps === "string" && duCorps.length > 0) return duCorps;
+  /*
+   * ⚠️ SUR UN STATUT NON-2xx, `data` EST NUL et le corps est range dans
+   * `error.context`, qui est une `Response` PAS ENCORE LUE. Sans ce
+   * deballage, l'administrateur lirait « Edge Function returned a non-2xx
+   * status code » -- exact et inutilisable -- au lieu de « La source refuse ce
+   * jeton, regenerez-le cote UMCV ».
+   */
+  const contexte = (erreur as { context?: unknown } | null)?.context;
+  if (contexte instanceof Response) {
+    try {
+      const lu = (await contexte.clone().json()) as { error?: string };
+      if (typeof lu?.error === "string" && lu.error.length > 0) return lu.error;
+    } catch {
+      /* Le corps n'etait pas du JSON : on retombe sur le message generique. */
+    }
+  }
+  return erreur instanceof Error ? erreur.message : "La synchronisation a échoué.";
+}
+
 type DiscussionThreadRow = {
   id: string;
   program_id: string;
@@ -2436,6 +2521,67 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
      * ouvre le fil s'il n'existe pas, tient `last_message_at` et marque l'auteur
      * comme ayant lu son propre message. Les tables n'acceptent que le `select`.
      */
+    /**
+     * LES SOURCES D'EQUIPE D'ENCADREMENT (10/09).
+     *
+     * ⚠️ AUCUNE METHODE ICI NE PEUT RELIRE UN JETON. `encadrement_sources` ne
+     * rend que `token_hint` -- quatre caracteres -- et
+     * `resolve_encadrement_source` est revoquee jusqu'a `authenticated`
+     * comprise. Le navigateur envoie un identifiant de source, jamais un
+     * secret.
+     *
+     * Le TEST et la SYNCHRONISATION passent par la fonction edge : l'appel a
+     * la source tierce ne peut pas partir du navigateur, qui n'a pas le jeton
+     * -- et ne doit pas l'avoir.
+     */
+    encadrementSources: {
+      async listSources(programId) {
+        const { data, error } = await client
+          .from("encadrement_sources")
+          .select("id,program_id,placement_id,label,endpoint_url,token_hint,active,last_sync_at")
+          .eq("program_id", programId)
+          .order("label");
+        assertNoSupabaseError(error);
+        return ((data ?? []) as EncadrementSourceRow[]).map(mapEncadrementSource);
+      },
+      async listRuns(sourceId) {
+        const { data, error } = await client
+          .from("encadrement_sync_runs")
+          .select(
+            "id,source_id,started_at,status,members_seen,people_added,removals_proposed,unchanged,error_message",
+          )
+          .eq("source_id", sourceId)
+          .order("started_at", { ascending: false })
+          .limit(20);
+        assertNoSupabaseError(error);
+        return ((data ?? []) as EncadrementRunRow[]).map(mapEncadrementRun);
+      },
+      async setSource(input) {
+        const { data, error } = await client.rpc("set_encadrement_source", {
+          p_program_id: input.programId,
+          p_placement_id: input.placementId,
+          p_label: input.label,
+          p_endpoint_url: input.endpointUrl,
+          p_token: input.token,
+        });
+        assertNoSupabaseError(error);
+        return data as EncadrementSourceId;
+      },
+      async testSource(sourceId) {
+        const { data, error } = await client.functions.invoke("sync-encadrement", {
+          body: { sourceId, dryRun: true },
+        });
+        if (error) throw new Error(await messageDeFonctionEdge(error, data));
+        return data as EncadrementSyncPreview;
+      },
+      async syncSource(sourceId) {
+        const { data, error } = await client.functions.invoke("sync-encadrement", {
+          body: { sourceId },
+        });
+        if (error) throw new Error(await messageDeFonctionEdge(error, data));
+        return data as EncadrementSyncReport;
+      },
+    },
     discussions: {
       async listThreads(enrollmentId) {
         const { data, error } = await client

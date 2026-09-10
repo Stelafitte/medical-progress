@@ -321,6 +321,69 @@ export interface SupervisionGroup extends Entity<SupervisionGroupId> {
 }
 
 /* ------------------------------------------------------------------ */
+/* Sources d'equipe d'encadrement */
+/* ------------------------------------------------------------------ */
+
+export type EncadrementSourceId = Id<"EncadrementSource">;
+
+/**
+ * UN SERVICE QUI ALIMENTE UN TERRAIN DE STAGE.
+ *
+ * `tokenHint` est les QUATRE DERNIERS caracteres du jeton, et c'est tout ce
+ * que l'ecran peut en savoir : `resolve_encadrement_source` est revoquee
+ * jusqu'a `authenticated` comprise. Ce qu'on ne peut pas lire ne fuit pas par
+ * une capture d'ecran.
+ */
+export interface EncadrementSource {
+  readonly id: EncadrementSourceId;
+  readonly programId: ProgramId;
+  readonly placementId: PlacementId;
+  readonly label: string;
+  readonly endpointUrl: string;
+  readonly tokenHint: string;
+  readonly active: boolean;
+  readonly lastSyncAt: IsoDateTime | null;
+}
+
+export interface EncadrementSyncRun {
+  readonly id: string;
+  readonly sourceId: EncadrementSourceId;
+  readonly startedAt: IsoDateTime;
+  readonly status: "running" | "succeeded" | "failed";
+  readonly membersSeen: number;
+  readonly peopleAdded: number;
+  readonly removalsProposed: number;
+  readonly unchanged: number;
+  readonly errorMessage: string | null;
+}
+
+/** Une personne telle que la source la decrit. */
+export interface EncadrementMembre {
+  readonly prenom?: string;
+  readonly nom?: string;
+  readonly email?: string;
+  readonly categorie?: string;
+  readonly encadrant?: boolean;
+}
+
+/** Le compte rendu rendu par `apply_encadrement_sync`. */
+export interface EncadrementSyncReport {
+  readonly membres_lus: number;
+  readonly ajoutes: readonly EncadrementMembre[];
+  readonly inchanges: readonly EncadrementMembre[];
+  readonly a_rapprocher: readonly (EncadrementMembre & { raison?: string })[];
+  readonly absents: readonly (EncadrementMembre & { statut?: string })[];
+}
+
+/** Ce que rend « Tester la connexion » : il n'ecrit rien. */
+export interface EncadrementSyncPreview {
+  readonly dryRun: true;
+  readonly membres_lus: number;
+  readonly encadrants: number;
+  readonly apercu: readonly EncadrementMembre[];
+}
+
+/* ------------------------------------------------------------------ */
 /* Fils de discussion — apprenant / encadrants */
 /* ------------------------------------------------------------------ */
 

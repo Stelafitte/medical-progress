@@ -150,6 +150,12 @@ export const PROGRAM_ADMIN_NAV: readonly NavEntry[] = [
     exact: false,
   },
   {
+    to: "/espace/administration/encadrement",
+    label: "Équipe d'encadrement",
+    icon: Users,
+    exact: false,
+  },
+  {
     to: "/espace/administration/documents",
     label: "Documents et certificats",
     icon: FileCheck,
