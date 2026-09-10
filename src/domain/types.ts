@@ -320,6 +320,69 @@ export interface SupervisionGroup extends Entity<SupervisionGroupId> {
   readonly supervisorPersonIds: readonly PersonId[];
 }
 
+/* ------------------------------------------------------------------ */
+/* Fils de discussion — apprenant / encadrants */
+/* ------------------------------------------------------------------ */
+
+export type DiscussionThreadId = Id<"DiscussionThread">;
+export type DiscussionMessageId = Id<"DiscussionMessage">;
+
+/**
+ * UN FIL PEND A UNE CHOSE : un acquis, ou une journee de carnet. Jamais aux
+ * deux, jamais a rien — la base le garantit (contrainte `un_seul_ancrage`).
+ *
+ * `outcomeCode`, `outcomeLabel` et `occurredOn` sont une PROJECTION DE LECTURE,
+ * jointe par la requete : sans eux l'ecran afficherait un identifiant a la
+ * place du sujet, et l'encadrant recevrait un message sans savoir de quoi on
+ * parle.
+ */
+export interface DiscussionThread {
+  readonly id: DiscussionThreadId;
+  readonly programId: ProgramId;
+  readonly enrollmentId: EnrollmentId;
+  readonly outcomeId?: OutcomeId;
+  readonly stageLogEntryId?: string;
+  readonly openedBy: PersonId;
+  readonly createdAt: IsoDateTime;
+  readonly lastMessageAt: IsoDateTime;
+  /** Ma propre lecture du fil. `null` = jamais ouvert par moi. */
+  readonly readAt: IsoDateTime | null;
+  readonly outcomeCode?: string;
+  readonly outcomeLabel?: string;
+  /** Le jour du carnet, quand le fil y pend. */
+  readonly occurredOn?: string;
+  /**
+   * LE CONTEXTE, RELU A CHAQUE OUVERTURE ET JAMAIS RECOPIE dans le premier
+   * message : l'apprenant complete souvent son recit apres coup, et une copie
+   * figee ferait repondre l'encadrant a une version perimee.
+   */
+  readonly contextBody?: string;
+}
+
+export interface DiscussionMessage {
+  readonly id: DiscussionMessageId;
+  readonly threadId: DiscussionThreadId;
+  readonly authorPersonId: PersonId;
+  readonly authorName?: string;
+  readonly body: string;
+  readonly createdAt: IsoDateTime;
+}
+
+/**
+ * LA NOTE D'EXPERIENCE — ce que l'apprenant RACONTE, et non ce qu'il DECLARE.
+ *
+ * Volontairement separee d'`OutcomeSelfReport` : la declaration porte un niveau
+ * obligatoire, et le texte le plus utile est justement celui de quelqu'un qui
+ * n'est pas encore pret a se declarer competent. Voir la migration
+ * 20260910140000.
+ */
+export interface OutcomeExperienceNote {
+  readonly enrollmentId: EnrollmentId;
+  readonly outcomeId: OutcomeId;
+  readonly body: string;
+  readonly updatedAt: IsoDateTime;
+}
+
 export interface PlacementAssignment extends Entity<PlacementAssignmentId> {
   readonly placementId: PlacementId;
   readonly enrollmentId: EnrollmentId;

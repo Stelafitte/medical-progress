@@ -12,6 +12,12 @@ import type {
   PlanScheduleEntry,
 } from "@/domain/acquisitionPlan";
 import type { OutcomeSelfReport } from "@/domain/passport";
+import type {
+  DiscussionMessage,
+  DiscussionThread,
+  DiscussionThreadId,
+  OutcomeExperienceNote,
+} from "@/domain/types";
 import type { CohortOpeningReport } from "@/domain/cohortOpening";
 import type {
   MilestoneTemplate,
@@ -1150,6 +1156,44 @@ export interface PassportRepository {
   }): Promise<OutcomeSelfReport>;
   /** Les declarations d'une inscription. */
   listSelfReports(enrollmentId: EnrollmentId): Promise<readonly OutcomeSelfReport[]>;
+  /**
+   * Les notes d'experience de l'apprenant, INDEPENDANTES de ses declarations.
+   * Lisibles par l'encadrement : c'est le corpus de la future analyse.
+   */
+  listExperienceNotes(enrollmentId: EnrollmentId): Promise<readonly OutcomeExperienceNote[]>;
+  /** Enregistre ou remplace une note. Un corps vide EFFACE la note. */
+  saveExperienceNote(input: {
+    readonly enrollmentId: EnrollmentId;
+    readonly outcomeId: OutcomeId;
+    readonly body: string;
+  }): Promise<void>;
+}
+
+/**
+ * LES FILS DE DISCUSSION — apprenant et encadrants, a propos d'une chose.
+ *
+ * Distinct de `LearnerMessagesRepository` a dessein, et ce n'est pas une
+ * commodite : celui-la lit des CAMPAGNES (diffusion, une ligne de remise par
+ * destinataire, aucun auteur par message, aucune reponse possible), celui-ci
+ * une CONVERSATION. Les deux modeles sont en base, ils ne se melangent pas.
+ */
+export interface DiscussionRepository {
+  /** Les fils d'une inscription, du plus recemment actif au plus ancien. */
+  listThreads(enrollmentId: EnrollmentId): Promise<readonly DiscussionThread[]>;
+  /** Les messages d'un fil, dans l'ordre. */
+  listMessages(threadId: DiscussionThreadId): Promise<readonly DiscussionMessage[]>;
+  /**
+   * Poste un message. OUVRE LE FIL S'IL N'EXISTE PAS — un seul geste pour les
+   * deux, l'ecran n'a pas a savoir si le fil existe deja.
+   */
+  postMessage(input: {
+    readonly enrollmentId: EnrollmentId;
+    readonly outcomeId?: OutcomeId;
+    readonly stageLogEntryId?: string;
+    readonly body: string;
+  }): Promise<DiscussionThread>;
+  /** Marque le fil lu POUR MOI seulement : les autres encadrants gardent le leur. */
+  markThreadRead(threadId: DiscussionThreadId): Promise<void>;
 }
 
 export interface DataAccess {
@@ -1169,6 +1213,7 @@ export interface DataAccess {
   readonly plan: AcquisitionPlanRepository;
   readonly messages: LearnerMessagesRepository;
   readonly passport: PassportRepository;
+  readonly discussions: DiscussionRepository;
   readonly stageLogs: StageLogRepository;
   readonly supervision: SupervisionRepository;
   readonly administration: AdministrationRepository;

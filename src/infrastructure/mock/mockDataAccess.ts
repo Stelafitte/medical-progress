@@ -793,6 +793,30 @@ export const mockDataAccess: DataAccess = {
         note: input.note ?? "",
       }),
     listSelfReports: () => ok([]),
+    /*
+     * Le mock ne garde PAS les notes : une note qu'on croit ecrite et qui
+     * disparait est exactement le defaut qu'on repare ici. En session simulee,
+     * l'ecran affiche donc une boite vide -- ce qui est vrai.
+     */
+    listExperienceNotes: () => ok([]),
+    saveExperienceNote: () => ok(undefined),
+  },
+
+  /*
+   * LES FILS N'ONT PAS DE MAQUETTE, ET N'EN AURONT PAS.
+   *
+   * Une conversation inventee entre un etudiant et son encadrant est le pire
+   * faux possible : elle se lit comme un vrai echange. Le mock rend donc vide,
+   * et l'ecran dit qu'il n'y a pas encore d'echange -- ce qui est vrai. C'est
+   * la lecon du 09/09 sur « Mes messages », appliquee d'avance cette fois.
+   */
+  discussions: {
+    listThreads: () => ok([]),
+    listMessages: () => ok([]),
+    postMessage: () => {
+      throw new Error("Les échanges ne sont pas disponibles en session simulée.");
+    },
+    markThreadRead: () => ok(undefined),
   },
 
   plan: {

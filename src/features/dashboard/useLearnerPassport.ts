@@ -70,6 +70,12 @@ export function useLearnerPassport() {
        * resterait ouverte et l'etudiant croirait que rien n'a ete enregistre.
        */
       const selfReports = await data.passport.listSelfReports(activeEnrollment.id);
+      /*
+       * Les notes d'experience, lues a part pour la meme raison que la
+       * promotion et les chapitres : le `Promise.all` ci-dessus est deja a dix
+       * promesses, et au-dela TypeScript perd l'inference de tuple.
+       */
+      const experienceNotes = await data.passport.listExperienceNotes(activeEnrollment.id);
 
       /*
        * LE PLAN PERSONNEL DE CET APPRENANT (09/09).
@@ -136,6 +142,7 @@ export function useLearnerPassport() {
         progress,
         themes,
         selfReports,
+        experienceNotes,
         /*
          * LES DECALAGES, RENDUS TELS QUELS EN PLUS DU PLAN. Le plan porte deja
          * les dates personnelles — elles y sont appliquees — mais il ne dit

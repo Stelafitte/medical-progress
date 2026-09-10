@@ -52,6 +52,11 @@ import type {
   PersonId,
   Placement,
   PlacementId,
+  DiscussionMessage,
+  DiscussionMessageId,
+  DiscussionThread,
+  DiscussionThreadId,
+  OutcomeExperienceNote,
   PlacementAssignment,
   PlacementAssignmentId,
   Program,
@@ -547,6 +552,93 @@ function mapSelfReport(row: SelfReportRow): OutcomeSelfReport {
     note: row.note,
     ...(row.validated_by ? { validatedBy: row.validated_by as PersonId } : {}),
     ...(row.validated_at ? { validatedAt: row.validated_at } : {}),
+  };
+}
+
+/*
+ * LE FIL, AVEC SON SUJET JOINT DANS LA MEME REQUETE.
+ *
+ * `outcomes` et `stage_log_entries` sont embarques par PostgREST le long des
+ * deux cles etrangeres d'ancrage : sans eux l'ecran afficherait un identifiant
+ * a la place du sujet, et il faudrait une lecture de plus par fil.
+ *
+ * `discussion_thread_reads` remonte en TABLEAU (relation inverse), mais la
+ * policy `person_id = auth.uid()` fait qu'il n'y a jamais que MA ligne dedans,
+ * ou aucune. C'est ce qui permet de dire « non lu » sans exposer a l'apprenant
+ * l'heure a laquelle son encadrant a ouvert le fil.
+ */
+type DiscussionThreadRow = {
+  id: string;
+  program_id: string;
+  enrollment_id: string;
+  outcome_id: string | null;
+  stage_log_entry_id: string | null;
+  opened_by: string;
+  created_at: string;
+  last_message_at: string;
+  outcomes: { code: string; label: string } | null;
+  stage_log_entries: { occurred_on: string; narrative: string } | null;
+  discussion_thread_reads: { read_at: string }[] | null;
+};
+
+const discussionThreadColumns =
+  "id,program_id,enrollment_id,outcome_id,stage_log_entry_id,opened_by,created_at,last_message_at," +
+  "outcomes(code,label),stage_log_entries(occurred_on,narrative),discussion_thread_reads(read_at)";
+
+function mapDiscussionThread(row: DiscussionThreadRow): DiscussionThread {
+  return {
+    id: row.id as DiscussionThreadId,
+    programId: row.program_id as ProgramId,
+    enrollmentId: row.enrollment_id as EnrollmentId,
+    ...(row.outcome_id ? { outcomeId: row.outcome_id as OutcomeId } : {}),
+    ...(row.stage_log_entry_id ? { stageLogEntryId: row.stage_log_entry_id } : {}),
+    openedBy: row.opened_by as PersonId,
+    createdAt: row.created_at,
+    lastMessageAt: row.last_message_at,
+    readAt: row.discussion_thread_reads?.[0]?.read_at ?? null,
+    ...(row.outcomes ? { outcomeCode: row.outcomes.code, outcomeLabel: row.outcomes.label } : {}),
+    ...(row.stage_log_entries
+      ? {
+          occurredOn: row.stage_log_entries.occurred_on,
+          contextBody: row.stage_log_entries.narrative,
+        }
+      : {}),
+  };
+}
+
+type DiscussionMessageRow = {
+  id: string;
+  thread_id: string;
+  author_person_id: string;
+  body: string;
+  created_at: string;
+  profiles: { full_name: string } | null;
+};
+
+function mapDiscussionMessage(row: DiscussionMessageRow): DiscussionMessage {
+  return {
+    id: row.id as DiscussionMessageId,
+    threadId: row.thread_id as DiscussionThreadId,
+    authorPersonId: row.author_person_id as PersonId,
+    ...(row.profiles ? { authorName: row.profiles.full_name } : {}),
+    body: row.body,
+    createdAt: row.created_at,
+  };
+}
+
+type ExperienceNoteRow = {
+  enrollment_id: string;
+  outcome_id: string;
+  body: string;
+  updated_at: string;
+};
+
+function mapExperienceNote(row: ExperienceNoteRow): OutcomeExperienceNote {
+  return {
+    enrollmentId: row.enrollment_id as EnrollmentId,
+    outcomeId: row.outcome_id as OutcomeId,
+    body: row.body,
+    updatedAt: row.updated_at,
   };
 }
 
@@ -2304,6 +2396,89 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
           .eq("enrollment_id", enrollmentId);
         assertNoSupabaseError(error);
         return ((data ?? []) as SelfReportRow[]).map(mapSelfReport);
+      },
+      /**
+       * LA NOTE D'EXPERIENCE, ENFIN ECRITE QUELQUE PART (10/09).
+       *
+       * Elle vivait dans un magasin EN MEMOIRE : l'apprenant tapait son vecu,
+       * rechargeait la page, tout etait perdu — et la boite ne portait meme pas
+       * de badge « Simule », contrairement au fil de tuteur juste en dessous.
+       *
+       * Table distincte d'`outcome_self_reports` A DESSEIN : celle-ci exige un
+       * niveau declare, et le texte le plus utile est celui de quelqu'un qui
+       * n'est PAS encore pret a se declarer competent. Voir la migration
+       * 20260910140000.
+       */
+      async listExperienceNotes(enrollmentId) {
+        const { data, error } = await client
+          .from("outcome_experience_notes")
+          .select("enrollment_id, outcome_id, body, updated_at")
+          .eq("enrollment_id", enrollmentId);
+        assertNoSupabaseError(error);
+        return ((data ?? []) as ExperienceNoteRow[]).map(mapExperienceNote);
+      },
+      async saveExperienceNote(input) {
+        const { error } = await client.rpc("save_outcome_experience_note", {
+          p_enrollment_id: input.enrollmentId,
+          p_outcome_id: input.outcomeId,
+          p_body: input.body,
+        });
+        assertNoSupabaseError(error);
+      },
+    },
+    /**
+     * LES FILS DE DISCUSSION (10/09).
+     *
+     * Toute ECRITURE passe par `post_discussion_message`, qui verifie le droit,
+     * ouvre le fil s'il n'existe pas, tient `last_message_at` et marque l'auteur
+     * comme ayant lu son propre message. Les tables n'acceptent que le `select`.
+     */
+    discussions: {
+      async listThreads(enrollmentId) {
+        const { data, error } = await client
+          .from("discussion_threads")
+          .select(discussionThreadColumns)
+          .eq("enrollment_id", enrollmentId)
+          .order("last_message_at", { ascending: false });
+        assertNoSupabaseError(error);
+        return ((data ?? []) as unknown as DiscussionThreadRow[]).map(mapDiscussionThread);
+      },
+      async listMessages(threadId) {
+        const { data, error } = await client
+          .from("discussion_messages")
+          .select("id,thread_id,author_person_id,body,created_at,profiles(full_name)")
+          .eq("thread_id", threadId)
+          .order("created_at", { ascending: true });
+        assertNoSupabaseError(error);
+        return ((data ?? []) as unknown as DiscussionMessageRow[]).map(mapDiscussionMessage);
+      },
+      async postMessage(input) {
+        const { data, error } = await client.rpc("post_discussion_message", {
+          p_enrollment_id: input.enrollmentId,
+          p_outcome_id: input.outcomeId ?? null,
+          p_stage_log_entry_id: input.stageLogEntryId ?? null,
+          p_body: input.body,
+        });
+        assertNoSupabaseError(error);
+        if (!data) throw new Error("Le message n’a pas été enregistré : la base n’a rien renvoyé.");
+        /*
+         * LA RPC REND LA LIGNE BRUTE DU FIL, sans les jointures de sujet : elle
+         * ne sait rendre que `discussion_threads`. L'ecran relit la liste juste
+         * apres, qui, elle, porte le sujet — on ne fabrique donc pas ici une
+         * projection a moitie remplie qui se ferait passer pour l'autre.
+         */
+        return mapDiscussionThread({
+          ...(data as DiscussionThreadRow),
+          outcomes: null,
+          stage_log_entries: null,
+          discussion_thread_reads: null,
+        });
+      },
+      async markThreadRead(threadId) {
+        const { error } = await client.rpc("mark_discussion_thread_read", {
+          p_thread_id: threadId,
+        });
+        assertNoSupabaseError(error);
       },
     },
     /**
