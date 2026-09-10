@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Users } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDataAccess, useSession } from "@/application/session";
+import { useMesSemaines } from "@/features/stage/useMesSemaines";
 import type { PlacementId, SupervisionGroupId } from "@/domain/types";
 
 /**
@@ -32,15 +33,7 @@ export function StageGroupChoice({ placementId }: { readonly placementId: Placem
   const queryClient = useQueryClient();
   const [ouvert, setOuvert] = useState(false);
 
-  const groupes = useQuery({
-    queryKey: ["supervision-groups", activeProgram.id],
-    queryFn: () => data.placements.listSupervisionGroups(activeProgram.id),
-  });
-
-  const semaines = useQuery({
-    queryKey: ["supervision-group-weeks", activeProgram.id],
-    queryFn: () => data.placements.listSupervisionGroupWeeks(activeProgram.id),
-  });
+  const { isPending, candidats, mien, semainesDuGroupe } = useMesSemaines(placementId);
 
   const rejoindre = useMutation({
     mutationFn: (groupId: SupervisionGroupId) => data.placements.joinSupervisionGroup(groupId),
@@ -54,17 +47,8 @@ export function StageGroupChoice({ placementId }: { readonly placementId: Placem
       toast.error(raison instanceof Error ? raison.message : "Groupe non enregistré."),
   });
 
-  if (groupes.isPending) return <Skeleton className="h-24 w-full" />;
+  if (isPending) return <Skeleton className="h-24 w-full" />;
   if (!activeEnrollment) return null;
-
-  /* Les groupes de MON terrain et de MA promotion : les seuls que je puisse
-     rejoindre, et la fonction serveur refuse les autres de toute façon. */
-  const candidats = (groupes.data ?? []).filter(
-    (g) => g.placementId === placementId && g.cohortId === activeEnrollment.cohortId,
-  );
-  const mien = candidats.find((g) =>
-    (g.memberEnrollmentIds as readonly string[]).includes(activeEnrollment.id),
-  );
 
   /*
    * ON AFFICHE DES QU'IL EXISTE UN GROUPE, meme s'il n'y en a qu'un (correction
@@ -78,7 +62,7 @@ export function StageGroupChoice({ placementId }: { readonly placementId: Placem
   const choixPossible = candidats.length > 1;
 
   const compte = (groupId: string) => {
-    const siennes = (semaines.data ?? []).filter((w) => w.groupId === groupId);
+    const siennes = semainesDuGroupe(groupId);
     const enService = siennes.filter((w) => w.kind === "on").length;
     return siennes.length === 0
       ? "calendrier non renseigné"

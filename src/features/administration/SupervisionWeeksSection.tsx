@@ -39,6 +39,17 @@ import type { Cohort, ProgramId, SupervisionGroup, SupervisionGroupId } from "@/
  * inconnue, et le calendrier de l'encadrant le dit au lieu de conclure.
  */
 
+/*
+ * PAS D'ALTERNANCE = UNE PERIODE PLUS LONGUE QUE LE STAGE.
+ *
+ * `generate_supervision_group_weeks` alterne tous les `p_period` semaines ;
+ * avec une periode qui depasse la duree du stage, la bascule n'arrive jamais et
+ * toutes les semaines prennent le premier etat. Aucune migration a ajouter pour
+ * ce cas, et la fonction garde une seule regle a comprendre. Demande de Stef,
+ * 10/09 : toutes les promotions n'alternent pas.
+ */
+const SANS_ALTERNANCE = "520";
+
 const COULEUR: Record<"on" | "off" | "vide", string> = {
   on: "bg-emerald-600",
   off: "bg-sky-300 dark:bg-sky-800",
@@ -161,11 +172,14 @@ export function SupervisionWeeksSection({
                 <SelectContent>
                   <SelectItem value="1">une semaine sur deux</SelectItem>
                   <SelectItem value="2">deux semaines sur quatre</SelectItem>
+                  <SelectItem value={SANS_ALTERNANCE}>aucune alternance</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <p className="text-muted-foreground text-[12.5px]">
-              Générer remplace tout le calendrier du groupe.
+              {periode === SANS_ALTERNANCE
+                ? `Toutes les semaines seront « ${premiere === "on" ? "en service" : "travail personnel"} ».`
+                : "Générer remplace tout le calendrier du groupe."}
             </p>
           </div>
 

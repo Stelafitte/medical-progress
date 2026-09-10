@@ -26,6 +26,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { useDataAccess, useSession } from "@/application/session";
+import { useMesSemaines } from "@/features/stage/useMesSemaines";
 import { STAGE_LOG_STATUS_LABELS_FR, type StageLog } from "@/domain/stageLog";
 import type { EnrollmentId, PlacementId } from "@/domain/types";
 
@@ -93,10 +94,11 @@ function addDays(date: Date, count: number): Date {
  *    case cochee dans la seule teinte qui ne signifie rien ; elle prend le vert
  *    du jeu semantique, et son pendant orange nomme la journee qui manque.
  */
-type EtatSemaine = "passee_incomplete" | "passee_complete" | "en_cours" | "a_venir";
+type EtatSemaine = "off" | "passee_incomplete" | "passee_complete" | "en_cours" | "a_venir";
 
 /** Le bandeau : la teinte y est franche, c est la seule grande surface. */
 const FOND_SEMAINE: Readonly<Record<EtatSemaine, string>> = {
+  off: "bg-sky-100 border-sky-300 dark:bg-sky-950 dark:border-sky-800",
   passee_incomplete: "bg-warning/20 border-warning/45",
   passee_complete: "bg-success/15 border-success/40",
   en_cours: "bg-live/25 border-live/55",
@@ -106,6 +108,7 @@ const FOND_SEMAINE: Readonly<Record<EtatSemaine, string>> = {
 /** L encre du bandeau. Aucun jeton ne fournit d encre sombre pour `--success`
  *  sur un lavis : `text-success` en petites capitales y suffit. */
 const ENCRE_SEMAINE: Readonly<Record<EtatSemaine, string>> = {
+  off: "text-sky-800 dark:text-sky-200",
   passee_incomplete: "text-warning-foreground",
   passee_complete: "text-success",
   en_cours: "text-live-ink",
@@ -115,6 +118,7 @@ const ENCRE_SEMAINE: Readonly<Record<EtatSemaine, string>> = {
 /** La bordure de la liste, en rappel : la couleur enveloppe les sept lignes
  *  sans passer dessous. */
 const BORDURE_SEMAINE: Readonly<Record<EtatSemaine, string>> = {
+  off: "border-sky-300 dark:border-sky-800",
   passee_incomplete: "border-warning/40",
   passee_complete: "border-success/35",
   en_cours: "border-live/50",
@@ -122,6 +126,7 @@ const BORDURE_SEMAINE: Readonly<Record<EtatSemaine, string>> = {
 };
 
 const LIBELLE_SEMAINE: Readonly<Record<EtatSemaine, string>> = {
+  off: "Semaine de travail personnel — pas de présence attendue",
   passee_incomplete: "Semaine passée — des journées manquent",
   passee_complete: "Semaine passée — à jour",
   en_cours: "Semaine en cours",
@@ -146,6 +151,7 @@ export function StageLogWeek({ enrollmentId, placementId, placementName }: Stage
   const queryClient = useQueryClient();
   const { activeProgram } = useSession();
   const [weekStart, setWeekStart] = useState(() => mondayOf(new Date()));
+  const { semaines: monCalendrier } = useMesSemaines(placementId);
   const [drafts, setDrafts] = useState<Readonly<Record<string, string>>>({});
 
   const { data, isPending } = useQuery({
@@ -236,10 +242,23 @@ export function StageLogWeek({ enrollmentId, placementId, placementName }: Stage
    *   manque se dit « a jour » et non « complete » — l etudiant a pu etre
    *   absent, et ce n est pas un defaut.
    */
+  /*
+   * LE RYTHME DE MON GROUPE. `undefined` = calendrier non pose : on ne conclut
+   * rien et le carnet se comporte comme avant.
+   */
+  const rythmeSemaine = monCalendrier.get(isoDay(weekStart));
+
   const manquante = (date: Date) => {
     const day = isoDay(date);
     const jourDeSemaine = date.getDay();
     if (jourDeSemaine === 0 || jourDeSemaine === 6) return false;
+    /*
+     * UNE SEMAINE DE TRAVAIL PERSONNEL NE MANQUE DE RIEN. Sans cela, le carnet
+     * reclamait cinq journees a un etudiant qu on n attendait pas dans le
+     * service -- et un avertissement injuste est un avertissement qu on
+     * apprend a ignorer.
+     */
+    if (rythmeSemaine === "off") return false;
     if (outOfPeriod(day) || day >= aujourdHui) return false;
     if (validatedUpTo !== null && day <= validatedUpTo) return false;
     return !byDay.has(day);
@@ -249,6 +268,9 @@ export function StageLogWeek({ enrollmentId, placementId, placementName }: Stage
   const etatSemaine: EtatSemaine = (() => {
     const debut = isoDay(days[0] ?? new Date());
     const fin = isoDay(days[6] ?? new Date());
+    /* Une semaine chez soi le reste, passee comme a venir : ce n'est ni un
+       retard ni une echeance. */
+    if (rythmeSemaine === "off") return "off";
     if (debut > aujourdHui) return "a_venir";
     if (fin >= aujourdHui) return "en_cours";
     return manquantes > 0 ? "passee_incomplete" : "passee_complete";
