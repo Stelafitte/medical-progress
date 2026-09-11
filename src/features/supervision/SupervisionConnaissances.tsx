@@ -21,11 +21,8 @@ import {
 } from "@/features/supervision/useSupervision";
 import { AcquisContenu } from "@/features/supervision/AcquisContenu";
 import { ProgressionLegend, type EtatAcquis } from "@/features/supervision/ProgressionDot";
-import {
-  AcquisListe,
-  PromotionHeatmap,
-  moyenneCohorte,
-} from "@/features/supervision/ProgressionMatrix";
+import { AcquisListe, moyenneCohorte } from "@/features/supervision/ProgressionMatrix";
+import { PromotionHeatmap } from "@/features/supervision/PromotionHeatmap";
 import { RankBadge } from "@/components/rank-badge";
 import type { OutcomeId } from "@/domain/types";
 

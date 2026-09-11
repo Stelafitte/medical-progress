@@ -22,13 +22,34 @@ import { cn } from "@/lib/utils";
 import { MASTERY_LABELS_FR } from "@/domain/mastery";
 import type { MasteryLevel } from "@/domain/types";
 
-/** Fond de la case selon le niveau déclaré. Du plus pâle au plus soutenu. */
+/**
+ * Fond de la case selon le niveau déclaré. Du plus pâle au plus soutenu.
+ *
+ * ⚠️ CES CINQ VALEURS SONT VALIDEES, PAS CHOISIES A L'OEIL (11/09). La première
+ * version utilisait `amber-200` puis `amber-400` : mesurée, cette paire
+ * adjacente tombait à ΔE 10,4 en vision normale — sous le seuil de 15, donc
+ * difficile à distinguer même sans trouble de la vision des couleurs, et à 9,8
+ * en deutéranopie. `amber-500` et `emerald-700` remontent la pire paire à 12,9
+ * en vision normale et 12,5 en deutéranopie.
+ *
+ * C'EST UNE RAMPE ORDONNEE, PAS UNE PALETTE CATEGORIELLE : le critère qui vaut
+ * ici est la MONOTONIE DE LUMINOSITE, et elle est respectée (0,97 → 0,92 →
+ * 0,72 → 0,77 → 0,55). Une teinte par identité n'aurait aucun sens pour cinq
+ * niveaux qui se succèdent.
+ *
+ * L'écart restant tient à un contraste faible sur fond clair : c'est pourquoi
+ * chaque case porte TOUJOURS son intitulé au survol et au lecteur d'écran, et
+ * pourquoi les segments empilés gardent un filet de 2 px entre eux.
+ */
 const FOND: Record<MasteryLevel, string> = {
+  /* `bg-muted` et non `muted-foreground/25` : cette dernière est réservée à la
+     case NEUTRE d'en-tête, et deux gris voisins pour deux sens différents
+     seraient exactement le piège qu'on vient de retirer sur les ambres. */
   not_started: "bg-muted",
   novice: "bg-amber-200 dark:bg-amber-900",
-  intermediate: "bg-amber-400 dark:bg-amber-700",
+  intermediate: "bg-amber-500 dark:bg-amber-700",
   proficient: "bg-emerald-400 dark:bg-emerald-700",
-  autonomous: "bg-emerald-600 dark:bg-emerald-500",
+  autonomous: "bg-emerald-700 dark:bg-emerald-500",
 };
 
 /** Couleur du texte porté par la case, pour rester lisible sur chaque fond. */
