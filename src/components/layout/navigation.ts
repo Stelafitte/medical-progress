@@ -20,7 +20,6 @@ import {
   Mail,
   MessagesSquare,
   SlidersHorizontal,
-
   Notebook,
   BarChart3,
   Route,
@@ -31,11 +30,13 @@ import {
 } from "lucide-react";
 import type { ProgramId, RoleAssignment } from "@/domain/types";
 import {
+  canAccessInternalCommunication,
   canAccessLearnerSpace,
   canAccessPlatformAdministration,
   canAccessProgramAdministration,
   canAccessSupervision,
   canManagePlacementCalendar,
+  canValidatePlacement,
 } from "@/domain/access";
 
 export interface NavEntry {
@@ -107,6 +108,24 @@ export const SUPERVISION_NAV: readonly NavEntry[] = [
     exact: false,
   },
   { to: "/espace/encadrement/messages", label: "Messagerie", icon: Mail, exact: false },
+  /*
+   * DEUX ECRANS PARTAGES AVEC L'ADMINISTRATION (Stef, 11/09). Ce sont les
+   * MEMES routes, pas des copies : l'equipe et les envois d'un programme n'ont
+   * qu'une seule source, et deux ecrans jumeaux finiraient par diverger. Leur
+   * visibilite n'est pas la meme pour autant -- voir le filtre plus bas.
+   */
+  {
+    to: "/espace/administration/communications",
+    label: "Communication interne",
+    icon: MessagesSquare,
+    exact: false,
+  },
+  {
+    to: "/espace/administration/encadrement",
+    label: "Équipe d'encadrement",
+    icon: Users,
+    exact: false,
+  },
   { to: "/espace/statistiques", label: "Statistiques", icon: BarChart3, exact: false },
   {
     to: "/espace/encadrement/profil",
@@ -203,8 +222,6 @@ export const PLATFORM_ADMIN_NAV: readonly NavEntry[] = [
   },
 ];
 
-
-
 /**
  * Modules optionnels du programme sélectionné. Ils n'ajoutent aucune
  * architecture parallèle : ils masquent ou révèlent des entrées de navigation.
@@ -299,11 +316,21 @@ export function navSpacesFor(
        * l'entree a un encadrant simple lui ouvrirait un ecran dont chaque
        * bouton echoue.
        */
-      entries: SUPERVISION_NAV.filter(
-        (e) =>
-          e.to !== "/espace/encadrement/calendrier" ||
-          canManagePlacementCalendar(assignments, programId),
-      ),
+      entries: SUPERVISION_NAV.filter((e) => {
+        if (e.to === "/espace/encadrement/calendrier")
+          return canManagePlacementCalendar(assignments, programId);
+        /* La communication interne est ouverte a toute l'equipe du programme :
+           c'est ce que dit `is_program_staff` en base. */
+        if (e.to === "/espace/administration/communications")
+          return canAccessInternalCommunication(assignments, programId);
+        /* L'EQUIPE D'ENCADREMENT EST POUR LE RESPONSABLE DE STAGE, PAS POUR
+           L'ENCADRANT (Stef, 11/09). Brancher une source d'equipe injecte des
+           personnes dans le vivier du programme : c'est un geste de
+           gouvernance, pas un geste de terrain. */
+        if (e.to === "/espace/administration/encadrement")
+          return canValidatePlacement(assignments, programId);
+        return true;
+      }),
     });
   if (canAccessProgramAdministration(assignments, programId))
     spaces.push({

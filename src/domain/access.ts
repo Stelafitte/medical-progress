@@ -88,6 +88,67 @@ export function canManagePlacementCalendar(
   );
 }
 
+/**
+ * PRONONCER LA VALIDATION D'UN STAGE — l'acte propre au responsable de stage.
+ *
+ * DECISION DE STEF, 11/09 : l'encadrant valide la présence semaine par semaine
+ * et confirme les compétences ; le PRONONCE FINAL — le stage est acquis —
+ * revient au responsable de stage, à l'administrateur du programme et à
+ * l'administrateur de plateforme.
+ *
+ * ⚠️ MEME POPULATION QUE `canManagePlacementCalendar` AUJOURD'HUI, ET POURTANT
+ * DEUX FONCTIONS. Ce sont deux droits distincts qui coïncident : poser un
+ * calendrier et prononcer un stage n'ont aucune raison d'évoluer ensemble. Les
+ * fondre ferait qu'ouvrir l'un ouvrirait l'autre sans que personne ne l'ait
+ * décidé.
+ *
+ * ⚠️ LA BASE L'IMPOSE DEPUIS LE 11/09 (migration `20260911140000`) :
+ * `validate_stage_log_block` refuse à l'encadrant le bloc qui couvre le stage
+ * ENTIER — le prononcé — et continue de lui accepter les blocs plus courts,
+ * une semaine ou deux. L'écran et la base disent donc la même chose.
+ */
+export function canValidatePlacement(
+  assignments: readonly RoleAssignment[],
+  programId: ProgramId,
+): boolean {
+  if (canAccessProgramAdministration(assignments, programId)) return true;
+  return assignments.some(
+    (a) =>
+      a.role === "placement_manager" &&
+      a.scope.kind === "placement" &&
+      a.scope.programId === programId,
+  );
+}
+
+/**
+ * LIRE ET ECRIRE LA COMMUNICATION INTERNE DU PROGRAMME.
+ *
+ * DECISION DE STEF, 11/09 : l'onglet « Communication interne » n'est pas
+ * réservé à l'administration. L'encadrant et le responsable de stage y ont
+ * leur place — ils écrivent aux mêmes personnes, sur le même stage.
+ *
+ * ⚠️ CETTE FONCTION EST LE MIROIR EXACT DE `is_program_staff` EN BASE, qui
+ * garde les politiques de `communication_campaigns` : administrateur du
+ * programme ou de la plateforme, enseignant, encadrant, responsable de stage.
+ * Mesuré le 11/09 : la base l'autorisait déjà, seule la garde de l'écran
+ * fermait la porte. Si l'une des deux bouge un jour, l'autre doit bouger le
+ * même jour — un écran plus large offrirait des boutons qui échouent, un écran
+ * plus strict cacherait un droit réellement accordé.
+ */
+export function canAccessInternalCommunication(
+  assignments: readonly RoleAssignment[],
+  programId: ProgramId,
+): boolean {
+  if (canAccessProgramAdministration(assignments, programId)) return true;
+  return assignments.some(
+    (a) =>
+      (a.role === "teacher" ||
+        a.role === "placement_supervisor" ||
+        a.role === "placement_manager") &&
+      (a.scope.kind === "platform" || a.scope.programId === programId),
+  );
+}
+
 /** Espace apprenant : réservé à qui possède un rôle apprenant dans le programme. */
 export function canAccessLearnerSpace(
   assignments: readonly RoleAssignment[],

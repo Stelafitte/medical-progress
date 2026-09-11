@@ -442,7 +442,7 @@ type StageLogValidationRow = {
   covers_to: string;
   validator_person_id: string;
   validator_role: "placement_supervisor" | "teacher" | "administrator";
-  decision: "validated" | "needs_revision";
+  decision: "validated" | "needs_revision" | "not_validated";
   comment: string;
   decided_at: string;
 };

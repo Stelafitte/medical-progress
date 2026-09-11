@@ -51,6 +51,8 @@ import { CohortSealPanel } from "@/features/administration/CohortSealPanel";
 import { ProgramMilestonePlanner } from "@/features/administration/ProgramMilestonePlanner";
 import { outcomeAssociationItems } from "@/domain/outcomeAssociation";
 import { PlacementCreationForm } from "@/features/administration/PlacementCreationForm";
+import { StageEnPlace } from "@/features/administration/StageEnPlace";
+import { ConceptionRecap } from "@/features/administration/ConceptionRecap";
 import { CompetenceCreationForm } from "@/features/administration/CompetenceCreationForm";
 import { DocumentRequirementForm } from "@/features/administration/DocumentRequirementForm";
 import { KnowledgeCreationForm } from "@/features/administration/KnowledgeCreationForm";
@@ -59,7 +61,7 @@ import { ProgramAiReferentialAnalysis } from "@/features/administration/ProgramA
 import { useLocalDocumentRequirements } from "@/application/documentRequirementStore";
 import { useLocalPlacements } from "@/application/placementDraftStore";
 
-import type { CohortId, OutcomeId, ProgramId } from "@/domain/types";
+import type { CohortId, EnrollmentId, OutcomeId, PlacementId, ProgramId } from "@/domain/types";
 import { formatFrDate } from "@/features/administration/adminProgramViewModel";
 
 /* ------------------------------------------------------------------ */
@@ -237,6 +239,13 @@ export function AdminProgramDesigner() {
   const [archivingIds, setArchivingIds] = useState<ReadonlySet<string>>(new Set());
   const [archiveError, setArchiveError] = useState<string | null>(null);
 
+  /* Terrain visé par l'association promotion ↔ stage (étape 2). Null tant que
+     personne n'a tranché : avec plusieurs terrains, on ne devine pas. */
+  const [stagePlacementId, setStagePlacementId] = useState<string | null>(null);
+  const [associating, setAssociating] = useState(false);
+  const [associationError, setAssociationError] = useState<string | null>(null);
+  const [associationFaite, setAssociationFaite] = useState<string | null>(null);
+
   const existingCounts = useMemo<Record<ResourceKind, number>>(
     () => ({
       knowledge:
@@ -246,7 +255,11 @@ export function AdminProgramDesigner() {
       assessments: data?.assessmentModalities.length ?? 0,
       stage:
         (data?.placements.length ?? 0) + (data?.templates.length ?? 0) + localPlacements.length,
-      documents: localRequirements.length,
+      /* ⚠️ LES DOCUMENTS REELS COMPTENT AUSSI (11/09). Ce badge ne lisait que
+         le store local, volatile : il retombait à zéro au moindre rechargement
+         alors que des pièces existaient en base — un zéro crédible, le pire
+         des modes de panne. */
+      documents: (data?.documents.length ?? 0) + localRequirements.length,
     }),
     [data, localPlacements, localRequirements],
   );
@@ -279,17 +292,60 @@ export function AdminProgramDesigner() {
     }
 
     setObjectives(draft && typeof draft["objectives"] === "string" ? draft["objectives"] : "");
-    setResources(
-      draft && draft["resources"]
-        ? (draft["resources"] as typeof resources)
-        : {
-            knowledge: INITIAL_RESOURCE,
-            competences: INITIAL_RESOURCE,
-            assessments: INITIAL_RESOURCE,
-            stage: INITIAL_RESOURCE,
-            documents: INITIAL_RESOURCE,
-          },
-    );
+    /*
+     * ⚠️ UNE RUBRIQUE QUI EXISTE DEJA EST COCHEE D'OFFICE — corrigé le 11/09
+     * sur constat de Stef : la case « Stage » restait décochée sur DFASM alors
+     * qu'un terrain était configuré et qu'un étudiant y était en stage, et que
+     * la carte elle-même annonçait « 1 élément déjà dans l'onglet dédié ».
+     *
+     * LA CAUSE : deux sources disjointes sur la même carte. La CASE vient du
+     * brouillon de conception (`programs.design_draft`, écrit par ce seul
+     * écran) ; le BADGE compte le contenu réel (`placements`, modèles de
+     * carnet). Rien ne les reliait. Un stage créé depuis « Gestion des stages »
+     * — le chemin normal — n'a jamais touché au brouillon, donc la case restait
+     * à faux. Les deux affichages étaient chacun exacts et se contredisaient.
+     *
+     * LE REMEDE, ELARGI LE 11/09 A LA DEMANDE DE STEF (« les 2 entités sont
+     * liées ») : le CONTENU REEL a le dernier mot, brouillon ou pas. Une
+     * rubrique dont le programme porte déjà le contenu est retenue et
+     * implémentée, et sa case est verrouillée — un premier remède ne
+     * réalignait que les brouillons muets, et DFASM avait justement un
+     * brouillon qui disait `stage: selected = false`.
+     *
+     * ⚠️ CETTE CASE NE COMMANDE TOUJOURS RIEN : elle ne donne ni droit ni
+     * écran ni donnée. Elle n'ouvre que le contenu de sa carte et compte dans
+     * « conception prête ». Le stage de l'étudiant ne dépend pas d'elle — il
+     * repose sur `placements` et ses affectations. C'est ce qui rend le
+     * verrouillage sans conséquence : on ne retire rien au concepteur, on lui
+     * évite d'affirmer le contraire de ce que le programme contient.
+     */
+    const brouillonDesRubriques =
+      draft && draft["resources"] ? (draft["resources"] as typeof resources) : null;
+
+    const alignee = (id: ResourceKind): ResourceState => {
+      const enregistree = brouillonDesRubriques?.[id] ?? INITIAL_RESOURCE;
+      if (existingCounts[id] === 0) return enregistree;
+      /* Le MODE reste celui du concepteur — « Implémenter maintenant » doit
+         rester ouvert pour ajouter un terrain de plus. Seuls « retenue » et
+         « implémentée » sont dictés par le contenu réel. */
+      return {
+        ...enregistree,
+        selected: true,
+        implemented: true,
+        /* Un brouillon qui dit « Plus tard » d'un contenu qui existe déjà
+           laisserait la carte sur un bouton désormais grisé, donc sur un état
+           dont on ne pourrait plus sortir. On le ramène au constat. */
+        mode: brouillonDesRubriques && enregistree.mode !== "later" ? enregistree.mode : "existing",
+      };
+    };
+
+    setResources({
+      knowledge: alignee("knowledge"),
+      competences: alignee("competences"),
+      assessments: alignee("assessments"),
+      stage: alignee("stage"),
+      documents: alignee("documents"),
+    });
     setCohortMode(
       draft && (draft["cohortMode"] === "existing" || draft["cohortMode"] === "new")
         ? draft["cohortMode"]
@@ -313,7 +369,16 @@ export function AdminProgramDesigner() {
 
     persistedDraftRef.current = null;
     setDraftLoadedForProgramId(programId);
-  }, [data?.program?.id, data?.program?.designDraft, draftLoadedForProgramId]);
+    /* `existingCounts` change de référence à chaque rendu, mais la garde
+       `draftLoadedForProgramId === programId` arrête l'effet dès la deuxième
+       passe : le brouillon reste chargé une seule fois par programme. */
+  }, [
+    data?.program?.id,
+    data?.program?.designDraft,
+    data?.versions,
+    draftLoadedForProgramId,
+    existingCounts,
+  ]);
 
   const draftPayload = useMemo(
     () => ({
@@ -663,6 +728,113 @@ export function AdminProgramDesigner() {
   const patch = (id: ResourceKind, next: Partial<ResourceState>) =>
     setResources((prev) => ({ ...prev, [id]: { ...prev[id], ...next } }));
 
+  /* Un seul terrain : ce n'est pas un choix, c'est le terrain. Plusieurs : on
+     attend que le concepteur tranche. */
+  const terrainStageId =
+    stagePlacementId ?? (data.placements.length === 1 ? (data.placements[0]?.id ?? null) : null);
+  const terrainStage = data.placements.find((p) => p.id === terrainStageId);
+  const inscritsDeLaPromo = data.enrollments.filter(
+    (e) => (e.cohortId as string) === (selectedCohortId ?? ""),
+  );
+  const groupesDeLaPromoChoisie = data.groups.filter(
+    (g) => (g.cohortId as string) === (selectedCohortId ?? ""),
+  );
+
+  /* ---------------------------------------------------------------- */
+  /* ASSOCIER LA PROMOTION — au programme, ET AU STAGE PAR RICOCHET    */
+  /* ---------------------------------------------------------------- */
+
+  /**
+   * LE STAGE EST DANS LE PROGRAMME, DONC ASSOCIER LA PROMOTION AU PROGRAMME
+   * L'ASSOCIE AU STAGE. Stef, le 11/09 : « quand on choisit d'associer la
+   * promotion au programme, l'association au stage est implicite car le stage
+   * est dans la section 1, à savoir le programme ». Jusqu'ici le bouton ne
+   * faisait qu'écrire un nom dans un état d'écran : la promotion restait
+   * étrangère au terrain tant qu'on n'ouvrait pas « Gestion des stages ».
+   *
+   * CE QUE CE GESTE ECRIT VRAIMENT, et rien de plus :
+   *   1. un GROUPE D'ENCADREMENT (`create_supervision_group`) portant à la
+   *      fois la promotion et le terrain — c'est LUI le lien, la base n'en a
+   *      pas d'autre ;
+   *   2. les INSCRITS de la promotion comme membres du groupe
+   *      (`set_supervision_group_members`, qui REMPLACE la liste) ;
+   *   3. les CARNETS des membres (`open_stage_logs_for_group`), vides.
+   * Les trois appels sont ceux de « Gestion des stages », dans le même ordre :
+   * un second chemin d'écriture pour les mêmes tables serait une seconde
+   * façon de se tromper.
+   *
+   * ⚠️ IDEMPOTENT : si le groupe existe déjà pour ce couple, on ne le
+   * recrée pas — `unique (cohort_id, label)` le refuserait — on resynchronise
+   * ses membres et on ouvre les carnets manquants. Cliquer deux fois ne
+   * duplique rien.
+   *
+   * ⚠️ ON NE DEVINE PAS LE TERRAIN quand il y en a plusieurs : le concepteur
+   * choisit. C'est la même règle que les jalons du 02/09 — écrire sur une
+   * cible qu'on n'a pas choisie ne se rattrape pas.
+   */
+  const associerLaPromotion = async () => {
+    const cohort = cohorts.find((c) => c.id === selectedCohortId);
+    if (!cohort) return;
+    setAssociating(true);
+    setAssociationError(null);
+    try {
+      setAssociated(cohort.label);
+
+      const terrain = terrainStage;
+      if (!resources.stage.selected || !terrain) {
+        setAssociationFaite(null);
+        return;
+      }
+
+      const inscrits = data.enrollments
+        .filter((e) => (e.cohortId as string) === (cohort.id as string))
+        .map((e) => e.id as EnrollmentId);
+
+      /*
+        ⚠️ ON NE TOUCHE PAS AUX MEMBRES D'UNE PROMOTION DEJA GROUPEE. Une
+        promotion scindée en deux (semaine en service / semaine chez soi) a
+        DEUX groupes, et un étudiant n'appartient qu'à un seul. Resynchroniser
+        « tous les inscrits » sur le premier groupe rendrait la scission —
+        posée à la main, elle — silencieusement fausse. Quand des groupes
+        existent, le rattachement est déjà fait : on se contente d'ouvrir les
+        carnets manquants, ce qui n'écrase rien.
+      */
+      const groupesDeLaPromo = data.groups.filter(
+        (g) => (g.cohortId as string) === (cohort.id as string),
+      );
+
+      if (groupesDeLaPromo.length > 0) {
+        for (const g of groupesDeLaPromo) {
+          await dataAccess.stageLogs.openStageLogsForGroup(g.id);
+        }
+        setAssociationFaite(
+          `${cohort.label} est déjà rattachée à ${groupesDeLaPromo.length} groupe(s) d'encadrement ; carnets à jour.`,
+        );
+        void refetch();
+        return;
+      }
+
+      const cree = await dataAccess.placements.createSupervisionGroup({
+        cohortId: cohort.id as CohortId,
+        placementId: terrain.id as PlacementId,
+        label: cohort.label,
+      });
+      await dataAccess.placements.setSupervisionGroupMembers(cree.id, inscrits);
+      await dataAccess.stageLogs.openStageLogsForGroup(cree.id);
+
+      setAssociationFaite(
+        `${cohort.label} est rattachée à ${terrain.name} — ${inscrits.length} inscrit(s), carnets ouverts.`,
+      );
+      void refetch();
+    } catch (reason) {
+      setAssociationError(
+        reason instanceof Error ? reason.message : "Association au stage impossible.",
+      );
+    } finally {
+      setAssociating(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="mb-4">
@@ -870,6 +1042,10 @@ export function AdminProgramDesigner() {
                     <Checkbox
                       id={`res-${resource.id}`}
                       checked={state.selected}
+                      /* Une rubrique dont le contenu existe déjà ne se décoche
+                         pas : la case ne ferait que nier le contenu, sans le
+                         retirer. On retire par « Retirer du programme ». */
+                      disabled={existingCounts[resource.id] > 0}
                       onCheckedChange={(checked) =>
                         patch(resource.id, { selected: checked === true })
                       }
@@ -881,9 +1057,25 @@ export function AdminProgramDesigner() {
                       </Label>
                       <p className="text-muted-foreground mt-1 text-xs">{resource.hint}</p>
                       <div className="mt-1 flex flex-wrap gap-2">
+                        {/*
+                          ⚠️ LA CASE ET CE BADGE DISENT DESORMAIS LA MEME CHOSE,
+                          et il a fallu le corriger : la case « Stage » était
+                          décochée sur DFASM pendant que le badge annonçait
+                          « 1 élément ». Aucun des deux n'avait tort — la CASE
+                          venait du brouillon de conception, le BADGE du contenu
+                          réel (`placements`, acquis, modalités), et un stage créé
+                          depuis « Gestion des stages » ne touche pas au brouillon.
+                          Depuis le 11/09 la case DERIVE du badge : plus deux
+                          sources, donc plus de divergence à expliquer.
+                        */}
                         <Badge variant="outline" className="font-normal">
                           {existingCounts[resource.id]} élément(s) déjà dans l'onglet dédié
                         </Badge>
+                        {existingCounts[resource.id] > 0 ? (
+                          <span className="text-muted-foreground text-xs">
+                            Retenue d'office : ce programme en porte déjà le contenu.
+                          </span>
+                        ) : null}
                       </div>
                     </div>
                   </div>
@@ -902,7 +1094,16 @@ export function AdminProgramDesigner() {
                             size="sm"
                             variant={state.mode === mode ? "default" : "outline"}
                             aria-pressed={state.mode === mode}
-                            disabled={mode === "existing" && existingCounts[resource.id] === 0}
+                            /* « Réutiliser l'existant » n'a rien à réutiliser
+                               quand le programme ne porte rien ; « Plus tard »
+                               dirait « à faire » d'une chose faite. Les deux
+                               gardes sont le même principe, pris dans les deux
+                               sens (11/09). */
+                            disabled={
+                              mode === "existing"
+                                ? existingCounts[resource.id] === 0
+                                : mode === "later" && existingCounts[resource.id] > 0
+                            }
                             className="min-h-11"
                             onClick={() => patch(resource.id, { mode })}
                           >
@@ -910,6 +1111,20 @@ export function AdminProgramDesigner() {
                           </Button>
                         ))}
                       </div>
+
+                      {/*
+                        ⚠️ LE STAGE EN PLACE S'AFFICHE QUEL QUE SOIT LE MODE.
+                        Mesuré le 11/09 sur la capture de Stef : la rubrique était
+                        cochée, mais le mode enregistré au brouillon était
+                        « Implémenter maintenant » — on ne voyait donc QUE le
+                        formulaire vierge, dont les exemples (« CHU de Rouen ») se
+                        lisaient comme le stage du programme. Le constat n'est pas
+                        un mode : ce que le programme porte se dit toujours, et le
+                        mode ne règle plus que ce qu'on peut AJOUTER.
+                      */}
+                      {resource.id === "stage" && existingCounts.stage > 0 ? (
+                        <StageEnPlace scope={data} />
+                      ) : null}
 
                       {state.mode === "now" && resource.id === "stage" ? (
                         <div className="space-y-3">
@@ -929,7 +1144,11 @@ export function AdminProgramDesigner() {
                             </div>
                           ) : null}
                           <div className="space-y-1.5">
-                            <p className="text-sm font-medium">Ajouter un terrain de stage</p>
+                            <p className="text-sm font-medium">
+                              {existingCounts.stage > 0
+                                ? "Ajouter un terrain de stage supplémentaire"
+                                : "Ajouter un terrain de stage"}
+                            </p>
                             <PlacementCreationForm
                               programId={activeProgramId}
                               idPrefix="designer-stage"
@@ -1130,7 +1349,26 @@ export function AdminProgramDesigner() {
                         </div>
                       ) : null}
 
-                      {state.mode === "existing" ? (
+                      {state.mode === "existing" && resource.id === "stage" ? (
+                        <div className="space-y-3">
+                          {/*
+                            AUCUN CHAMP ICI, ET C'EST LE POINT : la rubrique ne
+                            décrit plus le stage avec un texte tapé le jour de la
+                            conception, elle LIT le stage tel qu'il est (la carte
+                            ci-dessus). Ce que « Gestion des stages » change se voit
+                            ici sans qu'on y touche, et les deux ne peuvent plus se
+                            contredire.
+                          */}
+                          {existingCounts.stage === 0 ? (
+                            <StageEnPlace scope={data} />
+                          ) : (
+                            <p className="text-muted-foreground text-sm">
+                              Ce parcours reprend le stage déjà en place, décrit ci-dessus. Il n'y a
+                              rien à ressaisir : le détail est lu en direct.
+                            </p>
+                          )}
+                        </div>
+                      ) : state.mode === "existing" ? (
                         <div className="space-y-3">
                           <p className="text-muted-foreground text-sm">
                             Les {existingCounts[resource.id]} élément(s) déjà saisis dans l'onglet
@@ -1238,18 +1476,73 @@ export function AdminProgramDesigner() {
           </EmptyState>
         )}
 
+        {/*
+          LE STAGE SUIT LA PROMOTION. La rubrique « Stage » est retenue dans la
+          conception : associer la promotion au programme l'associe donc au
+          terrain, par le groupe d'encadrement — le seul objet de la base qui
+          porte les deux. On annonce l'écriture AVANT de la faire.
+        */}
+        {resources.stage.selected && data.placements.length > 0 ? (
+          <fieldset className="border-border space-y-2 rounded-md border p-3">
+            <legend className="px-1 text-sm font-medium">Stage rattaché à cette promotion</legend>
+            {data.placements.length === 1 ? (
+              <p className="text-muted-foreground text-xs">
+                Un seul terrain dans ce programme : {terrainStage?.name} ({terrainStage?.site}).
+              </p>
+            ) : (
+              <div className="space-y-1.5">
+                <Label htmlFor="designer-stage-placement">Terrain visé</Label>
+                <select
+                  id="designer-stage-placement"
+                  className="border-border bg-background min-h-11 max-w-sm rounded-md border px-2 text-sm"
+                  value={terrainStageId ?? ""}
+                  onChange={(event) => setStagePlacementId(event.target.value || null)}
+                >
+                  <option value="">Choisir un terrain…</option>
+                  {data.placements.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name} — {p.site}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+            {selectedCohortId && terrainStage ? (
+              groupesDeLaPromoChoisie.length > 0 ? (
+                <p className="text-muted-foreground text-xs">
+                  Cette promotion est déjà rattachée par {groupesDeLaPromoChoisie.length} groupe(s)
+                  d'encadrement ({groupesDeLaPromoChoisie.map((g) => g.label).join(", ")}). Le
+                  bouton ci-dessous n'y touchera pas : il ouvrira seulement les carnets manquants.
+                  La composition des groupes se règle dans « Gestion des stages ».
+                </p>
+              ) : (
+                <p className="text-muted-foreground text-xs">
+                  Le bouton ci-dessous écrira : groupe d'encadrement «{" "}
+                  {cohorts.find((c) => c.id === selectedCohortId)?.label} » sur {terrainStage.name},{" "}
+                  {inscritsDeLaPromo.length} inscrit(s) comme membres, et leurs carnets ouverts.
+                </p>
+              )
+            ) : null}
+          </fieldset>
+        ) : null}
+
         <div className="flex flex-wrap items-center gap-2">
           <Button
             type="button"
             className="min-h-11"
-            disabled={!designReady || cohortMode === "new" || !selectedCohortId}
-            onClick={() =>
-              setAssociated(cohorts.find((c) => c.id === selectedCohortId)?.label ?? null)
-            }
+            disabled={!designReady || cohortMode === "new" || !selectedCohortId || associating}
+            onClick={() => void associerLaPromotion()}
           >
-            Associer la promotion au programme
+            {associating ? <Loader2 className="me-1 size-4 animate-spin" aria-hidden /> : null}
+            {resources.stage.selected && terrainStage
+              ? "Associer la promotion au programme et au stage"
+              : "Associer la promotion au programme"}
           </Button>
-          {associated ? (
+          {associationError ? (
+            <span className="text-destructive text-sm">{associationError}</span>
+          ) : associationFaite ? (
+            <span className="text-muted-foreground text-sm">{associationFaite}</span>
+          ) : associated ? (
             <span className="text-muted-foreground text-sm">
               {associated} est associée à {data.program?.name ?? "ce programme"}.
             </span>
@@ -1326,10 +1619,63 @@ export function AdminProgramDesigner() {
       >
         <div className="min-w-0 flex-1 space-y-3">
           <div>
-            <h2 className="text-base font-semibold">4. Ouvrir la promotion, puis piloter</h2>
+            <h2 className="text-base font-semibold">4. Vérifier, enregistrer, puis piloter</h2>
             <p className="text-muted-foreground text-sm">
-              C'est le seul moment où l'on quitte le concepteur : le suivi se fait dans le pilotage.
+              Tout ce qui a été décidé au-dessus, relu depuis la base. C'est le seul moment où l'on
+              quitte le concepteur : le suivi se fait dans le pilotage.
             </p>
+          </div>
+
+          {/*
+            LE RECAPITULATIF NE REFAIT RIEN : il relit. Les boutons de chaque
+            ligne ramènent à l'étape qui décide, ou à l'onglet qui écrit — un
+            second formulaire pour les mêmes tables serait une seconde façon de
+            se tromper.
+          */}
+          <ConceptionRecap
+            scope={data}
+            modele={modelName.trim().length > 0 ? modelName : (selectedVersion?.label ?? "")}
+            rubriques={RESOURCES.map((r) => ({
+              id: r.id,
+              label: r.label,
+              retenue: resources[r.id].selected,
+              mode: MODE_LABELS[resources[r.id].mode].toLowerCase(),
+              elements: existingCounts[r.id],
+            }))}
+            cohortId={selectedCohortId}
+            programStartsOn={programStartsOn}
+            programEndsOn={programEndsOn}
+            onEtape={(etape) => scrollToStep(etape)}
+          />
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="min-h-11"
+              disabled={savingDraft}
+              onClick={() => void handleSaveDraft()}
+            >
+              {savingDraft ? (
+                <Loader2 className="me-1 size-4 animate-spin" aria-hidden />
+              ) : (
+                <Save className="me-1 size-4" aria-hidden />
+              )}
+              Enregistrer la conception
+            </Button>
+            {draftError ? (
+              <span className="text-destructive text-xs">{draftError}</span>
+            ) : draftSavedAt ? (
+              <span className="text-muted-foreground text-xs">
+                Conception enregistrée à {new Date(draftSavedAt).toLocaleTimeString("fr-FR")}.
+              </span>
+            ) : (
+              <span className="text-muted-foreground text-xs">
+                Enregistre les choix de conception (modèle, rubriques, promotion, bornes). Les
+                terrains, groupes et jalons sont déjà en base, ils ne dépendent pas de ce bouton.
+              </span>
+            )}
           </div>
           {/*
             Le sceau. Jusqu'au 02/09 cette étape n'était qu'un lien : rien

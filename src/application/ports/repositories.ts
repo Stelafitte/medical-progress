@@ -1122,7 +1122,8 @@ export interface ValidateStageLogBlockInput {
   readonly stageLogId: StageLogId;
   readonly coversFrom: string;
   readonly coversTo: string;
-  readonly decision: "validated" | "needs_revision";
+  /** `not_validated` = le stage est refuse ; `needs_revision` = a completer. */
+  readonly decision: "validated" | "needs_revision" | "not_validated";
   readonly comment: string;
 }
 

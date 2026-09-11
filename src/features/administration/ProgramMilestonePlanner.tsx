@@ -25,7 +25,7 @@
  *    4 » n'a de sens que pour un stage donné, et le même programme peut porter
  *    un rétroplanning différent d'une promo à l'autre.
  */
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CalendarDays } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -118,6 +118,29 @@ export function ProgramMilestonePlanner({
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+
+  /**
+   * LE PLANNING SUIT LA PROMOTION CHOISIE A L'ETAPE 2 (11/09).
+   *
+   * `defaultCohortId` n'était lu qu'au premier montage : choisir la promotion
+   * à l'étape 2 APRES avoir fait défiler jusqu'ici laissait ce sélecteur sur
+   * autre chose, et on saisissait les jalons d'une promotion qu'on croyait
+   * avoir changée. Stef, le 11/09 : « là il faut penser à mettre la bonne
+   * promotion, c'est pas évident ».
+   *
+   * ⚠️ CELA NE CONTREDIT PAS LA REGLE DU 02/09 ci-dessus : on ne présélectionne
+   * toujours rien tout seul. On suit un choix EXPLICITE fait deux étapes plus
+   * haut, et le sélecteur reste libre ensuite — un changement fait ici n'est
+   * pas réécrit tant que l'étape 2 ne change pas.
+   */
+  const dernierDefaut = useRef<string | undefined>(defaultCohortId);
+  useEffect(() => {
+    if (defaultCohortId === undefined || defaultCohortId === dernierDefaut.current) return;
+    dernierDefaut.current = defaultCohortId;
+    setCohortId(defaultCohortId);
+    setExisting(null);
+    setDone(null);
+  }, [defaultCohortId]);
 
   const cohort = cohorts.find((c) => c.id === cohortId);
 
@@ -352,6 +375,9 @@ export function ProgramMilestonePlanner({
               </option>
             ))}
           </select>
+          <p className="text-muted-foreground mt-1 text-xs">
+            Reprend la promotion choisie à l'étape 2 ; vous pouvez en viser une autre ici.
+          </p>
         </div>
         {cohort ? (
           <div className="text-muted-foreground pb-2 text-sm">

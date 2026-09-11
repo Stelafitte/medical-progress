@@ -153,7 +153,13 @@ export interface StageLogValidation {
   readonly coversTo: IsoDateTime;
   readonly validatorPersonId: PersonId;
   readonly validatorRole: Extract<RoleName, "placement_supervisor" | "teacher" | "administrator">;
-  readonly decision: "validated" | "needs_revision";
+  /**
+   * TROIS DECISIONS DEPUIS LE 11/09, et les deux dernieres ne disent pas la
+   * meme chose : `needs_revision` renvoie le carnet a l'etudiant, qui peut
+   * completer ; `not_validated` refuse le stage. Les confondre faisait lire
+   * « a corriger » a un etudiant dont le stage etait refuse.
+   */
+  readonly decision: "validated" | "needs_revision" | "not_validated";
   readonly decidedAt: IsoDateTime;
   readonly comment?: string;
   readonly provenance: Provenance;

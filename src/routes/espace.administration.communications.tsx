@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useSession } from "@/application/session";
 import { AccessRestricted } from "@/components/access-restricted";
 import { CommunicationDirectorySection } from "@/features/administration/CommunicationDirectorySection";
+import { EquipeDuProgrammeAutonome } from "@/features/supervision/EquipeDuProgramme";
 
 /**
  * COMMUNICATION INTERNE.
@@ -37,10 +38,31 @@ export const Route = createFileRoute("/espace/administration/communications")({
   component: Guarded,
 });
 
-/** Garde d'accès dérivée des RoleAssignment contextualisés du programme actif. */
+/**
+ * Garde d'accès dérivée des RoleAssignment contextualisés du programme actif.
+ *
+ * ⚠️ TOUTE L'EQUIPE DU PROGRAMME, PAS SEULEMENT L'ADMINISTRATION (Stef,
+ * 11/09). La garde lisait `canAccessProgramAdministration` et fermait la porte
+ * a l'encadrant comme au responsable de stage — alors que la base, elle, les
+ * autorise depuis toujours : les politiques de `communication_campaigns`
+ * passent par `is_program_staff`, qui couvre l'enseignant, l'encadrant et le
+ * responsable de stage. L'ecran etait donc PLUS STRICT QUE LA BASE, ce qui est
+ * le sens le moins visible de l'erreur : personne ne voit un droit qu'on ne
+ * lui montre pas.
+ */
 function Guarded() {
   const session = useSession();
-  if (!session.canAccessProgramAdministration)
-    return <AccessRestricted area="L'administration du programme" />;
-  return <CommunicationDirectorySection />;
+  if (!session.canAccessInternalCommunication)
+    return <AccessRestricted area="La communication interne du programme" />;
+  return (
+    <div className="space-y-6">
+      {/* A QUI S'ADRESSER, AVANT DE SAVOIR QUOI ECRIRE (Stef, 11/09). La carte
+          n'apparait que pour qui encadre : l'administration a deja sa propre
+          vue de l'equipe dans « Equipe d'encadrement ». */}
+      {session.canAccessSupervision ? (
+        <EquipeDuProgrammeAutonome titre="À qui vous adresser dans ce programme" />
+      ) : null}
+      <CommunicationDirectorySection />
+    </div>
+  );
 }

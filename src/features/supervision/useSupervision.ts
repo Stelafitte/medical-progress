@@ -34,6 +34,8 @@ export function useSupervision() {
         groups,
         weeks,
         resources,
+        roleAssignments,
+        staffProfiles,
       ] = await Promise.all([
         data.placements.listPlacements(activeProgram.id),
         data.outcomes.listOutcomes(activeProgram.id),
@@ -69,6 +71,18 @@ export function useSupervision() {
          * SANS ERREUR -- le vide credible, encore.
          */
         data.resources.listResources(activeProgram.id),
+        /*
+         * L'EQUIPE DU PROGRAMME (11/09, demande de Stef : « il faudrait que
+         * l'encadrant voie qui sont les autres encadrants et le responsable du
+         * stage »). Deux lectures ordinaires -- les roles et les profils -- que
+         * la RLS borne toute seule : depuis la migration `20260911200000`, qui
+         * est staff d'un programme voit les roles de ce programme et les
+         * profils de ceux qui les portent. Aucun filtre de perimetre n'est
+         * ecrit ici, et c'est voulu : un filtre d'ecran donnerait l'illusion
+         * d'une regle qui vit en base.
+         */
+        data.administration.listAllRoleAssignments(),
+        data.administration.listPeople(),
       ]);
       const learners = await data.supervision.listPeopleByIds(enrollments.map((e) => e.personId));
       /*
@@ -101,6 +115,8 @@ export function useSupervision() {
         weeks,
         resources,
         messages,
+        roleAssignments,
+        staffProfiles,
       };
     },
   });

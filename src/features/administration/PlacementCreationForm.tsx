@@ -98,7 +98,7 @@ export function PlacementCreationForm({
           <Input
             id={`${idPrefix}-name`}
             value={input.name}
-            placeholder="Échocardiographie — CHU"
+            placeholder="ex. Échocardiographie — CHU"
             onChange={(e) => patch({ name: e.target.value })}
             className="min-h-11"
           />
@@ -108,7 +108,7 @@ export function PlacementCreationForm({
           <Input
             id={`${idPrefix}-site`}
             value={input.site}
-            placeholder="CHU de Rouen"
+            placeholder="ex. CHU de Rouen"
             onChange={(e) => patch({ site: e.target.value })}
             className="min-h-11"
           />
@@ -118,7 +118,7 @@ export function PlacementCreationForm({
           <Input
             id={`${idPrefix}-department`}
             value={input.department}
-            placeholder="Cardiologie"
+            placeholder="ex. Cardiologie"
             onChange={(e) => patch({ department: e.target.value })}
             className="min-h-11"
           />
@@ -129,7 +129,7 @@ export function PlacementCreationForm({
             id={`${idPrefix}-capacity`}
             inputMode="numeric"
             value={input.capacity}
-            placeholder="4"
+            placeholder="ex. 4"
             onChange={(e) => patch({ capacity: e.target.value })}
             className="min-h-11"
           />

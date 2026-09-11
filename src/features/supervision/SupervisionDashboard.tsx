@@ -3,15 +3,10 @@ import { SectionHeading } from "@/components/section-heading";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  EmptyState,
-  MockBadge,
-  PanelCard,
-  ScopeNotice,
-  StatCard,
-} from "@/features/professional/mock-ui";
+import { EmptyState, PanelCard, ScopeNotice, StatCard } from "@/features/professional/mock-ui";
 import { aConfirmer, learnerName, useSupervision } from "@/features/supervision/useSupervision";
 import { useSession } from "@/application/session";
+import { EquipeDuProgramme } from "@/features/supervision/EquipeDuProgramme";
 
 const STATUS_FR: Record<string, string> = {
   planned: "à venir",
@@ -55,7 +50,6 @@ export function SupervisionDashboard() {
       <SectionHeading
         title="Espace encadrant"
         level={1}
-        action={<MockBadge />}
         description={`Encadrement clinique pour ${activeProgram.name}.`}
       />
 
@@ -139,6 +133,8 @@ export function SupervisionDashboard() {
             </ul>
           )}
         </PanelCard>
+
+        <EquipeDuProgramme scope={data} />
       </div>
     </div>
   );

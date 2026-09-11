@@ -27,8 +27,15 @@ export function nonLu(fil: DiscussionThread): boolean {
 
 /**
  * LE SUJET D'UN FIL EST L'OBJET AUQUEL IL PEND, jamais une ligne d'objet
- * saisie. C'est ce qui distingue ces echanges d'une messagerie : on ne parle
- * pas « de rien », on parle d'une competence ou d'une journee.
+ * saisie. C'est ce qui distingue ces echanges d'une messagerie : on parle
+ * d'une competence, d'une journee, ou -- depuis le 11/09 -- du stage lui-meme.
+ *
+ * LE TROISIEME CAS N'EST PAS UN FOURRE-TOUT. Il n'existe qu'UN fil general par
+ * inscription (index unique en base), et c'est deliberé : sans ligne d'objet,
+ * rien ne distinguerait deux fils generaux l'un de l'autre. Il est ne du bilan
+ * de stage, ou le message porte sur le stage entier -- et ou l'etudiant qu'on
+ * veut le plus joindre est celui qui n'a declare aucune journee, donc qui
+ * n'offre aucun ancrage.
  */
 export function sujetDuFil(fil: DiscussionThread): string {
   if (fil.outcomeLabel) {
@@ -40,7 +47,7 @@ export function sujetDuFil(fil: DiscussionThread): string {
       month: "long",
     })}`;
   }
-  return "Échange";
+  return "Échange général";
 }
 
 /**

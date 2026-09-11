@@ -31,10 +31,12 @@ import {
   canAccessAdministration,
   canAccessOwnProfile,
   canAccessPlatformAdministration,
+  canAccessInternalCommunication,
   canAccessProgramAdministration,
   canAccessStatistics,
   canAccessSupervision,
   canManagePlacementCalendar,
+  canValidatePlacement,
 } from "@/domain/access";
 import { rolesInContext, roleAssignmentKey } from "@/domain/roles";
 import type {
@@ -83,6 +85,10 @@ export interface SessionValue {
   readonly canAccessSupervision: boolean;
   /** Poser les semaines « en service / chez soi » : administrateur ou responsable de stage. */
   readonly canManagePlacementCalendar: boolean;
+  /** Prononcer la validation d'un stage : responsable de stage ou administrateur. */
+  readonly canValidatePlacement: boolean;
+  /** Communication interne : toute l'équipe du programme, encadrants compris. */
+  readonly canAccessInternalCommunication: boolean;
   /** Outil statistique : encadrants, enseignants et administrateurs. */
   readonly canAccessStatistics: boolean;
   readonly canAccessProfile: boolean;
@@ -191,6 +197,8 @@ function MockSessionProvider({ children }: { children: ReactNode }) {
       canAccessPlatformAdministration: canAccessPlatformAdministration(roles),
       canAccessSupervision: canAccessSupervision(roles, activeProgram.id),
       canManagePlacementCalendar: canManagePlacementCalendar(roles, activeProgram.id),
+      canValidatePlacement: canValidatePlacement(roles, activeProgram.id),
+      canAccessInternalCommunication: canAccessInternalCommunication(roles, activeProgram.id),
       canAccessStatistics: canAccessStatistics(roles, activeProgram.id),
       canAccessProfile: canAccessOwnProfile(true),
       isSimulated: true,
@@ -315,6 +323,11 @@ function SupabaseSessionProvider({ children }: { children: ReactNode }) {
       canAccessPlatformAdministration: canAccessPlatformAdministration(rolesForAccess),
       canAccessSupervision: canAccessSupervision(rolesForAccess, activeProgram.id),
       canManagePlacementCalendar: canManagePlacementCalendar(rolesForAccess, activeProgram.id),
+      canValidatePlacement: canValidatePlacement(rolesForAccess, activeProgram.id),
+      canAccessInternalCommunication: canAccessInternalCommunication(
+        rolesForAccess,
+        activeProgram.id,
+      ),
       canAccessStatistics: canAccessStatistics(rolesForAccess, activeProgram.id),
       canAccessProfile: canAccessOwnProfile(true),
       isSimulated: false,
@@ -342,10 +355,29 @@ function SupabaseSessionProvider({ children }: { children: ReactNode }) {
 
   if (error) {
     return (
+      /*
+       * ⚠️ L'ECRAN DE CONNEXION NE PARLE PLUS DE SUPABASE — corrigé le 11/09
+       * sur constat de Stef. Il titrait « Connexion Supabase requise » et
+       * affichait dessous le message technique brut de la couche
+       * d'authentification. Le nom de notre fournisseur de base de données ne
+       * regarde pas l'étudiant qui se connecte, et un message d'API en guise
+       * d'accueil se lit comme une panne.
+       *
+       * LA DISTINCTION QUI COMPTE : ne pas être identifié n'est PAS une erreur.
+       * Quand c'est simplement le cas (`authenticationRequired`), on accueille.
+       * Quand quelque chose a vraiment échoué, on montre le message — car là il
+       * aide, et le taire laisserait devant un écran muet.
+       */
       <main className="mx-auto flex min-h-screen max-w-xl items-center px-6">
         <div className="space-y-2">
-          <h1 className="text-xl font-semibold">Connexion Supabase requise</h1>
-          <p className="text-sm text-muted-foreground">{error}</p>
+          <h1 className="text-xl font-semibold">
+            {authenticationRequired ? "Campus Santé Augmenté" : "Connexion impossible"}
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {authenticationRequired
+              ? "Identifiez-vous avec l'adresse e-mail de votre compte pour accéder à votre espace."
+              : error}
+          </p>
           {authenticationRequired && client ? <SupabaseLoginForm client={client} /> : null}
           {!authenticationRequired && client ? (
             <button
