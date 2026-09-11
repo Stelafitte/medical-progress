@@ -46,6 +46,14 @@ import type { OutcomeId } from "@/domain/types";
  * de connaissances ; monter le texte des trois cent trente d'un coup lancerait
  * autant de requêtes. L'accordéon de Radix démonte ce qui est fermé : le texte
  * n'est demandé que pour la connaissance qu'on déplie.
+ *
+ * ⚠️ UN SEUL CHAPITRE OUVERT A LA FOIS, ET AUCUN AU DEPART — corrigé le 11/09
+ * APRES MESURE A L'ECRAN. J'avais d'abord ouvert les 23 chapitres par défaut,
+ * en raisonnant « contenus visibles ». Sur DFASM-CARDIO cela rend 331 lignes de
+ * connaissances ET 23 matrices dans la même page : le rendu fige le navigateur
+ * (la capture d'écran a expiré au bout de 30 secondes). Ce qui vaut pour une
+ * poignée de compétences ne vaut pas pour trois cents connaissances — le nombre
+ * change la nature de l'écran.
  */
 export function SupervisionConnaissances() {
   const { data: scope, isPending } = useSupervision();
@@ -102,6 +110,11 @@ export function SupervisionConnaissances() {
         description="La couleur dit le niveau que l'étudiant déclare avoir atteint."
       >
         <ProgressionLegend confirmation={false} />
+        <p className="text-muted-foreground text-xs">
+          Les chapitres s'ouvrent un à la fois : ce programme en compte {chapitres.length} pour{" "}
+          {connaissances.length} connaissances, et les afficher tous ensemble rendrait la page
+          illisible.
+        </p>
       </PanelCard>
 
       {chapitres.length === 0 ? (
@@ -111,7 +124,7 @@ export function SupervisionConnaissances() {
           </p>
         </PanelCard>
       ) : (
-        <Accordion type="multiple" defaultValue={chapitres.map((c) => c.id)} className="space-y-3">
+        <Accordion type="single" collapsible className="space-y-3">
           {chapitres.map((chapitre) => (
             <AccordionItem
               key={chapitre.id}

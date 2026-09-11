@@ -109,7 +109,14 @@ export function ProgressionLegend({ confirmation = true }: { confirmation?: bool
       <li className="flex items-center gap-1.5">
         <ProgressionDot etat={{ confirme: false }} titre="" /> aucune déclaration
       </li>
-      {(["novice", "intermediate", "proficient", "autonomous"] as const).map((n) => (
+      {/*
+        « NON COMMENCE » FIGURE DANS LA LEGENDE, et c'est une correction du
+        11/09 faite APRES l'avoir vu a l'ecran : la case grise pleine
+        apparaissait dans la grille sans etre expliquee nulle part, juste a
+        cote des cases en pointilles. Deux gris voisins dont un seul est
+        legende, c'est un piege a lecture.
+      */}
+      {(["not_started", "novice", "intermediate", "proficient", "autonomous"] as const).map((n) => (
         <li key={n} className="flex items-center gap-1.5">
           <ProgressionDot etat={{ niveau: n, confirme: false }} titre="" />{" "}
           {MASTERY_LABELS_FR[n].toLowerCase()}
