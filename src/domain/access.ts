@@ -62,6 +62,32 @@ export function canAccessSupervision(
   );
 }
 
+/**
+ * POSER LE CALENDRIER D'UN STAGE — les semaines « en service » et « chez soi ».
+ *
+ * DEUX ROLES, décision de Stef du 11/09 : l'administrateur du programme, et le
+ * RESPONSABLE DE STAGE, parce que c'est lui qui connaît les dates réelles du
+ * service, les fériés et les semaines de congrès. Un encadrant simple, non :
+ * il lit le calendrier, il ne le pose pas.
+ *
+ * ⚠️ CETTE FONCTION DOIT DIRE EXACTEMENT CE QUE DIT LA BASE. Son pendant
+ * serveur est `can_set_placement_calendar` (migration `20260911090000`). Un
+ * écran plus permissif que la base offrirait des boutons qui échouent ; un
+ * écran plus strict cacherait un droit réellement accordé.
+ */
+export function canManagePlacementCalendar(
+  assignments: readonly RoleAssignment[],
+  programId: ProgramId,
+): boolean {
+  if (canAccessProgramAdministration(assignments, programId)) return true;
+  return assignments.some(
+    (a) =>
+      a.role === "placement_manager" &&
+      a.scope.kind === "placement" &&
+      a.scope.programId === programId,
+  );
+}
+
 /** Espace apprenant : réservé à qui possède un rôle apprenant dans le programme. */
 export function canAccessLearnerSpace(
   assignments: readonly RoleAssignment[],

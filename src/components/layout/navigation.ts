@@ -9,6 +9,7 @@
 import {
   BadgeCheck,
   BookOpen,
+  CalendarDays,
   ClipboardCheck,
   FileCheck,
   Gauge,
@@ -34,6 +35,7 @@ import {
   canAccessPlatformAdministration,
   canAccessProgramAdministration,
   canAccessSupervision,
+  canManagePlacementCalendar,
 } from "@/domain/access";
 
 export interface NavEntry {
@@ -81,9 +83,21 @@ export const SUPERVISION_NAV: readonly NavEntry[] = [
   { to: "/espace/encadrement/etudiants", label: "Mes étudiants", icon: Users, exact: false },
   { to: "/espace/encadrement/carnets", label: "Carnets à valider", icon: Notebook, exact: false },
   {
+    to: "/espace/encadrement/calendrier",
+    label: "Calendrier du stage",
+    icon: CalendarDays,
+    exact: false,
+  },
+  {
     to: "/espace/encadrement/competences",
     label: "Compétences à confirmer",
     icon: BadgeCheck,
+    exact: false,
+  },
+  {
+    to: "/espace/encadrement/connaissances",
+    label: "Connaissances",
+    icon: BookOpen,
     exact: false,
   },
   {
@@ -278,7 +292,18 @@ export function navSpacesFor(
     spaces.push({
       key: "supervision",
       label: "Supervision des stages",
-      entries: SUPERVISION_NAV,
+      /*
+       * LE CALENDRIER N'EST PAS POUR TOUT LE MONDE. Poser les semaines « en
+       * service / chez soi » est reserve a l'administrateur du programme et au
+       * responsable de stage -- `can_set_placement_calendar` en base. Montrer
+       * l'entree a un encadrant simple lui ouvrirait un ecran dont chaque
+       * bouton echoue.
+       */
+      entries: SUPERVISION_NAV.filter(
+        (e) =>
+          e.to !== "/espace/encadrement/calendrier" ||
+          canManagePlacementCalendar(assignments, programId),
+      ),
     });
   if (canAccessProgramAdministration(assignments, programId))
     spaces.push({

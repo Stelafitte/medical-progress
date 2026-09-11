@@ -24,22 +24,38 @@ export function useSupervision() {
         activeProgram.id,
       );
       const enrollmentIds = supervisedEnrollmentIds(assignments, person.id);
-      const [storedPlacements, outcomes, enrollments, messages, logsToValidate, groups, weeks] =
-        await Promise.all([
-          data.placements.listPlacements(activeProgram.id),
-          data.outcomes.listOutcomes(activeProgram.id),
-          data.supervision.listEnrollmentsByIds(enrollmentIds),
-          data.supervision.listMessages(activeProgram.id),
-          data.stageLogs.listLogsToValidate(activeProgram.id),
-          /*
-           * LES GROUPES ET LEUR CALENDRIER. Lus par l'encadrant, pas seulement
-           * par l'administration : c'est le groupe qui dit a quelles semaines
-           * ses etudiants etaient attendus dans le service. La RLS borne la
-           * portee -- `is_program_staff` inclut `placement_supervisor`.
-           */
-          data.placements.listSupervisionGroups(activeProgram.id),
-          data.placements.listSupervisionGroupWeeks(activeProgram.id),
-        ]);
+      const [
+        storedPlacements,
+        outcomes,
+        themes,
+        enrollments,
+        messages,
+        logsToValidate,
+        groups,
+        weeks,
+      ] = await Promise.all([
+        data.placements.listPlacements(activeProgram.id),
+        data.outcomes.listOutcomes(activeProgram.id),
+        /*
+         * LES THEMES, LUS ICI DEPUIS LE 11/09. Ils ne servent pas a decorer :
+         * une promotion porte des dizaines d'acquis, et une liste a plat de
+         * dizaines de lignes ne se lit pas. Le theme est le seul regroupement
+         * que le programme declare lui-meme -- on ne le devine pas depuis le
+         * code de l'acquis.
+         */
+        data.outcomes.listOutcomeThemes(activeProgram.id),
+        data.supervision.listEnrollmentsByIds(enrollmentIds),
+        data.supervision.listMessages(activeProgram.id),
+        data.stageLogs.listLogsToValidate(activeProgram.id),
+        /*
+         * LES GROUPES ET LEUR CALENDRIER. Lus par l'encadrant, pas seulement
+         * par l'administration : c'est le groupe qui dit a quelles semaines
+         * ses etudiants etaient attendus dans le service. La RLS borne la
+         * portee -- `is_program_staff` inclut `placement_supervisor`.
+         */
+        data.placements.listSupervisionGroups(activeProgram.id),
+        data.placements.listSupervisionGroupWeeks(activeProgram.id),
+      ]);
       const learners = await data.supervision.listPeopleByIds(enrollments.map((e) => e.personId));
       /*
        * LES DECLARATIONS, LUES ICI ET UNE SEULE FOIS (10/09).
@@ -64,6 +80,7 @@ export function useSupervision() {
         learners,
         placements: mergePlacements(storedPlacements, localPlacements),
         outcomes,
+        themes,
         logsToValidate,
         declarations,
         groups,
@@ -85,6 +102,40 @@ export function learnerName(scope: SupervisionScope, enrollmentId: string): stri
 /** Les competences du programme -- les connaissances ne se confirment pas. */
 export function competencesDuProgramme(scope: SupervisionScope) {
   return scope.outcomes.filter((o) => o.nature !== "knowledge");
+}
+
+/** Les connaissances du programme -- elles se suivent, elles ne se confirment pas. */
+export function connaissancesDuProgramme(scope: SupervisionScope) {
+  return scope.outcomes.filter((o) => o.nature === "knowledge");
+}
+
+/**
+ * Range des acquis par theme, dans l'ordre declare par le programme.
+ *
+ * LES ACQUIS SANS THEME NE SONT PAS PERDUS : ils forment un dernier groupe
+ * explicite. Les taire ferait disparaitre de l'ecran des acquis qui existent --
+ * et un encadrant qui ne voit pas une competence croit qu'elle n'est pas au
+ * programme.
+ */
+export function parTheme<T extends { themeId?: string; position?: number; code: string }>(
+  scope: SupervisionScope,
+  acquis: readonly T[],
+): readonly { id: string; label: string; acquis: readonly T[] }[] {
+  const themes = [...scope.themes].sort((a, b) => a.position - b.position);
+  const groupes = themes.map((t) => ({
+    id: t.id as string,
+    label: t.label,
+    acquis: acquis
+      .filter((o) => o.themeId === (t.id as string))
+      .sort((a, b) => (a.position ?? 0) - (b.position ?? 0) || a.code.localeCompare(b.code, "fr")),
+  }));
+  const orphelins = acquis
+    .filter((o) => o.themeId === undefined || !themes.some((t) => (t.id as string) === o.themeId))
+    .sort((a, b) => a.code.localeCompare(b.code, "fr"));
+  if (orphelins.length > 0) {
+    groupes.push({ id: "sans-theme", label: "Hors chapitre", acquis: orphelins });
+  }
+  return groupes.filter((g) => g.acquis.length > 0);
 }
 
 /** Ce que cet etudiant a declare et qui attend la confirmation de l'encadrant. */

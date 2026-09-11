@@ -49,8 +49,10 @@ import { Route as EspaceAdministrationStructureRouteImport } from './routes/espa
 import { Route as EspaceAdministrationSuiviRouteImport } from './routes/espace.administration.suivi'
 import { Route as EspaceEncadrementIndexRouteImport } from './routes/espace.encadrement.index'
 import { Route as EspaceEncadrementBilansRouteImport } from './routes/espace.encadrement.bilans'
+import { Route as EspaceEncadrementCalendrierRouteImport } from './routes/espace.encadrement.calendrier'
 import { Route as EspaceEncadrementCarnetsRouteImport } from './routes/espace.encadrement.carnets'
 import { Route as EspaceEncadrementCompetencesRouteImport } from './routes/espace.encadrement.competences'
+import { Route as EspaceEncadrementConnaissancesRouteImport } from './routes/espace.encadrement.connaissances'
 import { Route as EspaceEncadrementEtudiantsRouteImport } from './routes/espace.encadrement.etudiants'
 import { Route as EspaceEncadrementMessagesRouteImport } from './routes/espace.encadrement.messages'
 import { Route as EspaceEncadrementProfilRouteImport } from './routes/espace.encadrement.profil'
@@ -280,6 +282,12 @@ const EspaceEncadrementBilansRoute = EspaceEncadrementBilansRouteImport.update({
   path: '/bilans',
   getParentRoute: () => EspaceEncadrementRoute,
 } as any)
+const EspaceEncadrementCalendrierRoute =
+  EspaceEncadrementCalendrierRouteImport.update({
+    id: '/calendrier',
+    path: '/calendrier',
+    getParentRoute: () => EspaceEncadrementRoute,
+  } as any)
 const EspaceEncadrementCarnetsRoute =
   EspaceEncadrementCarnetsRouteImport.update({
     id: '/carnets',
@@ -290,6 +298,12 @@ const EspaceEncadrementCompetencesRoute =
   EspaceEncadrementCompetencesRouteImport.update({
     id: '/competences',
     path: '/competences',
+    getParentRoute: () => EspaceEncadrementRoute,
+  } as any)
+const EspaceEncadrementConnaissancesRoute =
+  EspaceEncadrementConnaissancesRouteImport.update({
+    id: '/connaissances',
+    path: '/connaissances',
     getParentRoute: () => EspaceEncadrementRoute,
   } as any)
 const EspaceEncadrementEtudiantsRoute =
@@ -383,8 +397,10 @@ export interface FileRoutesByFullPath {
   '/espace/administration/structure': typeof EspaceAdministrationStructureRoute
   '/espace/administration/suivi': typeof EspaceAdministrationSuiviRoute
   '/espace/encadrement/bilans': typeof EspaceEncadrementBilansRoute
+  '/espace/encadrement/calendrier': typeof EspaceEncadrementCalendrierRoute
   '/espace/encadrement/carnets': typeof EspaceEncadrementCarnetsRoute
   '/espace/encadrement/competences': typeof EspaceEncadrementCompetencesRoute
+  '/espace/encadrement/connaissances': typeof EspaceEncadrementConnaissancesRoute
   '/espace/encadrement/etudiants': typeof EspaceEncadrementEtudiantsRoute
   '/espace/encadrement/messages': typeof EspaceEncadrementMessagesRoute
   '/espace/encadrement/profil': typeof EspaceEncadrementProfilRoute
@@ -431,8 +447,10 @@ export interface FileRoutesByTo {
   '/espace/administration/structure': typeof EspaceAdministrationStructureRoute
   '/espace/administration/suivi': typeof EspaceAdministrationSuiviRoute
   '/espace/encadrement/bilans': typeof EspaceEncadrementBilansRoute
+  '/espace/encadrement/calendrier': typeof EspaceEncadrementCalendrierRoute
   '/espace/encadrement/carnets': typeof EspaceEncadrementCarnetsRoute
   '/espace/encadrement/competences': typeof EspaceEncadrementCompetencesRoute
+  '/espace/encadrement/connaissances': typeof EspaceEncadrementConnaissancesRoute
   '/espace/encadrement/etudiants': typeof EspaceEncadrementEtudiantsRoute
   '/espace/encadrement/messages': typeof EspaceEncadrementMessagesRoute
   '/espace/encadrement/profil': typeof EspaceEncadrementProfilRoute
@@ -485,8 +503,10 @@ export interface FileRoutesById {
   '/espace/administration/structure': typeof EspaceAdministrationStructureRoute
   '/espace/administration/suivi': typeof EspaceAdministrationSuiviRoute
   '/espace/encadrement/bilans': typeof EspaceEncadrementBilansRoute
+  '/espace/encadrement/calendrier': typeof EspaceEncadrementCalendrierRoute
   '/espace/encadrement/carnets': typeof EspaceEncadrementCarnetsRoute
   '/espace/encadrement/competences': typeof EspaceEncadrementCompetencesRoute
+  '/espace/encadrement/connaissances': typeof EspaceEncadrementConnaissancesRoute
   '/espace/encadrement/etudiants': typeof EspaceEncadrementEtudiantsRoute
   '/espace/encadrement/messages': typeof EspaceEncadrementMessagesRoute
   '/espace/encadrement/profil': typeof EspaceEncadrementProfilRoute
@@ -540,8 +560,10 @@ export interface FileRouteTypes {
     | '/espace/administration/structure'
     | '/espace/administration/suivi'
     | '/espace/encadrement/bilans'
+    | '/espace/encadrement/calendrier'
     | '/espace/encadrement/carnets'
     | '/espace/encadrement/competences'
+    | '/espace/encadrement/connaissances'
     | '/espace/encadrement/etudiants'
     | '/espace/encadrement/messages'
     | '/espace/encadrement/profil'
@@ -588,8 +610,10 @@ export interface FileRouteTypes {
     | '/espace/administration/structure'
     | '/espace/administration/suivi'
     | '/espace/encadrement/bilans'
+    | '/espace/encadrement/calendrier'
     | '/espace/encadrement/carnets'
     | '/espace/encadrement/competences'
+    | '/espace/encadrement/connaissances'
     | '/espace/encadrement/etudiants'
     | '/espace/encadrement/messages'
     | '/espace/encadrement/profil'
@@ -641,8 +665,10 @@ export interface FileRouteTypes {
     | '/espace/administration/structure'
     | '/espace/administration/suivi'
     | '/espace/encadrement/bilans'
+    | '/espace/encadrement/calendrier'
     | '/espace/encadrement/carnets'
     | '/espace/encadrement/competences'
+    | '/espace/encadrement/connaissances'
     | '/espace/encadrement/etudiants'
     | '/espace/encadrement/messages'
     | '/espace/encadrement/profil'
@@ -943,6 +969,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EspaceEncadrementBilansRouteImport
       parentRoute: typeof EspaceEncadrementRoute
     }
+    '/espace/encadrement/calendrier': {
+      id: '/espace/encadrement/calendrier'
+      path: '/calendrier'
+      fullPath: '/espace/encadrement/calendrier'
+      preLoaderRoute: typeof EspaceEncadrementCalendrierRouteImport
+      parentRoute: typeof EspaceEncadrementRoute
+    }
     '/espace/encadrement/carnets': {
       id: '/espace/encadrement/carnets'
       path: '/carnets'
@@ -955,6 +988,13 @@ declare module '@tanstack/react-router' {
       path: '/competences'
       fullPath: '/espace/encadrement/competences'
       preLoaderRoute: typeof EspaceEncadrementCompetencesRouteImport
+      parentRoute: typeof EspaceEncadrementRoute
+    }
+    '/espace/encadrement/connaissances': {
+      id: '/espace/encadrement/connaissances'
+      path: '/connaissances'
+      fullPath: '/espace/encadrement/connaissances'
+      preLoaderRoute: typeof EspaceEncadrementConnaissancesRouteImport
       parentRoute: typeof EspaceEncadrementRoute
     }
     '/espace/encadrement/etudiants': {
@@ -1076,8 +1116,10 @@ const EspaceAdministrationRouteWithChildren =
 
 interface EspaceEncadrementRouteChildren {
   EspaceEncadrementBilansRoute: typeof EspaceEncadrementBilansRoute
+  EspaceEncadrementCalendrierRoute: typeof EspaceEncadrementCalendrierRoute
   EspaceEncadrementCarnetsRoute: typeof EspaceEncadrementCarnetsRoute
   EspaceEncadrementCompetencesRoute: typeof EspaceEncadrementCompetencesRoute
+  EspaceEncadrementConnaissancesRoute: typeof EspaceEncadrementConnaissancesRoute
   EspaceEncadrementEtudiantsRoute: typeof EspaceEncadrementEtudiantsRoute
   EspaceEncadrementMessagesRoute: typeof EspaceEncadrementMessagesRoute
   EspaceEncadrementProfilRoute: typeof EspaceEncadrementProfilRoute
@@ -1086,8 +1128,10 @@ interface EspaceEncadrementRouteChildren {
 
 const EspaceEncadrementRouteChildren: EspaceEncadrementRouteChildren = {
   EspaceEncadrementBilansRoute: EspaceEncadrementBilansRoute,
+  EspaceEncadrementCalendrierRoute: EspaceEncadrementCalendrierRoute,
   EspaceEncadrementCarnetsRoute: EspaceEncadrementCarnetsRoute,
   EspaceEncadrementCompetencesRoute: EspaceEncadrementCompetencesRoute,
+  EspaceEncadrementConnaissancesRoute: EspaceEncadrementConnaissancesRoute,
   EspaceEncadrementEtudiantsRoute: EspaceEncadrementEtudiantsRoute,
   EspaceEncadrementMessagesRoute: EspaceEncadrementMessagesRoute,
   EspaceEncadrementProfilRoute: EspaceEncadrementProfilRoute,

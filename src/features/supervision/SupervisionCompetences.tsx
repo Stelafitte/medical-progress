@@ -1,46 +1,62 @@
-import { useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { SectionHeading } from "@/components/section-heading";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { PanelCard, ScopeNotice } from "@/features/professional/mock-ui";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { PanelCard, ScopeNotice, StatCard } from "@/features/professional/mock-ui";
 import {
   competencesDuProgramme,
   learnerName,
+  parTheme,
   useSupervision,
 } from "@/features/supervision/useSupervision";
+import { ProgressionLegend, type EtatAcquis } from "@/features/supervision/ProgressionDot";
+import { AcquisLegende, ProgressionMatrix } from "@/features/supervision/ProgressionMatrix";
 import { useDataAccess } from "@/application/session";
-import { MASTERY_LABELS_FR, NATURE_LABELS_FR } from "@/domain/mastery";
+import { NATURE_LABELS_FR } from "@/domain/mastery";
 import type { EnrollmentId, OutcomeId } from "@/domain/types";
 
 /**
- * COMPETENCES A CONFIRMER — le geste central de l'encadrement (10/09).
+ * COMPETENCES A CONFIRMER — le geste central de l'encadrement (10/09),
+ * remis en tableau le 11/09.
  *
  * ⚠️ CE QUI EXISTAIT DEJA, ET QUE PERSONNE N'APPELAIT. `outcome_self_reports`
  * porte `validated_by` / `validated_at` depuis le 31/08, et les fonctions
  * `validate_outcome_declaration` et `revoke_outcome_validation` sont en base
  * depuis le meme jour. Mesure le 10/09 : AUCUNE ligne de `src/` ne les
- * appelait. L'ecran affichait des confirmations de maquette pendant que le
- * geste reel attendait un bouton.
+ * appelait.
+ *
+ * CE QUE LE 11/09 CHANGE, ET POURQUOI. L'ecran depliait un etudiant a la fois.
+ * Pour repondre a « qui n'a rien declare sur ce geste ? » -- la question qu'on
+ * se pose devant une promotion -- il fallait ouvrir chaque etudiant et relire
+ * la meme liste. Desormais : un chapitre par accordeon, la liste en clair des
+ * competences qu'il contient, et dessous la matrice etudiants x competences.
+ * On confirme en cliquant la case.
+ *
+ * LES CHAPITRES SONT OUVERTS PAR DEFAUT (`defaultValue` = tous). Un accordeon
+ * ferme economise de la place au prix d'un clic par chapitre avant de voir
+ * quoi que ce soit : ici l'ecran sert justement a voir d'un coup d'oeil.
  *
  * LES CONNAISSANCES SONT HORS CHAMP, et ce n'est pas cet ecran qui le decide :
- * `validate_outcome_declaration` leve « Une connaissance ne se valide pas : la
- * V1 ne teste pas les connaissances ». On filtre donc ici pour ne pas proposer
- * un bouton qui echouerait -- la regle reste en base.
+ * `validate_outcome_declaration` leve « Une connaissance ne se valide pas ».
+ * On filtre donc ici pour ne pas proposer un geste qui echouerait -- la regle
+ * reste en base. Leur suivi vit dans l'onglet « Connaissances ».
  *
- * TROIS ETATS, PAS DEUX : une competence peut n'avoir jamais ete declaree
- * (rien a confirmer), etre declaree et en attente, ou etre confirmee. Fondre
- * les deux premiers ferait passer un etudiant silencieux pour un etudiant a
- * jour.
+ * TROIS ETATS, PAS DEUX : jamais declaree, declaree en attente, confirmee.
+ * Fondre les deux premiers ferait passer un etudiant silencieux pour un
+ * etudiant a jour.
  */
 export function SupervisionCompetences() {
   const data = useDataAccess();
   const queryClient = useQueryClient();
   const { data: scope, isPending } = useSupervision();
-  const [deplie, setDeplie] = useState<string | null>(null);
 
   const confirmer = useMutation({
     mutationFn: (input: { enrollmentId: EnrollmentId; outcomeId: OutcomeId; retirer: boolean }) =>
@@ -63,28 +79,35 @@ export function SupervisionCompetences() {
 
   if (isPending || !scope) return <Skeleton className="h-72 w-full" />;
 
-  /* Les acquis du programme qui SE CONFIRMENT : tout sauf les connaissances --
-     `nature !== "knowledge"`, la meme regle que la base applique elle-meme. */
   const competences = competencesDuProgramme(scope);
+  const chapitres = parTheme(scope, competences);
 
-  const lignes = scope.enrollments
-    .map((enrollment) => {
-      const declarees = scope.declarations.get(enrollment.id) ?? [];
-      const parAcquis = new Map(declarees.map((d) => [d.outcomeId as string, d] as const));
-      const aConfirmer = competences.filter((o) => {
-        const d = parAcquis.get(o.id);
-        return d !== undefined && d.validatedAt === undefined;
-      });
-      const confirmees = competences.filter((o) => parAcquis.get(o.id)?.validatedAt !== undefined);
-      return {
-        enrollment,
-        nom: learnerName(scope, enrollment.id),
-        parAcquis,
-        aConfirmer,
-        confirmees,
-      };
-    })
+  const etudiants = scope.enrollments
+    .map((e) => ({ enrollmentId: e.id as string, nom: learnerName(scope, e.id) }))
     .sort((a, b) => a.nom.localeCompare(b.nom, "fr"));
+
+  /** L'état d'une case : le niveau déclaré, et la confirmation si elle existe. */
+  const etat = (enrollmentId: string, outcomeId: string): EtatAcquis => {
+    const declaration = (scope.declarations.get(enrollmentId) ?? []).find(
+      (d) => (d.outcomeId as string) === outcomeId,
+    );
+    if (!declaration) return { confirme: false };
+    return { niveau: declaration.declaredLevel, confirme: declaration.validatedAt !== undefined };
+  };
+
+  /* Les deux chiffres de tête, comptés sur la même lecture que les cases --
+     un compteur qui diverge de la grille qu'il surplombe est pire que pas de
+     compteur du tout. */
+  let aConfirmer = 0;
+  let confirmees = 0;
+  for (const e of etudiants) {
+    for (const o of competences) {
+      const courant = etat(e.enrollmentId, o.id as string);
+      if (courant.niveau === undefined) continue;
+      if (courant.confirme) confirmees += 1;
+      else aConfirmer += 1;
+    }
+  }
 
   return (
     <div className="space-y-8">
@@ -95,109 +118,82 @@ export function SupervisionCompetences() {
       />
 
       <ScopeNotice>
-        Aucune acquisition n'est confirmée sans votre geste. Vous ne voyez que les étudiants de vos
-        groupes d'encadrement.
+        Aucune acquisition n'est confirmée sans votre geste. Cliquez une case pour confirmer une
+        déclaration, cliquez-la de nouveau pour retirer la confirmation. Une case vide signifie que
+        l'étudiant n'a rien déclaré : il n'y a alors rien à confirmer.
       </ScopeNotice>
 
-      <PanelCard
-        title={`Les ${competences.length} compétences du stage`}
-        description="Les connaissances théoriques ne figurent pas ici : elles ne se confirment pas au lit du malade, et la base refuse leur validation."
-      >
-        <ul className="grid gap-2 sm:grid-cols-2">
-          {competences.map((o) => (
-            <li key={o.id} className="text-sm">
-              <span className="font-mono text-[12px] text-muted-foreground">{o.code}</span>{" "}
-              {o.label}{" "}
-              <Badge variant="outline" className="font-normal">
-                {NATURE_LABELS_FR[o.nature]}
-              </Badge>
-            </li>
-          ))}
-          {competences.length === 0 ? (
-            <li className="text-muted-foreground text-sm">
-              Aucune compétence définie dans ce programme.
-            </li>
-          ) : null}
-        </ul>
-      </PanelCard>
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <StatCard label="Étudiants suivis" value={etudiants.length} />
+        <StatCard label="Compétences au programme" value={competences.length} />
+        <StatCard label="Déclarations à confirmer" value={aConfirmer} />
+        <StatCard label="Déjà confirmées" value={confirmees} />
+      </div>
 
       <PanelCard
-        title="Progression déclarée, étudiant par étudiant"
-        description="Dépliez un étudiant pour confirmer ses déclarations une à une."
+        title="Lecture de la grille"
+        description="La couleur dit le niveau déclaré par l'étudiant ; l'anneau et la coche disent votre confirmation."
       >
-        {lignes.length === 0 ? (
-          <p className="text-muted-foreground text-sm">Aucun étudiant sur votre périmètre.</p>
-        ) : (
-          <ul className="divide-border divide-y">
-            {lignes.map((ligne) => (
-              <li key={ligne.enrollment.id} className="py-3 first:pt-0">
-                <button
-                  type="button"
-                  className="flex w-full flex-wrap items-center gap-2 text-start"
-                  aria-expanded={deplie === ligne.enrollment.id}
-                  onClick={() =>
-                    setDeplie(deplie === ligne.enrollment.id ? null : ligne.enrollment.id)
-                  }
-                >
-                  <span className="font-medium">{ligne.nom}</span>
-                  <Badge variant={ligne.aConfirmer.length > 0 ? "default" : "secondary"}>
-                    {ligne.aConfirmer.length} à confirmer
-                  </Badge>
+        <ProgressionLegend />
+      </PanelCard>
+
+      {chapitres.length === 0 ? (
+        <PanelCard title="Aucune compétence" description="Ce programme n'en définit pas encore.">
+          <p className="text-muted-foreground text-sm">
+            Les compétences se déclarent dans le Concepteur du programme.
+          </p>
+        </PanelCard>
+      ) : (
+        <Accordion type="multiple" defaultValue={chapitres.map((c) => c.id)} className="space-y-3">
+          {chapitres.map((chapitre) => (
+            <AccordionItem
+              key={chapitre.id}
+              value={chapitre.id}
+              className="surface-panel rounded-lg border px-4"
+            >
+              <AccordionTrigger className="text-start">
+                <span className="flex flex-wrap items-center gap-2">
+                  <span className="font-medium">{chapitre.label}</span>
                   <Badge variant="outline" className="font-normal">
-                    {ligne.confirmees.length} / {competences.length} confirmées
+                    {chapitre.acquis.length} compétence
+                    {chapitre.acquis.length > 1 ? "s" : ""}
                   </Badge>
-                </button>
-
-                {deplie === ligne.enrollment.id ? (
-                  <ul className="mt-3 space-y-2">
-                    {competences.map((o) => {
-                      const d = ligne.parAcquis.get(o.id);
-                      const confirmee = d?.validatedAt !== undefined;
-                      return (
-                        <li
-                          key={o.id}
-                          className="flex flex-wrap items-start justify-between gap-2 text-sm"
-                        >
-                          <span className="min-w-0 flex-1">
-                            <span className="text-muted-foreground font-mono text-[12px]">
-                              {o.code}
-                            </span>{" "}
-                            {o.label}
-                            <span className="text-muted-foreground block text-[13px]">
-                              {d
-                                ? `déclaré ${MASTERY_LABELS_FR[d.declaredLevel].toLowerCase()} le ${new Date(
-                                    d.declaredAt,
-                                  ).toLocaleDateString("fr-FR")}`
-                                : "aucune déclaration"}
-                              {d?.note ? ` · ${d.note}` : ""}
-                            </span>
-                          </span>
-                          {d ? (
-                            <Button
-                              size="sm"
-                              variant={confirmee ? "ghost" : "outline"}
-                              disabled={confirmer.isPending}
-                              onClick={() =>
-                                confirmer.mutate({
-                                  enrollmentId: ligne.enrollment.id,
-                                  outcomeId: o.id,
-                                  retirer: confirmee,
-                                })
-                              }
-                            >
-                              {confirmee ? "Retirer la confirmation" : "Confirmer"}
-                            </Button>
-                          ) : null}
-                        </li>
-                      );
-                    })}
-                  </ul>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        )}
-      </PanelCard>
+                </span>
+              </AccordionTrigger>
+              <AccordionContent className="space-y-4 pb-4">
+                <AcquisLegende
+                  acquis={chapitre.acquis.map((o) => ({
+                    id: o.id as string,
+                    code: o.code,
+                    label: o.label,
+                  }))}
+                  suffixe={(id) => {
+                    const trouve = chapitre.acquis.find((o) => (o.id as string) === id);
+                    return trouve ? `· ${NATURE_LABELS_FR[trouve.nature]}` : undefined;
+                  }}
+                />
+                <ProgressionMatrix
+                  acquis={chapitre.acquis.map((o) => ({
+                    id: o.id as string,
+                    code: o.code,
+                    label: o.label,
+                  }))}
+                  etudiants={etudiants}
+                  etat={etat}
+                  enCours={confirmer.isPending}
+                  onCase={(enrollmentId, outcomeId, courant) =>
+                    confirmer.mutate({
+                      enrollmentId: enrollmentId as EnrollmentId,
+                      outcomeId: outcomeId as OutcomeId,
+                      retirer: courant.confirme,
+                    })
+                  }
+                />
+              </AccordionContent>
+            </AccordionItem>
+          ))}
+        </Accordion>
+      )}
     </div>
   );
 }

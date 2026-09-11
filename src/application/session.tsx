@@ -34,6 +34,7 @@ import {
   canAccessProgramAdministration,
   canAccessStatistics,
   canAccessSupervision,
+  canManagePlacementCalendar,
 } from "@/domain/access";
 import { rolesInContext, roleAssignmentKey } from "@/domain/roles";
 import type {
@@ -80,6 +81,8 @@ export interface SessionValue {
   readonly canAccessPlatformAdministration: boolean;
   /** Espace responsable de stage, limité aux affectations de la personne. */
   readonly canAccessSupervision: boolean;
+  /** Poser les semaines « en service / chez soi » : administrateur ou responsable de stage. */
+  readonly canManagePlacementCalendar: boolean;
   /** Outil statistique : encadrants, enseignants et administrateurs. */
   readonly canAccessStatistics: boolean;
   readonly canAccessProfile: boolean;
@@ -187,6 +190,7 @@ function MockSessionProvider({ children }: { children: ReactNode }) {
       canAccessProgramAdministration: canAccessProgramAdministration(roles, activeProgram.id),
       canAccessPlatformAdministration: canAccessPlatformAdministration(roles),
       canAccessSupervision: canAccessSupervision(roles, activeProgram.id),
+      canManagePlacementCalendar: canManagePlacementCalendar(roles, activeProgram.id),
       canAccessStatistics: canAccessStatistics(roles, activeProgram.id),
       canAccessProfile: canAccessOwnProfile(true),
       isSimulated: true,
@@ -310,6 +314,7 @@ function SupabaseSessionProvider({ children }: { children: ReactNode }) {
       ),
       canAccessPlatformAdministration: canAccessPlatformAdministration(rolesForAccess),
       canAccessSupervision: canAccessSupervision(rolesForAccess, activeProgram.id),
+      canManagePlacementCalendar: canManagePlacementCalendar(rolesForAccess, activeProgram.id),
       canAccessStatistics: canAccessStatistics(rolesForAccess, activeProgram.id),
       canAccessProfile: canAccessOwnProfile(true),
       isSimulated: false,

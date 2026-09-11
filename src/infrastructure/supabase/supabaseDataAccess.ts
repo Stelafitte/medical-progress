@@ -1090,7 +1090,7 @@ const assessmentModalityColumns =
   "id,program_id,name,mode,subtype,usage,notes,created_at,updated_at";
 
 const outcomeColumns =
-  "id,program_id,curriculum_version_id,code,label,description,nature,domain,target_mastery,retained_at,theme_id,position,created_at";
+  "id,program_id,curriculum_version_id,code,label,description,nature,domain,target_mastery,retained_at,theme_id,position,knowledge_rank,created_at";
 
 const outcomeThemeColumns = "id,program_id,label,description,position,created_at";
 
