@@ -54,29 +54,63 @@ export function libelleEtat(etat: EtatAcquis, nom: string, acquis: string): stri
   return `${nom} — ${acquis} : déclaré ${niveau}${etat.confirme ? ", confirmé" : ", à confirmer"}`;
 }
 
+/**
+ * TROIS TAILLES, ET CHACUNE A SON EMPLOI.
+ *
+ * `md` — la légende et les lectures isolées, où la case est lue une par une.
+ * `sm` — la matrice de promotion : vingt étudiants sur soixante-quatre
+ *        compétences font mille deux cent quatre-vingts cases, et c'est
+ *        l'ENSEMBLE qu'on regarde, pas chacune. Trop grosses, elles ne tiennent
+ *        pas dans un écran et le motif disparaît.
+ * `xs` — les connaissances, qui sont trois cent trente et une.
+ */
+const TAILLE: Record<"xs" | "sm" | "md", string> = {
+  xs: "size-2.5 rounded-[2px]",
+  sm: "size-3.5 rounded-[3px]",
+  md: "size-6 rounded-[5px] text-[10px]",
+};
+
 export function ProgressionDot({
   etat,
   titre,
   onClick,
   disabled,
+  taille = "md",
+  neutre = false,
 }: {
   etat: EtatAcquis;
   titre: string;
   /** Absent pour une case de lecture seule — les connaissances, par exemple. */
   onClick?: (() => void) | undefined;
   disabled?: boolean | undefined;
+  taille?: "xs" | "sm" | "md" | undefined;
+  /**
+   * Case d'EN-TETE : elle ne dit l'état de personne, elle désigne une colonne.
+   * Elle reste donc grise quoi qu'il arrive — lui donner une couleur de niveau
+   * ferait croire à une valeur, et une valeur fausse en tête de colonne
+   * contamine la lecture de toute la colonne.
+   */
+  neutre?: boolean | undefined;
 }) {
   const classes = cn(
-    "inline-flex size-6 items-center justify-center rounded-[5px] border text-[10px] font-semibold transition",
-    etat.niveau === undefined
-      ? "border-dashed border-border bg-transparent"
-      : cn("border-transparent", FOND[etat.niveau], ENCRE[etat.niveau]),
-    etat.confirme ? "ring-2 ring-emerald-700 ring-offset-1 ring-offset-background" : "",
+    "inline-flex items-center justify-center border font-semibold transition",
+    TAILLE[taille],
+    neutre
+      ? "border-border bg-muted-foreground/25"
+      : etat.niveau === undefined
+        ? "border-dashed border-border bg-transparent"
+        : cn("border-transparent", FOND[etat.niveau], ENCRE[etat.niveau]),
+    etat.confirme && !neutre
+      ? taille === "md"
+        ? "ring-2 ring-emerald-700 ring-offset-1 ring-offset-background"
+        : "ring-1 ring-emerald-700"
+      : "",
     onClick ? "hover:opacity-80 focus-visible:ring-2 focus-visible:ring-ring" : "",
     disabled ? "opacity-50" : "",
   );
 
-  const dedans = etat.confirme ? <Check className="size-3.5" aria-hidden /> : null;
+  const dedans =
+    etat.confirme && !neutre && taille === "md" ? <Check className="size-3.5" aria-hidden /> : null;
 
   if (!onClick) {
     return (

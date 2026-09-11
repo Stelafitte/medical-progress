@@ -1,5 +1,9 @@
+import { useRef, useState } from "react";
+import { LayoutGrid } from "lucide-react";
+
 import { SectionHeading } from "@/components/section-heading";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Accordion,
@@ -12,51 +16,56 @@ import {
   connaissancesDuProgramme,
   learnerName,
   parTheme,
+  supportsDeLAcquis,
   useSupervision,
 } from "@/features/supervision/useSupervision";
+import { AcquisContenu } from "@/features/supervision/AcquisContenu";
 import { ProgressionLegend, type EtatAcquis } from "@/features/supervision/ProgressionDot";
-import { ProgressionMatrix } from "@/features/supervision/ProgressionMatrix";
-import { OutcomeSectionsPanel } from "@/features/resources/OutcomeSectionsPanel";
+import {
+  AcquisListe,
+  PromotionHeatmap,
+  moyenneCohorte,
+} from "@/features/supervision/ProgressionMatrix";
 import { RankBadge } from "@/components/rank-badge";
-import { MASTERY_LABELS_FR } from "@/domain/mastery";
 import type { OutcomeId } from "@/domain/types";
 
 /**
- * CONNAISSANCES — l'onglet demandé par Stef le 11/09.
+ * CONNAISSANCES — l'onglet demandé par Stef le 11/09, dans la même forme que
+ * les compétences.
  *
- * DEUX BESOINS DANS UN SEUL ECRAN, et ils ne sont pas du même ordre :
+ * TROIS BESOINS, ET ILS NE SONT PAS DU MEME ORDRE :
  *
- * 1. VERIFIER LA SOURCE. L'encadrant doit pouvoir lire le contenu EXACTEMENT
- *    tel qu'il est servi à l'étudiant, pour dire si le texte est juste. C'est
- *    pourquoi le passage affiché vient du MEME composant que l'écran étudiant
- *    (`OutcomeSectionsPanel`) et non d'une mise en page refaite ici : une
- *    relecture sur une version « presque pareille » ne prouve rien.
- *
- * 2. SUIVRE LA PROMOTION. La même grille que les compétences, aux mêmes
- *    couleurs, pour voir d'un coup d'œil où en est chacun.
+ * 1. SAVOIR CE QUE PORTE LE PROGRAMME. La liste, groupée par item, avec pour
+ *    chaque connaissance l'avancement moyen de la promotion.
+ * 2. VERIFIER LA SOURCE. Chaque connaissance se déplie sur son contenu —
+ *    le passage de cours ET les supports rattachés — rendu par `AcquisContenu`,
+ *    qui réemploie les composants de l'écran étudiant. Une relecture sur une
+ *    version « presque pareille » ne prouverait rien.
+ * 3. VOIR QUI DECROCHE. La matrice de promotion, appelée par un bouton.
  *
  * ⚠️ ON NE CONFIRME PAS UNE CONNAISSANCE, et ce n'est pas un oubli : la base
- * elle-même refuse — `validate_outcome_declaration` lève « Une connaissance ne
- * se valide pas : la V1 ne teste pas les connaissances ». Les cases sont donc
- * en LECTURE SEULE, et la légende ne montre pas la coche de confirmation.
- * Afficher des cases cliquables qui échoueraient serait promettre un geste qui
- * n'existe pas.
+ * refuse — `validate_outcome_declaration` lève « Une connaissance ne se valide
+ * pas : la V1 ne teste pas les connaissances ». Les cases sont donc en LECTURE
+ * SEULE, et la légende ne montre pas la coche de confirmation.
  *
- * LE CONTENU NE SE CHARGE QU'A L'OUVERTURE. Une promotion porte des centaines
- * de connaissances ; monter le texte des trois cent trente d'un coup lancerait
- * autant de requêtes. L'accordéon de Radix démonte ce qui est fermé : le texte
- * n'est demandé que pour la connaissance qu'on déplie.
+ * ⚠️ TAILLE `xs` POUR LA MATRICE, ET C'EST LE NOMBRE QUI COMMANDE. Trois cent
+ * trente et une connaissances par ligne : à la taille des compétences, la
+ * grille ferait cinq mille pixels de large. Le motif — c'est lui qu'on
+ * regarde — doit tenir dans un écran, ou du moins dans quelques défilements.
+ *
+ * LE CONTENU NE SE CHARGE QU'A L'OUVERTURE. Monter le texte des 331
+ * connaissances lancerait autant de requêtes ; Radix démonte ce qui est fermé.
  *
  * ⚠️ UN SEUL CHAPITRE OUVERT A LA FOIS, ET AUCUN AU DEPART — corrigé le 11/09
- * APRES MESURE A L'ECRAN. J'avais d'abord ouvert les 23 chapitres par défaut,
- * en raisonnant « contenus visibles ». Sur DFASM-CARDIO cela rend 331 lignes de
- * connaissances ET 23 matrices dans la même page : le rendu fige le navigateur
- * (la capture d'écran a expiré au bout de 30 secondes). Ce qui vaut pour une
- * poignée de compétences ne vaut pas pour trois cents connaissances — le nombre
- * change la nature de l'écran.
+ * APRES MESURE A L'ECRAN. Ouvrir les 23 chapitres par défaut rend 331 lignes
+ * dans la même page : le navigateur fige (la capture d'écran a expiré au bout
+ * de 30 secondes). Ce qui vaut pour une poignée de compétences ne vaut pas pour
+ * trois cents connaissances — le nombre change la nature de l'écran.
  */
 export function SupervisionConnaissances() {
   const { data: scope, isPending } = useSupervision();
+  const [matriceOuverte, setMatriceOuverte] = useState(false);
+  const matriceRef = useRef<HTMLDivElement | null>(null);
 
   if (isPending || !scope) return <Skeleton className="h-72 w-full" />;
 
@@ -75,14 +84,25 @@ export function SupervisionConnaissances() {
     return { niveau: declaration.declaredLevel, confirme: false };
   };
 
-  /* Combien de déclarations en tout : le seul chiffre honnête ici, puisqu'il
-     n'y a pas de confirmation à compter. */
+  const groupes = chapitres.map((c) => ({
+    id: c.id,
+    label: c.label,
+    acquis: c.acquis.map((o) => ({ id: o.id as string, code: o.code, label: o.label })),
+  }));
+
   let declarees = 0;
   for (const e of etudiants) {
     for (const o of connaissances) {
       if (etat(e.enrollmentId, o.id as string).niveau !== undefined) declarees += 1;
     }
   }
+
+  const ouvrirLaMatrice = () => {
+    setMatriceOuverte(true);
+    window.requestAnimationFrame(() =>
+      matriceRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }),
+    );
+  };
 
   return (
     <div className="space-y-8">
@@ -94,7 +114,7 @@ export function SupervisionConnaissances() {
 
       <ScopeNotice>
         Vous lisez ici le texte exactement tel que l'étudiant le reçoit : c'est la source à
-        vérifier. Les connaissances ne se confirment pas — la grille est en lecture seule, elle dit
+        vérifier. Les connaissances ne se confirment pas — la matrice est en lecture seule, elle dit
         ce que chacun déclare avoir travaillé.
       </ScopeNotice>
 
@@ -106,14 +126,20 @@ export function SupervisionConnaissances() {
       </div>
 
       <PanelCard
-        title="Lecture de la grille"
+        title="Lecture des pastilles"
         description="La couleur dit le niveau que l'étudiant déclare avoir atteint."
+        action={
+          <Button size="sm" variant="outline" onClick={ouvrirLaMatrice}>
+            <LayoutGrid className="size-4" aria-hidden /> Suivi de promotion
+          </Button>
+        }
       >
         <ProgressionLegend confirmation={false} />
         <p className="text-muted-foreground text-xs">
-          Les chapitres s'ouvrent un à la fois : ce programme en compte {chapitres.length} pour{" "}
-          {connaissances.length} connaissances, et les afficher tous ensemble rendrait la page
-          illisible.
+          Dans la liste, la pastille de gauche est le niveau MOYEN de la promotion et le compte à
+          côté dit combien d'étudiants ont déclaré quelque chose. Les chapitres s'ouvrent un à la
+          fois : ce programme en compte {chapitres.length} pour {connaissances.length}{" "}
+          connaissances.
         </p>
       </PanelCard>
 
@@ -141,56 +167,62 @@ export function SupervisionConnaissances() {
                 </span>
               </AccordionTrigger>
 
-              <AccordionContent className="space-y-5 pb-4">
-                <section className="space-y-1">
-                  <h3 className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-                    Le contenu servi aux étudiants
-                  </h3>
-                  <Accordion type="multiple" className="divide-border divide-y">
-                    {chapitre.acquis.map((o) => (
-                      <AccordionItem key={o.id} value={o.id as string} className="border-0">
-                        <AccordionTrigger className="py-2 text-start text-sm hover:no-underline">
-                          <span className="flex min-w-0 flex-wrap items-center gap-2">
-                            <span className="text-muted-foreground font-mono text-[12px]">
-                              {o.code}
-                            </span>
-                            <span className="min-w-0">{o.label}</span>
-                            {o.knowledgeRank ? <RankBadge rank={o.knowledgeRank} /> : null}
-                          </span>
-                        </AccordionTrigger>
-                        <AccordionContent className="space-y-2 pb-4">
-                          {o.description ? (
-                            <p className="text-muted-foreground text-sm">{o.description}</p>
-                          ) : null}
-                          <OutcomeSectionsPanel outcomeId={o.id as OutcomeId} />
-                        </AccordionContent>
-                      </AccordionItem>
-                    ))}
-                  </Accordion>
-                </section>
-
-                <section className="space-y-2">
-                  <h3 className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-                    Suivi de la promotion
-                  </h3>
-                  <ProgressionMatrix
-                    acquis={chapitre.acquis.map((o) => ({
-                      id: o.id as string,
-                      code: o.code,
-                      label: o.label,
-                    }))}
-                    etudiants={etudiants}
-                    etat={etat}
-                  />
-                  <p className="text-muted-foreground text-xs">
-                    Niveaux possibles : {Object.values(MASTERY_LABELS_FR).join(", ").toLowerCase()}.
-                  </p>
-                </section>
+              <AccordionContent className="pb-4">
+                <AcquisListe
+                  acquis={chapitre.acquis.map((o) => ({
+                    id: o.id as string,
+                    code: o.code,
+                    label: o.label,
+                  }))}
+                  moyenne={
+                    etudiants.length > 0 ? (id) => moyenneCohorte(etudiants, id, etat) : undefined
+                  }
+                  badge={(id) => {
+                    const trouve = chapitre.acquis.find((o) => (o.id as string) === id);
+                    return trouve?.knowledgeRank ? <RankBadge rank={trouve.knowledgeRank} /> : null;
+                  }}
+                  contenu={(id) => {
+                    const trouve = chapitre.acquis.find((o) => (o.id as string) === id);
+                    return (
+                      <div className="space-y-2">
+                        {trouve?.description ? (
+                          <p className="text-muted-foreground text-sm">{trouve.description}</p>
+                        ) : null}
+                        <AcquisContenu
+                          outcomeId={id as OutcomeId}
+                          supports={supportsDeLAcquis(scope, id)}
+                        />
+                      </div>
+                    );
+                  }}
+                />
               </AccordionContent>
             </AccordionItem>
           ))}
         </Accordion>
       )}
+
+      <div ref={matriceRef}>
+        <PanelCard
+          title="Suivi de promotion"
+          description="Une ligne par étudiant, toutes les connaissances. Survolez une case pour son intitulé."
+          action={
+            matriceOuverte ? (
+              <Button size="sm" variant="ghost" onClick={() => setMatriceOuverte(false)}>
+                Masquer
+              </Button>
+            ) : null
+          }
+        >
+          {matriceOuverte ? (
+            <PromotionHeatmap groupes={groupes} etudiants={etudiants} etat={etat} taille="xs" />
+          ) : (
+            <Button variant="outline" onClick={ouvrirLaMatrice}>
+              <LayoutGrid className="size-4" aria-hidden /> Afficher la matrice
+            </Button>
+          )}
+        </PanelCard>
+      </div>
     </div>
   );
 }

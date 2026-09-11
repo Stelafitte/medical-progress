@@ -33,6 +33,7 @@ export function useSupervision() {
         logsToValidate,
         groups,
         weeks,
+        resources,
       ] = await Promise.all([
         data.placements.listPlacements(activeProgram.id),
         data.outcomes.listOutcomes(activeProgram.id),
@@ -55,6 +56,19 @@ export function useSupervision() {
          */
         data.placements.listSupervisionGroups(activeProgram.id),
         data.placements.listSupervisionGroupWeeks(activeProgram.id),
+        /*
+         * LES SUPPORTS DU PROGRAMME (11/09). L'encadrant doit voir le contenu
+         * EXACTEMENT comme l'etudiant le recoit -- c'est la source qu'on lui
+         * demande de verifier. Aucune methode serveur ne rend « les supports de
+         * cet acquis » : chaque `LearningResource` porte ses `outcomeIds`, et
+         * l'ecran apprenant renverse la liste en memoire. On fait pareil, pour
+         * lire la meme chose par le meme chemin.
+         *
+         * LE DROIT SUIT : `can_read_resource` accepte `is_program_staff`, qui
+         * inclut l'encadrant. Un non-inscrit hors staff recevrait zero ligne
+         * SANS ERREUR -- le vide credible, encore.
+         */
+        data.resources.listResources(activeProgram.id),
       ]);
       const learners = await data.supervision.listPeopleByIds(enrollments.map((e) => e.personId));
       /*
@@ -85,6 +99,7 @@ export function useSupervision() {
         declarations,
         groups,
         weeks,
+        resources,
         messages,
       };
     },
@@ -136,6 +151,18 @@ export function parTheme<T extends { themeId?: string; position?: number; code: 
     groupes.push({ id: "sans-theme", label: "Hors chapitre", acquis: orphelins });
   }
   return groupes.filter((g) => g.acquis.length > 0);
+}
+
+/**
+ * Les supports qui traitent d'un acquis, dans l'ordre ou l'apprenant les voit.
+ *
+ * LE FILTRAGE EST EN MEMOIRE, ET CE N'EST PAS UN RACCOURCI : le rattachement
+ * vit dans `learning_resource_outcomes`, lu une fois par `listResources` qui
+ * remplit `outcomeIds`. Aucune methode ne part d'un acquis -- l'ecran apprenant
+ * renverse la meme liste.
+ */
+export function supportsDeLAcquis(scope: SupervisionScope, outcomeId: string) {
+  return scope.resources.filter((r) => (r.outcomeIds as readonly string[]).includes(outcomeId));
 }
 
 /** Ce que cet etudiant a declare et qui attend la confirmation de l'encadrant. */
