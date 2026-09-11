@@ -23,9 +23,7 @@ function workbook(rows: readonly (readonly string[])[]): Uint8Array {
     .map((cells, r) => {
       const body = cells
         .map((value, c) =>
-          value === ""
-            ? ""
-            : `<c r="${column(c)}${r + 1}" t="s"><v>${indexOf(value)}</v></c>`,
+          value === "" ? "" : `<c r="${column(c)}${r + 1}" t="s"><v>${indexOf(value)}</v></c>`,
         )
         .join("");
       return `<row r="${r + 1}">${body}</row>`;

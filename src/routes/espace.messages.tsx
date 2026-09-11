@@ -34,8 +34,7 @@ export const Route = createFileRoute("/espace/messages")({
       { title: "Mes messages — Campus Santé Augmenté" },
       {
         name: "description",
-        content:
-          "Annonces de mon programme, et mes échanges avec mes encadrants.",
+        content: "Annonces de mon programme, et mes échanges avec mes encadrants.",
       },
       { property: "og:title", content: "Mes messages — Campus Santé Augmenté" },
       {

@@ -12,11 +12,11 @@ import * as fixtures from "@/infrastructure/mock/fixtures";
 function clientWithUser(id?: string): SupabaseClient {
   return {
     auth: {
-      getUser: vi.fn().mockResolvedValue(
-        id
-          ? { data: { user: { id } }, error: null }
-          : { data: { user: null }, error: null },
-      ),
+      getUser: vi
+        .fn()
+        .mockResolvedValue(
+          id ? { data: { user: { id } }, error: null } : { data: { user: null }, error: null },
+        ),
     },
   } as unknown as SupabaseClient;
 }

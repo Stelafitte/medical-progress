@@ -25,7 +25,9 @@ const bytes = (value: string) => encoder.encode(value);
 const slideXml = (texts: readonly string[], withAnimation = false) =>
   `<?xml version="1.0"?><p:sld xmlns:p="p" xmlns:a="a"><p:cSld><p:spTree>${texts
     .map((text) => `<p:sp><p:txBody><a:p><a:r><a:t>${text}</a:t></a:r></a:p></p:txBody></p:sp>`)
-    .join("")}</p:spTree></p:cSld>${withAnimation ? "<p:timing><p:bldP/></p:timing>" : "<p:timing/>"}</p:sld>`;
+    .join(
+      "",
+    )}</p:spTree></p:cSld>${withAnimation ? "<p:timing><p:bldP/></p:timing>" : "<p:timing/>"}</p:sld>`;
 
 const notesXml = (text: string) =>
   `<?xml version="1.0"?><p:notes xmlns:p="p" xmlns:a="a"><a:p><a:r><a:t>${text}</a:t></a:r></a:p><a:p><a:r><a:t>2</a:t></a:r></a:p></p:notes>`;

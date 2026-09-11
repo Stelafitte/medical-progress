@@ -144,9 +144,11 @@ describe("lecture adaptative : le fichier arrive comme il veut", () => {
 });
 
 describe("motif d'adresse : fabriqué, donc signalé", () => {
-  const FILE = ["Nom;Prénom;N° étudiant", "Benoît;Léa;20250114", "O'Brien;Jean-Pierre;20250115"].join(
-    "\n",
-  );
+  const FILE = [
+    "Nom;Prénom;N° étudiant",
+    "Benoît;Léa;20250114",
+    "O'Brien;Jean-Pierre;20250115",
+  ].join("\n");
 
   it("compose les adresses quand le fichier n'en porte aucune", () => {
     const preview = buildRosterPreview({

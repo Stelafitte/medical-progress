@@ -7,9 +7,17 @@ export const Route = createFileRoute("/espace/administration/evaluations")({
   head: () => ({
     meta: [
       { title: "Évaluations — Campus Santé Augmenté" },
-      { name: "description", content: "Modalités d'évaluation du programme, création, import de résultats externes et résultats par cohorte." },
+      {
+        name: "description",
+        content:
+          "Modalités d'évaluation du programme, création, import de résultats externes et résultats par cohorte.",
+      },
       { property: "og:title", content: "Évaluations — Campus Santé Augmenté" },
-      { property: "og:description", content: "Modalités d'évaluation du programme, création, import de résultats externes et résultats par cohorte." },
+      {
+        property: "og:description",
+        content:
+          "Modalités d'évaluation du programme, création, import de résultats externes et résultats par cohorte.",
+      },
       { name: "robots", content: "noindex" },
     ],
   }),

@@ -118,7 +118,7 @@ export function parseDelimitedTable<C extends string>(
   aliases: HeaderAliases<C>,
 ): ParsedTable {
   const lines = text
-    .replace(/^﻿/, "")
+    .replace(/^\uFEFF/, "")
     .split(/\r\n|\r|\n/)
     .filter((l) => l.trim().length > 0);
 

@@ -6,7 +6,11 @@ export interface SupabasePublicConfig {
 }
 
 export type SupabaseConfigResult =
-  | { readonly configured: true; readonly backend: DataBackend; readonly value: SupabasePublicConfig }
+  | {
+      readonly configured: true;
+      readonly backend: DataBackend;
+      readonly value: SupabasePublicConfig;
+    }
   | { readonly configured: false; readonly backend: DataBackend; readonly reason: string };
 
 function validSupabaseUrl(value: string): boolean {
@@ -25,14 +29,10 @@ function validSupabaseUrl(value: string): boolean {
 export function resolveSupabasePublicConfig(
   env: Record<string, string | boolean | undefined>,
 ): SupabaseConfigResult {
-  const backend: DataBackend =
-    env["VITE_DATA_BACKEND"] === "supabase" ? "supabase" : "mock";
-  const url =
-    typeof env["VITE_SUPABASE_URL"] === "string" ? env["VITE_SUPABASE_URL"].trim() : "";
-  const publishableKeyValue =
-    env["VITE_SUPABASE_PUBLISHABLE_KEY"] ?? env["VITE_SUPABASE_ANON_KEY"];
-  const publishableKey =
-    typeof publishableKeyValue === "string" ? publishableKeyValue.trim() : "";
+  const backend: DataBackend = env["VITE_DATA_BACKEND"] === "supabase" ? "supabase" : "mock";
+  const url = typeof env["VITE_SUPABASE_URL"] === "string" ? env["VITE_SUPABASE_URL"].trim() : "";
+  const publishableKeyValue = env["VITE_SUPABASE_PUBLISHABLE_KEY"] ?? env["VITE_SUPABASE_ANON_KEY"];
+  const publishableKey = typeof publishableKeyValue === "string" ? publishableKeyValue.trim() : "";
 
   if (!url || !publishableKey) {
     return {

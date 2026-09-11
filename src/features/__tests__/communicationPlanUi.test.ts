@@ -78,12 +78,34 @@ describe("adaptateur de calendrier", () => {
       calendarVersion: "v1",
       timeZone: "Europe/Paris",
       slots: [
-        { id: "t1", label: "Tour 1", kind: "audit_round", order: 1, startsAt: "2026-02-01T08:00:00.000Z" },
-        { id: "t2", label: "Tour 2", kind: "audit_round", order: 2, startsAt: "2026-06-01T08:00:00.000Z" },
-        { id: "f1", label: "Visio", kind: "training_session", delivery: "virtual_classroom", startsAt: "2026-03-01T17:00:00.000Z" },
+        {
+          id: "t1",
+          label: "Tour 1",
+          kind: "audit_round",
+          order: 1,
+          startsAt: "2026-02-01T08:00:00.000Z",
+        },
+        {
+          id: "t2",
+          label: "Tour 2",
+          kind: "audit_round",
+          order: 2,
+          startsAt: "2026-06-01T08:00:00.000Z",
+        },
+        {
+          id: "f1",
+          label: "Visio",
+          kind: "training_session",
+          delivery: "virtual_classroom",
+          startsAt: "2026-03-01T17:00:00.000Z",
+        },
       ],
     });
-    expect(calendar.steps.map((s) => s.kind)).toEqual(["audit_a1", "audit_a2", "virtual_classroom"]);
+    expect(calendar.steps.map((s) => s.kind)).toEqual([
+      "audit_a1",
+      "audit_a2",
+      "virtual_classroom",
+    ]);
   });
 
   it("ignore les créneaux non datés", () => {

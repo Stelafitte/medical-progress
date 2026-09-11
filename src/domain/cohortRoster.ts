@@ -191,7 +191,8 @@ export function splitFullName(value: string): SplitName {
   const tokens = raw.split(" ");
   if (tokens.length === 1) return { lastName: raw, firstName: "", assumed: false };
 
-  const isUpper = (t: string) => t.length > 1 && t === t.toLocaleUpperCase("fr-FR") && /\p{L}/u.test(t);
+  const isUpper = (t: string) =>
+    t.length > 1 && t === t.toLocaleUpperCase("fr-FR") && /\p{L}/u.test(t);
   const upper = tokens.filter(isUpper);
   if (upper.length > 0 && upper.length < tokens.length) {
     return {

@@ -7,9 +7,15 @@ export const Route = createFileRoute("/espace/programmes")({
   head: () => ({
     meta: [
       { title: "Tous les programmes — Campus Santé Augmenté" },
-      { name: "description", content: "Vue d'ensemble des programmes administrés et de leur classe active." },
+      {
+        name: "description",
+        content: "Vue d'ensemble des programmes administrés et de leur classe active.",
+      },
       { property: "og:title", content: "Tous les programmes — Campus Santé Augmenté" },
-      { property: "og:description", content: "Vue d'ensemble des programmes administrés et de leur classe active." },
+      {
+        property: "og:description",
+        content: "Vue d'ensemble des programmes administrés et de leur classe active.",
+      },
       { name: "robots", content: "noindex" },
     ],
   }),

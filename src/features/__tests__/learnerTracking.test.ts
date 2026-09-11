@@ -9,13 +9,7 @@ import {
   EMPTY_NEW_KNOWLEDGE_INPUT,
 } from "@/domain/knowledgeDraft";
 import type { AssessmentDefinition } from "@/domain/assessment";
-import type {
-  CurriculumVersionId,
-  Enrollment,
-  Outcome,
-  Person,
-  ProgramId,
-} from "@/domain/types";
+import type { CurriculumVersionId, Enrollment, Outcome, Person, ProgramId } from "@/domain/types";
 
 const people = [
   { id: "p2", fullName: "Zoé Martin" },

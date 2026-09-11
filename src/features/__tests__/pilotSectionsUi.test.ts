@@ -12,8 +12,7 @@ import type { Enrollment, Person } from "@/domain/types";
 const enrollment = (id: string, personId: string): Enrollment =>
   ({ id, personId, programId: "p1", cohortId: "c1", status: "active" }) as unknown as Enrollment;
 
-const person = (id: string, fullName: string): Person =>
-  ({ id, fullName }) as unknown as Person;
+const person = (id: string, fullName: string): Person => ({ id, fullName }) as unknown as Person;
 
 const log = (enrollmentId: string, status: StageLog["status"], entries: number): StageLog =>
   ({

@@ -12,7 +12,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useDataAccess, useSession } from "@/application/session";
-import { EmptyState, MockBadge, PanelCard, ScopeNotice, StatCard } from "@/features/professional/mock-ui";
+import {
+  EmptyState,
+  MockBadge,
+  PanelCard,
+  ScopeNotice,
+  StatCard,
+} from "@/features/professional/mock-ui";
 import {
   DPC_ENTRY_STATUS_LABELS_FR,
   DPC_NO_PATIENT_DATA_NOTICE_FR,
@@ -29,7 +35,6 @@ import {
   quizPhaseView,
   sectionConformity,
 } from "@/domain/dpc";
-
 
 export function DpcLearnerView() {
   const data = useDataAccess();
@@ -66,7 +71,13 @@ export function DpcLearnerView() {
     </header>
   );
 
-  if (!enrollmentId) return <div className="space-y-4">{header}<p>Aucune inscription active.</p></div>;
+  if (!enrollmentId)
+    return (
+      <div className="space-y-4">
+        {header}
+        <p>Aucune inscription active.</p>
+      </div>
+    );
 
   if (isPending || !scope)
     return (
@@ -130,12 +141,20 @@ export function DpcLearnerView() {
         <StatCard
           label="Connaissances (pré/post)"
           value={`${tests.prePercent ?? "—"} % → ${tests.postPercent ?? "—"} %`}
-          hint={tests.deltaPoints !== null ? `${tests.deltaPoints > 0 ? "+" : ""}${tests.deltaPoints} points` : "en attente"}
+          hint={
+            tests.deltaPoints !== null
+              ? `${tests.deltaPoints > 0 ? "+" : ""}${tests.deltaPoints} points`
+              : "en attente"
+          }
         />
         <StatCard
           label="Attestation"
           value={journey.attestationEligible ? "Disponible" : "En attente"}
-          hint={journey.attestationEligible ? "Participation et progression tracées" : `${journey.attestationBlockers.length} condition(s) restante(s)`}
+          hint={
+            journey.attestationEligible
+              ? "Participation et progression tracées"
+              : `${journey.attestationBlockers.length} condition(s) restante(s)`
+          }
         />
       </div>
 
@@ -150,7 +169,11 @@ export function DpcLearnerView() {
               ["progression", "Ma progression"],
             ] as const
           ).map(([value, label]) => (
-            <TabsTrigger key={value} value={value} className="min-h-11 flex-none text-xs sm:text-sm">
+            <TabsTrigger
+              key={value}
+              value={value}
+              className="min-h-11 flex-none text-xs sm:text-sm"
+            >
               {label}
             </TabsTrigger>
           ))}
@@ -181,7 +204,8 @@ export function DpcLearnerView() {
                     </div>
                     <p className="text-muted-foreground text-sm">{step.description}</p>
                     <p className="text-xs">
-                      {step.detail} · <span className="text-muted-foreground">{step.requirement}</span>
+                      {step.detail} ·{" "}
+                      <span className="text-muted-foreground">{step.requirement}</span>
                     </p>
                   </div>
                 </li>
@@ -189,7 +213,10 @@ export function DpcLearnerView() {
             </ol>
           </PanelCard>
 
-          <PanelCard title="Mon attestation" description="Participation et progression mesurée — jamais une compétence en situation réelle accordée automatiquement.">
+          <PanelCard
+            title="Mon attestation"
+            description="Participation et progression mesurée — jamais une compétence en situation réelle accordée automatiquement."
+          >
             {journey.attestationEligible ? (
               <div className="space-y-2">
                 <p>Parcours complet : l'attestation de participation peut être éditée.</p>
@@ -237,8 +264,9 @@ export function DpcLearnerView() {
                     </p>
                     {entry?.status === "submitted" ? (
                       <p>
-                        Conformité mesurée : <strong>{conformity.conformityPercent} %</strong> (cible{" "}
-                        {grid.targetConformityPercent} %) · {conformity.notApplicable} réponses N/A exclues
+                        Conformité mesurée : <strong>{conformity.conformityPercent} %</strong>{" "}
+                        (cible {grid.targetConformityPercent} %) · {conformity.notApplicable}{" "}
+                        réponses N/A exclues
                       </p>
                     ) : null}
                     <Button
@@ -282,7 +310,10 @@ export function DpcLearnerView() {
               </ul>
             </PanelCard>
           ))}
-          <PanelCard title="Bibliographie de la formation" description="Références identifiées, exigence HAS d'indépendance des supports.">
+          <PanelCard
+            title="Bibliographie de la formation"
+            description="Références identifiées, exigence HAS d'indépendance des supports."
+          >
             <ol className="space-y-1">
               {scope.setup.references.map((reference) => (
                 <li key={reference.order}>
@@ -334,7 +365,8 @@ export function DpcLearnerView() {
                         <p className="text-muted-foreground text-sm">{question.prompt}</p>
                         <ul className="space-y-1 text-sm">
                           {question.options.map((option) => {
-                            const isAnswer = question.revealed && option.key === question.correctKey;
+                            const isAnswer =
+                              question.revealed && option.key === question.correctKey;
                             return (
                               <li
                                 key={option.key}
@@ -367,25 +399,29 @@ export function DpcLearnerView() {
               );
             })
           )}
-          <PanelCard title="Scores" description="Même série aux deux passages : la comparaison est valide.">
+          <PanelCard
+            title="Scores"
+            description="Même série aux deux passages : la comparaison est valide."
+          >
             <p>
               Pré-test {tests.prePercent ?? "—"} % → post-test {tests.postPercent ?? "—"} %
-              {tests.deltaPoints !== null ? ` (${tests.deltaPoints > 0 ? "+" : ""}${tests.deltaPoints} points)` : ""}
+              {tests.deltaPoints !== null
+                ? ` (${tests.deltaPoints > 0 ? "+" : ""}${tests.deltaPoints} points)`
+                : ""}
             </p>
             <p className="text-muted-foreground text-xs">
-              {scope.questions.length} questions. Produit réel : l'expurgation de la correction devra
-              être appliquée côté serveur, pas seulement dans React.
+              {scope.questions.length} questions. Produit réel : l'expurgation de la correction
+              devra être appliquée côté serveur, pas seulement dans React.
             </p>
           </PanelCard>
         </TabsContent>
-
 
         <TabsContent value="progression" className="space-y-4">
           <PanelCard title="Conclusion individuelle" description="Calcul déterministe, sans IA.">
             <p>{comparison.conclusion}</p>
             <p className="text-muted-foreground text-xs">
-              Une compétence en situation réelle reste validée par un tiers : l'audit et l'attestation
-              ne l'accordent jamais seuls.
+              Une compétence en situation réelle reste validée par un tiers : l'audit et
+              l'attestation ne l'accordent jamais seuls.
             </p>
           </PanelCard>
           <PanelCard title="Conformité par partie de la grille">
@@ -403,7 +439,10 @@ export function DpcLearnerView() {
               ))}
             </ul>
           </PanelCard>
-          <PanelCard title="Écarts à travailler en priorité" description="Critères encore sous la cible.">
+          <PanelCard
+            title="Écarts à travailler en priorité"
+            description="Critères encore sous la cible."
+          >
             {gaps.length === 0 ? (
               <EmptyState>Aucun écart au-dessous de la cible.</EmptyState>
             ) : (

@@ -21,10 +21,7 @@ export function toConversionInput(
   durationsByPath: Readonly<Record<string, number>> = {},
 ): PptxConversionInput {
   const slides: PptxSlideSignal[] = inventory.slides.map((slide) => {
-    const measured = slide.audio.reduce(
-      (sum, file) => sum + (durationsByPath[file.path] ?? 0),
-      0,
-    );
+    const measured = slide.audio.reduce((sum, file) => sum + (durationsByPath[file.path] ?? 0), 0);
     return {
       index: slide.index,
       title: slide.title,
@@ -58,12 +55,7 @@ export function transformPptx(
   at: string = new Date().toISOString(),
 ): PptxTransformation {
   const inventory = readPptxPackage(fileName, data);
-  const deck = convertPptx(
-    toConversionInput(inventory, durationsByPath),
-    "html5",
-    undefined,
-    at,
-  );
+  const deck = convertPptx(toConversionInput(inventory, durationsByPath), "html5", undefined, at);
   return { inventory, deck };
 }
 
@@ -98,11 +90,7 @@ export async function measureAudioDurations(
 }
 
 const escapeHtml = (value: string) =>
-  value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+  value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
 /** Manifeste du paquet web : c'est lui, et non le PPTX, qui décrit le cours. */
 export function buildManifest(transformation: PptxTransformation) {

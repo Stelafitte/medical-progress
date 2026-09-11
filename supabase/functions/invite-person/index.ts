@@ -38,7 +38,8 @@ const INVITE_REDIRECT_URL = Deno.env.get("INVITE_REDIRECT_URL") ?? undefined;
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-application-name",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-application-name",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
@@ -186,8 +187,20 @@ async function sendWithSupabaseDefault(
 // OVH propre au programme, avec son propre nom de domaine en expéditeur.
 async function sendWithDedicatedSender(
   adminClient: ReturnType<typeof createClient>,
-  person: { id: string; login_email: string; first_name: string; last_name: string; program_id: string },
-  sender: { smtp_host: string; smtp_port: number; smtp_user: string; smtp_password_secret: string; from_name: string },
+  person: {
+    id: string;
+    login_email: string;
+    first_name: string;
+    last_name: string;
+    program_id: string;
+  },
+  sender: {
+    smtp_host: string;
+    smtp_port: number;
+    smtp_user: string;
+    smtp_password_secret: string;
+    from_name: string;
+  },
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const password = Deno.env.get(sender.smtp_password_secret);
   if (!password) {
@@ -245,7 +258,10 @@ async function sendWithDedicatedSender(
       text,
     });
   } catch (e) {
-    return { ok: false, error: `envoi SMTP échoué : ${e instanceof Error ? e.message : String(e)}` };
+    return {
+      ok: false,
+      error: `envoi SMTP échoué : ${e instanceof Error ? e.message : String(e)}`,
+    };
   }
 
   return { ok: true };

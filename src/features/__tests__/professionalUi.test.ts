@@ -65,7 +65,6 @@ describe("protection des routes", () => {
     }
   });
 
-
   it("l'administration plateforme est gardée séparément", () => {
     const source = read("src/routes/espace.plateforme.tsx");
     expect(source).toContain("canAccessPlatformAdministration");

@@ -14,12 +14,14 @@ export const Route = createFileRoute("/espace/administration/pilotage")({
       { title: "Pilotage de programme — Campus Santé Augmenté" },
       {
         name: "description",
-        content: "Suivi d'une promotion : calendrier daté, inscriptions, carnets, alertes, intervenants.",
+        content:
+          "Suivi d'une promotion : calendrier daté, inscriptions, carnets, alertes, intervenants.",
       },
       { property: "og:title", content: "Pilotage de programme — Campus Santé Augmenté" },
       {
         property: "og:description",
-        content: "Suivi d'une promotion : calendrier daté, inscriptions, carnets, alertes, intervenants.",
+        content:
+          "Suivi d'une promotion : calendrier daté, inscriptions, carnets, alertes, intervenants.",
       },
       { name: "robots", content: "noindex" },
     ],

@@ -24,9 +24,7 @@ describe("vocabulaire", () => {
 
   it("propose l'action principale « Importer et implémenter un programme DPC »", () => {
     expect(dpcRoute).toContain("Importer et implémenter un programme DPC");
-    expect(dpcRoute).toContain(
-      "Importez le programme DPC et ses documents associés.",
-    );
+    expect(dpcRoute).toContain("Importez le programme DPC et ses documents associés.");
   });
 
   it("n'impose plus de publier le programme de référence comme action indépendante", () => {
@@ -78,9 +76,7 @@ describe("étapes de l'assistant", () => {
   it("suit le parcours d'implémentation attendu", () => {
     expect(DPC_WIZARD_STEPS[0]!.title).toBe("Importer les documents");
     expect(DPC_WIZARD_STEPS[0]!.description).toMatch(/Word ou PDF/);
-    expect(DPC_WIZARD_STEPS.map((step) => step.title)).toContain(
-      "Programmer l'implémentation",
-    );
+    expect(DPC_WIZARD_STEPS.map((step) => step.title)).toContain("Programmer l'implémentation");
     expect(DPC_WIZARD_STEPS[DPC_WIZARD_STEPS.length - 1]!.title).toBe("Contrôle final");
   });
 });

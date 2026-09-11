@@ -14,11 +14,7 @@ import type {
   PlanProgramKind,
   PlanStepKind,
 } from "@/domain/communicationPlan";
-import type {
-  AudienceDefinition,
-  MessageChannel,
-  ScheduleTrigger,
-} from "@/domain/communication";
+import type { AudienceDefinition, MessageChannel, ScheduleTrigger } from "@/domain/communication";
 import type {
   DpcProgramImplementation,
   DpcSequenceModality,
@@ -69,9 +65,7 @@ export function calendarFromDpcImplementation(
       kind: "audit_a1",
       label: a1Open.label,
       startsAt: a1Open.startsAt,
-      ...optional(
-        a1Close?.startsAt ? { endsAt: a1Close.endsAt ?? a1Close.startsAt } : {},
-      ),
+      ...optional(a1Close?.startsAt ? { endsAt: a1Close.endsAt ?? a1Close.startsAt } : {}),
     });
   }
 
@@ -94,7 +88,7 @@ export function calendarFromDpcImplementation(
       label: sequence.label,
       startsAt,
       ...optional(
-        sequence.endsAt ?? sequence.closesOn
+        (sequence.endsAt ?? sequence.closesOn)
           ? { endsAt: (sequence.endsAt ?? sequence.closesOn)! }
           : {},
       ),
@@ -158,8 +152,7 @@ export function calendarFromDpcImplementation(
     programId: input.programId,
     programKind: input.programKind ?? "dpc",
     programTitle: input.programTitle,
-    calendarVersion:
-      input.calendarVersion ?? `${implementation.programDefinitionVersion}-cal-1`,
+    calendarVersion: input.calendarVersion ?? `${implementation.programDefinitionVersion}-cal-1`,
     timeZone: implementation.timeZone,
     modules,
     steps,
@@ -181,8 +174,7 @@ export function calendarFromGenericSteps(input: {
   readonly modules?: PlanActiveModules;
 }): PlanCalendar {
   const derived: PlanActiveModules =
-    input.modules ??
-    Object.fromEntries(input.steps.map((step) => [step.kind, true]));
+    input.modules ?? Object.fromEntries(input.steps.map((step) => [step.kind, true]));
   return {
     implementationId: input.implementationId,
     programId: input.programId,

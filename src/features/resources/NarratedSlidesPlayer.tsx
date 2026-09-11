@@ -113,8 +113,12 @@ export function NarratedSlidesPlayer({
       >
         <header className="space-y-2">
           <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="secondary" className="font-normal">{NARRATED_ONLINE_ONLY_FR}</Badge>
-            <Badge variant="outline" className="font-normal">Lecteur web HTML5 réel</Badge>
+            <Badge variant="secondary" className="font-normal">
+              {NARRATED_ONLINE_ONLY_FR}
+            </Badge>
+            <Badge variant="outline" className="font-normal">
+              Lecteur web HTML5 réel
+            </Badge>
             {focused ? (
               <Button
                 type="button"
@@ -141,7 +145,11 @@ export function NarratedSlidesPlayer({
         <iframe
           title={`Lecteur du cours ${deck.title}`}
           src={deck.webPlayerUrl}
-          className={focused ? "h-[72vh] min-h-[34rem] w-full rounded-md border" : "h-[36rem] w-full rounded-md border"}
+          className={
+            focused
+              ? "h-[72vh] min-h-[34rem] w-full rounded-md border"
+              : "h-[36rem] w-full rounded-md border"
+          }
           allow="autoplay; fullscreen"
           sandbox="allow-scripts allow-same-origin"
         />

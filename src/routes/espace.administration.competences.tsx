@@ -7,9 +7,15 @@ export const Route = createFileRoute("/espace/administration/competences")({
   head: () => ({
     meta: [
       { title: "Compétences — Campus Santé Augmenté" },
-      { name: "description", content: "Savoir-faire de stage et de simulation, référentiel et suivi d'acquisition." },
+      {
+        name: "description",
+        content: "Savoir-faire de stage et de simulation, référentiel et suivi d'acquisition.",
+      },
       { property: "og:title", content: "Compétences — Campus Santé Augmenté" },
-      { property: "og:description", content: "Savoir-faire de stage et de simulation, référentiel et suivi d'acquisition." },
+      {
+        property: "og:description",
+        content: "Savoir-faire de stage et de simulation, référentiel et suivi d'acquisition.",
+      },
       { name: "robots", content: "noindex" },
     ],
   }),

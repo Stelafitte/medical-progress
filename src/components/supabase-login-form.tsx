@@ -51,7 +51,11 @@ export function SupabaseLoginForm({ client }: { client: SupabaseClient }) {
           onChange={(event) => setPassword(event.target.value)}
         />
       </div>
-      {error ? <p className="text-sm text-destructive" role="alert">{error}</p> : null}
+      {error ? (
+        <p className="text-sm text-destructive" role="alert">
+          {error}
+        </p>
+      ) : null}
       <Button className="w-full" type="submit" disabled={pending}>
         {pending ? "Connexion…" : "Se connecter"}
       </Button>

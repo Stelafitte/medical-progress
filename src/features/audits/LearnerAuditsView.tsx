@@ -54,7 +54,13 @@ export function LearnerAuditsView() {
     </header>
   );
 
-  if (!enrollmentId) return <div className="space-y-4">{header}<p>Aucune inscription active.</p></div>;
+  if (!enrollmentId)
+    return (
+      <div className="space-y-4">
+        {header}
+        <p>Aucune inscription active.</p>
+      </div>
+    );
 
   if (isPending || !scope)
     return (

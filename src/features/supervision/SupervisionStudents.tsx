@@ -55,7 +55,6 @@ export function SupervisionStudents() {
       <SectionHeading
         title="Mes étudiants"
         level={1}
-        action={<MockBadge />}
         description="Fiche synthétique par étudiant : progression, activité de stage et dernier contact."
       />
 

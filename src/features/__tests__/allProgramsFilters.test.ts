@@ -50,18 +50,18 @@ describe("filtres de la vue Tous les programmes", () => {
 
   it("dérive l'état du programme de ses cohortes", () => {
     expect(programLifecycle(card("diu", []), NOW)).toBe("construction");
-    expect(
-      programLifecycle(card("diu", [cohort("c", "2026-09-01", "2027-01-01")]), NOW),
-    ).toBe("launching");
-    expect(
-      programLifecycle(card("diu", [cohort("c", "2026-01-01", "2026-12-01")]), NOW),
-    ).toBe("running");
-    expect(
-      programLifecycle(card("diu", [cohort("c", "2026-01-01", "2026-03-01")]), NOW),
-    ).toBe("closed");
-    expect(
-      programLifecycle(card("diu", [cohort("c", "2023-01-01", "2023-03-01")]), NOW),
-    ).toBe("archived");
+    expect(programLifecycle(card("diu", [cohort("c", "2026-09-01", "2027-01-01")]), NOW)).toBe(
+      "launching",
+    );
+    expect(programLifecycle(card("diu", [cohort("c", "2026-01-01", "2026-12-01")]), NOW)).toBe(
+      "running",
+    );
+    expect(programLifecycle(card("diu", [cohort("c", "2026-01-01", "2026-03-01")]), NOW)).toBe(
+      "closed",
+    );
+    expect(programLifecycle(card("diu", [cohort("c", "2023-01-01", "2023-03-01")]), NOW)).toBe(
+      "archived",
+    );
   });
 
   it("ne filtre rien sans filtre actif", () => {
@@ -79,11 +79,7 @@ describe("filtres de la vue Tous les programmes", () => {
       filterProgramCards(cards, { ...EMPTY_ALL_PROGRAMS_FILTERS, tracks: ["initial"] }, NOW),
     ).toEqual([initial]);
     expect(
-      filterProgramCards(
-        cards,
-        { ...EMPTY_ALL_PROGRAMS_FILTERS, lifecycles: ["launching"] },
-        NOW,
-      ),
+      filterProgramCards(cards, { ...EMPTY_ALL_PROGRAMS_FILTERS, lifecycles: ["launching"] }, NOW),
     ).toEqual([continuing]);
     expect(
       filterProgramCards(

@@ -111,8 +111,10 @@ Deno.serve(async (req) => {
   const adminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
     auth: { persistSession: false },
   });
-  const { data: resolu, error: erreurResolution } = await adminClient
-    .rpc("resolve_encadrement_source", { p_source_id: sourceId });
+  const { data: resolu, error: erreurResolution } = await adminClient.rpc(
+    "resolve_encadrement_source",
+    { p_source_id: sourceId },
+  );
 
   if (erreurResolution || !resolu || resolu.length === 0) {
     return json({ error: "Jeton introuvable pour cette source." }, 500);
@@ -133,9 +135,10 @@ Deno.serve(async (req) => {
     });
   } catch (raison) {
     /* On rapporte la NATURE de l'echec, jamais l'URL ni l'en-tete. */
-    const cause = raison instanceof Error && raison.name === "TimeoutError"
-      ? `La source n'a pas repondu en ${TIMEOUT_MS / 1000} secondes.`
-      : "La source est injoignable.";
+    const cause =
+      raison instanceof Error && raison.name === "TimeoutError"
+        ? `La source n'a pas repondu en ${TIMEOUT_MS / 1000} secondes.`
+        : "La source est injoignable.";
     return json({ error: cause }, 502);
   }
 
@@ -143,9 +146,12 @@ Deno.serve(async (req) => {
     /* 404 EST LE CAS NORMAL D'UN JETON REVOQUE sur cette source : l'adresse
        n'existe que pour un jeton valide. On le dit en clair, sinon
        l'administrateur cherchera une panne reseau. */
-    return json({
-      error: "La source refuse ce jeton (revoque, expire ou invalide). Regenerez-le cote UMCV.",
-    }, 401);
+    return json(
+      {
+        error: "La source refuse ce jeton (revoque, expire ou invalide). Regenerez-le cote UMCV.",
+      },
+      401,
+    );
   }
   if (!reponse.ok) {
     return json({ error: `La source a repondu ${reponse.status}.` }, 502);
@@ -180,8 +186,10 @@ Deno.serve(async (req) => {
   }
 
   /* 5. LA DECISION, EN SQL, SOUS LA SESSION DE L'APPELANT. */
-  const { data: rapport, error: erreurApplication } = await userClient
-    .rpc("apply_encadrement_sync", { p_source_id: sourceId, p_members: membres });
+  const { data: rapport, error: erreurApplication } = await userClient.rpc(
+    "apply_encadrement_sync",
+    { p_source_id: sourceId, p_members: membres },
+  );
 
   if (erreurApplication) {
     await adminClient.from("encadrement_sync_runs").insert({

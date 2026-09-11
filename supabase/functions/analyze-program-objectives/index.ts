@@ -27,7 +27,8 @@ const OPENAI_MODEL = Deno.env.get("OPENAI_ANALYZE_MODEL") ?? "gpt-4o-mini";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-application-name",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-application-name",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
@@ -35,9 +36,28 @@ const CORS_HEADERS = {
 const MAX_INPUT_CHARS = 20000;
 
 const OUTCOME_NATURES = ["knowledge", "simulated_competence", "real_competence"] as const;
-const MASTERY_LEVELS = ["not_started", "novice", "intermediate", "proficient", "autonomous"] as const;
-const ASSESSMENT_SUBTYPES = ["oral", "written", "practical", "qcm", "simulation", "ai_oral", "case_study"] as const;
-const ASSESSMENT_USAGES = ["self_assessment", "formative", "validation_exam", "certification"] as const;
+const MASTERY_LEVELS = [
+  "not_started",
+  "novice",
+  "intermediate",
+  "proficient",
+  "autonomous",
+] as const;
+const ASSESSMENT_SUBTYPES = [
+  "oral",
+  "written",
+  "practical",
+  "qcm",
+  "simulation",
+  "ai_oral",
+  "case_study",
+] as const;
+const ASSESSMENT_USAGES = [
+  "self_assessment",
+  "formative",
+  "validation_exam",
+  "certification",
+] as const;
 
 /**
  * Dérivé côté serveur (jamais demandé au modèle) pour garantir la cohérence
@@ -120,7 +140,10 @@ Deno.serve(async (req) => {
   }
 
   if (!OPENAI_API_KEY) {
-    return json({ error: "Analyse IA indisponible (clé OpenAI non configurée côté serveur)." }, 503);
+    return json(
+      { error: "Analyse IA indisponible (clé OpenAI non configurée côté serveur)." },
+      503,
+    );
   }
 
   const authHeader = req.headers.get("Authorization");
@@ -176,12 +199,19 @@ Deno.serve(async (req) => {
         ],
         response_format: {
           type: "json_schema",
-          json_schema: { name: "program_reference_proposal", strict: true, schema: RESPONSE_SCHEMA },
+          json_schema: {
+            name: "program_reference_proposal",
+            strict: true,
+            schema: RESPONSE_SCHEMA,
+          },
         },
       }),
     });
   } catch (e) {
-    return json({ error: `Appel OpenAI impossible : ${e instanceof Error ? e.message : String(e)}` }, 502);
+    return json(
+      { error: `Appel OpenAI impossible : ${e instanceof Error ? e.message : String(e)}` },
+      502,
+    );
   }
 
   if (!openaiResponse.ok) {
@@ -226,7 +256,9 @@ Deno.serve(async (req) => {
   }));
 
   const assessmentModalities = (parsed.assessmentModalities ?? []).map((item) => {
-    const subtype = ASSESSMENT_SUBTYPES.includes(item["subtype"] as (typeof ASSESSMENT_SUBTYPES)[number])
+    const subtype = ASSESSMENT_SUBTYPES.includes(
+      item["subtype"] as (typeof ASSESSMENT_SUBTYPES)[number],
+    )
       ? (item["subtype"] as string)
       : "qcm";
     return {

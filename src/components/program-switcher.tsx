@@ -45,7 +45,6 @@ export function ProgramSwitcher({ variant = "compact" }: { variant?: "compact" |
     ? programs
     : programs.filter((program) => selectableProgramIds.has(program.id));
 
-
   return (
     <div className={variant === "full" ? "w-full" : "flex min-w-0 items-center gap-2"}>
       <label htmlFor={`program-switcher-${variant}`} className="sr-only">

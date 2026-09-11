@@ -7,9 +7,15 @@ export const Route = createFileRoute("/espace/administration/securite")({
   head: () => ({
     meta: [
       { title: "Administration et sécurité — Campus Santé Augmenté" },
-      { name: "description", content: "Droits par programme, partage, conservation, audit et sécurité." },
+      {
+        name: "description",
+        content: "Droits par programme, partage, conservation, audit et sécurité.",
+      },
       { property: "og:title", content: "Administration et sécurité — Campus Santé Augmenté" },
-      { property: "og:description", content: "Droits par programme, partage, conservation, audit et sécurité." },
+      {
+        property: "og:description",
+        content: "Droits par programme, partage, conservation, audit et sécurité.",
+      },
       { name: "robots", content: "noindex" },
     ],
   }),

@@ -9,12 +9,14 @@ export const Route = createFileRoute("/espace/administration/concepteur")({
       { title: "Concepteur de programme — Campus Santé Augmenté" },
       {
         name: "description",
-        content: "Modèle réutilisable du programme : référentiel, objectifs, chronologie type, carnets.",
+        content:
+          "Modèle réutilisable du programme : référentiel, objectifs, chronologie type, carnets.",
       },
       { property: "og:title", content: "Concepteur de programme — Campus Santé Augmenté" },
       {
         property: "og:description",
-        content: "Modèle réutilisable du programme : référentiel, objectifs, chronologie type, carnets.",
+        content:
+          "Modèle réutilisable du programme : référentiel, objectifs, chronologie type, carnets.",
       },
       { name: "robots", content: "noindex" },
     ],

@@ -129,7 +129,10 @@ Deno.serve(async (req) => {
     .from(asset.bucket_name)
     .download(asset.object_path);
   if (downloadError || !blob) {
-    return json({ error: downloadError?.message ?? "Téléchargement de la narration impossible." }, 500);
+    return json(
+      { error: downloadError?.message ?? "Téléchargement de la narration impossible." },
+      500,
+    );
   }
 
   const form = new FormData();
@@ -145,7 +148,10 @@ Deno.serve(async (req) => {
   });
   const transcript = (await response.text()).trim();
   if (!response.ok) {
-    return json({ error: `Transcription refusée (${response.status}) : ${transcript.slice(0, 300)}` }, 502);
+    return json(
+      { error: `Transcription refusée (${response.status}) : ${transcript.slice(0, 300)}` },
+      502,
+    );
   }
 
   const { error: updateError } = await adminClient

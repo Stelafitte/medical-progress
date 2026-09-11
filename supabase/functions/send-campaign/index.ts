@@ -77,7 +77,10 @@ Deno.serve(async (req) => {
     auth: { persistSession: false },
   });
 
-  const { data: { user: caller }, error: callerError } = await userClient.auth.getUser();
+  const {
+    data: { user: caller },
+    error: callerError,
+  } = await userClient.auth.getUser();
   if (callerError || !caller) return json({ error: "Session invalide." }, 401);
 
   /* L'AUTORISATION, EN UNE REQUETE : lue avec le jeton de l'appelant, donc
@@ -97,7 +100,10 @@ Deno.serve(async (req) => {
   }
 
   if (campaign.channel !== "email") {
-    return json({ error: `Canal "${campaign.channel}" non pris en charge : seul l'e-mail existe.` }, 400);
+    return json(
+      { error: `Canal "${campaign.channel}" non pris en charge : seul l'e-mail existe.` },
+      400,
+    );
   }
   if (campaign.status === "completed" || campaign.status === "running") {
     return json({ error: `Campagne deja "${campaign.status}" : renvoi refuse.` }, 409);
@@ -284,9 +290,7 @@ Deno.serve(async (req) => {
           cohortLabel: r.cohortLabel,
         })),
         subjectPreview: render(campaign.subject as string, recipients[0], programName),
-        unresolvedVariables: unresolved(
-          `${campaign.subject} ${campaign.body}`,
-        ),
+        unresolvedVariables: unresolved(`${campaign.subject} ${campaign.body}`),
       },
       200,
     );
@@ -305,10 +309,7 @@ Deno.serve(async (req) => {
 
   if (senderError) return json({ error: senderError.message }, 500);
   if (!sender) {
-    return json(
-      { error: "Ce programme n'a pas d'expediteur SMTP dedie : envoi refuse." },
-      422,
-    );
+    return json({ error: "Ce programme n'a pas d'expediteur SMTP dedie : envoi refuse." }, 422);
   }
   const password = Deno.env.get(sender.smtp_password_secret as string);
   if (!password) {

@@ -25,10 +25,7 @@ const existing = [
 
 describe("diffReferentialRows", () => {
   it("classe une ligne absente du référentiel comme nouvelle", () => {
-    const diff = diffReferentialRows(
-      parseReferentialText("C-99;Mesure du VTI;réelle"),
-      existing,
-    );
+    const diff = diffReferentialRows(parseReferentialText("C-99;Mesure du VTI;réelle"), existing);
     expect(diff.newCount).toBe(1);
     expect(diff.rows[0]?.kind).toBe("new");
   });

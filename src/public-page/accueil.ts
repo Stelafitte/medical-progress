@@ -181,6 +181,16 @@ nav{display:flex;align-items:center;gap:12px;padding:20px 0}
   nav{flex-wrap:wrap;gap:8px 12px}
   .brand{flex:1 0 100%}
 }
+
+/* ⚠️ UN SEUL APPEL A SE CONNECTER SUR TELEPHONE — corrige le 11/09 sur constat
+   de Stef. « Se connecter » dans la barre et « Acceder a mon passeport » dans
+   le titre pointent tous deux vers /espace : sur un grand ecran ils sont
+   eloignes et se lisent comme une convention et une promesse ; empiles sur un
+   telephone, ce sont deux boutons cote a cote pour une seule action, et on
+   hesite. On garde celui du titre, qui dit ce qu'on y trouve. */
+@media (max-width:640px){
+  nav .btn{display:none}
+}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}`;
 
 const MARQUE = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.8 8.6a5 5 0 0 0-8.8-2.9 5 5 0 0 0-8.8 2.9c0 1 .3 1.9.8 2.7h3.6l1.4-2.6 2.2 5.6 1.9-3.6 1.1 1.4h3.8c.5-.8.8-1.7.8-2.5Z"></path><path d="M4.6 12.7c1.8 2.7 5.2 5.4 7.4 6.9 2.2-1.5 5.6-4.2 7.4-6.9"></path></svg>`;

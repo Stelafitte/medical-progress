@@ -44,8 +44,7 @@ function Guarded() {
         </Button>
         <p className="text-muted-foreground max-w-2xl text-sm">
           Importez le programme DPC et ses documents associés. Campus Santé Augmenté prépare une
-          implémentation structurée que vous pourrez vérifier, planifier et ouvrir pour une
-          cohorte.
+          implémentation structurée que vous pourrez vérifier, planifier et ouvrir pour une cohorte.
         </p>
         <Button asChild variant="ghost" className="min-h-11 w-full sm:w-auto">
           <Link to="/espace/administration/assistant-dpc">

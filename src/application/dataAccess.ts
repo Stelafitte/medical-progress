@@ -2,10 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { DataAccess } from "@/application/ports/repositories";
 import { mockDataAccess } from "@/infrastructure/mock/mockDataAccess";
 import { getBrowserSupabaseClient } from "@/infrastructure/supabase/client";
-import {
-  supabasePublicConfig,
-  type SupabaseConfigResult,
-} from "@/infrastructure/supabase/config";
+import { supabasePublicConfig, type SupabaseConfigResult } from "@/infrastructure/supabase/config";
 import { createSupabaseDataAccess } from "@/infrastructure/supabase/supabaseDataAccess";
 
 let selectedDataAccess: DataAccess | undefined;

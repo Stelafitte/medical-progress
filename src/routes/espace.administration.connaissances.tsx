@@ -7,9 +7,15 @@ export const Route = createFileRoute("/espace/administration/connaissances")({
   head: () => ({
     meta: [
       { title: "Base de connaissances — Campus Santé Augmenté" },
-      { name: "description", content: "Supports théoriques, conversion HTML5 et exploitation IA des contenus." },
+      {
+        name: "description",
+        content: "Supports théoriques, conversion HTML5 et exploitation IA des contenus.",
+      },
       { property: "og:title", content: "Base de connaissances — Campus Santé Augmenté" },
-      { property: "og:description", content: "Supports théoriques, conversion HTML5 et exploitation IA des contenus." },
+      {
+        property: "og:description",
+        content: "Supports théoriques, conversion HTML5 et exploitation IA des contenus.",
+      },
       { name: "robots", content: "noindex" },
     ],
   }),

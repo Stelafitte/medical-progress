@@ -1,19 +1,27 @@
 import { SectionHeading } from "@/components/section-heading";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Switch } from "@/components/ui/switch";
-import { MockBadge, PanelCard, ScopeNotice } from "@/features/professional/mock-ui";
+import { PanelCard, ScopeNotice } from "@/features/professional/mock-ui";
 import { useSupervision } from "@/features/supervision/useSupervision";
 import { useSession } from "@/application/session";
 import { ROLE_LABELS_FR } from "@/domain/roles";
 import { AccountCredentialsSection } from "@/features/profile/AccountCredentialsSection";
 
-const NOTIFICATION_PREFS: readonly { key: string; label: string; enabled: boolean }[] = [
-  { key: "new_log", label: "Nouveau carnet soumis", enabled: true },
-  { key: "late", label: "Validation en retard", enabled: true },
-  { key: "low_activity", label: "Faible activité d'un étudiant", enabled: false },
-  { key: "end_of_placement", label: "Bilan de fin de stage à préparer", enabled: true },
-];
+/*
+ * ⚠️ LE BLOC « PREFERENCES DE NOTIFICATION » A ETE RETIRE LE 11/09.
+ *
+ * Il affichait quatre interrupteurs tirés d'une constante en dur, qui
+ * n'enregistraient rien et ne commandaient aucune notification — la carte le
+ * disait elle-même en petit : « Démonstration — non enregistré ». Un
+ * interrupteur qui ne commande rien use la confiance dans ceux qui commandent
+ * quelque chose : basculer celui-là apprend à se méfier de tous les autres.
+ *
+ * QUAND ON LE REBRANCHERA : `communication_preferences` porte déjà le
+ * désabonnement par canal (`person_id`, `channel`, `opted_out`) et serait la
+ * table naturelle. Il manque le déclencheur — aucune horloge n'est installée,
+ * le chantier B de la communication reste ouvert. Reposer l'écran avant le
+ * mécanisme reviendrait à remettre la même promesse creuse.
+ */
 
 export function SupervisorProfile() {
   const { person, rolesInActiveProgram, activeProgram } = useSession();
@@ -26,8 +34,7 @@ export function SupervisorProfile() {
       <SectionHeading
         title="Mon profil d'encadrant"
         level={1}
-        action={<MockBadge />}
-        description="Fonction, terrains, périodes d'encadrement et préférences de notification."
+        description="Fonction, terrains et périodes d’encadrement."
       />
 
       <ScopeNotice>
@@ -74,22 +81,6 @@ export function SupervisorProfile() {
           {data.assignments.length === 0 ? (
             <li className="text-sm text-muted-foreground">Aucun terrain dans ce programme.</li>
           ) : null}
-        </ul>
-      </PanelCard>
-
-      <PanelCard
-        title="Préférences de notification"
-        description="Démonstration — non enregistré, aucune notification réelle."
-      >
-        <ul className="space-y-3">
-          {NOTIFICATION_PREFS.map((pref) => (
-            <li key={pref.key} className="flex items-center justify-between gap-3">
-              <label htmlFor={`pref-${pref.key}`} className="text-sm">
-                {pref.label}
-              </label>
-              <Switch id={`pref-${pref.key}`} defaultChecked={pref.enabled} />
-            </li>
-          ))}
         </ul>
       </PanelCard>
     </div>

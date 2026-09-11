@@ -91,7 +91,9 @@ function extractTexts(xml: string): string[] {
   const re = /<a:t(?:\s[^>]*)?>([\s\S]*?)<\/a:t>/g;
   let match: RegExpExecArray | null;
   while ((match = re.exec(xml)) !== null) {
-    const text = unescapeXml(match[1] ?? "").replace(/\s+/g, " ").trim();
+    const text = unescapeXml(match[1] ?? "")
+      .replace(/\s+/g, " ")
+      .trim();
     if (text) out.push(text);
   }
   return out;
@@ -235,7 +237,9 @@ export function readPptxPackage(fileName: string, data: Uint8Array): PptxInvento
     return {
       index: position + 1,
       path,
-      title: texts.find((text) => text.length > 1 && text.length <= 140) ?? `Diapositive ${position + 1}`,
+      title:
+        texts.find((text) => text.length > 1 && text.length <= 140) ??
+        `Diapositive ${position + 1}`,
       texts,
       notes,
       audio,
