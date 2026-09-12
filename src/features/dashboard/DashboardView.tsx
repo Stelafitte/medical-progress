@@ -17,6 +17,7 @@ import type { OutcomeThemeId } from "@/domain/types";
 import { buildDomainColors } from "@/features/dashboard/domainColor";
 import { useLearnerPassport } from "@/features/dashboard/useLearnerPassport";
 import { useStageToday } from "@/features/dashboard/useStageToday";
+import { MonEquipeDeStage } from "@/features/dashboard/MonEquipeDeStage";
 
 const JOUR = 24 * 60 * 60 * 1000;
 
@@ -784,6 +785,11 @@ function PaveStage() {
           )}
         </div>
       </article>
+
+      {/* OU JE SUIS, ET AVEC QUI (Stef, 12/09) : le terrain, le groupe, le
+          responsable et les encadrants -- sous la journee, parce que c'est a
+          eux qu'elle s'adresse. */}
+      <MonEquipeDeStage />
     </section>
   );
 }
