@@ -30,6 +30,7 @@ import {
 import type { ProgramId } from "@/domain/types";
 import type { MilestoneShift, PlanMilestoneId } from "@/domain/acquisitionPlan";
 import type { EnrollmentId } from "@/domain/types";
+import type { EcosExternalRun, EcosGridItem } from "@/domain/ecos";
 import { modalityFixturesFor } from "./assessmentModalityFixtures";
 import * as fx from "./fixtures";
 import * as pfx from "./professionalFixtures";
@@ -931,6 +932,46 @@ export const mockDataAccess: DataAccess = {
     applyTemplate: () =>
       Promise.reject(new Error("Les modèles de rétroplanning exigent une connexion à la base.")),
   },
+  /*
+   * ECOS virtuel externe en memoire : la maquette declare et relit ses passages
+   * le temps d'une session, avec la meme forme que Supabase (score recalcule).
+   */
+  ecosExternal: (() => {
+    const runs: EcosExternalRun[] = [];
+    const items = new Map<string, readonly EcosGridItem[]>();
+    return {
+      listRunsForEnrollment: (enrollmentId: EnrollmentId) =>
+        ok(runs.filter((r) => r.enrollmentId === enrollmentId)),
+      listRunsForProgram: (programId: ProgramId) =>
+        ok(runs.filter((r) => r.programId === programId)),
+      listRunItems: (runId: string) => ok(items.get(runId) ?? []),
+      recordRun: (input) => {
+        const enrollment = fx.enrollments.find((e) => e.id === input.enrollmentId);
+        if (!enrollment) return Promise.reject(new Error("Inscription inconnue."));
+        const id = `ecos-run-${runs.length + 1}`;
+        runs.unshift({
+          id,
+          enrollmentId: input.enrollmentId,
+          programId: enrollment.programId,
+          stationKey: input.stationKey,
+          stationLabel: input.stationLabel,
+          playedOn: input.playedOn,
+          score: input.items.reduce((a, i) => a + i.points, 0),
+          maxScore: input.items.reduce((a, i) => a + i.maxPoints, 0),
+          itemCount: input.items.length,
+          createdAt: new Date().toISOString(),
+        });
+        items.set(id, input.items.map((i) => ({ ...i })));
+        return ok(id);
+      },
+      deleteRun: (runId: string) => {
+        const index = runs.findIndex((r) => r.id === runId);
+        if (index >= 0) runs.splice(index, 1);
+        items.delete(runId);
+        return ok(undefined);
+      },
+    };
+  })(),
   stageLogs: {
     listTemplates: (programId) =>
       ok(

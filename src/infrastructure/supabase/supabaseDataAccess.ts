@@ -86,6 +86,7 @@ import type {
   StageLogStatus,
   StageLogTemplateId,
 } from "@/domain/stageLog";
+import type { EcosExternalRun, EcosGridItem } from "@/domain/ecos";
 import type { OutcomeSelfReport } from "@/domain/passport";
 import type { AssessmentModality } from "@/domain/assessmentModality";
 import type {
@@ -1138,6 +1139,38 @@ async function signAssetUrls(
  * Première tranche Supabase. Les repositories non encore migrés restent
  * explicitement délégués au mock afin de préserver les écrans existants.
  */
+/** Colonnes et projection d'un passage ECOS externe (migration 20260913100000). */
+const ecosRunColumns =
+  "id, enrollment_id, program_id, station_key, station_label, played_on, score, max_score, item_count, created_at";
+
+interface EcosRunRow {
+  id: string;
+  enrollment_id: string;
+  program_id: string;
+  station_key: string;
+  station_label: string;
+  played_on: string;
+  score: number | string;
+  max_score: number | string;
+  item_count: number;
+  created_at: string;
+}
+
+function mapEcosRun(row: EcosRunRow): EcosExternalRun {
+  return {
+    id: row.id,
+    enrollmentId: row.enrollment_id as EnrollmentId,
+    programId: row.program_id as ProgramId,
+    stationKey: row.station_key,
+    stationLabel: row.station_label,
+    playedOn: row.played_on,
+    score: Number(row.score),
+    maxScore: Number(row.max_score),
+    itemCount: row.item_count,
+    createdAt: row.created_at,
+  };
+}
+
 export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
   return {
     ...mockDataAccess,
@@ -1285,6 +1318,74 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
         const { error } = await client.rpc("open_stage_logs_for_group", {
           p_group_id: groupId,
         });
+        assertNoSupabaseError(error);
+      },
+    },
+    /**
+     * ECOS VIRTUEL EXTERNE (migration 20260913100000). Lecture directe des deux
+     * tables sous RLS ; ecriture par les deux fonctions serveur. `score` et
+     * `max_score` arrivent en numeric, donc en chaine : on les convertit ici,
+     * une fois, pour que l'ecran ne fasse jamais d'arithmetique sur du texte.
+     */
+    ecosExternal: {
+      async listRunsForEnrollment(enrollmentId) {
+        const { data, error } = await client
+          .from("ecos_external_runs")
+          .select(ecosRunColumns)
+          .eq("enrollment_id", enrollmentId)
+          .order("played_on", { ascending: false })
+          .order("created_at", { ascending: false });
+        assertNoSupabaseError(error);
+        return ((data ?? []) as unknown as EcosRunRow[]).map(mapEcosRun);
+      },
+      async listRunsForProgram(programId) {
+        const { data, error } = await client
+          .from("ecos_external_runs")
+          .select(ecosRunColumns)
+          .eq("program_id", programId)
+          .order("played_on", { ascending: false });
+        assertNoSupabaseError(error);
+        return ((data ?? []) as unknown as EcosRunRow[]).map(mapEcosRun);
+      },
+      async listRunItems(runId) {
+        const { data, error } = await client
+          .from("ecos_external_run_items")
+          .select("position, label, max_points, points")
+          .eq("run_id", runId)
+          .order("position", { ascending: true });
+        assertNoSupabaseError(error);
+        return (
+          (data ?? []) as unknown as readonly {
+            position: number;
+            label: string;
+            max_points: number | string;
+            points: number | string;
+          }[]
+        ).map(
+          (row): EcosGridItem => ({
+            label: row.label,
+            maxPoints: Number(row.max_points),
+            points: Number(row.points),
+          }),
+        );
+      },
+      async recordRun(input) {
+        const { data, error } = await client.rpc("record_ecos_external_run", {
+          p_enrollment_id: input.enrollmentId,
+          p_station_key: input.stationKey,
+          p_station_label: input.stationLabel,
+          p_played_on: input.playedOn,
+          p_items: input.items.map((i) => ({
+            label: i.label,
+            max_points: i.maxPoints,
+            points: i.points,
+          })),
+        });
+        assertNoSupabaseError(error);
+        return String(data);
+      },
+      async deleteRun(runId) {
+        const { error } = await client.rpc("delete_ecos_external_run", { p_run_id: runId });
         assertNoSupabaseError(error);
       },
     },

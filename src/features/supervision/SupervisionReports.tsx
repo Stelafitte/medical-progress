@@ -22,6 +22,7 @@ import {
 import { ProgressionLegend, type EtatAcquis } from "@/features/supervision/ProgressionDot";
 import { BarreDeGroupe, repartitionDuGroupe } from "@/features/supervision/BarreDeGroupe";
 import { PasseportEtudiant } from "@/features/supervision/PasseportEtudiant";
+import { EcosDeclares } from "@/features/supervision/EcosDeclares";
 import { useDataAccess, useSession } from "@/application/session";
 import type { StageLogId } from "@/domain/stageLog";
 import type { EnrollmentId, OutcomeId } from "@/domain/types";
@@ -488,6 +489,13 @@ export function SupervisionReports() {
               etat={choisi.etat}
               vide="Ce programme ne définit aucune connaissance."
             />
+          </PanelCard>
+
+          <PanelCard
+            title="ECOS virtuel — passages déclarés"
+            description="Stations ChatGPT jouées hors du hub ; la grille rapportée par l'étudiant, en lecture seule."
+          >
+            <EcosDeclares enrollmentId={choisi.log.enrollmentId} />
           </PanelCard>
 
           <PanelCard

@@ -59,6 +59,7 @@ import type {
 } from "@/domain/supervision";
 import type { LearnerMessage } from "@/domain/communication";
 import type { StageLog, StageLogId, StageLogTemplate } from "@/domain/stageLog";
+import type { EcosExternalRun, EcosGridItem, RecordEcosExternalRunInput } from "@/domain/ecos";
 import type { CohortStatisticsSnapshot } from "@/domain/statistics";
 import type {
   ClinicalAuditCampaign,
@@ -1069,6 +1070,28 @@ export interface AcquisitionPlanRepository {
   applyTemplate(input: ApplyMilestoneTemplateInput): Promise<MilestoneTemplateApplyReport>;
 }
 
+/**
+ * ECOS VIRTUEL EXTERNE — les stations ChatGPT déclarées dans le hub (13/09).
+ *
+ * La station se joue dans ChatGPT ; le hub ne reçoit que la grille que
+ * l'étudiant rapporte (migration 20260913100000). Lecture : l'étudiant et son
+ * équipe de stage, périmètre décidé en base par `supervises_enrollment()`.
+ * Écriture : l'étudiant seul, par fonction serveur ; le score est recalculé
+ * côté base, jamais lu du fichier.
+ */
+export interface EcosExternalRepository {
+  /** Passages d'une inscription, du plus récent au plus ancien. */
+  listRunsForEnrollment(enrollmentId: EnrollmentId): Promise<readonly EcosExternalRun[]>;
+  /** Passages visibles de l'appelant dans un programme (équipe de stage, admin). */
+  listRunsForProgram(programId: ProgramId): Promise<readonly EcosExternalRun[]>;
+  /** La grille d'un passage, dans l'ordre du fichier. */
+  listRunItems(runId: string): Promise<readonly EcosGridItem[]>;
+  /** Déclare un passage avec sa grille ; rend l'identifiant créé. */
+  recordRun(input: RecordEcosExternalRunInput): Promise<string>;
+  /** Efface un passage déclaré par erreur — réservé à son auteur. */
+  deleteRun(runId: string): Promise<void>;
+}
+
 export interface StageLogRepository {
   /** Modèles de carnets configurés pour un programme (toutes cohortes). */
   listTemplates(programId?: ProgramId): Promise<readonly StageLogTemplate[]>;
@@ -1303,6 +1326,7 @@ export interface DataAccess {
   readonly discussions: DiscussionRepository;
   readonly encadrementSources: EncadrementSourceRepository;
   readonly stageLogs: StageLogRepository;
+  readonly ecosExternal: EcosExternalRepository;
   readonly supervision: SupervisionRepository;
   readonly administration: AdministrationRepository;
   readonly statistics: StatisticsRepository;

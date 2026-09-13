@@ -18,6 +18,7 @@ import { Route as EspaceAuditsRouteImport } from './routes/espace.audits'
 import { Route as EspaceCompetencesRouteImport } from './routes/espace.competences'
 import { Route as EspaceDpcRouteImport } from './routes/espace.dpc'
 import { Route as EspaceEncadrementRouteImport } from './routes/espace.encadrement'
+import { Route as EspaceEvaluationsRouteImport } from './routes/espace.evaluations'
 import { Route as EspaceMessagesRouteImport } from './routes/espace.messages'
 import { Route as EspacePasseportRouteImport } from './routes/espace.passeport'
 import { Route as EspacePlateformeRouteImport } from './routes/espace.plateforme'
@@ -106,6 +107,11 @@ const EspaceDpcRoute = EspaceDpcRouteImport.update({
 const EspaceEncadrementRoute = EspaceEncadrementRouteImport.update({
   id: '/encadrement',
   path: '/encadrement',
+  getParentRoute: () => EspaceRoute,
+} as any)
+const EspaceEvaluationsRoute = EspaceEvaluationsRouteImport.update({
+  id: '/evaluations',
+  path: '/evaluations',
   getParentRoute: () => EspaceRoute,
 } as any)
 const EspaceMessagesRoute = EspaceMessagesRouteImport.update({
@@ -367,6 +373,7 @@ export interface FileRoutesByFullPath {
   '/espace/competences': typeof EspaceCompetencesRoute
   '/espace/dpc': typeof EspaceDpcRoute
   '/espace/encadrement': typeof EspaceEncadrementRouteWithChildren
+  '/espace/evaluations': typeof EspaceEvaluationsRoute
   '/espace/messages': typeof EspaceMessagesRoute
   '/espace/passeport': typeof EspacePasseportRoute
   '/espace/plateforme': typeof EspacePlateformeRouteWithChildren
@@ -419,6 +426,7 @@ export interface FileRoutesByTo {
   '/espace/audits': typeof EspaceAuditsRoute
   '/espace/competences': typeof EspaceCompetencesRoute
   '/espace/dpc': typeof EspaceDpcRoute
+  '/espace/evaluations': typeof EspaceEvaluationsRoute
   '/espace/messages': typeof EspaceMessagesRoute
   '/espace/passeport': typeof EspacePasseportRoute
   '/espace/profil': typeof EspaceProfilRoute
@@ -473,6 +481,7 @@ export interface FileRoutesById {
   '/espace/competences': typeof EspaceCompetencesRoute
   '/espace/dpc': typeof EspaceDpcRoute
   '/espace/encadrement': typeof EspaceEncadrementRouteWithChildren
+  '/espace/evaluations': typeof EspaceEvaluationsRoute
   '/espace/messages': typeof EspaceMessagesRoute
   '/espace/passeport': typeof EspacePasseportRoute
   '/espace/plateforme': typeof EspacePlateformeRouteWithChildren
@@ -530,6 +539,7 @@ export interface FileRouteTypes {
     | '/espace/competences'
     | '/espace/dpc'
     | '/espace/encadrement'
+    | '/espace/evaluations'
     | '/espace/messages'
     | '/espace/passeport'
     | '/espace/plateforme'
@@ -582,6 +592,7 @@ export interface FileRouteTypes {
     | '/espace/audits'
     | '/espace/competences'
     | '/espace/dpc'
+    | '/espace/evaluations'
     | '/espace/messages'
     | '/espace/passeport'
     | '/espace/profil'
@@ -635,6 +646,7 @@ export interface FileRouteTypes {
     | '/espace/competences'
     | '/espace/dpc'
     | '/espace/encadrement'
+    | '/espace/evaluations'
     | '/espace/messages'
     | '/espace/passeport'
     | '/espace/plateforme'
@@ -750,6 +762,13 @@ declare module '@tanstack/react-router' {
       path: '/encadrement'
       fullPath: '/espace/encadrement'
       preLoaderRoute: typeof EspaceEncadrementRouteImport
+      parentRoute: typeof EspaceRoute
+    }
+    '/espace/evaluations': {
+      id: '/espace/evaluations'
+      path: '/evaluations'
+      fullPath: '/espace/evaluations'
+      preLoaderRoute: typeof EspaceEvaluationsRouteImport
       parentRoute: typeof EspaceRoute
     }
     '/espace/messages': {
@@ -1179,6 +1198,7 @@ interface EspaceRouteChildren {
   EspaceCompetencesRoute: typeof EspaceCompetencesRoute
   EspaceDpcRoute: typeof EspaceDpcRoute
   EspaceEncadrementRoute: typeof EspaceEncadrementRouteWithChildren
+  EspaceEvaluationsRoute: typeof EspaceEvaluationsRoute
   EspaceMessagesRoute: typeof EspaceMessagesRoute
   EspacePasseportRoute: typeof EspacePasseportRoute
   EspacePlateformeRoute: typeof EspacePlateformeRouteWithChildren
@@ -1198,6 +1218,7 @@ const EspaceRouteChildren: EspaceRouteChildren = {
   EspaceCompetencesRoute: EspaceCompetencesRoute,
   EspaceDpcRoute: EspaceDpcRoute,
   EspaceEncadrementRoute: EspaceEncadrementRouteWithChildren,
+  EspaceEvaluationsRoute: EspaceEvaluationsRoute,
   EspaceMessagesRoute: EspaceMessagesRoute,
   EspacePasseportRoute: EspacePasseportRoute,
   EspacePlateformeRoute: EspacePlateformeRouteWithChildren,
