@@ -196,6 +196,17 @@ export function validateNewModality(
 /* Sessions d'évaluation par cohorte                                   */
 /* ------------------------------------------------------------------ */
 
+/*
+ * CE QUI SUIT N'A AUCUN CONSOMMATEUR, ET CE N'EST PAS UN OUBLI (14/09).
+ *
+ * `AssessmentSession` et `splitSessions` décrivent la forme qu'auront les
+ * sessions quand elles existeront en base. Leur seul appelant était l'écran
+ * « Évaluations », qui les nourrissait de fixtures et affichait le résultat
+ * comme un calendrier réel : c'est parti. La logique, elle, est juste et
+ * testée — on la garde pour le jour où une table de sessions arrivera,
+ * plutôt que de la réécrire.
+ */
+
 export type AssessmentSessionState = "completed" | "upcoming";
 
 export interface AssessmentSession {

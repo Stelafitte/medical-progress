@@ -1,52 +1,57 @@
 /**
  * « Évaluations » — flux linéaire, sans onglets :
- * modalités existantes → création d'une modalité → import de résultats externes
- * → résultats par cohorte (réalisés et à venir).
+ * import assisté d'un corpus → référentiel des modalités rangé par usage →
+ * création d'une modalité → ce qui n'est pas encore modélisé.
+ *
+ * Le 14/09, le `MockBadge` posé sur le titre a disparu en même temps que les
+ * trois panneaux de maquette qu'il couvrait (voir `AssessmentModalitySection`).
+ * Tout ce que cet écran affiche désormais est lu en base.
  */
-import { useState } from "react";
 import { SectionHeading } from "@/components/section-heading";
 import { Skeleton } from "@/components/ui/skeleton";
-import { MockBadge, PanelCard, ScopeNotice, StatCard } from "@/features/professional/mock-ui";
+import { PanelCard, ScopeNotice, StatCard } from "@/features/professional/mock-ui";
 import { CorpusImport } from "@/features/administration/CorpusImport";
 import { AssessmentModalitySection } from "@/features/administration/AssessmentModalitySection";
 import { useProgramAdmin } from "@/features/administration/useProgramAdmin";
-import { defaultPilotCohortId } from "@/features/administration/adminProgramViewModel";
+import type { AssessmentUsage } from "@/domain/assessmentModality";
 
 export function AdminAssessments() {
   const { data, isPending, refetch } = useProgramAdmin();
-  const [cohortId, setCohortId] = useState<string | null>(null);
 
   if (isPending || !data || !data.program) return <Skeleton className="h-80 w-full" />;
 
   const program = data.program;
-  const cohorts = data.cohorts;
-  const selectedId = cohortId ?? defaultPilotCohortId(cohorts);
   const modalities = data.assessmentModalities;
+  const compter = (usage: AssessmentUsage) => modalities.filter((m) => m.usage === usage).length;
 
   return (
     <div className="space-y-6">
       <SectionHeading
         title="Évaluations"
         level={1}
-        action={<MockBadge />}
-        description="Modalités d'évaluation du programme, création d'une modalité, import des résultats obtenus hors plateforme et résultats par cohorte."
+        description="Le référentiel des modalités d'évaluation du programme : ce que l'étudiant rencontrera, sous quel format, en présentiel ou en ligne, et ce que chaque épreuve engage."
       />
 
       <ScopeNotice>
-        Une évaluation peut se dérouler en présentiel ou en ligne. Les mêmes éléments sont
-        disponibles dans la partie Évaluation du pilotage de programme. Le référentiel des modalités
-        est enregistré pour de vrai ; les sessions par cohorte et l'import de résultats restent une
-        maquette.
+        Une modalité décrit le <strong>format</strong> d'une épreuve, pas sa date. Les mêmes
+        éléments sont disponibles dans la partie Évaluation du pilotage de programme. Les dates de
+        passage par promotion ne sont pas encore modélisées — c'est dit en bas de cet écran.
       </ScopeNotice>
 
+      {/*
+        Les compteurs disent ce que le concepteur cherche : l'équilibre entre ce
+        que l'étudiant fait seul, ce qu'on lui demande et ce qui l'engage.
+        « Objectifs évaluables » comptait `data.outcomes.length` — un chiffre
+        vrai mais sans rapport : aucune table ne relie un acquis à une épreuve.
+      */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard label="Modalités d'évaluation" value={modalities.length} />
+        <StatCard label="Auto-évaluations" value={compter("self_assessment")} />
+        <StatCard label="Formatives" value={compter("formative")} />
+        <StatCard label="Validantes" value={compter("validation_exam")} />
         <StatCard
-          label="Modalités en ligne"
-          value={modalities.filter((m) => m.mode === "online").length}
+          label="En présentiel"
+          value={modalities.filter((m) => m.mode === "in_person").length}
         />
-        <StatCard label="Cohortes concernées" value={cohorts.length} />
-        <StatCard label="Objectifs évaluables" value={data.outcomes.length} />
       </div>
 
       <PanelCard
@@ -65,9 +70,6 @@ export function AdminAssessments() {
       <AssessmentModalitySection
         programId={program.id}
         modalities={modalities}
-        cohorts={cohorts}
-        cohortId={selectedId}
-        onCohortChange={setCohortId}
         onModalityCreated={() => void refetch()}
       />
     </div>

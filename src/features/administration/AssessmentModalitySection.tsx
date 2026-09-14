@@ -2,154 +2,158 @@
  * Bloc UNIQUE des évaluations d'un programme.
  *
  * Même contenu dans l'onglet « Évaluations » et dans la partie Évaluation du
- * pilotage de programme : modalités existantes, création d'une modalité,
- * import de résultats externes, puis résultats par cohorte (passés et à venir).
+ * pilotage de programme.
  *
- * Les modalités (liste + création) sont rebranchées sur Supabase (table
- * `assessment_modalities`). Les sessions par cohorte et l'import de résultats
- * restent en maquette (chantier séparé, aucune UI de création de session
- * n'existe encore) : `MockBadge` y reste affiché.
+ * CE QUI A ÉTÉ RETIRÉ LE 14/09, ET POURQUOI.
+ *
+ * Trois panneaux de maquette occupaient les deux tiers de l'écran : un import
+ * de résultats dont le bouton disait « (simulé) », et « Évaluations réalisées »
+ * / « Évaluations à venir » par cohorte, avec dates, moyennes et taux de
+ * réussite — tout cela fabriqué par `sessionFixturesFor`. Un `MockBadge` le
+ * signalait ; il ne suffisait pas. Stef lisait un calendrier d'épreuves qui
+ * n'existait dans aucune table, et l'écran ne disait nulle part que la chose
+ * qu'il cherchait — QUAND se passe quoi — n'était pas modélisée.
+ *
+ * Ce qui reste est vrai : le référentiel des modalités, lu dans
+ * `assessment_modalities`, et sa création. Ce qui manque est DIT, à l'endroit
+ * où on le cherche, plutôt que mimé.
  */
-import { useState } from "react";
-import { CalendarClock, FileUp } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { EmptyState, MockBadge, PanelCard } from "@/features/professional/mock-ui";
-import { CohortSelector } from "@/features/administration/CohortSelector";
+import { EmptyState, PanelCard } from "@/features/professional/mock-ui";
 import { formatFrDate } from "@/features/administration/adminProgramViewModel";
 import {
   ASSESSMENT_MODE_LABELS_FR,
-  ASSESSMENT_RESULT_IMPORT_COLUMNS,
   ASSESSMENT_SUBTYPE_LABELS_FR,
   ASSESSMENT_USAGE_LABELS_FR,
-  splitSessions,
   type AssessmentModality,
-  type AssessmentSession,
+  type AssessmentUsage,
 } from "@/domain/assessmentModality";
 import { AssessmentModalityForm } from "@/features/administration/AssessmentModalityForm";
-import { sessionFixturesFor } from "@/infrastructure/mock/assessmentModalityFixtures";
-import type { Cohort, ProgramId } from "@/domain/types";
+import type { ProgramId } from "@/domain/types";
+
+/**
+ * L'ordre PÉDAGOGIQUE, pas l'ordre alphabétique : ce que l'étudiant fait seul,
+ * puis ce qu'on lui demande, puis ce qui l'engage. C'est la distinction que
+ * Stef a posée le 13/09 et que la base porte depuis le 27/08 sans que rien ne
+ * l'affiche.
+ */
+const ORDRE_DES_USAGES: readonly AssessmentUsage[] = [
+  "self_assessment",
+  "formative",
+  "validation_exam",
+  "certification",
+];
+
+const CE_QUE_L_USAGE_ENGAGE: Record<AssessmentUsage, string> = {
+  self_assessment: "L'étudiant s'y exerce quand il veut. Rien n'est retenu contre lui.",
+  formative: "Passage attendu et résultat commenté, sans effet sur la validation.",
+  validation_exam: "Le passage conditionne la validation du stage.",
+  certification: "Épreuve certifiante, au-delà du programme.",
+};
 
 function ModalityCard({ modality }: { modality: AssessmentModality }) {
+  const horsParcours = modality.retainedAt === undefined;
   return (
     <li className="border-border rounded-md border p-4">
       <div className="flex flex-wrap items-center gap-2">
         <strong className="text-sm">{modality.name}</strong>
-        <Badge variant="outline">{ASSESSMENT_MODE_LABELS_FR[modality.mode]}</Badge>
         <Badge variant="secondary">{ASSESSMENT_SUBTYPE_LABELS_FR[modality.subtype]}</Badge>
+        <Badge variant="outline">{ASSESSMENT_MODE_LABELS_FR[modality.mode]}</Badge>
+        {/*
+          « Hors parcours » se dit, « retenue » se tait : c'est l'état normal.
+          Un badge sur chaque ligne ne distinguerait plus rien.
+        */}
+        {horsParcours ? (
+          <Badge variant="outline" className="text-muted-foreground font-normal">
+            Hors parcours
+          </Badge>
+        ) : null}
       </div>
-      <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-3">
-        <div>
-          <dt className="text-muted-foreground text-xs">Utilisation</dt>
-          <dd>{ASSESSMENT_USAGE_LABELS_FR[modality.usage]}</dd>
-        </div>
-        <div>
-          <dt className="text-muted-foreground text-xs">Créée le</dt>
-          <dd>{formatFrDate(modality.createdAt)}</dd>
-        </div>
-        <div>
-          <dt className="text-muted-foreground text-xs">Mise à jour le</dt>
-          <dd>{formatFrDate(modality.updatedAt)}</dd>
-        </div>
-      </dl>
       {modality.notes ? (
         <p className="text-muted-foreground mt-2 text-xs">{modality.notes}</p>
       ) : null}
+      <p className="text-muted-foreground mt-2 text-xs">
+        Créée le {formatFrDate(modality.createdAt)}
+      </p>
     </li>
   );
 }
 
-function SessionRow({
-  session,
+function GroupeParUsage({
+  usage,
   modalities,
-  completed,
 }: {
-  session: AssessmentSession;
-  modalities: readonly AssessmentModality[];
-  completed: boolean;
+  readonly usage: AssessmentUsage;
+  readonly modalities: readonly AssessmentModality[];
 }) {
-  const modality = modalities.find((m) => m.id === session.modalityId);
   return (
-    <li className="border-border flex flex-wrap items-center gap-2 rounded-md border p-3 text-sm">
-      <CalendarClock className="text-muted-foreground size-4 shrink-0" aria-hidden />
-      <span className="font-mono text-xs">{formatFrDate(session.scheduledFor)}</span>
-      <span className="font-medium">{modality?.name ?? session.modalityId}</span>
-      <Badge variant="outline" className="font-normal">
-        {session.participants} apprenant(s)
-      </Badge>
-      {completed ? (
-        <>
-          <Badge variant="secondary" className="font-normal">
-            Moyenne {session.averageScore}/{session.maximumScore}
-          </Badge>
-          <Badge variant="secondary" className="font-normal">
-            {session.passRatePercent} % de réussite
-          </Badge>
-        </>
+    <section className="space-y-2">
+      <div className="flex flex-wrap items-baseline gap-2">
+        <h3 className="text-sm font-medium">{ASSESSMENT_USAGE_LABELS_FR[usage]}</h3>
+        <span className="text-muted-foreground text-xs">
+          {modalities.length === 0 ? "aucune" : `${modalities.length} modalité(s)`} ·{" "}
+          {CE_QUE_L_USAGE_ENGAGE[usage]}
+        </span>
+      </div>
+      {/*
+        Un groupe VIDE reste affiché. « Aucune auto-évaluation » n'est pas un
+        blanc à masquer : c'est le trou que le concepteur doit voir dans sa
+        maquette pédagogique.
+      */}
+      {modalities.length === 0 ? (
+        <p className="text-muted-foreground border-border rounded-md border border-dashed px-3 py-2.5 text-xs">
+          Rien de prévu à ce titre pour ce programme.
+        </p>
       ) : (
-        <Badge variant="outline" className="font-normal">
-          À venir
-        </Badge>
+        <ul className="grid gap-3 lg:grid-cols-2">
+          {modalities.map((modality) => (
+            <ModalityCard key={modality.id} modality={modality} />
+          ))}
+        </ul>
       )}
-    </li>
+    </section>
   );
 }
 
 export function AssessmentModalitySection({
   programId,
   modalities,
-  cohorts,
-  cohortId,
-  onCohortChange,
   onModalityCreated,
-  showCohortSelector = true,
   showCreation = true,
 }: {
   readonly programId: ProgramId;
   /** Modalités du programme, lues depuis `dataAccess.assessments.listAssessmentModalities`. */
   readonly modalities: readonly AssessmentModality[];
-  readonly cohorts: readonly Cohort[];
-  readonly cohortId: string | undefined;
-  readonly onCohortChange?: (cohortId: string) => void;
   /** Rafraîchit la liste après la création d'une modalité (voir `showCreation`). */
   readonly onModalityCreated?: () => void;
-  readonly showCohortSelector?: boolean;
   /** `false` dans le pilotage : les modalités se créent dans « Évaluations ». */
   readonly showCreation?: boolean;
 }) {
-  const [importText, setImportText] = useState("");
-
-  const sessions = cohortId ? sessionFixturesFor(programId, cohortId) : [];
-  const { completed, upcoming } = splitSessions(sessions, new Date());
-  const cohortLabel = cohorts.find((c) => c.id === cohortId)?.label ?? "cohorte";
-
-  const importedRows = importText
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0 && !line.toLowerCase().startsWith("learner"));
-
   return (
     <div className="space-y-6">
       <PanelCard
-        title="Modalités d'évaluation du programme"
-        description="Ce qui existe déjà pour ce programme : type, sous-type, usage prévu et dates."
+        title="Ce que l'étudiant rencontrera"
+        description="Les modalités d'évaluation du programme, rangées par ce qu'elles engagent. Chaque ligne dit son format et si elle se passe en présentiel ou en ligne."
       >
         {modalities.length === 0 ? (
           <EmptyState>Aucune modalité d'évaluation définie pour ce programme.</EmptyState>
         ) : (
-          <ul className="grid gap-3 lg:grid-cols-2">
-            {modalities.map((modality) => (
-              <ModalityCard key={modality.id} modality={modality} />
+          <div className="space-y-5">
+            {ORDRE_DES_USAGES.map((usage) => (
+              <GroupeParUsage
+                key={usage}
+                usage={usage}
+                modalities={modalities.filter((m) => m.usage === usage)}
+              />
             ))}
-          </ul>
+          </div>
         )}
       </PanelCard>
 
       {showCreation ? (
         <PanelCard
           title="Créer une modalité d'évaluation"
-          description="Nom, type (présentiel ou en ligne), sous-type et usage prévu."
+          description="Nom, format (dix-huit, de la KFP à l'ECOS), présentiel ou en ligne, et ce que l'épreuve engage."
         >
           <AssessmentModalityForm
             programId={programId}
@@ -159,80 +163,27 @@ export function AssessmentModalitySection({
         </PanelCard>
       ) : null}
 
+      {/*
+        LE PANNEAU QUI DIT CE QUI MANQUE.
+        Il remplace trois panneaux qui faisaient SEMBLANT de l'avoir. Tant que
+        la table des sessions n'existe pas, deux conséquences se voient ici :
+        aucune date n'est programmable, et l'étudiant ne voit rien de tout ceci
+        — la policy de `assessment_modalities` est réservée à l'équipe.
+      */}
       <PanelCard
-        title="Importation des résultats externes"
-        description="Résultats obtenus hors plateforme : prévisualisation, correspondance des colonnes puis contrôle des inscrits."
-        action={<FileUp className="text-primary size-5" aria-hidden />}
+        title="Calendrier des épreuves"
+        description="Les dates de passage ne sont pas encore modélisées."
       >
-        <div className="mb-3 flex flex-wrap gap-2">
-          {ASSESSMENT_RESULT_IMPORT_COLUMNS.map((column) => (
-            <Badge key={column} variant="outline" className="font-mono text-[10px]">
-              {column}
-            </Badge>
-          ))}
-        </div>
-        <Textarea
-          value={importText}
-          onChange={(event) => setImportText(event.target.value)}
-          rows={5}
-          placeholder="learner_identifier;modality;score;maximum_score;result_status"
-          aria-label="Résultats à importer"
-        />
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <Badge variant="secondary">{importedRows.length} ligne(s) reconnue(s)</Badge>
-          <Button size="sm" className="min-h-11" disabled={importedRows.length === 0}>
-            Importer les résultats (simulé)
-          </Button>
-        </div>
-        <p className="text-muted-foreground mt-2 text-xs">
-          Formats prévus : CSV, TSV et XLSX. Aucun fichier n'est envoyé dans cette maquette.
+        <p className="text-muted-foreground text-sm">
+          Une modalité décrit <strong>comment</strong> on évalue, jamais <strong>quand</strong> ni
+          pour quelle promotion. Programmer une épreuve — date, convocation, résultats, moyenne —
+          demande une table de sessions qui n'existe pas encore.
         </p>
-      </PanelCard>
-
-      {showCohortSelector && onCohortChange ? (
-        <CohortSelector
-          cohorts={cohorts}
-          value={cohortId}
-          onChange={onCohortChange}
-          label="Cohorte évaluée"
-        />
-      ) : null}
-
-      <PanelCard
-        title={`Évaluations réalisées — ${cohortLabel}`}
-        description="Sessions passées de cette cohorte, avec moyenne et taux de réussite."
-        action={<MockBadge />}
-      >
-        {completed.length === 0 ? (
-          <EmptyState>Aucune évaluation réalisée pour cette cohorte.</EmptyState>
-        ) : (
-          <ul className="space-y-2">
-            {completed.map((session) => (
-              <SessionRow key={session.id} session={session} modalities={modalities} completed />
-            ))}
-          </ul>
-        )}
-      </PanelCard>
-
-      <PanelCard
-        title={`Évaluations à venir — ${cohortLabel}`}
-        description="Sessions programmées et non encore passées."
-        action={<MockBadge />}
-      >
-        {upcoming.length === 0 ? (
-          <EmptyState>Aucune évaluation à venir pour cette cohorte.</EmptyState>
-        ) : (
-          <ul className="space-y-2">
-            {upcoming.map((session) => (
-              <SessionRow
-                key={session.id}
-                session={session}
-                modalities={modalities}
-                completed={false}
-              />
-            ))}
-          </ul>
-        )}
+        <p className="text-muted-foreground mt-3 text-sm">
+          Conséquence à connaître : <strong>l'étudiant ne voit aucune de ces modalités</strong>. La
+          lecture de ce référentiel est réservée à l'équipe pédagogique, et son onglet « Mes
+          évaluations » ne présente pour l'instant que les ECOS virtuels.
+        </p>
       </PanelCard>
     </div>
   );

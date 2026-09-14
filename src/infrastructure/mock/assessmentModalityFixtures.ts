@@ -1,9 +1,14 @@
 /**
- * Modalités et sessions d'évaluation de maquette — déterministes.
+ * Modalités d'évaluation de maquette — déterministes.
  * Aucune donnée réelle : ces objets illustrent la structure attendue.
+ *
+ * `sessionFixturesFor` a été SUPPRIMÉE le 14/09. Elle fabriquait des dates,
+ * des moyennes et des taux de réussite qu'aucune table ne porte, et deux
+ * panneaux de l'écran « Évaluations » les affichaient comme un calendrier.
+ * Le jour où les sessions existeront vraiment, elles viendront de la base.
  */
 import type { ProgramId } from "@/domain/types";
-import type { AssessmentModality, AssessmentSession } from "@/domain/assessmentModality";
+import type { AssessmentModality } from "@/domain/assessmentModality";
 
 export function modalityFixturesFor(programId: ProgramId): readonly AssessmentModality[] {
   return [
@@ -41,55 +46,6 @@ export function modalityFixturesFor(programId: ProgramId): readonly AssessmentMo
       usage: "formative",
       retainedAt: "2026-10-12T08:00:00.000Z",
       notes: "Restitution guidée, jamais validante à elle seule.",
-    },
-  ];
-}
-
-/** Sessions rattachées à une cohorte : deux passées, deux à venir. */
-export function sessionFixturesFor(
-  programId: ProgramId,
-  cohortId: string,
-): readonly AssessmentSession[] {
-  const modalities = modalityFixturesFor(programId);
-  const seed = [...cohortId].reduce((total, char) => total + char.charCodeAt(0), 0);
-  const first = modalities[0];
-  const second = modalities[1];
-  const third = modalities[2];
-  if (!first || !second || !third) return [];
-  return [
-    {
-      id: `session-${cohortId}-1`,
-      modalityId: first.id,
-      cohortId,
-      scheduledFor: "2026-11-20T08:00:00.000Z",
-      participants: 24 + (seed % 7),
-      averageScore: 13 + (seed % 4),
-      maximumScore: 20,
-      passRatePercent: 72 + (seed % 11),
-    },
-    {
-      id: `session-${cohortId}-2`,
-      modalityId: third.id,
-      cohortId,
-      scheduledFor: "2027-01-09T13:00:00.000Z",
-      participants: 21 + (seed % 5),
-      averageScore: 12 + (seed % 5),
-      maximumScore: 20,
-      passRatePercent: 65 + (seed % 15),
-    },
-    {
-      id: `session-${cohortId}-3`,
-      modalityId: second.id,
-      cohortId,
-      scheduledFor: "2027-06-18T08:00:00.000Z",
-      participants: 26 + (seed % 6),
-    },
-    {
-      id: `session-${cohortId}-4`,
-      modalityId: first.id,
-      cohortId,
-      scheduledFor: "2027-09-05T08:00:00.000Z",
-      participants: 26 + (seed % 6),
     },
   ];
 }

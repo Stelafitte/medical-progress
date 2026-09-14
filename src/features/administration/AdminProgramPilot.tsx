@@ -281,14 +281,16 @@ export function AdminProgramPilot() {
             description="Bases théoriques, compétences, stage et évaluations pour chaque apprenant de la promotion pilotée. Vue identique à celle de l'onglet « Classes d'apprenants »."
           />
 
-          {/* Évaluation : même bloc que l'onglet « Évaluations ». */}
+          {/*
+            Évaluation : même bloc que l'onglet « Évaluations ».
+            Les props de cohorte ont disparu le 14/09 avec les panneaux de
+            sessions simulées qu'elles servaient : le référentiel des
+            modalités ne dépend d'aucune promotion.
+          */}
           {data.program ? (
             <AssessmentModalitySection
               programId={data.program.id}
               modalities={data.assessmentModalities}
-              cohorts={data.cohorts}
-              cohortId={selectedId}
-              showCohortSelector={false}
               showCreation={false}
             />
           ) : null}
