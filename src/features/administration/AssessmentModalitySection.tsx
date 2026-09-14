@@ -263,6 +263,8 @@ function LigneModalite({
   cohortId,
   row,
   utilisee,
+  cochee,
+  onToggle,
   sessions,
   editable,
   onChanged,
@@ -270,7 +272,11 @@ function LigneModalite({
   readonly programId: ProgramId;
   readonly cohortId: string;
   readonly row: CatalogueRow;
+  /** Ce que la BASE dit : cette promotion utilise cette modalité. */
   readonly utilisee: boolean;
+  /** Ce que la CASE dit : l'intention, enregistrée ou pas encore. */
+  readonly cochee: boolean;
+  readonly onToggle: (rowId: string, voulue: boolean) => void;
   readonly sessions: readonly AssessmentSession[];
   readonly editable: boolean;
   readonly onChanged?: (() => void) | undefined;
@@ -280,6 +286,7 @@ function LigneModalite({
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const enAttente = cochee !== utilisee;
 
   const modality = row.modality;
   const surMesure = row.entry === undefined;
@@ -294,37 +301,10 @@ function LigneModalite({
     : [];
 
   /*
-   * Cocher = « cette promotion utilise cette modalité ». Si la modalité
-   * n'existe pas encore pour le programme, la cocher la crée d'abord — tout
-   * de suite, sans bouton à chercher plus bas. Décocher la retire de CETTE
-   * promotion seulement ; le serveur efface ses dates avec.
+   * Cocher ne change RIEN en base (Stef, 14/09 soir) : c'est une intention,
+   * enregistrée par le bouton en bas du bloc — comme dans le Concepteur pour
+   * les acquis. La ligne ne fait que remonter la case au bloc.
    */
-  async function basculer(voulue: boolean) {
-    setBusy(true);
-    setError(null);
-    try {
-      let id = modality?.id;
-      if (!id && voulue && row.entry) {
-        const created = await dataAccess.assessments.createAssessmentModality({
-          programId,
-          name: row.entry.name,
-          mode: row.entry.mode,
-          subtype: row.entry.subtype,
-          usage: row.entry.usage,
-          notes: row.entry.notes,
-        });
-        id = created.id;
-      }
-      if (id) await dataAccess.assessments.setCohortAssessmentModality(cohortId, id, voulue);
-      if (!voulue) setOpen(false);
-      onChanged?.();
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Enregistrement impossible.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
   async function retirerDuProgramme() {
     if (!modality) return;
     setBusy(true);
@@ -345,13 +325,18 @@ function LigneModalite({
       <div className="flex flex-wrap items-center gap-2 p-3">
         {editable ? (
           <Checkbox
-            checked={utilisee}
+            checked={cochee}
             disabled={busy}
-            onCheckedChange={(checked) => void basculer(checked === true)}
+            onCheckedChange={(checked) => onToggle(row.id, checked === true)}
             aria-label={`${nom} pour cette promotion`}
           />
         ) : null}
-        <span className={`text-sm ${utilisee ? "font-medium" : "text-muted-foreground"}`}>{nom}</span>
+        <span className={`text-sm ${cochee ? "font-medium" : "text-muted-foreground"}`}>{nom}</span>
+        {enAttente ? (
+          <Badge variant="outline" className="text-muted-foreground font-normal">
+            {cochee ? "à enregistrer" : "à retirer"}
+          </Badge>
+        ) : null}
         {subtype ? (
           <Badge variant="secondary" className="font-normal">
             {ASSESSMENT_SUBTYPE_LABELS_FR[subtype]}
@@ -377,7 +362,7 @@ function LigneModalite({
             en continu
           </Badge>
         ) : null}
-        {utilisee && modality ? (
+        {utilisee && modality && !enAttente ? (
           <Button
             type="button"
             size="sm"
@@ -528,6 +513,69 @@ export function AssessmentModalitySection({
   );
   const estUtilisee = (row: CatalogueRow) => row.modality !== undefined && utilisees.has(row.modality.id);
 
+  /*
+   * LA SÉLECTION EN ATTENTE. Clé = identifiant de ligne, valeur = ce que la
+   * case veut. Vide = rien à enregistrer. Changer de promotion la vide : une
+   * intention posée sur test SL n'a rien à faire sur la centurie A.
+   */
+  const [pending, setPending] = useState<Map<string, boolean>>(new Map());
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const choisir = (id: string) => {
+    setChosen(id);
+    setPending(new Map());
+    setSaveError(null);
+  };
+  const toggle = (rowId: string, voulue: boolean) => {
+    const row = rows.find((r) => r.id === rowId);
+    if (!row) return;
+    setPending((prev) => {
+      const next = new Map(prev);
+      if (voulue === estUtilisee(row)) next.delete(rowId);
+      else next.set(rowId, voulue);
+      return next;
+    });
+  };
+  const estCochee = (row: CatalogueRow) => pending.get(row.id) ?? estUtilisee(row);
+
+  /*
+   * Enregistrer : créer ce qui n'existe pas, lier ce qui est voulu, délier ce
+   * qui ne l'est plus — dans cet ordre, ligne par ligne, puis relire. Une
+   * ligne en échec n'empêche pas les autres ; l'erreur est dite.
+   */
+  async function enregistrer() {
+    if (!cohortId || pending.size === 0) return;
+    setSaving(true);
+    setSaveError(null);
+    const erreurs: string[] = [];
+    for (const [rowId, voulue] of pending) {
+      const row = rows.find((r) => r.id === rowId);
+      if (!row) continue;
+      try {
+        let id = row.modality?.id;
+        if (!id && voulue && row.entry) {
+          const created = await dataAccess.assessments.createAssessmentModality({
+            programId,
+            name: row.entry.name,
+            mode: row.entry.mode,
+            subtype: row.entry.subtype,
+            usage: row.entry.usage,
+            notes: row.entry.notes,
+          });
+          id = created.id;
+        }
+        if (id) await dataAccess.assessments.setCohortAssessmentModality(cohortId, id, voulue);
+      } catch (reason) {
+        const nom = row.modality?.name ?? row.entry?.name ?? rowId;
+        erreurs.push(`${nom} : ${reason instanceof Error ? reason.message : "échec"}`);
+      }
+    }
+    setPending(new Map());
+    setSaving(false);
+    if (erreurs.length > 0) setSaveError(erreurs.join(" · "));
+    onChanged?.();
+  }
+
   const datesDeLaPromo = sessions.filter((s) => s.cohortId === cohortId);
   const compter = (usage: AssessmentUsage) =>
     rows.filter((r) => estUtilisee(r) && r.usage === usage).length;
@@ -539,7 +587,7 @@ export function AssessmentModalitySection({
         links={links}
         sessions={sessions}
         selected={cohortId}
-        onSelect={setChosen}
+        onSelect={choisir}
         imposed={imposed !== undefined}
       />
 
@@ -587,6 +635,8 @@ export function AssessmentModalitySection({
                             cohortId={cohort.id}
                             row={r}
                             utilisee={estUtilisee(r)}
+                            cochee={estCochee(r)}
+                            onToggle={toggle}
                             sessions={sessions}
                             editable={editable}
                             onChanged={onChanged}
@@ -598,6 +648,43 @@ export function AssessmentModalitySection({
                 );
               })}
             </div>
+
+            {editable ? (
+              <div className="border-border mt-5 space-y-2 border-t pt-4">
+                {saveError ? <p className="text-destructive text-sm">{saveError}</p> : null}
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    type="button"
+                    className="min-h-11"
+                    disabled={saving || pending.size === 0}
+                    onClick={() => void enregistrer()}
+                  >
+                    {saving
+                      ? "Enregistrement…"
+                      : pending.size === 0
+                        ? "Enregistrer les modifications"
+                        : `Enregistrer les modifications (${pending.size})`}
+                  </Button>
+                  {pending.size > 0 ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="min-h-11"
+                      disabled={saving}
+                      onClick={() => setPending(new Map())}
+                    >
+                      Annuler
+                    </Button>
+                  ) : null}
+                </div>
+                <p className="text-muted-foreground text-xs">
+                  Cocher ne change rien tant que vous n'avez pas enregistré. À l'enregistrement,
+                  une modalité cochée est créée si besoin, puis servie à cette promotion ; une
+                  modalité décochée lui est retirée, avec ses dates. Les caractéristiques et les
+                  dates, elles, se règlent dans le détail d'une ligne enregistrée.
+                </p>
+              </div>
+            ) : null}
           </PanelCard>
 
           {editable ? (
