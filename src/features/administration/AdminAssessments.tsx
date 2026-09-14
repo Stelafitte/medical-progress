@@ -1,13 +1,10 @@
 /**
- * « Évaluations » — l'onglet qui POSSÈDE le référentiel des modalités.
+ * « Évaluations » — l'atelier des évaluations du programme, en entier.
  *
- * Le Concepteur de programme y choisit parmi un catalogue ; ici on lit ce qui
- * a été choisi, on crée ce que le catalogue ne propose pas, on retire ce qui
- * ne va plus, et on importe par IA quand un document décrit déjà tout.
- *
- * Le 14/09, le `MockBadge` du titre a disparu avec les trois panneaux de
- * maquette qu'il couvrait (voir `AssessmentModalitySection`). Tout ce que cet
- * écran affiche est lu en base.
+ * Deux modes (voir `AssessmentModalitySection`) : lecture — ce qui est retenu
+ * et quand — et construction — tout ce qui est possible, à cocher, configurer
+ * et dater par promotion. Le Concepteur embarque le même atelier ; le
+ * pilotage le lit. Tout ce que cet écran affiche est lu en base.
  */
 import { SectionHeading } from "@/components/section-heading";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -23,7 +20,7 @@ export function AdminAssessments() {
   if (isPending || !data || !data.program) return <Skeleton className="h-80 w-full" />;
 
   const program = data.program;
-  const modalities = data.assessmentModalities;
+  const modalities = data.assessmentModalities.filter((m) => m.retainedAt !== undefined);
   const compter = (usage: AssessmentUsage) => modalities.filter((m) => m.usage === usage).length;
 
   return (
@@ -35,11 +32,10 @@ export function AdminAssessments() {
       />
 
       <ScopeNotice>
-        Une modalité décrit le <strong>format</strong> d'une épreuve, pas sa date, et vaut pour{" "}
-        <strong>toutes les promotions</strong> du programme. Le choix parmi les modalités possibles
-        se fait dans le Concepteur de programme ; la création sur mesure et le retrait se font
-        ici. Les dates de passage par promotion ne sont pas encore modélisées — les promotions
-        concernées sont listées en bas de cet écran.
+        Une modalité décrit le <strong>format</strong> d'une épreuve et vaut pour{" "}
+        <strong>toutes les promotions</strong> ; une épreuve datée la pose pour{" "}
+        <strong>une promotion, à une date</strong>. Lecture pour voir, construction pour choisir,
+        configurer et dater. Le Concepteur de programme ouvre le même atelier.
       </ScopeNotice>
 
       {/*
@@ -50,15 +46,13 @@ export function AdminAssessments() {
         <StatCard label="Auto-évaluations" value={compter("self_assessment")} />
         <StatCard label="Formatives" value={compter("formative")} />
         <StatCard label="Validantes" value={compter("validation_exam")} />
-        <StatCard
-          label="En présentiel"
-          value={modalities.filter((m) => m.mode === "in_person").length}
-        />
+        <StatCard label="Épreuves datées" value={data.assessmentSessions.length} />
       </div>
 
       <AssessmentModalitySection
         programId={program.id}
-        modalities={modalities}
+        modalities={data.assessmentModalities}
+        sessions={data.assessmentSessions}
         cohorts={data.cohorts}
         onChanged={() => void refetch()}
       >
@@ -70,7 +64,7 @@ export function AdminAssessments() {
             target="assessments"
             programId={program.id}
             curriculumVersionId={data.versions[0]?.id}
-            existingAssessmentNames={modalities.map((m) => m.name)}
+            existingAssessmentNames={data.assessmentModalities.map((m) => m.name)}
             onCreated={() => void refetch()}
           />
         </PanelCard>

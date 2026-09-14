@@ -64,9 +64,9 @@ describe("catalogue des modalités d'évaluation", () => {
     const surMesure = modalite({ name: "ECOS simulés", usage: "validation_exam" });
     const lignes = catalogueAssociationItems([surMesure]);
     expect(lignes).toHaveLength(CATALOGUE_MODALITES.length + 1);
-    const derniere = lignes[lignes.length - 1];
-    expect(derniere.id).toBe(surMesure.id);
-    expect(derniere.groupLabel).toBe("Examen de validation");
+    const derniere = lignes.at(-1);
+    expect(derniere?.id).toBe(surMesure.id);
+    expect(derniere?.groupLabel).toBe("Examen de validation");
   });
 
   it("ne marque pas retenue une ligne existante sortie du parcours", () => {

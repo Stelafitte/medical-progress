@@ -1,6 +1,7 @@
 /**
- * Outil UNIQUE de création d'une modalité d'évaluation.
- * Le même composant sert dans l'onglet « Évaluations » et dans le pilotage.
+ * Outil UNIQUE de création — et, depuis le 14/09 soir, de MODIFICATION — d'une
+ * modalité d'évaluation. Avec `existing`, le formulaire part de la modalité et
+ * enregistre en place ; sans, il crée. Un seul formulaire, deux verbes.
  */
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -26,21 +27,38 @@ import type { ProgramId } from "@/domain/types";
 
 const SELECT_CLASS = "border-input bg-background min-h-11 w-full rounded-md border px-3 text-sm";
 
+function inputDepuis(existing: AssessmentModality | undefined): NewAssessmentModalityInput {
+  if (!existing) return EMPTY_NEW_MODALITY_INPUT;
+  return {
+    name: existing.name,
+    mode: existing.mode,
+    subtype: existing.subtype,
+    usage: existing.usage,
+    notes: existing.notes ?? "",
+  };
+}
+
 export function AssessmentModalityForm({
   programId,
-  submitLabel = "Créer la modalité d'évaluation",
+  existing,
+  submitLabel,
   hint,
   onCreated,
   idPrefix = "modality",
 }: {
   readonly programId: ProgramId;
+  /** Présente : on modifie cette modalité en place au lieu d'en créer une. */
+  readonly existing?: AssessmentModality;
   readonly submitLabel?: string;
   readonly hint: string;
+  /** Appelé avec la modalité créée OU modifiée. */
   readonly onCreated?: (created: AssessmentModality) => void;
   readonly idPrefix?: string;
 }) {
   const dataAccess = useDataAccess();
-  const [input, setInput] = useState<NewAssessmentModalityInput>(EMPTY_NEW_MODALITY_INPUT);
+  const libelleBouton =
+    submitLabel ?? (existing ? "Enregistrer la modalité" : "Créer la modalité d'évaluation");
+  const [input, setInput] = useState<NewAssessmentModalityInput>(() => inputDepuis(existing));
   const [showIssues, setShowIssues] = useState(false);
   const [created, setCreated] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -70,15 +88,25 @@ export function AssessmentModalityForm({
     setSubmitError(null);
     setIsSubmitting(true);
     try {
-      const modality = await dataAccess.assessments.createAssessmentModality({
-        programId,
-        name: input.name,
-        mode: input.mode,
-        subtype: input.subtype,
-        usage: input.usage,
-        notes: input.notes,
-      });
-      setInput(EMPTY_NEW_MODALITY_INPUT);
+      const modality = existing
+        ? await dataAccess.assessments.updateAssessmentModality({
+            assessmentModalityId: existing.id,
+            name: input.name,
+            mode: input.mode,
+            subtype: input.subtype,
+            usage: input.usage,
+            notes: input.notes,
+          })
+        : await dataAccess.assessments.createAssessmentModality({
+            programId,
+            name: input.name,
+            mode: input.mode,
+            subtype: input.subtype,
+            usage: input.usage,
+            notes: input.notes,
+          });
+      // En modification, le formulaire reste rempli : on continue d'éditer.
+      if (!existing) setInput(EMPTY_NEW_MODALITY_INPUT);
       setShowIssues(false);
       setCreated(modality.name);
       onCreated?.(modality);
@@ -202,11 +230,11 @@ export function AssessmentModalityForm({
           onClick={() => void submit()}
           disabled={isSubmitting}
         >
-          {isSubmitting ? "Création en cours…" : submitLabel}
+          {isSubmitting ? "Enregistrement…" : libelleBouton}
         </Button>
         {created ? (
           <span className="text-muted-foreground text-sm">
-            « {created} » est ajoutée aux modalités du programme.
+            {existing ? `« ${created} » est enregistrée.` : `« ${created} » est ajoutée aux modalités du programme.`}
           </span>
         ) : null}
       </div>

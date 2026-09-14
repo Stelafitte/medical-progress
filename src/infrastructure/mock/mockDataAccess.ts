@@ -21,7 +21,7 @@ import type {
   SupervisionGroupId,
 } from "@/domain/types";
 import { scopeFromGrantFields } from "@/domain/accessGrant";
-import type { AssessmentModality } from "@/domain/assessmentModality";
+import type { AssessmentModality, AssessmentSession } from "@/domain/assessmentModality";
 import {
   defaultProgramAiSettings,
   type AiFallbackPolicy,
@@ -520,6 +520,7 @@ export const mockDataAccess: DataAccess = {
    */
   assessments: (() => {
     let modalities: AssessmentModality[] = [];
+    let sessions: AssessmentSession[] = [];
     const seededPrograms = new Set<ProgramId>();
     let counter = 0;
 
@@ -565,6 +566,77 @@ export const mockDataAccess: DataAccess = {
           const { retainedAt: _ancien, ...reste } = m;
           return retained ? { ...reste, retainedAt: new Date().toISOString() } : reste;
         });
+        return ok(undefined);
+      },
+      updateAssessmentModality: (input) => {
+        const notes = input.notes.trim();
+        let updated: AssessmentModality | undefined;
+        modalities = modalities.map((m) => {
+          if (m.id !== input.assessmentModalityId) return m;
+          const { notes: _n, ...reste } = m;
+          updated = {
+            ...reste,
+            name: input.name.trim(),
+            mode: input.mode,
+            subtype: input.subtype,
+            usage: input.usage,
+            updatedAt: new Date().toISOString(),
+            ...(notes.length > 0 ? { notes } : {}),
+          };
+          return updated;
+        });
+        if (!updated) return Promise.reject(new Error("Modalité d'évaluation introuvable."));
+        return ok(updated);
+      },
+      listAssessmentSessions: (programId) =>
+        ok(sessions.filter((s) => s.programId === programId)),
+      createAssessmentSession: (input) => {
+        const modality = modalities.find((m) => m.id === input.assessmentModalityId);
+        if (!modality) return Promise.reject(new Error("Modalité d'évaluation introuvable."));
+        const doublon = sessions.some(
+          (s) =>
+            s.modalityId === input.assessmentModalityId &&
+            s.cohortId === input.cohortId &&
+            s.scheduledOn === input.scheduledOn,
+        );
+        if (doublon) return Promise.reject(new Error("Une épreuve existe déjà ce jour-là pour cette promotion."));
+        counter += 1;
+        const location = input.location.trim();
+        const notes = input.notes.trim();
+        const created: AssessmentSession = {
+          id: `mock-session-${counter}`,
+          programId: modality.programId,
+          modalityId: input.assessmentModalityId,
+          cohortId: input.cohortId,
+          scheduledOn: input.scheduledOn,
+          ...(location.length > 0 ? { location } : {}),
+          ...(notes.length > 0 ? { notes } : {}),
+        };
+        sessions = [...sessions, created];
+        return ok(created);
+      },
+      updateAssessmentSession: (input) => {
+        let updated: AssessmentSession | undefined;
+        const location = input.location.trim();
+        const notes = input.notes.trim();
+        sessions = sessions.map((s) => {
+          if (s.id !== input.assessmentSessionId) return s;
+          updated = {
+            id: s.id,
+            programId: s.programId,
+            modalityId: s.modalityId,
+            cohortId: s.cohortId,
+            scheduledOn: input.scheduledOn,
+            ...(location.length > 0 ? { location } : {}),
+            ...(notes.length > 0 ? { notes } : {}),
+          };
+          return updated;
+        });
+        if (!updated) return Promise.reject(new Error("Épreuve introuvable."));
+        return ok(updated);
+      },
+      deleteAssessmentSession: (assessmentSessionId) => {
+        sessions = sessions.filter((s) => s.id !== assessmentSessionId);
         return ok(undefined);
       },
     };
@@ -655,6 +727,13 @@ export const mockDataAccess: DataAccess = {
             })),
         );
       },
+      /*
+       * MEME RAISON QUE `readChapterSections` CI-DESSUS : le texte 2026 n'a pas
+       * de fixture, et en inventer une ferait lire du faux cours de cardiologie
+       * a un testeur, indiscernable du vrai. Zero resultat est d'ailleurs la
+       * reponse exacte que rendrait la base pour un programme sans chapitre.
+       */
+      searchProgramSections: () => ok([]),
       createResource: (input) => {
         counter += 1;
         const created: LearningResource = {

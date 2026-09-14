@@ -19,6 +19,7 @@ export function useProgramAdmin() {
         outcomes,
         outcomeThemes,
         assessmentModalities,
+        assessmentSessions,
         resources,
         media,
         aiProfiles,
@@ -52,6 +53,7 @@ export function useProgramAdmin() {
         // à plat ne se lisent pas, 22 chapitres qui s'ouvrent si.
         data.outcomes.listOutcomeThemes(activeProgram.id),
         data.assessments.listAssessmentModalities(activeProgram.id),
+        data.assessments.listAssessmentSessions(activeProgram.id),
         data.resources.listResources(activeProgram.id),
         data.media.listMedia(activeProgram.id),
         data.contentAi.listProfiles(activeProgram.id),
@@ -85,6 +87,7 @@ export function useProgramAdmin() {
         outcomes,
         outcomeThemes,
         assessmentModalities,
+        assessmentSessions,
         resources,
         media,
         aiProfiles,

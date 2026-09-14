@@ -3,6 +3,7 @@ import {
   ASSESSMENT_SUBTYPE_LABELS_FR,
   EMPTY_NEW_MODALITY_INPUT,
   SUBTYPE_GROUPS_FR,
+  sessionState,
   splitSessions,
   validateNewModality,
   type AssessmentSession,
@@ -49,25 +50,30 @@ describe("modalités d'évaluation", () => {
     expect(new Set(groupes).size).toBe(groupes.length);
   });
 
-  it("sépare sessions passées et à venir", () => {
+  it("sépare épreuves passées et à venir", () => {
     const sessions: readonly AssessmentSession[] = [
-      {
-        id: "a",
-        modalityId: "m",
-        cohortId: "c",
-        scheduledFor: "2027-01-01T00:00:00.000Z",
-        participants: 3,
-      },
-      {
-        id: "b",
-        modalityId: "m",
-        cohortId: "c",
-        scheduledFor: "2027-05-01T00:00:00.000Z",
-        participants: 3,
-      },
+      { id: "a", programId: "p", modalityId: "m", cohortId: "c", scheduledOn: "2027-01-01" },
+      { id: "b", programId: "p", modalityId: "m", cohortId: "c", scheduledOn: "2027-05-01" },
     ];
-    const { completed, upcoming } = splitSessions(sessions, new Date("2027-03-01T00:00:00.000Z"));
+    const { completed, upcoming } = splitSessions(sessions, new Date("2027-03-01T12:00:00"));
     expect(completed.map((s) => s.id)).toEqual(["a"]);
     expect(upcoming.map((s) => s.id)).toEqual(["b"]);
+  });
+
+  /*
+   * Une épreuve est passée à la FIN de son jour : le matin de l'examen, elle
+   * est encore « à venir ». Minuit aurait fait basculer l'ECOS de 9 h dans le
+   * passé avant que l'étudiant se lève.
+   */
+  it("garde une épreuve à venir jusqu'à la fin de son jour", () => {
+    const jourJ: AssessmentSession = {
+      id: "j",
+      programId: "p",
+      modalityId: "m",
+      cohortId: "c",
+      scheduledOn: "2027-03-01",
+    };
+    expect(sessionState(jourJ, new Date("2027-03-01T08:00:00"))).toBe("upcoming");
+    expect(sessionState(jourJ, new Date("2027-03-02T00:30:00"))).toBe("completed");
   });
 });

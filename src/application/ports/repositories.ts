@@ -33,6 +33,7 @@ import type {
 import type {
   AssessmentMode,
   AssessmentModality,
+  AssessmentSession,
   AssessmentSubtype,
   AssessmentUsage,
 } from "@/domain/assessmentModality";
@@ -403,6 +404,32 @@ export interface CreateAssessmentModalityInput {
   readonly notes: string;
 }
 
+/** Modification en place : les mêmes champs, sur une modalité existante. */
+export interface UpdateAssessmentModalityInput {
+  readonly assessmentModalityId: string;
+  readonly name: string;
+  readonly mode: AssessmentMode;
+  readonly subtype: AssessmentSubtype;
+  readonly usage: AssessmentUsage;
+  readonly notes: string;
+}
+
+export interface CreateAssessmentSessionInput {
+  readonly assessmentModalityId: string;
+  readonly cohortId: string;
+  /** `AAAA-MM-JJ`. */
+  readonly scheduledOn: string;
+  readonly location: string;
+  readonly notes: string;
+}
+
+export interface UpdateAssessmentSessionInput {
+  readonly assessmentSessionId: string;
+  readonly scheduledOn: string;
+  readonly location: string;
+  readonly notes: string;
+}
+
 /**
  * Référentiel des modalités d'évaluation d'un programme : liste + création
  * uniquement. Les sessions par cohorte et l'import de résultats restent hors
@@ -429,6 +456,16 @@ export interface AssessmentRepository {
     assessmentModalityIds: readonly string[],
     retained: boolean,
   ): Promise<void>;
+  /**
+   * Modification en place (14/09 soir). Jusque-là, corriger un format ou un
+   * usage obligeait à archiver et recréer.
+   */
+  updateAssessmentModality(input: UpdateAssessmentModalityInput): Promise<AssessmentModality>;
+  /** Les épreuves datées du programme, toutes promotions confondues. */
+  listAssessmentSessions(programId: ProgramId): Promise<readonly AssessmentSession[]>;
+  createAssessmentSession(input: CreateAssessmentSessionInput): Promise<AssessmentSession>;
+  updateAssessmentSession(input: UpdateAssessmentSessionInput): Promise<AssessmentSession>;
+  deleteAssessmentSession(assessmentSessionId: string): Promise<void>;
 }
 
 export interface PlacementRepository {
@@ -712,6 +749,34 @@ export interface ResourceTextMatch {
   readonly rank: number;
 }
 
+/**
+ * Une section du texte 2026 retrouvée par la recherche transverse.
+ *
+ * Distincte de `ResourceTextMatch`, qui décrit un segment aveugle de 4 000
+ * caractères de l'import 2022 : ici l'unité est la SECTION du livre, elle porte
+ * son numéro, son titre et son chapitre, donc elle se cite à l'écran.
+ */
+export interface ProgramSectionMatch {
+  readonly sectionId: string;
+  readonly resourceId: LearningResourceId;
+  /** Le chapitre d'où vient la section — ce que l'apprenant lit comme contexte. */
+  readonly resourceTitle: string;
+  readonly chapitre: number;
+  readonly numero: string;
+  readonly titre: string;
+  readonly partie: string | undefined;
+  readonly rubrique: string | undefined;
+  readonly contenu: string;
+  readonly nCaracteres: number;
+  readonly rank: number;
+  /**
+   * Nombre TOTAL de sections trouvées, avant la limite. C'est ce qui permet
+   * d'écrire « voir les 12 autres » sans payer une seconde requête : la
+   * fonction serveur le calcule par une fenêtre, évaluée avant le `limit`.
+   */
+  readonly totalMatches: number;
+}
+
 /** Un segment du texte conservé d'un support, dans son ordre d'origine. */
 export interface ResourceTextSegment {
   readonly sourcePath: string;
@@ -809,6 +874,24 @@ export interface LearningResourceRepository {
     query: string,
     limit?: number,
   ): Promise<readonly ResourceTextMatch[]>;
+  /**
+   * RECHERCHE TRANSVERSE dans le texte 2026 de TOUT le programme.
+   *
+   * Sœur de `searchResourceTexts`, et la différence n'est pas le cadrage mais
+   * le CORPUS : celle-ci lit `course_sections` — le texte 2026, source unique
+   * depuis le 08/09 — là où l'autre lit `learning_resource_texts`, l'archive
+   * 2022 conservée pour mémoire.
+   *
+   * Comme pour sa sœur, la normalisation (accents, racines, mots outils) vit
+   * côté serveur, pour qu'elle soit exactement celle de l'index. Une
+   * normalisation refaite ici rendrait moins que ce que le corpus contient,
+   * sans erreur — le pire des cas.
+   */
+  searchProgramSections(
+    programId: ProgramId,
+    query: string,
+    limit?: number,
+  ): Promise<readonly ProgramSectionMatch[]>;
   /**
    * Le texte conservé d'UN support, dans l'ordre.
    *

@@ -16,21 +16,24 @@ import {
 } from "@/domain/courseSections";
 import type {
   CreateAssessmentModalityInput,
+  CreateAssessmentSessionInput,
   CreateCohortInput,
   CreateLearningResourceInput,
   CreateOutcomeInput,
   DataAccess,
   GrantRoleAssignmentInput,
+  NarratedDeckPlayback,
   ProgramAiAnalysisResult,
-  PublishNarratedDeckInput,
   PublishedNarratedDeck,
-  RegisterResourceAssetInput,
+  PublishNarratedDeckInput,
   RegisteredResourceAsset,
+  RegisterResourceAssetInput,
   RequestUploadUrlInput,
   ResourceAssetKind,
-  NarratedDeckPlayback,
   ResourceVisibility,
   TranscriptionProgress,
+  UpdateAssessmentModalityInput,
+  UpdateAssessmentSessionInput,
   UploadUrlResult,
 } from "@/application/ports/repositories";
 import type {
@@ -88,7 +91,7 @@ import type {
 } from "@/domain/stageLog";
 import type { EcosExternalRun, EcosGridItem } from "@/domain/ecos";
 import type { OutcomeSelfReport } from "@/domain/passport";
-import type { AssessmentModality } from "@/domain/assessmentModality";
+import type { AssessmentModality, AssessmentSession } from "@/domain/assessmentModality";
 import type {
   MediaAsset,
   MediaKind,
@@ -805,6 +808,28 @@ type AssessmentModalityRow = {
   retained_at: string | null;
 };
 
+type AssessmentSessionRow = {
+  id: string;
+  program_id: string;
+  modality_id: string;
+  cohort_id: string;
+  scheduled_on: string;
+  location: string | null;
+  notes: string | null;
+};
+
+export function mapAssessmentSession(row: AssessmentSessionRow): AssessmentSession {
+  return {
+    id: row.id,
+    programId: row.program_id,
+    modalityId: row.modality_id,
+    cohortId: row.cohort_id,
+    scheduledOn: row.scheduled_on,
+    ...(row.location ? { location: row.location } : {}),
+    ...(row.notes ? { notes: row.notes } : {}),
+  };
+}
+
 export function mapAssessmentModality(row: AssessmentModalityRow): AssessmentModality {
   return {
     id: row.id,
@@ -819,6 +844,22 @@ export function mapAssessmentModality(row: AssessmentModalityRow): AssessmentMod
     ...(row.retained_at ? { retainedAt: row.retained_at } : {}),
   };
 }
+
+type ProgramSectionRow = {
+  section_id: string;
+  resource_id: string;
+  resource_title: string;
+  chapitre: number;
+  numero: string | null;
+  titre: string | null;
+  partie: string | null;
+  rubrique: string | null;
+  contenu: string;
+  n_caracteres: number;
+  rank: number;
+  /* `count(*) over ()` rend un `bigint`, que PostgREST serialise en CHAINE. */
+  total_matches: number | string;
+};
 
 type ResourceTextRow = {
   resource_id: string;
@@ -1094,6 +1135,8 @@ const programColumns =
 
 const assessmentModalityColumns =
   "id,program_id,name,mode,subtype,usage,notes,created_at,updated_at,retained_at";
+
+const assessmentSessionColumns = "id,program_id,modality_id,cohort_id,scheduled_on,location,notes";
 
 const outcomeColumns =
   "id,program_id,curriculum_version_id,code,label,description,nature,domain,target_mastery,retained_at,theme_id,position,knowledge_rank,created_at";
@@ -2064,6 +2107,59 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
         });
         assertNoSupabaseError(error);
       },
+      /*
+       * Lot A du 14/09 : voir supabase/migrations/20260914200000_assessment_sessions.sql.
+       * Tout passe par des RPC SECURITY DEFINER ; la table n'accepte aucune
+       * écriture directe.
+       */
+      async updateAssessmentModality(input: UpdateAssessmentModalityInput) {
+        const { data, error } = await client.rpc("update_assessment_modality", {
+          p_modality_id: input.assessmentModalityId,
+          p_name: input.name,
+          p_mode: input.mode,
+          p_subtype: input.subtype,
+          p_usage: input.usage,
+          p_notes: input.notes.trim().length > 0 ? input.notes.trim() : null,
+        });
+        assertNoSupabaseError(error);
+        return mapAssessmentModality(data as AssessmentModalityRow);
+      },
+      async listAssessmentSessions(programId: ProgramId) {
+        const { data, error } = await client
+          .from("assessment_sessions")
+          .select(assessmentSessionColumns)
+          .eq("program_id", programId)
+          .order("scheduled_on");
+        assertNoSupabaseError(error);
+        return ((data ?? []) as AssessmentSessionRow[]).map(mapAssessmentSession);
+      },
+      async createAssessmentSession(input: CreateAssessmentSessionInput) {
+        const { data, error } = await client.rpc("create_assessment_session", {
+          p_modality_id: input.assessmentModalityId,
+          p_cohort_id: input.cohortId,
+          p_scheduled_on: input.scheduledOn,
+          p_location: input.location.trim().length > 0 ? input.location.trim() : null,
+          p_notes: input.notes.trim().length > 0 ? input.notes.trim() : null,
+        });
+        assertNoSupabaseError(error);
+        return mapAssessmentSession(data as AssessmentSessionRow);
+      },
+      async updateAssessmentSession(input: UpdateAssessmentSessionInput) {
+        const { data, error } = await client.rpc("update_assessment_session", {
+          p_session_id: input.assessmentSessionId,
+          p_scheduled_on: input.scheduledOn,
+          p_location: input.location.trim().length > 0 ? input.location.trim() : null,
+          p_notes: input.notes.trim().length > 0 ? input.notes.trim() : null,
+        });
+        assertNoSupabaseError(error);
+        return mapAssessmentSession(data as AssessmentSessionRow);
+      },
+      async deleteAssessmentSession(assessmentSessionId: string) {
+        const { error } = await client.rpc("delete_assessment_session", {
+          p_session_id: assessmentSessionId,
+        });
+        assertNoSupabaseError(error);
+      },
     },
     outcomes: {
       ...mockDataAccess.outcomes,
@@ -2512,6 +2608,34 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
           segmentIndex: row.segment_index,
           content: row.content,
           rank: row.rank,
+        }));
+      },
+      async searchProgramSections(programId, query, limit) {
+        const { data, error } = await client.rpc("search_program_sections", {
+          p_program_id: programId,
+          p_query: query,
+          p_limit: limit ?? 10,
+        });
+        assertNoSupabaseError(error);
+        return ((data ?? []) as ProgramSectionRow[]).map((row) => ({
+          sectionId: row.section_id,
+          resourceId: row.resource_id as LearningResourceId,
+          resourceTitle: row.resource_title,
+          chapitre: row.chapitre,
+          numero: row.numero ?? "",
+          titre: row.titre ?? "",
+          partie: row.partie ?? undefined,
+          rubrique: row.rubrique ?? undefined,
+          contenu: row.contenu,
+          nCaracteres: row.n_caracteres,
+          rank: row.rank,
+          /*
+           * `Number(...)` ET PAS UN `as number` : `count(*) over ()` est un
+           * `bigint`, et PostgREST serialise les `bigint` en CHAINE pour ne pas
+           * perdre de precision. Le forcer par un `as` rendrait « voir les "12"
+           * autres » — une comparaison numerique silencieusement fausse.
+           */
+          totalMatches: Number(row.total_matches),
         }));
       },
       async publishNarratedDeck(input: PublishNarratedDeckInput): Promise<PublishedNarratedDeck> {

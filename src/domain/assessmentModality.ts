@@ -193,36 +193,34 @@ export function validateNewModality(
 }
 
 /* ------------------------------------------------------------------ */
-/* Sessions d'évaluation par cohorte                                   */
+/* Épreuves datées                                                     */
 /* ------------------------------------------------------------------ */
 
-/*
- * CE QUI SUIT N'A AUCUN CONSOMMATEUR, ET CE N'EST PAS UN OUBLI (14/09).
+/**
+ * Une épreuve datée : une modalité du programme, programmée pour une
+ * promotion à une date. Table `assessment_sessions` (14/09 soir).
  *
- * `AssessmentSession` et `splitSessions` décrivent la forme qu'auront les
- * sessions quand elles existeront en base. Leur seul appelant était l'écran
- * « Évaluations », qui les nourrissait de fixtures et affichait le résultat
- * comme un calendrier réel : c'est parti. La logique, elle, est juste et
- * testée — on la garde pour le jour où une table de sessions arrivera,
- * plutôt que de la réécrire.
+ * Les auto-évaluations n'en ont pas — elles sont « en continu ». Les
+ * résultats (notes, réussite) restent hors périmètre : ils viendront
+ * s'accrocher ici, pas remplacer ceci.
  */
+export interface AssessmentSession {
+  readonly id: string;
+  readonly programId: ProgramId;
+  readonly modalityId: string;
+  readonly cohortId: string;
+  /** Date civile, `AAAA-MM-JJ`. Pas d'heure : la convocation la précise. */
+  readonly scheduledOn: string;
+  readonly location?: string;
+  readonly notes?: string;
+}
 
 export type AssessmentSessionState = "completed" | "upcoming";
 
-export interface AssessmentSession {
-  readonly id: string;
-  readonly modalityId: string;
-  readonly cohortId: string;
-  readonly scheduledFor: IsoDateTime;
-  readonly participants: number;
-  /** Renseigné uniquement pour une session terminée. */
-  readonly averageScore?: number;
-  readonly maximumScore?: number;
-  readonly passRatePercent?: number;
-}
-
+/** Une épreuve est passée dès la fin de son jour, pas à minuit le matin. */
 export function sessionState(session: AssessmentSession, now: Date): AssessmentSessionState {
-  return new Date(session.scheduledFor).getTime() <= now.getTime() ? "completed" : "upcoming";
+  const finDuJour = new Date(`${session.scheduledOn}T23:59:59`);
+  return finDuJour.getTime() <= now.getTime() ? "completed" : "upcoming";
 }
 
 export function splitSessions(
@@ -232,17 +230,14 @@ export function splitSessions(
   readonly completed: readonly AssessmentSession[];
   readonly upcoming: readonly AssessmentSession[];
 } {
-  const byDate = [...sessions].sort((a, b) => a.scheduledFor.localeCompare(b.scheduledFor));
+  const byDate = [...sessions].sort((a, b) => a.scheduledOn.localeCompare(b.scheduledOn));
   return {
     completed: byDate.filter((s) => sessionState(s, now) === "completed"),
     upcoming: byDate.filter((s) => sessionState(s, now) === "upcoming"),
   };
 }
 
-export const ASSESSMENT_RESULT_IMPORT_COLUMNS = [
-  "learner_identifier",
-  "modality",
-  "score",
-  "maximum_score",
-  "result_status",
-] as const;
+/** Les usages qui se DATENT. Une auto-évaluation est en continu. */
+export function usageSeDate(usage: AssessmentUsage): boolean {
+  return usage !== "self_assessment";
+}

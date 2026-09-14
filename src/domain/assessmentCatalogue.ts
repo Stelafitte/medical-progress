@@ -270,3 +270,41 @@ export function catalogueAssociationItems(
 
   return lignes;
 }
+
+/**
+ * Une ligne de l'ATELIER (mode construction) : l'entrée de catalogue, la
+ * modalité réelle quand elle existe, ou l'une sans l'autre.
+ *
+ *   entry & modality  → entrée standard, présente dans le programme
+ *   entry seule       → possible, pas encore choisie
+ *   modality seule    → sur mesure : le programme l'a inventée
+ *
+ * L'usage affiché est celui de la MODALITÉ quand elle existe — c'est elle qui
+ * fait foi — sinon celui proposé par le catalogue.
+ */
+export interface CatalogueRow {
+  readonly id: string;
+  readonly entry?: CatalogueEntry;
+  readonly modality?: AssessmentModality;
+  readonly usage: AssessmentUsage;
+}
+
+export function catalogueRows(modalities: readonly AssessmentModality[]): readonly CatalogueRow[] {
+  const deja = new Set<string>();
+  const rows: CatalogueRow[] = [];
+  for (const entry of CATALOGUE_MODALITES) {
+    const modality = modalities.find((m) => memeIntitule(m.name, entry.name));
+    if (modality) deja.add(modality.id);
+    rows.push({
+      id: modality ? modality.id : `${CATALOGUE_ID_PREFIX}${entry.key}`,
+      entry,
+      ...(modality ? { modality } : {}),
+      usage: modality ? modality.usage : entry.usage,
+    });
+  }
+  for (const modality of modalities) {
+    if (deja.has(modality.id)) continue;
+    rows.push({ id: modality.id, modality, usage: modality.usage });
+  }
+  return rows;
+}

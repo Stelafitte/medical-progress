@@ -50,11 +50,7 @@ import { ProgramAssociationList } from "@/features/administration/ProgramAssocia
 import { CohortSealPanel } from "@/features/administration/CohortSealPanel";
 import { ProgramMilestonePlanner } from "@/features/administration/ProgramMilestonePlanner";
 import { outcomeAssociationItems } from "@/domain/outcomeAssociation";
-import {
-  CATALOGUE_ID_PREFIX,
-  CATALOGUE_MODALITES,
-  catalogueAssociationItems,
-} from "@/domain/assessmentCatalogue";
+import { AssessmentModalitySection } from "@/features/administration/AssessmentModalitySection";
 import { PlacementCreationForm } from "@/features/administration/PlacementCreationForm";
 import { StageEnPlace } from "@/features/administration/StageEnPlace";
 import { ConceptionRecap } from "@/features/administration/ConceptionRecap";
@@ -582,61 +578,25 @@ export function AdminProgramDesigner() {
     }
     if (resourceId === "assessments") {
       const programId = data.program?.id;
+      if (!programId) return null;
       return (
-        <ProgramAssociationList
-          title="Modalités d'évaluation possibles pour ce programme"
-          /*
-           * TOUT LE CATALOGUE, PAS SEULEMENT L'EXISTANT (14/09).
-           *
-           * Cette liste rendait les modalités déjà créées — six lignes à
-           * cocher ou décocher. Concevoir, c'est choisir parmi ce qui est
-           * possible : aucune des formes ouvertes le matin même (KFP,
-           * mini-DP, ECOS en présentiel, TCS, DOPS) n'apparaissait nulle
-           * part. Le catalogue est désormais la liste ; cocher crée,
-           * décocher sort du parcours. La création sur mesure reste dans
-           * l'onglet « Évaluations », qui est son endroit.
-           */
-          items={catalogueAssociationItems(data.assessmentModalities)}
-          itemNoun="modalité(s)"
-          busyIds={archivingIds}
-          removeLabel="Retirer du programme"
-          onRemove={(ids) =>
-            /*
-             * On n'archive que ce qui existe : une entrée de catalogue jamais
-             * créée n'a rien à retirer, et l'appel échouerait sur son
-             * identifiant préfixé.
-             */
-            void removeAssociations(
-              ids.filter((id) => !id.startsWith(CATALOGUE_ID_PREFIX)),
-              (id) => dataAccess.assessments.archiveAssessmentModality(id),
-            )
-          }
-          onSetRetained={async (ids, retained) => {
-            const aCreer = retained
-              ? ids.filter((id) => id.startsWith(CATALOGUE_ID_PREFIX))
-              : [];
-            const existants = ids.filter((id) => !id.startsWith(CATALOGUE_ID_PREFIX));
-
-            if (programId) {
-              for (const id of aCreer) {
-                const entree = CATALOGUE_MODALITES.find(
-                  (e) => `${CATALOGUE_ID_PREFIX}${e.key}` === id,
-                );
-                if (!entree) continue;
-                await dataAccess.assessments.createAssessmentModality({
-                  programId,
-                  name: entree.name,
-                  mode: entree.mode,
-                  subtype: entree.subtype,
-                  usage: entree.usage,
-                  notes: entree.notes,
-                });
-              }
-            }
-            if (existants.length > 0) {
-              await dataAccess.assessments.setAssessmentModalitiesRetained(existants, retained);
-            }
-            await refetch();
+        /*
+         * LE MÊME ATELIER QUE L'ONGLET « ÉVALUATIONS », EN CONSTRUCTION (14/09 soir).
+         *
+         * Une liste à cocher propre au Concepteur a vécu quelques heures ici.
+         * Elle ne savait ni configurer ni dater : il fallait aller ailleurs
+         * pour finir ce qu'on commençait. Un seul composant, un seul
+         * comportement — concevoir les évaluations, c'est les choisir, les
+         * régler et les poser sur le calendrier des promotions, au même endroit.
+         */
+        <AssessmentModalitySection
+          programId={programId}
+          modalities={data.assessmentModalities}
+          sessions={data.assessmentSessions}
+          cohorts={data.cohorts}
+          defaultMode="construction"
+          onChanged={() => {
+            void refetch();
             patch("assessments", { implemented: true });
           }}
         />

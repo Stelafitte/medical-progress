@@ -291,7 +291,9 @@ export function AdminProgramPilot() {
             <AssessmentModalitySection
               programId={data.program.id}
               modalities={data.assessmentModalities}
+              sessions={data.assessmentSessions}
               cohorts={data.cohorts}
+              cohortFilter={selectedId}
               editable={false}
             />
           ) : null}
