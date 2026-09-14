@@ -51,10 +51,10 @@ import { CohortSealPanel } from "@/features/administration/CohortSealPanel";
 import { ProgramMilestonePlanner } from "@/features/administration/ProgramMilestonePlanner";
 import { outcomeAssociationItems } from "@/domain/outcomeAssociation";
 import {
-  ASSESSMENT_MODE_LABELS_FR,
-  ASSESSMENT_SUBTYPE_LABELS_FR,
-  ASSESSMENT_USAGE_LABELS_FR,
-} from "@/domain/assessmentModality";
+  CATALOGUE_ID_PREFIX,
+  CATALOGUE_MODALITES,
+  catalogueAssociationItems,
+} from "@/domain/assessmentCatalogue";
 import { PlacementCreationForm } from "@/features/administration/PlacementCreationForm";
 import { StageEnPlace } from "@/features/administration/StageEnPlace";
 import { ConceptionRecap } from "@/features/administration/ConceptionRecap";
@@ -581,44 +581,61 @@ export function AdminProgramDesigner() {
       );
     }
     if (resourceId === "assessments") {
+      const programId = data.program?.id;
       return (
         <ProgramAssociationList
-          title="Liste des modalités d'évaluation déjà associées à ce programme"
+          title="Modalités d'évaluation possibles pour ce programme"
           /*
-           * REPLIÉE PAR USAGE, ET LE FORMAT DANS L'INTITULÉ (14/09).
+           * TOUT LE CATALOGUE, PAS SEULEMENT L'EXISTANT (14/09).
            *
-           * La liste ne rendait que des noms. « QCM », « Journal de stage »,
-           * « ECOS simulé » ne disent ni sous quelle forme l'épreuve se passe
-           * ni si elle valide quoi que ce soit — alors que la base porte les
-           * deux depuis le 27/08 et que c'est exactement la question que le
-           * concepteur se pose en ouvrant cet écran.
-           *
-           * Le format rejoint l'intitulé plutôt que le badge `rank` : ce badge
-           * commande un filtre libellé « rang », qui ne voudrait rien dire ici.
+           * Cette liste rendait les modalités déjà créées — six lignes à
+           * cocher ou décocher. Concevoir, c'est choisir parmi ce qui est
+           * possible : aucune des formes ouvertes le matin même (KFP,
+           * mini-DP, ECOS en présentiel, TCS, DOPS) n'apparaissait nulle
+           * part. Le catalogue est désormais la liste ; cocher crée,
+           * décocher sort du parcours. La création sur mesure reste dans
+           * l'onglet « Évaluations », qui est son endroit.
            */
-          items={data.assessmentModalities.map((modality) => ({
-            id: modality.id,
-            label: `${modality.name} — ${ASSESSMENT_SUBTYPE_LABELS_FR[modality.subtype]}, ${ASSESSMENT_MODE_LABELS_FR[
-              modality.mode
-            ].toLowerCase()}`,
-            groupLabel: ASSESSMENT_USAGE_LABELS_FR[modality.usage],
-            retained: modality.retainedAt !== undefined,
-          }))}
+          items={catalogueAssociationItems(data.assessmentModalities)}
+          itemNoun="modalité(s)"
           busyIds={archivingIds}
           removeLabel="Retirer du programme"
           onRemove={(ids) =>
-            void removeAssociations(ids, (id) =>
-              dataAccess.assessments.archiveAssessmentModality(id),
+            /*
+             * On n'archive que ce qui existe : une entrée de catalogue jamais
+             * créée n'a rien à retirer, et l'appel échouerait sur son
+             * identifiant préfixé.
+             */
+            void removeAssociations(
+              ids.filter((id) => !id.startsWith(CATALOGUE_ID_PREFIX)),
+              (id) => dataAccess.assessments.archiveAssessmentModality(id),
             )
           }
-          /*
-           * Même parité que les acquis : trancher quelles modalités entrent au
-           * parcours VAUT implémentation de la ressource, dans les deux sens.
-           * Sans ça, l'étape 1 réclamait une modalité de plus à un programme
-           * qui en avait déjà six.
-           */
           onSetRetained={async (ids, retained) => {
-            await dataAccess.assessments.setAssessmentModalitiesRetained(ids, retained);
+            const aCreer = retained
+              ? ids.filter((id) => id.startsWith(CATALOGUE_ID_PREFIX))
+              : [];
+            const existants = ids.filter((id) => !id.startsWith(CATALOGUE_ID_PREFIX));
+
+            if (programId) {
+              for (const id of aCreer) {
+                const entree = CATALOGUE_MODALITES.find(
+                  (e) => `${CATALOGUE_ID_PREFIX}${e.key}` === id,
+                );
+                if (!entree) continue;
+                await dataAccess.assessments.createAssessmentModality({
+                  programId,
+                  name: entree.name,
+                  mode: entree.mode,
+                  subtype: entree.subtype,
+                  usage: entree.usage,
+                  notes: entree.notes,
+                });
+              }
+            }
+            if (existants.length > 0) {
+              await dataAccess.assessments.setAssessmentModalitiesRetained(existants, retained);
+            }
             await refetch();
             patch("assessments", { implemented: true });
           }}

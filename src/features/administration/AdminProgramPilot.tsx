@@ -291,7 +291,8 @@ export function AdminProgramPilot() {
             <AssessmentModalitySection
               programId={data.program.id}
               modalities={data.assessmentModalities}
-              showCreation={false}
+              cohorts={data.cohorts}
+              editable={false}
             />
           ) : null}
 
@@ -306,7 +307,14 @@ export function AdminProgramPilot() {
               progressPercent: progress,
               outcomes: data.outcomes.length,
               resources: data.resources.length,
-              evaluations: data.ecosScenarios.length,
+              /*
+               * Comptait `data.ecosScenarios.length` — les scénarios ECOS du
+               * MOCK (`ecosFixtures.ts`), jamais la base. Le chiffre affiché sous
+               * « Évaluations configurées » ne mesurait pas ce que Stef croyait.
+               * Depuis le 14/09 : les modalités retenues au parcours.
+               */
+              evaluations: data.assessmentModalities.filter((m) => m.retainedAt !== undefined)
+                .length,
               stagePlacements: data.placements.length,
               logbookTemplates: data.templates.length,
               mediaItems: data.media.length,

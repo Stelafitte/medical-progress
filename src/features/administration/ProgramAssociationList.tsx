@@ -42,6 +42,7 @@ export function ProgramAssociationList({
   removeLabel,
   onRemove,
   onSetRetained,
+  itemNoun = "acquis",
 }: {
   title: string;
   items: readonly AssociationItem[];
@@ -49,6 +50,12 @@ export function ProgramAssociationList({
   removeLabel: string;
   onRemove: (ids: readonly string[]) => void;
   onSetRetained?: (ids: readonly string[], retained: boolean) => Promise<void>;
+  /**
+   * Le nom de ce qu'on compte. « acquis » convenait tant que la liste ne
+   * servait qu'aux connaissances et aux compétences ; les modalités
+   * d'évaluation l'utilisent depuis le 14/09, et « 2 acquis » y était faux.
+   */
+  readonly itemNoun?: string;
 }) {
   const retainable = onSetRetained !== undefined;
 
@@ -243,7 +250,7 @@ export function ProgramAssociationList({
                   <summary className="cursor-pointer text-sm">
                     {group}{" "}
                     <span className="text-muted-foreground text-xs">
-                      — {inGroup.length} acquis
+                      — {inGroup.length} {itemNoun}
                       {retainable ? `, ${retenus} retenu(s)` : ""}
                     </span>
                   </summary>
@@ -256,7 +263,7 @@ export function ProgramAssociationList({
               <summary className="cursor-pointer text-sm">
                 Non rangés{" "}
                 <span className="text-muted-foreground text-xs">
-                  — {visible.filter((i) => !i.groupLabel).length} acquis
+                  — {visible.filter((i) => !i.groupLabel).length} {itemNoun}
                 </span>
               </summary>
               <ul className="mt-2 space-y-1.5">

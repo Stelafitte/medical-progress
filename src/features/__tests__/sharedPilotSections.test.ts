@@ -17,7 +17,10 @@ describe("blocs partagés du pilotage", () => {
   });
 
   it("n'ouvre aucune création de modèle dans le pilotage", () => {
-    expect(pilot.match(/showCreation=\{false\}/g)?.length).toBe(2);
+    // PlacementSection garde `showCreation` ; AssessmentModalitySection dit
+    // `editable` depuis le 14/09, car la même prop coupe aussi le retrait.
+    expect(pilot.match(/showCreation=\{false\}/g)?.length).toBe(1);
+    expect(pilot.match(/editable=\{false\}/g)?.length).toBe(1);
   });
 
   it("ne recrée plus de liste de stages ad hoc", () => {

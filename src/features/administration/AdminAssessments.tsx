@@ -1,11 +1,13 @@
 /**
- * « Évaluations » — flux linéaire, sans onglets :
- * import assisté d'un corpus → référentiel des modalités rangé par usage →
- * création d'une modalité → ce qui n'est pas encore modélisé.
+ * « Évaluations » — l'onglet qui POSSÈDE le référentiel des modalités.
  *
- * Le 14/09, le `MockBadge` posé sur le titre a disparu en même temps que les
- * trois panneaux de maquette qu'il couvrait (voir `AssessmentModalitySection`).
- * Tout ce que cet écran affiche désormais est lu en base.
+ * Le Concepteur de programme y choisit parmi un catalogue ; ici on lit ce qui
+ * a été choisi, on crée ce que le catalogue ne propose pas, on retire ce qui
+ * ne va plus, et on importe par IA quand un document décrit déjà tout.
+ *
+ * Le 14/09, le `MockBadge` du titre a disparu avec les trois panneaux de
+ * maquette qu'il couvrait (voir `AssessmentModalitySection`). Tout ce que cet
+ * écran affiche est lu en base.
  */
 import { SectionHeading } from "@/components/section-heading";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -29,20 +31,20 @@ export function AdminAssessments() {
       <SectionHeading
         title="Évaluations"
         level={1}
-        description="Le référentiel des modalités d'évaluation du programme : ce que l'étudiant rencontrera, sous quel format, en présentiel ou en ligne, et ce que chaque épreuve engage."
+        description={`${program.name} (${program.code}) — ce que l'étudiant rencontrera, sous quel format, en présentiel ou en ligne, et ce que chaque épreuve engage.`}
       />
 
       <ScopeNotice>
-        Une modalité décrit le <strong>format</strong> d'une épreuve, pas sa date. Les mêmes
-        éléments sont disponibles dans la partie Évaluation du pilotage de programme. Les dates de
-        passage par promotion ne sont pas encore modélisées — c'est dit en bas de cet écran.
+        Une modalité décrit le <strong>format</strong> d'une épreuve, pas sa date, et vaut pour{" "}
+        <strong>toutes les promotions</strong> du programme. Le choix parmi les modalités possibles
+        se fait dans le Concepteur de programme ; la création sur mesure et le retrait se font
+        ici. Les dates de passage par promotion ne sont pas encore modélisées — les promotions
+        concernées sont listées en bas de cet écran.
       </ScopeNotice>
 
       {/*
         Les compteurs disent ce que le concepteur cherche : l'équilibre entre ce
         que l'étudiant fait seul, ce qu'on lui demande et ce qui l'engage.
-        « Objectifs évaluables » comptait `data.outcomes.length` — un chiffre
-        vrai mais sans rapport : aucune table ne relie un acquis à une épreuve.
       */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard label="Auto-évaluations" value={compter("self_assessment")} />
@@ -54,24 +56,25 @@ export function AdminAssessments() {
         />
       </div>
 
-      <PanelCard
-        title="Voie automatique — importer un corpus de documents"
-        description="Un document ou une archive ZIP : les modalités d'évaluation que l'IA y repère sont proposées à la validation, et les fichiers sont déposés dans la médiathèque. Même outil que dans le « Concepteur de programme » — la liste est unique."
-      >
-        <CorpusImport
-          target="assessments"
-          programId={program.id}
-          curriculumVersionId={data.versions[0]?.id}
-          existingAssessmentNames={modalities.map((m) => m.name)}
-          onCreated={() => void refetch()}
-        />
-      </PanelCard>
-
       <AssessmentModalitySection
         programId={program.id}
         modalities={modalities}
-        onModalityCreated={() => void refetch()}
-      />
+        cohorts={data.cohorts}
+        onChanged={() => void refetch()}
+      >
+        <PanelCard
+          title="Voie automatique — importer un corpus de documents"
+          description="Un document ou une archive ZIP : les modalités d'évaluation que l'IA y repère sont proposées à la validation, et les fichiers sont déposés dans la médiathèque. Nécessite un fournisseur IA et une clé configurés pour le programme."
+        >
+          <CorpusImport
+            target="assessments"
+            programId={program.id}
+            curriculumVersionId={data.versions[0]?.id}
+            existingAssessmentNames={modalities.map((m) => m.name)}
+            onCreated={() => void refetch()}
+          />
+        </PanelCard>
+      </AssessmentModalitySection>
     </div>
   );
 }
