@@ -306,9 +306,17 @@ export function CompetencesView() {
   const { activeProgram, activeEnrollment, person } = useSession();
   const { data, isPending } = useLearnerPassport();
   const journal = useCompetenceJournal();
-  const [filters, setFilters] = useState<CompetenceListFilters>(EMPTY_COMPETENCE_FILTERS);
+  const { acquis, q } = useSearch({ from: "/espace/competences" });
+  /*
+   * MEME GRAINE QUE « Mes ressources » : `q` vient de la recherche transverse et
+   * pre-remplit le filtre. Sans lui, « voir les N autres » ouvrait la liste
+   * entiere des competences.
+   */
+  const [filters, setFilters] = useState<CompetenceListFilters>({
+    ...EMPTY_COMPETENCE_FILTERS,
+    ...(q ? { search: q } : {}),
+  });
   /** Lien profond depuis « Mon prochain jalon » : `?acquis=<code>`. */
-  const { acquis } = useSearch({ from: "/espace/competences" });
 
   const journalById = useMemo(
     () => new Map(journal.map((entry) => [entry.outcomeId, entry] as const)),

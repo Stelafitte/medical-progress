@@ -25,6 +25,7 @@ import { Route as EspacePlateformeRouteImport } from './routes/espace.plateforme
 import { Route as EspaceProfilRouteImport } from './routes/espace.profil'
 import { Route as EspaceProgrammesRouteImport } from './routes/espace.programmes'
 import { Route as EspaceProgressionRouteImport } from './routes/espace.progression'
+import { Route as EspaceRechercheRouteImport } from './routes/espace.recherche'
 import { Route as EspaceRessourcesRouteImport } from './routes/espace.ressources'
 import { Route as EspaceStageRouteImport } from './routes/espace.stage'
 import { Route as EspaceStatistiquesRouteImport } from './routes/espace.statistiques'
@@ -142,6 +143,11 @@ const EspaceProgrammesRoute = EspaceProgrammesRouteImport.update({
 const EspaceProgressionRoute = EspaceProgressionRouteImport.update({
   id: '/progression',
   path: '/progression',
+  getParentRoute: () => EspaceRoute,
+} as any)
+const EspaceRechercheRoute = EspaceRechercheRouteImport.update({
+  id: '/recherche',
+  path: '/recherche',
   getParentRoute: () => EspaceRoute,
 } as any)
 const EspaceRessourcesRoute = EspaceRessourcesRouteImport.update({
@@ -380,6 +386,7 @@ export interface FileRoutesByFullPath {
   '/espace/profil': typeof EspaceProfilRoute
   '/espace/programmes': typeof EspaceProgrammesRoute
   '/espace/progression': typeof EspaceProgressionRoute
+  '/espace/recherche': typeof EspaceRechercheRoute
   '/espace/ressources': typeof EspaceRessourcesRouteWithChildren
   '/espace/stage': typeof EspaceStageRoute
   '/espace/statistiques': typeof EspaceStatistiquesRoute
@@ -432,6 +439,7 @@ export interface FileRoutesByTo {
   '/espace/profil': typeof EspaceProfilRoute
   '/espace/programmes': typeof EspaceProgrammesRoute
   '/espace/progression': typeof EspaceProgressionRoute
+  '/espace/recherche': typeof EspaceRechercheRoute
   '/espace/stage': typeof EspaceStageRoute
   '/espace/statistiques': typeof EspaceStatistiquesRoute
   '/espace': typeof EspaceIndexRoute
@@ -488,6 +496,7 @@ export interface FileRoutesById {
   '/espace/profil': typeof EspaceProfilRoute
   '/espace/programmes': typeof EspaceProgrammesRoute
   '/espace/progression': typeof EspaceProgressionRoute
+  '/espace/recherche': typeof EspaceRechercheRoute
   '/espace/ressources': typeof EspaceRessourcesRouteWithChildren
   '/espace/stage': typeof EspaceStageRoute
   '/espace/statistiques': typeof EspaceStatistiquesRoute
@@ -546,6 +555,7 @@ export interface FileRouteTypes {
     | '/espace/profil'
     | '/espace/programmes'
     | '/espace/progression'
+    | '/espace/recherche'
     | '/espace/ressources'
     | '/espace/stage'
     | '/espace/statistiques'
@@ -598,6 +608,7 @@ export interface FileRouteTypes {
     | '/espace/profil'
     | '/espace/programmes'
     | '/espace/progression'
+    | '/espace/recherche'
     | '/espace/stage'
     | '/espace/statistiques'
     | '/espace'
@@ -653,6 +664,7 @@ export interface FileRouteTypes {
     | '/espace/profil'
     | '/espace/programmes'
     | '/espace/progression'
+    | '/espace/recherche'
     | '/espace/ressources'
     | '/espace/stage'
     | '/espace/statistiques'
@@ -811,6 +823,13 @@ declare module '@tanstack/react-router' {
       path: '/progression'
       fullPath: '/espace/progression'
       preLoaderRoute: typeof EspaceProgressionRouteImport
+      parentRoute: typeof EspaceRoute
+    }
+    '/espace/recherche': {
+      id: '/espace/recherche'
+      path: '/recherche'
+      fullPath: '/espace/recherche'
+      preLoaderRoute: typeof EspaceRechercheRouteImport
       parentRoute: typeof EspaceRoute
     }
     '/espace/ressources': {
@@ -1205,6 +1224,7 @@ interface EspaceRouteChildren {
   EspaceProfilRoute: typeof EspaceProfilRoute
   EspaceProgrammesRoute: typeof EspaceProgrammesRoute
   EspaceProgressionRoute: typeof EspaceProgressionRoute
+  EspaceRechercheRoute: typeof EspaceRechercheRoute
   EspaceRessourcesRoute: typeof EspaceRessourcesRouteWithChildren
   EspaceStageRoute: typeof EspaceStageRoute
   EspaceStatistiquesRoute: typeof EspaceStatistiquesRoute
@@ -1225,6 +1245,7 @@ const EspaceRouteChildren: EspaceRouteChildren = {
   EspaceProfilRoute: EspaceProfilRoute,
   EspaceProgrammesRoute: EspaceProgrammesRoute,
   EspaceProgressionRoute: EspaceProgressionRoute,
+  EspaceRechercheRoute: EspaceRechercheRoute,
   EspaceRessourcesRoute: EspaceRessourcesRouteWithChildren,
   EspaceStageRoute: EspaceStageRoute,
   EspaceStatistiquesRoute: EspaceStatistiquesRoute,

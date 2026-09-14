@@ -174,6 +174,32 @@ export function canAccessStatistics(
   );
 }
 
+/**
+ * LA RECHERCHE TRANSVERSE EST OUVERTE À TOUS LES PROFILS DU PROGRAMME
+ * (décision de Stef, 14/09) — apprenant, encadrant, enseignant, administrateur
+ * de programme, administrateur plateforme.
+ *
+ * Ouvrir l'OUTIL ne veut pas dire ouvrir les DONNÉES : la recherche ne rend à
+ * chacun que ce qu'il a déjà le droit de lire. Les blocs du programme — les
+ * connaissances, les compétences, les évaluations — sont les mêmes pour tous et
+ * la RLS les borne. Les blocs personnels — le carnet de stage, le calendrier —
+ * n'existent que pour quelqu'un d'INSCRIT, et ils ne parlent que de lui. Un
+ * encadrant ne trouvera donc pas ici le carnet de ses étudiants : c'est
+ * l'espace Encadrement qui le lui montre, avec son propre périmètre.
+ */
+export function canSearchProgram(
+  assignments: readonly RoleAssignment[],
+  programId: ProgramId,
+): boolean {
+  return (
+    canAccessLearnerSpace(assignments, programId) ||
+    canAccessSupervision(assignments, programId) ||
+    canAccessProgramAdministration(assignments, programId) ||
+    canAccessPlatformAdministration(assignments) ||
+    hasRole(assignments, "teacher", { programId })
+  );
+}
+
 /** Le profil de compte est accessible à tout utilisateur authentifié, quels que soient ses rôles. */
 export function canAccessOwnProfile(isAuthenticated: boolean): boolean {
   return isAuthenticated;

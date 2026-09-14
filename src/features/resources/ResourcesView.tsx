@@ -2,6 +2,7 @@ import { useState } from "react";
 import { BookOpen, ChevronDown, FileText, Globe, PlayCircle, Search } from "lucide-react";
 import { Link, useSearch } from "@tanstack/react-router";
 import { useSession } from "@/application/session";
+import { correspond, motsDeLaRequete } from "@/domain/rechercheTransverse";
 import { FieldHeader } from "@/components/field-header";
 import { SectionHeading } from "@/components/section-heading";
 import {
@@ -52,7 +53,14 @@ export function ResourcesView() {
    * quand on decoche la derniere case se lit comme une panne.
    */
   const [rangs, setRangs] = useState<ReadonlySet<KnowledgeRank>>(new Set());
-  const [search, setSearch] = useState("");
+  const { acquis, q } = useSearch({ from: "/espace/ressources/" });
+  /*
+   * LE CHAMP PART DE L'URL quand la recherche transverse a emporte `q` : sinon
+   * « voir les N autres » ouvrait cet onglet vide de tout filtre, et l'etudiant
+   * lisait les 314 connaissances du programme a la place des N annoncees.
+   * Il reste librement modifiable ensuite -- l'URL n'est qu'une graine.
+   */
+  const [search, setSearch] = useState(q ?? "");
   /**
    * L'ACQUIS VISÉ PAR UN LIEN PROFOND (`?acquis=<code>`), demandé par Stef le
    * 04/09 : « clique sur item de Mes prochains jalons envoie dans le bon
@@ -60,7 +68,6 @@ export function ResourcesView() {
    * On désigne l'acquis par son CODE et non par son identifiant : il est
    * unique par programme, lisible dans la barre d'adresse, et stable.
    */
-  const { acquis } = useSearch({ from: "/espace/ressources/" });
 
   if (isPending || !data) return <Skeleton className="h-64 w-full" />;
 
@@ -84,7 +91,15 @@ export function ResourcesView() {
    */
   const HORS_CHAPITRE = "Hors chapitre";
   const chapitreDe = new Map(data.themes.map((t) => [t.id, t] as const));
-  const termeRecherche = search.trim().toLowerCase();
+  /*
+   * MEME APPARIEMENT QUE LA RECHERCHE TRANSVERSE ET QUE « Mes competences »
+   * (14/09). Ce filtre comparait en `toLowerCase()` nu : « echographie » ne
+   * trouvait pas « Echocardiographie » accentue, alors que l'onglet voisin,
+   * lui, desaccentuait. Le meme mot rendait deux reponses differentes dans
+   * deux onglets voisins, sans que rien ne le signale. Partager un composant
+   * ne suffit pas -- il faut partager la projection.
+   */
+  const motsRecherches = motsDeLaRequete(search);
   /*
    * LE CHIFFRE DU BANDEAU COMPTE LE PROGRAMME, PAS LA RECHERCHE. `connaissances`
    * est filtre par le champ de recherche ; l'afficher dans le bandeau faisait
@@ -105,11 +120,7 @@ export function ResourcesView() {
   }
   const connaissances = outcomes
     .filter((o) => o.nature === "knowledge")
-    .filter(
-      (o) =>
-        termeRecherche.length === 0 ||
-        `${o.code} ${o.label}`.toLowerCase().includes(termeRecherche),
-    )
+    .filter((o) => motsRecherches.length === 0 || correspond([o.code, o.label], motsRecherches))
     .filter(
       (o) => rangs.size === 0 || (o.knowledgeRank !== undefined && rangs.has(o.knowledgeRank)),
     );

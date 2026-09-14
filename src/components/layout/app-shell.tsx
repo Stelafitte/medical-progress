@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useUnreadMessages } from "@/features/messages/useUnreadMessages";
+import { HeaderSearch } from "@/components/layout/header-search";
 import { ProgramSwitcher } from "@/components/program-switcher";
 import { isRouteWithinSpaces, landingRouteFor, navSpacesFor } from "@/components/layout/navigation";
 import { useSession } from "@/application/session";
@@ -251,6 +252,13 @@ export function AppShell() {
                 </Link>
               </Button>
             ) : null}
+            {/*
+              LE CHAMP DE RECHERCHE, AVANT LE SELECTEUR DE PROGRAMME (14/09).
+              Il ne s affiche que pour un apprenant du programme actif : le
+              composant se retire lui-meme sinon. Aucune entree n est ajoutee a
+              `LEARNER_NAV` -- chercher est un geste, pas un dixieme onglet.
+            */}
+            <HeaderSearch />
             {/* Sur smartphone, le programme actif se choisit dans le menu latéral. */}
             <div className="hidden sm:block">
               <ProgramSwitcher />
