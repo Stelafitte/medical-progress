@@ -91,7 +91,11 @@ import type {
 } from "@/domain/stageLog";
 import type { EcosExternalRun, EcosGridItem } from "@/domain/ecos";
 import type { OutcomeSelfReport } from "@/domain/passport";
-import type { AssessmentModality, AssessmentSession } from "@/domain/assessmentModality";
+import type {
+  AssessmentModality,
+  AssessmentSession,
+  CohortAssessmentLink,
+} from "@/domain/assessmentModality";
 import type {
   MediaAsset,
   MediaKind,
@@ -2157,6 +2161,29 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
       async deleteAssessmentSession(assessmentSessionId: string) {
         const { error } = await client.rpc("delete_assessment_session", {
           p_session_id: assessmentSessionId,
+        });
+        assertNoSupabaseError(error);
+      },
+      /* Lot A2 : supabase/migrations/20260914210000_cohort_assessment_modalities.sql */
+      async listCohortAssessmentLinks(programId: ProgramId) {
+        const { data, error } = await client
+          .from("cohort_assessment_modalities")
+          .select("program_id,cohort_id,modality_id")
+          .eq("program_id", programId);
+        assertNoSupabaseError(error);
+        return ((data ?? []) as { program_id: string; cohort_id: string; modality_id: string }[]).map(
+          (row): CohortAssessmentLink => ({
+            programId: row.program_id,
+            cohortId: row.cohort_id,
+            modalityId: row.modality_id,
+          }),
+        );
+      },
+      async setCohortAssessmentModality(cohortId: string, assessmentModalityId: string, enabled: boolean) {
+        const { error } = await client.rpc("set_cohort_assessment_modality", {
+          p_cohort_id: cohortId,
+          p_modality_id: assessmentModalityId,
+          p_enabled: enabled,
         });
         assertNoSupabaseError(error);
       },

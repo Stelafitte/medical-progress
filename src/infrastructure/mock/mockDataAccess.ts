@@ -21,7 +21,11 @@ import type {
   SupervisionGroupId,
 } from "@/domain/types";
 import { scopeFromGrantFields } from "@/domain/accessGrant";
-import type { AssessmentModality, AssessmentSession } from "@/domain/assessmentModality";
+import type {
+  AssessmentModality,
+  AssessmentSession,
+  CohortAssessmentLink,
+} from "@/domain/assessmentModality";
 import {
   defaultProgramAiSettings,
   type AiFallbackPolicy,
@@ -521,6 +525,7 @@ export const mockDataAccess: DataAccess = {
   assessments: (() => {
     let modalities: AssessmentModality[] = [];
     let sessions: AssessmentSession[] = [];
+    let links: CohortAssessmentLink[] = [];
     const seededPrograms = new Set<ProgramId>();
     let counter = 0;
 
@@ -637,6 +642,22 @@ export const mockDataAccess: DataAccess = {
       },
       deleteAssessmentSession: (assessmentSessionId) => {
         sessions = sessions.filter((s) => s.id !== assessmentSessionId);
+        return ok(undefined);
+      },
+      listCohortAssessmentLinks: (programId) => ok(links.filter((l) => l.programId === programId)),
+      setCohortAssessmentModality: (cohortId, assessmentModalityId, enabled) => {
+        const modality = modalities.find((m) => m.id === assessmentModalityId);
+        if (!modality) return Promise.reject(new Error("Modalité d'évaluation introuvable."));
+        const deja = links.some((l) => l.cohortId === cohortId && l.modalityId === assessmentModalityId);
+        if (enabled && !deja) {
+          links = [...links, { programId: modality.programId, cohortId, modalityId: assessmentModalityId }];
+        }
+        if (!enabled) {
+          links = links.filter((l) => !(l.cohortId === cohortId && l.modalityId === assessmentModalityId));
+          sessions = sessions.filter(
+            (s) => !(s.cohortId === cohortId && s.modalityId === assessmentModalityId),
+          );
+        }
         return ok(undefined);
       },
     };

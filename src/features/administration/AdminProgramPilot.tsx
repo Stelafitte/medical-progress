@@ -292,6 +292,7 @@ export function AdminProgramPilot() {
               programId={data.program.id}
               modalities={data.assessmentModalities}
               sessions={data.assessmentSessions}
+              links={data.cohortAssessmentLinks}
               cohorts={data.cohorts}
               cohortFilter={selectedId}
               editable={false}
@@ -315,7 +316,7 @@ export function AdminProgramPilot() {
                * « Évaluations configurées » ne mesurait pas ce que Stef croyait.
                * Depuis le 14/09 : les modalités retenues au parcours.
                */
-              evaluations: data.assessmentModalities.filter((m) => m.retainedAt !== undefined)
+              evaluations: data.cohortAssessmentLinks.filter((l) => l.cohortId === selectedId)
                 .length,
               stagePlacements: data.placements.length,
               logbookTemplates: data.templates.length,

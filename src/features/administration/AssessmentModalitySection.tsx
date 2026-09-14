@@ -1,27 +1,26 @@
 /**
- * L'ATELIER DES ÉVALUATIONS D'UN PROGRAMME — bloc unique, deux modes.
+ * LES ÉVALUATIONS D'UNE PROMOTION — bloc unique, sans modes.
  *
- * Le même composant sert trois écrans :
- *   - l'onglet « Évaluations » : `editable`, part en lecture, bascule en
- *     construction ;
- *   - le Concepteur de programme, étape « Évaluations du programme » :
- *     `editable`, part directement en construction ;
- *   - le pilotage : lecture seule, filtré sur la promotion pilotée.
+ * Stef (14/09, tard) : « quand je choisis une promotion, en dessous doit
+ * apparaître le contenu des modalités d'évaluation de cette promotion ; le
+ * contenu peut être différent d'une promotion à l'autre ; pas deux boutons
+ * lecture / construction ». Voici ce que ça donne.
  *
- * TROIS COUCHES SUR UN ÉCRAN (Stef, 14/09 soir) :
+ * TROIS COUCHES, UN ÉCRAN, UNE PROMOTION À LA FOIS :
  *   1. le catalogue — tout ce qui est possible (`assessmentCatalogue.ts`) ;
- *   2. les modalités du programme — ce qui est retenu et configuré
- *      (`assessment_modalities`) ;
- *   3. les épreuves datées — une modalité × une promotion × une date
- *      (`assessment_sessions`).
+ *   2. la modalité, configurée UNE FOIS pour le programme — format, lieu,
+ *      usage, consignes (`assessment_modalities`) ;
+ *   3. ce que CETTE promotion en fait — l'utilise ou non
+ *      (`cohort_assessment_modalities`), et quand (`assessment_sessions`).
  *
- * LECTURE montre 2 et 3 : ce que l'étudiant rencontrera, et quand, pour qui.
- * CONSTRUCTION montre 1, 2 et 3 : tout le catalogue, présent ou pas ; cocher
- * crée, décocher sort du parcours ; une ligne présente se déplie pour être
- * configurée, datée par promotion, ou retirée.
+ * On clique une promotion en tête. En dessous : ses modalités, présentes ou
+ * à créer, par usage. Une case cochée = « cette promotion utilise cette
+ * modalité » ; si la modalité n'existait pas encore, la cocher la crée. Une
+ * ligne cochée se déplie : sa configuration (commune aux promotions qui la
+ * partagent), ses dates POUR CETTE PROMOTION, et le retrait.
  *
- * Les promotions sont EN TÊTE, avec leur nombre d'épreuves datées : c'est la
- * question que Stef posait à chaque écran — de quelle promotion parle-t-on ?
+ * Le même composant sert l'onglet « Évaluations », le Concepteur (étape 1) et
+ * le pilotage (lecture seule, promotion imposée).
  */
 import { useMemo, useState, type ReactNode } from "react";
 import { CalendarDays, ChevronDown, ChevronRight, Pencil, Users } from "lucide-react";
@@ -30,7 +29,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { EmptyState, PanelCard } from "@/features/professional/mock-ui";
+import { EmptyState, PanelCard, StatCard } from "@/features/professional/mock-ui";
 import { formatFrDate } from "@/features/administration/adminProgramViewModel";
 import { useDataAccess } from "@/application/session";
 import {
@@ -42,14 +41,11 @@ import {
   type AssessmentModality,
   type AssessmentSession,
   type AssessmentUsage,
+  type CohortAssessmentLink,
 } from "@/domain/assessmentModality";
 import { catalogueRows, type CatalogueRow } from "@/domain/assessmentCatalogue";
 import { AssessmentModalityForm } from "@/features/administration/AssessmentModalityForm";
 import type { Cohort, ProgramId } from "@/domain/types";
-
-/* ------------------------------------------------------------------ */
-/* Vocabulaire                                                          */
-/* ------------------------------------------------------------------ */
 
 const ORDRE_DES_USAGES: readonly AssessmentUsage[] = [
   "self_assessment",
@@ -65,8 +61,6 @@ const CE_QUE_L_USAGE_ENGAGE: Record<AssessmentUsage, string> = {
   certification: "Épreuve certifiante, au-delà du programme.",
 };
 
-type Mode = "lecture" | "construction";
-
 const SELECT_CLASS = "border-input bg-background min-h-11 rounded-md border px-3 text-sm";
 
 /* ------------------------------------------------------------------ */
@@ -75,25 +69,37 @@ const SELECT_CLASS = "border-input bg-background min-h-11 rounded-md border px-3
 
 function PromotionsEnTete({
   cohorts,
+  links,
   sessions,
   selected,
   onSelect,
+  imposed,
 }: {
   readonly cohorts: readonly Cohort[];
+  readonly links: readonly CohortAssessmentLink[];
   readonly sessions: readonly AssessmentSession[];
   readonly selected: string | null;
-  readonly onSelect: (cohortId: string | null) => void;
+  readonly onSelect: (cohortId: string) => void;
+  readonly imposed: boolean;
 }) {
   return (
     <PanelCard
-      title="Promotions concernées"
-      description="Les modalités valent pour toutes. Les dates, elles, se posent promotion par promotion — cliquez-en une pour ne voir qu'elle."
+      title="Promotions"
+      description={
+        imposed
+          ? "La promotion pilotée."
+          : "Chaque promotion a son propre contenu d'évaluation. Cliquez-en une : ce qui suit est à elle."
+      }
     >
       {cohorts.length === 0 ? (
-        <EmptyState>Aucune promotion ouverte sur ce programme.</EmptyState>
+        <EmptyState>
+          Aucune promotion ouverte sur ce programme. Créez-en une (Concepteur, étape 2) : c'est
+          elle qui portera les évaluations.
+        </EmptyState>
       ) : (
         <ul className="grid gap-2 lg:grid-cols-2">
           {cohorts.map((cohort) => {
+            const servies = links.filter((l) => l.cohortId === cohort.id).length;
             const datees = sessions.filter((s) => s.cohortId === cohort.id).length;
             const active = selected === cohort.id;
             return (
@@ -101,7 +107,8 @@ function PromotionsEnTete({
                 <button
                   type="button"
                   aria-pressed={active}
-                  onClick={() => onSelect(active ? null : cohort.id)}
+                  disabled={imposed}
+                  onClick={() => onSelect(cohort.id)}
                   className={`border-border flex w-full flex-wrap items-center gap-2 rounded-md border p-3 text-left text-sm ${
                     active ? "bg-muted ring-primary ring-2" : "hover:bg-muted/50"
                   }`}
@@ -117,9 +124,14 @@ function PromotionsEnTete({
                   <span className="text-muted-foreground text-xs">
                     stage du {formatFrDate(cohort.startsOn)} au {formatFrDate(cohort.endsOn)}
                   </span>
-                  <Badge variant={datees > 0 ? "secondary" : "outline"} className="ml-auto font-normal">
-                    {datees === 0 ? "aucune épreuve datée" : `${datees} épreuve(s) datée(s)`}
-                  </Badge>
+                  <span className="ml-auto flex flex-wrap gap-1">
+                    <Badge variant={servies > 0 ? "secondary" : "outline"} className="font-normal">
+                      {servies === 0 ? "aucune modalité" : `${servies} modalité(s)`}
+                    </Badge>
+                    <Badge variant={datees > 0 ? "secondary" : "outline"} className="font-normal">
+                      {datees === 0 ? "aucune date" : `${datees} date(s)`}
+                    </Badge>
+                  </span>
                 </button>
               </li>
             );
@@ -131,23 +143,20 @@ function PromotionsEnTete({
 }
 
 /* ------------------------------------------------------------------ */
-/* Les épreuves datées d'une modalité                                    */
+/* Les dates d'une modalité, pour la promotion choisie                  */
 /* ------------------------------------------------------------------ */
 
 function SessionRow({
   session,
-  cohorts,
   editable,
   onChanged,
 }: {
   readonly session: AssessmentSession;
-  readonly cohorts: readonly Cohort[];
   readonly editable: boolean;
   readonly onChanged?: (() => void) | undefined;
 }) {
   const dataAccess = useDataAccess();
   const [busy, setBusy] = useState(false);
-  const cohort = cohorts.find((c) => c.id === session.cohortId);
   const passee = sessionState(session, new Date()) === "completed";
 
   async function supprimer() {
@@ -164,25 +173,13 @@ function SessionRow({
     <li className="flex flex-wrap items-center gap-2 text-sm">
       <CalendarDays className="text-muted-foreground size-4 shrink-0" aria-hidden />
       <span className="font-mono text-xs">{formatFrDate(session.scheduledOn)}</span>
-      <span className="font-medium">{cohort?.label ?? "promotion"}</span>
-      {session.location ? (
-        <span className="text-muted-foreground text-xs">· {session.location}</span>
-      ) : null}
-      {session.notes ? (
-        <span className="text-muted-foreground text-xs">· {session.notes}</span>
-      ) : null}
+      {session.location ? <span className="text-muted-foreground text-xs">{session.location}</span> : null}
+      {session.notes ? <span className="text-muted-foreground text-xs">· {session.notes}</span> : null}
       <Badge variant={passee ? "secondary" : "outline"} className="font-normal">
         {passee ? "passée" : "à venir"}
       </Badge>
       {editable ? (
-        <Button
-          type="button"
-          size="sm"
-          variant="ghost"
-          className="min-h-9"
-          disabled={busy}
-          onClick={() => void supprimer()}
-        >
+        <Button type="button" size="sm" variant="ghost" className="min-h-9" disabled={busy} onClick={() => void supprimer()}>
           Supprimer
         </Button>
       ) : null}
@@ -190,26 +187,23 @@ function SessionRow({
   );
 }
 
-function AjouterUneEpreuve({
+function AjouterUneDate({
   modality,
-  cohorts,
-  cohortPreselected,
+  cohortId,
   onChanged,
 }: {
   readonly modality: AssessmentModality;
-  readonly cohorts: readonly Cohort[];
-  readonly cohortPreselected: string | null;
+  readonly cohortId: string;
   readonly onChanged?: (() => void) | undefined;
 }) {
   const dataAccess = useDataAccess();
-  const [cohortId, setCohortId] = useState(cohortPreselected ?? cohorts[0]?.id ?? "");
   const [date, setDate] = useState("");
   const [lieu, setLieu] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function ajouter() {
-    if (!cohortId || !date) return;
+    if (!date) return;
     setBusy(true);
     setError(null);
     try {
@@ -230,66 +224,29 @@ function AjouterUneEpreuve({
     }
   }
 
-  if (cohorts.length === 0) {
-    return (
-      <p className="text-muted-foreground text-xs">
-        Aucune promotion ouverte : rien à dater pour l'instant.
-      </p>
-    );
-  }
-
   return (
     <div className="space-y-2">
-      <div className="grid gap-2 sm:grid-cols-[1fr_auto_1fr_auto] sm:items-end">
+      <div className="grid gap-2 sm:grid-cols-[auto_1fr_auto] sm:items-end">
         <div className="space-y-1">
-          <Label htmlFor={`sess-cohort-${modality.id}`} className="text-xs">
-            Promotion
-          </Label>
-          <select
-            id={`sess-cohort-${modality.id}`}
-            className={`${SELECT_CLASS} w-full`}
-            value={cohortId}
-            onChange={(e) => setCohortId(e.target.value)}
-          >
-            {cohorts.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.label}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="space-y-1">
-          <Label htmlFor={`sess-date-${modality.id}`} className="text-xs">
+          <Label htmlFor={`d-${modality.id}`} className="text-xs">
             Date
           </Label>
-          <Input
-            id={`sess-date-${modality.id}`}
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="min-h-11"
-          />
+          <Input id={`d-${modality.id}`} type="date" value={date} onChange={(e) => setDate(e.target.value)} className="min-h-11" />
         </div>
         <div className="space-y-1">
-          <Label htmlFor={`sess-lieu-${modality.id}`} className="text-xs">
+          <Label htmlFor={`l-${modality.id}`} className="text-xs">
             Lieu (optionnel)
           </Label>
           <Input
-            id={`sess-lieu-${modality.id}`}
+            id={`l-${modality.id}`}
             value={lieu}
-            placeholder="Salle de simulation, amphi B…"
+            placeholder="Salle de simulation, amphi B, en ligne…"
             onChange={(e) => setLieu(e.target.value)}
             className="min-h-11"
           />
         </div>
-        <Button
-          type="button"
-          size="sm"
-          className="min-h-11"
-          disabled={busy || !cohortId || !date}
-          onClick={() => void ajouter()}
-        >
-          {busy ? "Ajout…" : "Dater"}
+        <Button type="button" size="sm" className="min-h-11" disabled={busy || !date} onClick={() => void ajouter()}>
+          {busy ? "Ajout…" : "Ajouter cette date"}
         </Button>
       </div>
       {error ? <p className="text-destructive text-xs">{error}</p> : null}
@@ -297,119 +254,25 @@ function AjouterUneEpreuve({
   );
 }
 
-function EpreuvesDeLaModalite({
-  modality,
+/* ------------------------------------------------------------------ */
+/* Une ligne : une modalité, pour la promotion choisie                  */
+/* ------------------------------------------------------------------ */
+
+function LigneModalite({
+  programId,
+  cohortId,
+  row,
+  utilisee,
   sessions,
-  cohorts,
-  cohortFilter,
   editable,
   onChanged,
 }: {
-  readonly modality: AssessmentModality;
-  readonly sessions: readonly AssessmentSession[];
-  readonly cohorts: readonly Cohort[];
-  readonly cohortFilter: string | null;
-  readonly editable: boolean;
-  readonly onChanged?: (() => void) | undefined;
-}) {
-  if (!usageSeDate(modality.usage)) {
-    return (
-      <p className="text-muted-foreground text-xs">
-        En continu : une auto-évaluation ne se date pas.
-      </p>
-    );
-  }
-  const siennes = sessions
-    .filter((s) => s.modalityId === modality.id)
-    .filter((s) => cohortFilter === null || s.cohortId === cohortFilter)
-    .sort((a, b) => a.scheduledOn.localeCompare(b.scheduledOn));
-
-  return (
-    <div className="space-y-2">
-      {siennes.length === 0 ? (
-        <p className="text-muted-foreground text-xs">
-          {cohortFilter ? "Non datée pour cette promotion." : "Non datée."}
-        </p>
-      ) : (
-        <ul className="space-y-1.5">
-          {siennes.map((s) => (
-            <SessionRow
-              key={s.id}
-              session={s}
-              cohorts={cohorts}
-              editable={editable}
-              onChanged={onChanged}
-            />
-          ))}
-        </ul>
-      )}
-      {editable ? (
-        <AjouterUneEpreuve
-          modality={modality}
-          cohorts={cohorts}
-          cohortPreselected={cohortFilter}
-          onChanged={onChanged}
-        />
-      ) : null}
-    </div>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/* LECTURE — une carte par modalité retenue                              */
-/* ------------------------------------------------------------------ */
-
-function CarteLecture({
-  modality,
-  sessions,
-  cohorts,
-  cohortFilter,
-}: {
-  readonly modality: AssessmentModality;
-  readonly sessions: readonly AssessmentSession[];
-  readonly cohorts: readonly Cohort[];
-  readonly cohortFilter: string | null;
-}) {
-  return (
-    <li className="border-border rounded-md border p-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <strong className="text-sm">{modality.name}</strong>
-        <Badge variant="secondary">{ASSESSMENT_SUBTYPE_LABELS_FR[modality.subtype]}</Badge>
-        <Badge variant="outline">{ASSESSMENT_MODE_LABELS_FR[modality.mode]}</Badge>
-      </div>
-      {modality.notes ? (
-        <p className="text-muted-foreground mt-2 text-xs">{modality.notes}</p>
-      ) : null}
-      <div className="mt-3">
-        <EpreuvesDeLaModalite
-          modality={modality}
-          sessions={sessions}
-          cohorts={cohorts}
-          cohortFilter={cohortFilter}
-          editable={false}
-        />
-      </div>
-    </li>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/* CONSTRUCTION — une ligne par possibilité                             */
-/* ------------------------------------------------------------------ */
-
-function LigneConstruction({
-  programId,
-  row,
-  sessions,
-  cohorts,
-  cohortFilter,
-  onChanged,
-}: {
   readonly programId: ProgramId;
+  readonly cohortId: string;
   readonly row: CatalogueRow;
+  readonly utilisee: boolean;
   readonly sessions: readonly AssessmentSession[];
-  readonly cohorts: readonly Cohort[];
-  readonly cohortFilter: string | null;
+  readonly editable: boolean;
   readonly onChanged?: (() => void) | undefined;
 }) {
   const dataAccess = useDataAccess();
@@ -419,29 +282,30 @@ function LigneConstruction({
   const [error, setError] = useState<string | null>(null);
 
   const modality = row.modality;
-  const presente = modality !== undefined && modality.retainedAt !== undefined;
   const surMesure = row.entry === undefined;
   const nom = modality?.name ?? row.entry?.name ?? "";
   const subtype = modality?.subtype ?? row.entry?.subtype;
   const mode = modality?.mode ?? row.entry?.mode;
-  const datees = modality
-    ? sessions.filter(
-        (s) => s.modalityId === modality.id && (cohortFilter === null || s.cohortId === cohortFilter),
-      ).length
-    : 0;
+  const usage = row.usage;
+  const dates = modality
+    ? sessions
+        .filter((s) => s.modalityId === modality.id && s.cohortId === cohortId)
+        .sort((a, b) => a.scheduledOn.localeCompare(b.scheduledOn))
+    : [];
 
   /*
-   * Cocher AGIT tout de suite — pas de bouton « Activer » à chercher plus bas.
-   * Créer depuis le catalogue, ou retenir/sortir une ligne existante.
+   * Cocher = « cette promotion utilise cette modalité ». Si la modalité
+   * n'existe pas encore pour le programme, la cocher la crée d'abord — tout
+   * de suite, sans bouton à chercher plus bas. Décocher la retire de CETTE
+   * promotion seulement ; le serveur efface ses dates avec.
    */
-  async function basculer(retenue: boolean) {
+  async function basculer(voulue: boolean) {
     setBusy(true);
     setError(null);
     try {
-      if (modality) {
-        await dataAccess.assessments.setAssessmentModalitiesRetained([modality.id], retenue);
-      } else if (row.entry && retenue) {
-        await dataAccess.assessments.createAssessmentModality({
+      let id = modality?.id;
+      if (!id && voulue && row.entry) {
+        const created = await dataAccess.assessments.createAssessmentModality({
           programId,
           name: row.entry.name,
           mode: row.entry.mode,
@@ -449,7 +313,10 @@ function LigneConstruction({
           usage: row.entry.usage,
           notes: row.entry.notes,
         });
+        id = created.id;
       }
+      if (id) await dataAccess.assessments.setCohortAssessmentModality(cohortId, id, voulue);
+      if (!voulue) setOpen(false);
       onChanged?.();
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Enregistrement impossible.");
@@ -458,7 +325,7 @@ function LigneConstruction({
     }
   }
 
-  async function retirer() {
+  async function retirerDuProgramme() {
     if (!modality) return;
     setBusy(true);
     setError(null);
@@ -476,13 +343,15 @@ function LigneConstruction({
   return (
     <li className="border-border rounded-md border">
       <div className="flex flex-wrap items-center gap-2 p-3">
-        <Checkbox
-          checked={presente}
-          disabled={busy}
-          onCheckedChange={(checked) => void basculer(checked === true)}
-          aria-label={`Retenir ${nom} pour le programme`}
-        />
-        <span className={`text-sm ${presente ? "font-medium" : "text-muted-foreground"}`}>{nom}</span>
+        {editable ? (
+          <Checkbox
+            checked={utilisee}
+            disabled={busy}
+            onCheckedChange={(checked) => void basculer(checked === true)}
+            aria-label={`${nom} pour cette promotion`}
+          />
+        ) : null}
+        <span className={`text-sm ${utilisee ? "font-medium" : "text-muted-foreground"}`}>{nom}</span>
         {subtype ? (
           <Badge variant="secondary" className="font-normal">
             {ASSESSMENT_SUBTYPE_LABELS_FR[subtype]}
@@ -498,17 +367,17 @@ function LigneConstruction({
             sur mesure
           </Badge>
         ) : null}
-        {modality && !presente ? (
-          <Badge variant="outline" className="text-muted-foreground font-normal">
-            hors parcours
+        {utilisee && usageSeDate(usage) ? (
+          <Badge variant={dates.length > 0 ? "secondary" : "outline"} className="font-normal">
+            {dates.length === 0 ? "non datée" : `${dates.length} date(s)`}
           </Badge>
         ) : null}
-        {modality && usageSeDate(modality.usage) ? (
-          <Badge variant={datees > 0 ? "secondary" : "outline"} className="font-normal">
-            {datees === 0 ? "non datée" : `${datees} date(s)`}
+        {utilisee && !usageSeDate(usage) ? (
+          <Badge variant="outline" className="font-normal">
+            en continu
           </Badge>
         ) : null}
-        {modality ? (
+        {utilisee && modality ? (
           <Button
             type="button"
             size="sm"
@@ -518,72 +387,99 @@ function LigneConstruction({
             onClick={() => setOpen((v) => !v)}
           >
             {open ? <ChevronDown className="size-4" aria-hidden /> : <ChevronRight className="size-4" aria-hidden />}
-            {open ? "Replier" : "Configurer et dater"}
+            {open ? "Replier" : "Détail"}
           </Button>
         ) : null}
       </div>
 
       {error ? <p className="text-destructive px-3 pb-2 text-xs">{error}</p> : null}
 
-      {modality && open ? (
+      {utilisee && modality && open ? (
         <div className="border-border space-y-4 border-t p-3">
           <div className="space-y-2">
             <div className="flex items-center justify-between gap-2">
-              <p className="text-xs font-medium">Configuration</p>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                className="min-h-9 gap-1"
-                onClick={() => setEditing((v) => !v)}
-              >
-                <Pencil className="size-3.5" aria-hidden />
-                {editing ? "Fermer" : "Modifier"}
-              </Button>
+              <p className="text-xs font-medium">
+                Caractéristiques{" "}
+                <span className="text-muted-foreground font-normal">
+                  — communes à toutes les promotions qui utilisent cette modalité
+                </span>
+              </p>
+              {editable ? (
+                <Button type="button" size="sm" variant="outline" className="min-h-9 gap-1" onClick={() => setEditing((v) => !v)}>
+                  <Pencil className="size-3.5" aria-hidden />
+                  {editing ? "Fermer" : "Modifier"}
+                </Button>
+              ) : null}
             </div>
             {editing ? (
               <AssessmentModalityForm
                 programId={programId}
                 existing={modality}
                 idPrefix={`edit-${modality.id}`}
-                hint="Le format, le lieu, l'usage et les consignes sont modifiés en place. Les épreuves déjà datées suivent."
+                hint="Format, lieu, usage et consignes sont modifiés en place, pour toutes les promotions qui partagent cette modalité."
                 onCreated={() => {
                   setEditing(false);
                   onChanged?.();
                 }}
               />
             ) : (
-              <p className="text-muted-foreground text-xs">
-                {ASSESSMENT_USAGE_LABELS_FR[modality.usage]}
-                {modality.notes ? ` — ${modality.notes}` : ""}
-              </p>
+              <dl className="grid gap-2 text-sm sm:grid-cols-3">
+                <div>
+                  <dt className="text-muted-foreground text-xs">Format</dt>
+                  <dd>{ASSESSMENT_SUBTYPE_LABELS_FR[modality.subtype]}</dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground text-xs">Lieu</dt>
+                  <dd>{ASSESSMENT_MODE_LABELS_FR[modality.mode]}</dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground text-xs">Ce qu'elle engage</dt>
+                  <dd>{ASSESSMENT_USAGE_LABELS_FR[modality.usage]}</dd>
+                </div>
+                {modality.notes ? (
+                  <div className="sm:col-span-3">
+                    <dt className="text-muted-foreground text-xs">Consignes</dt>
+                    <dd>{modality.notes}</dd>
+                  </div>
+                ) : null}
+              </dl>
             )}
           </div>
 
           <div className="space-y-2">
-            <p className="text-xs font-medium">Épreuves datées</p>
-            <EpreuvesDeLaModalite
-              modality={modality}
-              sessions={sessions}
-              cohorts={cohorts}
-              cohortFilter={cohortFilter}
-              editable
-              onChanged={onChanged}
-            />
+            <p className="text-xs font-medium">
+              Temporalité <span className="text-muted-foreground font-normal">— pour cette promotion</span>
+            </p>
+            {!usageSeDate(modality.usage) ? (
+              <p className="text-muted-foreground text-xs">
+                En continu, du début à la fin du stage : une auto-évaluation ne se date pas.
+              </p>
+            ) : (
+              <>
+                {dates.length === 0 ? (
+                  <p className="text-muted-foreground text-xs">Aucune date posée pour cette promotion.</p>
+                ) : (
+                  <ul className="space-y-1.5">
+                    {dates.map((s) => (
+                      <SessionRow key={s.id} session={s} editable={editable} onChanged={onChanged} />
+                    ))}
+                  </ul>
+                )}
+                {editable ? <AjouterUneDate modality={modality} cohortId={cohortId} onChanged={onChanged} /> : null}
+              </>
+            )}
           </div>
 
-          <div className="flex justify-end">
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              className="min-h-9"
-              disabled={busy}
-              onClick={() => void retirer()}
-            >
-              Retirer du programme
-            </Button>
-          </div>
+          {editable ? (
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <span className="text-muted-foreground text-xs">
+                Décocher la case retire la modalité de cette promotion seulement.
+              </span>
+              <Button type="button" size="sm" variant="outline" className="min-h-9" disabled={busy} onClick={() => void retirerDuProgramme()}>
+                Retirer du programme entier
+              </Button>
+            </div>
+          ) : null}
         </div>
       ) : null}
     </li>
@@ -598,158 +494,137 @@ export function AssessmentModalitySection({
   programId,
   modalities,
   sessions,
+  links,
   cohorts,
   onChanged,
   editable = true,
-  defaultMode = "lecture",
-  cohortFilter: cohortFilterImposed,
+  cohortFilter: imposed,
   children,
 }: {
   readonly programId: ProgramId;
   readonly modalities: readonly AssessmentModality[];
   readonly sessions: readonly AssessmentSession[];
+  readonly links: readonly CohortAssessmentLink[];
   readonly cohorts: readonly Cohort[];
-  /** Relit modalités et épreuves après toute écriture. */
+  /** Relit modalités, liens et épreuves après toute écriture. */
   readonly onChanged?: (() => void) | undefined;
-  /** `false` dans le pilotage : lecture seule, pas de bascule. */
+  /** `false` dans le pilotage : lecture seule. */
   readonly editable?: boolean;
-  /** Le Concepteur part en construction ; l'onglet part en lecture. */
-  readonly defaultMode?: Mode;
-  /** Le pilotage impose sa promotion ; sinon l'utilisateur choisit en tête. */
+  /** Le pilotage impose sa promotion. */
   readonly cohortFilter?: string | undefined;
-  /** L'import assisté, rendu par l'appelant, visible en construction. */
+  /** L'import assisté, rendu par l'appelant. */
   readonly children?: ReactNode;
 }) {
-  const [mode, setMode] = useState<Mode>(editable ? defaultMode : "lecture");
-  const [cohortChosen, setCohortChosen] = useState<string | null>(null);
-  const cohortFilter = cohortFilterImposed ?? cohortChosen;
+  const dataAccess = useDataAccess();
+  const [chosen, setChosen] = useState<string | null>(null);
+  // Sans choix explicite, la première promotion : l'écran n'arrive jamais vide.
+  const cohortId = imposed ?? chosen ?? cohorts[0]?.id ?? null;
+  const cohort = cohorts.find((c) => c.id === cohortId);
 
   const rows = useMemo(() => catalogueRows(modalities), [modalities]);
-  const retenues = modalities.filter((m) => m.retainedAt !== undefined);
+  const utilisees = useMemo(
+    () => new Set(links.filter((l) => l.cohortId === cohortId).map((l) => l.modalityId)),
+    [links, cohortId],
+  );
+  const estUtilisee = (row: CatalogueRow) => row.modality !== undefined && utilisees.has(row.modality.id);
+
+  const datesDeLaPromo = sessions.filter((s) => s.cohortId === cohortId);
+  const compter = (usage: AssessmentUsage) =>
+    rows.filter((r) => estUtilisee(r) && r.usage === usage).length;
 
   return (
     <div className="space-y-6">
       <PromotionsEnTete
-        cohorts={cohortFilterImposed ? cohorts.filter((c) => c.id === cohortFilterImposed) : cohorts}
+        cohorts={imposed ? cohorts.filter((c) => c.id === imposed) : cohorts}
+        links={links}
         sessions={sessions}
-        selected={cohortFilter}
-        onSelect={cohortFilterImposed ? () => undefined : setCohortChosen}
+        selected={cohortId}
+        onSelect={setChosen}
+        imposed={imposed !== undefined}
       />
 
-      {editable ? (
-        <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Mode">
-          <Button
-            type="button"
-            size="sm"
-            variant={mode === "lecture" ? "default" : "outline"}
-            className="min-h-10"
-            aria-pressed={mode === "lecture"}
-            onClick={() => setMode("lecture")}
-          >
-            Lecture
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant={mode === "construction" ? "default" : "outline"}
-            className="min-h-10"
-            aria-pressed={mode === "construction"}
-            onClick={() => setMode("construction")}
-          >
-            Construction
-          </Button>
-          <span className="text-muted-foreground text-xs">
-            {mode === "lecture"
-              ? "Ce qui est retenu, et quand."
-              : "Tout ce qui est possible : cochez, configurez, datez."}
-          </span>
-        </div>
-      ) : null}
-
-      <PanelCard
-        title={mode === "lecture" ? "Ce que l'étudiant rencontrera" : "Toutes les modalités possibles"}
-        description={
-          mode === "lecture"
-            ? "Les modalités retenues, rangées par ce qu'elles engagent, avec leurs épreuves datées."
-            : "Le catalogue en entier, présent ou pas, plus ce que le programme a inventé. Une case cochée crée ou retient ; une ligne présente se déplie pour être configurée, datée par promotion, ou retirée."
-        }
-      >
-        {mode === "lecture" && retenues.length === 0 ? (
-          <EmptyState>
-            Aucune modalité retenue pour ce programme. Passez en construction pour en choisir.
-          </EmptyState>
-        ) : (
-          <div className="space-y-5">
-            {ORDRE_DES_USAGES.map((usage) => {
-              const lignes =
-                mode === "lecture"
-                  ? retenues.filter((m) => m.usage === usage)
-                  : rows.filter((r) => r.usage === usage);
-              return (
-                <section key={usage} className="space-y-2">
-                  <div className="flex flex-wrap items-baseline gap-2">
-                    <h3 className="text-sm font-medium">{ASSESSMENT_USAGE_LABELS_FR[usage]}</h3>
-                    <span className="text-muted-foreground text-xs">
-                      {lignes.length === 0 ? "aucune" : `${lignes.length}`} · {CE_QUE_L_USAGE_ENGAGE[usage]}
-                    </span>
-                  </div>
-                  {lignes.length === 0 ? (
-                    <p className="text-muted-foreground border-border rounded-md border border-dashed px-3 py-2.5 text-xs">
-                      Rien de prévu à ce titre pour ce programme.
-                    </p>
-                  ) : mode === "lecture" ? (
-                    <ul className="grid gap-3 lg:grid-cols-2">
-                      {(lignes as readonly AssessmentModality[]).map((m) => (
-                        <CarteLecture
-                          key={m.id}
-                          modality={m}
-                          sessions={sessions}
-                          cohorts={cohorts}
-                          cohortFilter={cohortFilter}
-                        />
-                      ))}
-                    </ul>
-                  ) : (
-                    <ul className="space-y-2">
-                      {(lignes as readonly CatalogueRow[]).map((r) => (
-                        <LigneConstruction
-                          key={r.id}
-                          programId={programId}
-                          row={r}
-                          sessions={sessions}
-                          cohorts={cohorts}
-                          cohortFilter={cohortFilter}
-                          onChanged={onChanged}
-                        />
-                      ))}
-                    </ul>
-                  )}
-                </section>
-              );
-            })}
+      {cohort ? (
+        <>
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <StatCard label="Auto-évaluations" value={compter("self_assessment")} />
+            <StatCard label="Formatives" value={compter("formative")} />
+            <StatCard label="Validantes" value={compter("validation_exam")} />
+            <StatCard label="Dates posées" value={datesDeLaPromo.length} />
           </div>
-        )}
-      </PanelCard>
 
-      {mode === "construction" ? (
-        <PanelCard
-          title="Créer une modalité sur mesure"
-          description="Pour ce que le catalogue ne propose pas. Elle rejoint la liste ci-dessus dans son groupe, prête à être datée."
-        >
-          <AssessmentModalityForm
-            programId={programId}
-            hint="La modalité créée apparaît immédiatement dans la liste, dans le Concepteur et dans le pilotage."
-            onCreated={() => onChanged?.()}
-          />
-        </PanelCard>
+          <PanelCard
+            title={`Évaluations de ${cohort.label}`}
+            description={
+              editable
+                ? "Tout ce qui est possible, par ce que l'épreuve engage. Cochez pour que cette promotion l'utilise — la modalité est créée si besoin. Dépliez pour ses caractéristiques et ses dates."
+                : "Ce que cette promotion rencontrera, et quand."
+            }
+          >
+            <div className="space-y-5">
+              {ORDRE_DES_USAGES.map((usage) => {
+                const lignes = rows
+                  .filter((r) => r.usage === usage)
+                  .filter((r) => editable || estUtilisee(r));
+                return (
+                  <section key={usage} className="space-y-2">
+                    <div className="flex flex-wrap items-baseline gap-2">
+                      <h3 className="text-sm font-medium">{ASSESSMENT_USAGE_LABELS_FR[usage]}</h3>
+                      <span className="text-muted-foreground text-xs">
+                        {compter(usage) === 0 ? "aucune utilisée" : `${compter(usage)} utilisée(s)`} ·{" "}
+                        {CE_QUE_L_USAGE_ENGAGE[usage]}
+                      </span>
+                    </div>
+                    {lignes.length === 0 ? (
+                      <p className="text-muted-foreground border-border rounded-md border border-dashed px-3 py-2.5 text-xs">
+                        Rien de prévu à ce titre pour cette promotion.
+                      </p>
+                    ) : (
+                      <ul className="space-y-2">
+                        {lignes.map((r) => (
+                          <LigneModalite
+                            key={r.id}
+                            programId={programId}
+                            cohortId={cohort.id}
+                            row={r}
+                            utilisee={estUtilisee(r)}
+                            sessions={sessions}
+                            editable={editable}
+                            onChanged={onChanged}
+                          />
+                        ))}
+                      </ul>
+                    )}
+                  </section>
+                );
+              })}
+            </div>
+          </PanelCard>
+
+          {editable ? (
+            <PanelCard
+              title="Créer une modalité sur mesure"
+              description={`Pour ce que le catalogue ne propose pas. Elle est créée pour le programme et aussitôt utilisée par ${cohort.label}.`}
+            >
+              <AssessmentModalityForm
+                programId={programId}
+                hint="La modalité rejoint la liste ci-dessus dans son groupe, cochée pour cette promotion, prête à être datée."
+                onCreated={(created) => {
+                  void dataAccess.assessments
+                    .setCohortAssessmentModality(cohort.id, created.id, true)
+                    .then(() => onChanged?.());
+                }}
+              />
+            </PanelCard>
+          ) : null}
+
+          {editable ? children : null}
+        </>
       ) : null}
-
-      {mode === "construction" ? children : null}
 
       <p className="text-muted-foreground text-xs">
-        Ce que l'étudiant voit : rien de tout ceci, pour l'instant. La lecture du référentiel et
-        des épreuves est réservée à l'équipe pédagogique ; son onglet « Mes évaluations » ne
-        présente encore que les ECOS virtuels. C'est le lot suivant.
+        Ce que l'étudiant voit : rien de tout ceci, pour l'instant. La lecture est réservée à
+        l'équipe pédagogique ; son onglet « Mes évaluations » ne présente encore que les ECOS
+        virtuels. C'est le lot suivant.
       </p>
     </div>
   );

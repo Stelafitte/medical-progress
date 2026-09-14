@@ -241,3 +241,14 @@ export function splitSessions(
 export function usageSeDate(usage: AssessmentUsage): boolean {
   return usage !== "self_assessment";
 }
+
+/**
+ * « Cette promotion utilise cette modalité. » Table
+ * `cohort_assessment_modalities` (14/09, tard). La modalité est configurée une
+ * fois pour le programme ; chaque promotion décide de la servir, et quand.
+ */
+export interface CohortAssessmentLink {
+  readonly programId: ProgramId;
+  readonly cohortId: string;
+  readonly modalityId: string;
+}

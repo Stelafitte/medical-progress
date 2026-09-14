@@ -36,6 +36,7 @@ import type {
   AssessmentSession,
   AssessmentSubtype,
   AssessmentUsage,
+  CohortAssessmentLink,
 } from "@/domain/assessmentModality";
 import type { LearnerNarratedDeck, MediaResource } from "@/domain/mediaLibrary";
 import type { ContentAiProfile, LearnerAiResource, ProgramAiPolicy } from "@/domain/contentAi";
@@ -466,6 +467,17 @@ export interface AssessmentRepository {
   createAssessmentSession(input: CreateAssessmentSessionInput): Promise<AssessmentSession>;
   updateAssessmentSession(input: UpdateAssessmentSessionInput): Promise<AssessmentSession>;
   deleteAssessmentSession(assessmentSessionId: string): Promise<void>;
+  /** Quelles promotions utilisent quelles modalités, pour tout le programme. */
+  listCohortAssessmentLinks(programId: ProgramId): Promise<readonly CohortAssessmentLink[]>;
+  /**
+   * Active ou retire une modalité pour une promotion. Retirer supprime aussi
+   * ses épreuves datées pour cette promotion (règle serveur).
+   */
+  setCohortAssessmentModality(
+    cohortId: string,
+    assessmentModalityId: string,
+    enabled: boolean,
+  ): Promise<void>;
 }
 
 export interface PlacementRepository {

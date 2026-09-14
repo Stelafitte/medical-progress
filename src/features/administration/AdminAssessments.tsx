@@ -8,11 +8,10 @@
  */
 import { SectionHeading } from "@/components/section-heading";
 import { Skeleton } from "@/components/ui/skeleton";
-import { PanelCard, ScopeNotice, StatCard } from "@/features/professional/mock-ui";
+import { PanelCard, ScopeNotice } from "@/features/professional/mock-ui";
 import { CorpusImport } from "@/features/administration/CorpusImport";
 import { AssessmentModalitySection } from "@/features/administration/AssessmentModalitySection";
 import { useProgramAdmin } from "@/features/administration/useProgramAdmin";
-import type { AssessmentUsage } from "@/domain/assessmentModality";
 
 export function AdminAssessments() {
   const { data, isPending, refetch } = useProgramAdmin();
@@ -20,39 +19,27 @@ export function AdminAssessments() {
   if (isPending || !data || !data.program) return <Skeleton className="h-80 w-full" />;
 
   const program = data.program;
-  const modalities = data.assessmentModalities.filter((m) => m.retainedAt !== undefined);
-  const compter = (usage: AssessmentUsage) => modalities.filter((m) => m.usage === usage).length;
 
   return (
     <div className="space-y-6">
       <SectionHeading
         title="Évaluations"
         level={1}
-        description={`${program.name} (${program.code}) — ce que l'étudiant rencontrera, sous quel format, en présentiel ou en ligne, et ce que chaque épreuve engage.`}
+        description={`${program.name} (${program.code}) — ce que chaque promotion rencontrera, sous quel format, où, ce que ça engage, et quand.`}
       />
 
       <ScopeNotice>
-        Une modalité décrit le <strong>format</strong> d'une épreuve et vaut pour{" "}
-        <strong>toutes les promotions</strong> ; une épreuve datée la pose pour{" "}
-        <strong>une promotion, à une date</strong>. Lecture pour voir, construction pour choisir,
-        configurer et dater. Le Concepteur de programme ouvre le même atelier.
+        Chaque <strong>promotion</strong> a son contenu d'évaluation. Une modalité est configurée
+        une fois pour le programme — format, lieu, ce qu'elle engage, consignes — et chaque
+        promotion choisit de l'utiliser, et quand. Choisissez une promotion : tout ce qui suit
+        est à elle. Le Concepteur de programme ouvre le même atelier.
       </ScopeNotice>
-
-      {/*
-        Les compteurs disent ce que le concepteur cherche : l'équilibre entre ce
-        que l'étudiant fait seul, ce qu'on lui demande et ce qui l'engage.
-      */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard label="Auto-évaluations" value={compter("self_assessment")} />
-        <StatCard label="Formatives" value={compter("formative")} />
-        <StatCard label="Validantes" value={compter("validation_exam")} />
-        <StatCard label="Épreuves datées" value={data.assessmentSessions.length} />
-      </div>
 
       <AssessmentModalitySection
         programId={program.id}
         modalities={data.assessmentModalities}
         sessions={data.assessmentSessions}
+        links={data.cohortAssessmentLinks}
         cohorts={data.cohorts}
         onChanged={() => void refetch()}
       >

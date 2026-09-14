@@ -593,8 +593,8 @@ export function AdminProgramDesigner() {
           programId={programId}
           modalities={data.assessmentModalities}
           sessions={data.assessmentSessions}
+          links={data.cohortAssessmentLinks}
           cohorts={data.cohorts}
-          defaultMode="construction"
           onChanged={() => {
             void refetch();
             patch("assessments", { implemented: true });
