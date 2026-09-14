@@ -53,6 +53,7 @@ import { OutcomeRow } from "@/features/passport/OutcomeRow";
 import { OutcomeScheduleSection } from "@/features/passport/OutcomeScheduleSection";
 import { ResourceMediaPlayer } from "@/features/resources/ResourceMediaPlayer";
 import { ChapterTextPanel } from "@/features/resources/ChapterTextPanel";
+import { OutcomeSectionsPanel } from "@/features/resources/OutcomeSectionsPanel";
 import { useCompetenceJournal } from "@/application/competenceJournalStore";
 import {
   EXPERIENCE_NOTE_MAX,
@@ -199,6 +200,16 @@ function CompetenceRow({
         {item.outcome.description ? (
           <p className="text-sm text-muted-foreground">{item.outcome.description}</p>
         ) : null}
+
+        {/*
+          LE CONTENU DE LA COMPETENCE, LU PAR L'ETUDIANT (14/09).
+          L'ecran affichait l'intitule, la cible et les preuves — jamais ce
+          qu'il fallait savoir faire. Le meme composant que les connaissances
+          est utilise ici : `read_outcome_sections` rend le passage PROPRE a
+          l'acquis, et `sectionsPropres` ecarte le repli chapitre. Quand il n'y
+          a pas de texte, le composant le DIT — un vide credible serait pire.
+        */}
+        <OutcomeSectionsPanel outcomeId={item.outcome.id} />
 
         <Progress
           value={planItem?.progressPercent ?? (item.meetsTarget ? 100 : 0)}
