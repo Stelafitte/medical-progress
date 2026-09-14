@@ -50,6 +50,11 @@ import { ProgramAssociationList } from "@/features/administration/ProgramAssocia
 import { CohortSealPanel } from "@/features/administration/CohortSealPanel";
 import { ProgramMilestonePlanner } from "@/features/administration/ProgramMilestonePlanner";
 import { outcomeAssociationItems } from "@/domain/outcomeAssociation";
+import {
+  ASSESSMENT_MODE_LABELS_FR,
+  ASSESSMENT_SUBTYPE_LABELS_FR,
+  ASSESSMENT_USAGE_LABELS_FR,
+} from "@/domain/assessmentModality";
 import { PlacementCreationForm } from "@/features/administration/PlacementCreationForm";
 import { StageEnPlace } from "@/features/administration/StageEnPlace";
 import { ConceptionRecap } from "@/features/administration/ConceptionRecap";
@@ -579,9 +584,25 @@ export function AdminProgramDesigner() {
       return (
         <ProgramAssociationList
           title="Liste des modalités d'évaluation déjà associées à ce programme"
+          /*
+           * REPLIÉE PAR USAGE, ET LE FORMAT DANS L'INTITULÉ (14/09).
+           *
+           * La liste ne rendait que des noms. « QCM », « Journal de stage »,
+           * « ECOS simulé » ne disent ni sous quelle forme l'épreuve se passe
+           * ni si elle valide quoi que ce soit — alors que la base porte les
+           * deux depuis le 27/08 et que c'est exactement la question que le
+           * concepteur se pose en ouvrant cet écran.
+           *
+           * Le format rejoint l'intitulé plutôt que le badge `rank` : ce badge
+           * commande un filtre libellé « rang », qui ne voudrait rien dire ici.
+           */
           items={data.assessmentModalities.map((modality) => ({
             id: modality.id,
-            label: modality.name,
+            label: `${modality.name} — ${ASSESSMENT_SUBTYPE_LABELS_FR[modality.subtype]}, ${ASSESSMENT_MODE_LABELS_FR[
+              modality.mode
+            ].toLowerCase()}`,
+            groupLabel: ASSESSMENT_USAGE_LABELS_FR[modality.usage],
+            retained: modality.retainedAt !== undefined,
           }))}
           busyIds={archivingIds}
           removeLabel="Retirer du programme"
@@ -590,6 +611,17 @@ export function AdminProgramDesigner() {
               dataAccess.assessments.archiveAssessmentModality(id),
             )
           }
+          /*
+           * Même parité que les acquis : trancher quelles modalités entrent au
+           * parcours VAUT implémentation de la ressource, dans les deux sens.
+           * Sans ça, l'étape 1 réclamait une modalité de plus à un programme
+           * qui en avait déjà six.
+           */
+          onSetRetained={async (ids, retained) => {
+            await dataAccess.assessments.setAssessmentModalitiesRetained(ids, retained);
+            await refetch();
+            patch("assessments", { implemented: true });
+          }}
         />
       );
     }

@@ -416,6 +416,19 @@ export interface AssessmentRepository {
    * (archivage réversible). Autorisation vérifiée côté serveur.
    */
   archiveAssessmentModality(assessmentModalityId: string): Promise<void>;
+  /**
+   * Bascule « retenue au parcours » sur un LOT de modalités.
+   *
+   * Un lot plutôt qu'un appel par ligne, pour la raison qui vaut déjà pour
+   * `setOutcomesRetained` : le Concepteur enregistre l'état de toutes les
+   * cases d'une liste en une fois, et une bascule partielle laisserait
+   * l'écran et la base en désaccord. Autorisation vérifiée côté serveur,
+   * programme par programme.
+   */
+  setAssessmentModalitiesRetained(
+    assessmentModalityIds: readonly string[],
+    retained: boolean,
+  ): Promise<void>;
 }
 
 export interface PlacementRepository {

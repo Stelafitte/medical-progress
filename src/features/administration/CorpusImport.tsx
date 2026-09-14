@@ -40,8 +40,7 @@ import type { ProgramAiAnalysisResult, ResourceVisibility } from "@/application/
 import {
   ASSESSMENT_SUBTYPE_LABELS_FR,
   ASSESSMENT_USAGE_LABELS_FR,
-  SUBTYPES_BY_MODE,
-  type AssessmentMode,
+  MODE_PRESUME_DU_FORMAT,
   type AssessmentSubtype,
   type AssessmentUsage,
 } from "@/domain/assessmentModality";
@@ -76,17 +75,6 @@ const TARGET_LABELS: Record<CorpusTarget, string> = {
   assessments: "modalité(s) d'évaluation",
 };
 
-/** Dérivé de SUBTYPES_BY_MODE (source unique) plutôt que dupliqué : le mode
- * est mécanique une fois le sous-type connu. */
-const MODE_BY_SUBTYPE: Record<AssessmentSubtype, AssessmentMode> = (() => {
-  const map = {} as Record<AssessmentSubtype, AssessmentMode>;
-  (Object.keys(SUBTYPES_BY_MODE) as AssessmentMode[]).forEach((mode) => {
-    SUBTYPES_BY_MODE[mode].forEach((subtype) => {
-      map[subtype] = mode;
-    });
-  });
-  return map;
-})();
 
 const SELECT_CLASS = "border-input bg-background min-h-11 w-full rounded-md border px-3 text-sm";
 
@@ -677,10 +665,12 @@ export function CorpusImport({
             await dataAccess.assessments.createAssessmentModality({
               programId,
               name,
-              // Le mode est dérivé du sous-type, jamais saisi : la contrainte
-              // SQL `assessment_modalities_subtype_matches_mode` refuserait
-              // une association incohérente.
-              mode: MODE_BY_SUBTYPE[suggestion.subtype],
+              // Le mode n'est pas saisi ici : l'analyse d'un document ne dit
+              // pas si l'épreuve se passe sur table ou sur écran. On applique
+              // la présomption du format (voir MODE_PRESUME_DU_FORMAT), qui
+              // rend pour ces sept formats ce que la contrainte SQL imposait
+              // avant le 14/09.
+              mode: MODE_PRESUME_DU_FORMAT[suggestion.subtype],
               subtype: suggestion.subtype,
               usage: suggestion.usage,
               notes: suggestion.notes.trim(),

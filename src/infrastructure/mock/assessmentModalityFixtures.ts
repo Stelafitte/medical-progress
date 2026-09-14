@@ -16,6 +16,7 @@ export function modalityFixturesFor(programId: ProgramId): readonly AssessmentMo
       mode: "online",
       subtype: "qcm",
       usage: "self_assessment",
+      retainedAt: "2026-09-01T08:00:00.000Z",
       notes: "Ouvert en continu, corrigé automatiquement.",
     },
     {
@@ -27,6 +28,7 @@ export function modalityFixturesFor(programId: ProgramId): readonly AssessmentMo
       mode: "in_person",
       subtype: "written",
       usage: "validation_exam",
+      retainedAt: "2026-09-04T08:00:00.000Z",
     },
     {
       id: `modality-${programId}-3`,
@@ -37,6 +39,7 @@ export function modalityFixturesFor(programId: ProgramId): readonly AssessmentMo
       mode: "online",
       subtype: "ai_oral",
       usage: "formative",
+      retainedAt: "2026-10-12T08:00:00.000Z",
       notes: "Restitution guidée, jamais validante à elle seule.",
     },
   ];

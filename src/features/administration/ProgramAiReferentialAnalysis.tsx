@@ -19,8 +19,7 @@ import { useDataAccess } from "@/application/session";
 import {
   ASSESSMENT_SUBTYPE_LABELS_FR,
   ASSESSMENT_USAGE_LABELS_FR,
-  SUBTYPES_BY_MODE,
-  type AssessmentMode,
+  MODE_PRESUME_DU_FORMAT,
   type AssessmentSubtype,
   type AssessmentUsage,
 } from "@/domain/assessmentModality";
@@ -37,16 +36,6 @@ const OUTCOME_NATURE_LABELS_FR: Record<OutcomeNature, string> = {
   ...COMPETENCE_NATURE_LABELS_FR,
 };
 
-/** Dérivé de SUBTYPES_BY_MODE (source unique) plutôt que dupliqué. */
-const MODE_BY_SUBTYPE: Record<AssessmentSubtype, AssessmentMode> = (() => {
-  const map = {} as Record<AssessmentSubtype, AssessmentMode>;
-  (Object.keys(SUBTYPES_BY_MODE) as AssessmentMode[]).forEach((mode) => {
-    SUBTYPES_BY_MODE[mode].forEach((subtype) => {
-      map[subtype] = mode;
-    });
-  });
-  return map;
-})();
 
 function slugifyDomain(domain: string): string {
   const cleaned = domain
@@ -264,7 +253,8 @@ export function ProgramAiReferentialAnalysis({
         dataAccess.assessments.createAssessmentModality({
           programId,
           name: row.name.trim(),
-          mode: MODE_BY_SUBTYPE[row.subtype],
+          // Présomption du format, pas déduction : voir MODE_PRESUME_DU_FORMAT.
+          mode: MODE_PRESUME_DU_FORMAT[row.subtype],
           subtype: row.subtype,
           usage: row.usage,
           notes: row.notes.trim(),

@@ -548,6 +548,7 @@ export const mockDataAccess: DataAccess = {
           mode: input.mode,
           subtype: input.subtype,
           usage: input.usage,
+          retainedAt: now,
           ...(notes.length > 0 ? { notes } : {}),
         };
         modalities = [...modalities, created];
@@ -555,6 +556,15 @@ export const mockDataAccess: DataAccess = {
       },
       archiveAssessmentModality: (assessmentModalityId) => {
         modalities = modalities.filter((m) => m.id !== assessmentModalityId);
+        return ok(undefined);
+      },
+      setAssessmentModalitiesRetained: (assessmentModalityIds, retained) => {
+        const cibles = new Set(assessmentModalityIds);
+        modalities = modalities.map((m) => {
+          if (!cibles.has(m.id)) return m;
+          const { retainedAt: _ancien, ...reste } = m;
+          return retained ? { ...reste, retainedAt: new Date().toISOString() } : reste;
+        });
         return ok(undefined);
       },
     };

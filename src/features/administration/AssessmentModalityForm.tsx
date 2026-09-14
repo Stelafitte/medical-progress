@@ -13,7 +13,7 @@ import {
   ASSESSMENT_USAGE_LABELS_FR,
   EMPTY_NEW_MODALITY_INPUT,
   NEW_MODALITY_ISSUE_LABELS_FR,
-  SUBTYPES_BY_MODE,
+  SUBTYPE_GROUPS_FR,
   validateNewModality,
   type AssessmentMode,
   type AssessmentModality,
@@ -52,10 +52,15 @@ export function AssessmentModalityForm({
     setCreated(null);
   };
 
-  const changeMode = (mode: AssessmentMode) => {
-    const first = SUBTYPES_BY_MODE[mode][0] as AssessmentSubtype;
-    patch({ mode, subtype: first });
-  };
+  /*
+   * Changer le mode NE TOUCHE PLUS au sous-type (14/09).
+   *
+   * Tant que la base croisait les deux, passer en présentiel devait
+   * réécrire le format, sans quoi l'insertion partait en erreur. La
+   * contrainte est tombée : un ECOS reste un ECOS qu'il se passe au lit du
+   * malade ou devant un écran, et reposer le format sous les doigts du
+   * concepteur serait devenu une perte de saisie.
+   */
 
   async function submit() {
     if (issues.length > 0) {
@@ -106,7 +111,7 @@ export function AssessmentModalityForm({
           <select
             id={`${idPrefix}-mode`}
             value={input.mode}
-            onChange={(e) => changeMode(e.target.value as AssessmentMode)}
+            onChange={(e) => patch({ mode: e.target.value as AssessmentMode })}
             className={SELECT_CLASS}
           >
             {(Object.keys(ASSESSMENT_MODE_LABELS_FR) as AssessmentMode[]).map((mode) => (
@@ -124,10 +129,19 @@ export function AssessmentModalityForm({
             onChange={(e) => patch({ subtype: e.target.value as AssessmentSubtype })}
             className={SELECT_CLASS}
           >
-            {SUBTYPES_BY_MODE[input.mode].map((subtype) => (
-              <option key={subtype} value={subtype}>
-                {ASSESSMENT_SUBTYPE_LABELS_FR[subtype]}
-              </option>
+            {/*
+              Groupé, pas filtré : les dix-huit formats sont TOUS proposés,
+              quel que soit le mode. Les groupes ne sont qu'un ordre de
+              lecture — voir SUBTYPE_GROUPS_FR.
+            */}
+            {SUBTYPE_GROUPS_FR.map((group) => (
+              <optgroup key={group.label} label={group.label}>
+                {group.subtypes.map((subtype) => (
+                  <option key={subtype} value={subtype}>
+                    {ASSESSMENT_SUBTYPE_LABELS_FR[subtype]}
+                  </option>
+                ))}
+              </optgroup>
             ))}
           </select>
         </div>
@@ -147,9 +161,16 @@ export function AssessmentModalityForm({
           </select>
         </div>
         <div className="space-y-1.5">
-          <Label>Dates</Label>
+          <Label>Date de passage</Label>
+          {/*
+            Dire ce que l'écran ne fait pas. « Dates » laissait croire à un
+            champ désactivé ; il n'y a pas de champ du tout — une modalité dit
+            COMMENT on évalue, jamais QUAND. Programmer une épreuve pour une
+            promotion demande une table de sessions qui n'existe pas encore.
+          */}
           <p className="text-muted-foreground border-border rounded-md border px-3 py-2.5 text-xs">
-            La date de création et la date de mise à jour sont enregistrées automatiquement.
+            Pas programmée ici : une modalité décrit le format, pas la séance. Seules la
+            création et la mise à jour sont horodatées.
           </p>
         </div>
         <div className="space-y-1.5 sm:col-span-2">

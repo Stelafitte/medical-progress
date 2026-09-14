@@ -802,6 +802,7 @@ type AssessmentModalityRow = {
   notes: string | null;
   created_at: string;
   updated_at: string;
+  retained_at: string | null;
 };
 
 export function mapAssessmentModality(row: AssessmentModalityRow): AssessmentModality {
@@ -815,6 +816,7 @@ export function mapAssessmentModality(row: AssessmentModalityRow): AssessmentMod
     subtype: row.subtype,
     usage: row.usage,
     ...(row.notes ? { notes: row.notes } : {}),
+    ...(row.retained_at ? { retainedAt: row.retained_at } : {}),
   };
 }
 
@@ -1091,7 +1093,7 @@ const programColumns =
   "id,code,name,kind,institution,annual_learner_estimate,placements_enabled,simulation_enabled,audits_enabled,pre_post_tests_enabled,sessions_enabled,dpc_enabled,learner_plan_shifts_enabled,target_mastery,locale,design_draft,created_at,updated_at";
 
 const assessmentModalityColumns =
-  "id,program_id,name,mode,subtype,usage,notes,created_at,updated_at";
+  "id,program_id,name,mode,subtype,usage,notes,created_at,updated_at,retained_at";
 
 const outcomeColumns =
   "id,program_id,curriculum_version_id,code,label,description,nature,domain,target_mastery,retained_at,theme_id,position,knowledge_rank,created_at";
@@ -2043,6 +2045,22 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
       async archiveAssessmentModality(assessmentModalityId: string) {
         const { error } = await client.rpc("archive_assessment_modality", {
           p_modality_id: assessmentModalityId,
+        });
+        assertNoSupabaseError(error);
+      },
+      /**
+       * RPC `SECURITY DEFINER`, calquée sur `set_outcomes_retained` : voir
+       * supabase/migrations/20260914090000_assessment_modalities_vocabulaire.sql.
+       * Un lot vide ne part pas au réseau — le serveur ne ferait rien non plus.
+       */
+      async setAssessmentModalitiesRetained(
+        assessmentModalityIds: readonly string[],
+        retained: boolean,
+      ) {
+        if (assessmentModalityIds.length === 0) return;
+        const { error } = await client.rpc("set_assessment_modalities_retained", {
+          p_modality_ids: assessmentModalityIds,
+          p_retained: retained,
         });
         assertNoSupabaseError(error);
       },
