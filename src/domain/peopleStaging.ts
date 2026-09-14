@@ -7,7 +7,7 @@
  * docs/database/draft/004_people_pre_account.sql et
  * docs/database/draft/005_people_activation_link.sql pour le schéma complet.
  */
-import type { CohortId, IsoDateTime, PersonId, ProgramId } from "@/domain/types";
+import type { CohortId, IsoDateTime, PersonId, PlacementId, ProgramId } from "@/domain/types";
 
 export type PendingPersonId = string;
 
@@ -41,6 +41,8 @@ export interface PendingPerson {
    * et rattachee a TOUS ses groupes, sans geste d administration.
    */
   readonly intendedRole?: "learner" | "placement_supervisor";
+  /** Le terrain dont elle sera encadrante. Renseigne avec `intendedRole`. */
+  readonly intendedPlacementId?: PlacementId;
   readonly status: PendingPersonStatus;
   readonly invitedAt?: IsoDateTime;
   readonly cancelledAt?: IsoDateTime;
@@ -56,6 +58,39 @@ export interface CreatePendingPersonInput {
   readonly loginEmail: string;
   readonly institutionalId?: string;
   readonly intendedCohortId?: CohortId;
+  /**
+   * CE QUE LA PERSONNE DEVIENDRA A L ACTIVATION de son compte.
+   *
+   * ABSENT JUSQU AU 14/09, ET C ETAIT UN DEFAUT : la base porte la colonne
+   * depuis la migration 20260910200000 et la synchronisation UMCV la
+   * renseigne, mais la saisie A LA MAIN ne l ecrivait pas. Une personne
+   * ajoutee depuis un ecran activait donc son compte SANS AUCUN ROLE --
+   * exactement le blocage que cette migration avait ferme pour la synchro.
+   *
+   * Absent = ancien comportement (apprenant, si une promotion est visee),
+   * pour ne rien changer aux appelants qui ne le passent pas.
+   */
+  readonly intendedRole?: "learner" | "placement_supervisor";
+  /** Le terrain qu un encadrant supervisera. Exige par la contrainte. */
+  readonly intendedPlacementId?: PlacementId;
+}
+
+/**
+ * MIROIR APPLICATIF DE LA CONTRAINTE `people_intended_role_shape` (base).
+ *
+ * Une intention est soit apprenant -- et alors elle vise une promotion --
+ * soit encadrant, et alors elle vise un terrain. La base le refuse deja ;
+ * elle le refuse par un message de contrainte que personne ne peut lire.
+ * Ici on le dit en francais, AVANT le trajet reseau.
+ */
+export function roleIntentIssue(input: CreatePendingPersonInput): string | undefined {
+  if (input.intendedRole === "learner" && !input.intendedCohortId) {
+    return "Un apprenant doit viser une promotion.";
+  }
+  if (input.intendedRole === "placement_supervisor" && !input.intendedPlacementId) {
+    return "Un encadrant doit viser un terrain de stage.";
+  }
+  return undefined;
 }
 
 export interface SendInvitationOutcome {
@@ -126,6 +161,26 @@ export function normalizeLoginEmail(value: string): string {
   return value.trim().toLowerCase();
 }
 
+/** La forme exigee d une adresse de connexion, une seule fois pour tout le module. */
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/**
+ * Ce qui empeche de CREER une ligne du vivier. Liste vide = creable.
+ *
+ * La revision avait son controle depuis le 03/09, la creation n en avait
+ * aucun : une adresse malformee partait jusqu a la base, qui la refusait par
+ * une contrainte illisible a l ecran.
+ */
+export function validatePendingPersonCreation(
+  input: CreatePendingPersonInput,
+): readonly PendingPersonIssue[] {
+  const issues: PendingPersonIssue[] = [];
+  if (input.firstName.trim() === "") issues.push("prenom_manquant");
+  if (input.lastName.trim() === "") issues.push("nom_manquant");
+  if (!EMAIL.test(normalizeLoginEmail(input.loginEmail))) issues.push("email_invalide");
+  return issues;
+}
+
 /**
  * Ce qui empêche d'enregistrer une révision. Liste vide = enregistrable.
  *
@@ -146,7 +201,7 @@ export function validatePendingPersonUpdate(
 
   if (input.loginEmail !== undefined) {
     const email = normalizeLoginEmail(input.loginEmail);
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) issues.push("email_invalide");
+    if (!EMAIL.test(email)) issues.push("email_invalide");
     else if (person.status === "activated" && email !== person.loginEmail) {
       issues.push("email_fige_apres_activation");
     }

@@ -135,6 +135,7 @@ describe("mapping du sas de pré-inscription (D94)", () => {
       login_email: "camille@example.test",
       institutional_id: null,
       intended_role: null,
+      intended_placement_id: null,
       origin: "individual",
       intended_cohort_id: null,
       status: "pending",
@@ -166,6 +167,7 @@ describe("mapping du sas de pré-inscription (D94)", () => {
       login_email: "camille@example.test",
       institutional_id: "21012345",
       intended_role: "placement_supervisor",
+      intended_placement_id: "placement-id",
       origin: "import",
       intended_cohort_id: "cohort-id",
       status: "invited",
@@ -177,6 +179,7 @@ describe("mapping du sas de pré-inscription (D94)", () => {
     });
     expect(person.institutionalId).toBe("21012345");
     expect(person.intendedCohortId).toBe("cohort-id");
+    expect(person.intendedPlacementId).toBe("placement-id");
     expect(person.invitedAt).toBe("2026-01-02T00:00:00Z");
     expect(person.cancelledAt).toBeUndefined();
     expect(person.activatedProfileId).toBeUndefined();

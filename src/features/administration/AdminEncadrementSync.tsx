@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { RefreshCw, ShieldCheck } from "lucide-react";
+import { RefreshCw, Send, ShieldCheck, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 
 import { SectionHeading } from "@/components/section-heading";
@@ -10,11 +10,20 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDataAccess, useSession } from "@/application/session";
+import {
+  PENDING_PERSON_ISSUE_LABELS_FR,
+  PENDING_PERSON_STATUS_LABELS_FR,
+  fullNameOfPendingPerson,
+  validatePendingPersonCreation,
+  type PendingPerson,
+  type PendingPersonId,
+} from "@/domain/peopleStaging";
 import type {
   EncadrementMembre,
   EncadrementSourceId,
   EncadrementSyncPreview,
   EncadrementSyncReport,
+  PersonId,
   PlacementId,
 } from "@/domain/types";
 
@@ -64,13 +73,14 @@ function Bloc({
 }
 
 /**
- * MISE À JOUR DE L'ÉQUIPE D'ENCADREMENT — depuis un service (10/09).
+ * MISE À JOUR DE L'ÉQUIPE D'ENCADREMENT — depuis un service (10/09), et à la
+ * main depuis le 14/09.
  *
- * ⚠️ CE QUE CET ÉCRAN NE FAIT PAS, et il le dit : il n'ajoute aucun encadrant
- * et n'en retire aucun. Il alimente le VIVIER (`people`, statut « en
- * attente ») ; l'invitation reste un geste humain. Et les absents sont
- * PROPOSÉS, jamais révoqués — un encadrant qui quitte le service a validé des
- * carnets et répondu dans des fils, et une date changée dans une autre
+ * ⚠️ CE QUE CET ÉCRAN NE FAIT PAS, et il le dit : la synchronisation n'ajoute
+ * aucun encadrant et n'en retire aucun. Elle alimente le VIVIER (`people`,
+ * statut « en attente ») ; l'invitation reste un geste humain. Et les absents
+ * sont PROPOSÉS, jamais révoqués — un encadrant qui quitte le service a validé
+ * des carnets et répondu dans des fils, et une date changée dans une autre
  * application ne doit pas pouvoir couper quelqu'un en plein stage.
  *
  * ⚠️ LE JETON N'EST JAMAIS RELU. Une fois posé, la base n'en rend que les
@@ -81,6 +91,11 @@ function Bloc({
  *
  * LE CHAMP ACCEPTE L'URL COMPLÈTE OU LE JETON SEUL : la fonction SQL démêle et
  * refuse d'enregistrer une adresse qui contiendrait encore le secret.
+ *
+ * ⚠️ L'ÉQUIPE ACTUELLE SE LIT EN PREMIER (14/09). L'écran proposait de mettre
+ * l'équipe à jour sans jamais dire s'il y en avait déjà une : on pouvait donc
+ * lancer une synchronisation pour rien. Rien n'est déduit ici — les groupes,
+ * leurs encadrants et les rôles posés viennent tous de la base.
  */
 export function AdminEncadrementSync() {
   const data = useDataAccess();
@@ -94,6 +109,12 @@ export function AdminEncadrementSync() {
   const [apercu, setApercu] = useState<EncadrementSyncPreview | null>(null);
   const [rapport, setRapport] = useState<EncadrementSyncReport | null>(null);
 
+  /* ---- saisie manuelle d'un encadrant ---- */
+  const [prenom, setPrenom] = useState("");
+  const [nom, setNom] = useState("");
+  const [email, setEmail] = useState("");
+  const [terrainSaisi, setTerrainSaisi] = useState<string>("");
+
   const { data: terrains } = useQuery({
     queryKey: ["placements", activeProgram.id],
     queryFn: () => data.placements.listPlacements(activeProgram.id),
@@ -101,6 +122,26 @@ export function AdminEncadrementSync() {
   const { data: sources, isPending } = useQuery({
     queryKey: ["encadrement-sources", activeProgram.id],
     queryFn: () => data.encadrementSources.listSources(activeProgram.id),
+  });
+  const { data: promotions } = useQuery({
+    queryKey: ["cohorts", activeProgram.id],
+    queryFn: () => data.programs.listCohorts(activeProgram.id),
+  });
+  const { data: groupes } = useQuery({
+    queryKey: ["supervision-groups", activeProgram.id],
+    queryFn: () => data.placements.listSupervisionGroups(activeProgram.id),
+  });
+  const { data: vivier } = useQuery({
+    queryKey: ["pending-people", activeProgram.id],
+    queryFn: () => data.peopleStaging.listPendingPeople(activeProgram.id),
+  });
+  const { data: comptes } = useQuery({
+    queryKey: ["administration-people"],
+    queryFn: () => data.administration.listPeople(),
+  });
+  const { data: roles } = useQuery({
+    queryKey: ["administration-role-assignments"],
+    queryFn: () => data.administration.listAllRoleAssignments(),
   });
 
   const source = (sources ?? [])[0];
@@ -110,6 +151,47 @@ export function AdminEncadrementSync() {
     queryFn: () => data.encadrementSources.listRuns(source!.id),
     enabled: Boolean(source),
   });
+
+  /** Nom affichable d'un compte activé. Jamais l'adresse : `profiles` n'en porte pas. */
+  const nomDe = useMemo(() => {
+    const index = new Map((comptes ?? []).map((p) => [p.id, p.fullName]));
+    return (id: PersonId) => index.get(id) ?? "compte sans nom lisible";
+  }, [comptes]);
+
+  /** Les responsables de terrain : leur droit passe par la PORTÉE de leur rôle,
+   *  jamais par `supervision_group_supervisors`. Sans cette lecture, un
+   *  responsable de stage serait invisible sur un écran qui prétend dire qui
+   *  encadre. */
+  const responsablesParTerrain = useMemo(() => {
+    const index = new Map<string, PersonId[]>();
+    for (const r of roles ?? []) {
+      if (r.role !== "placement_manager" || r.scope.kind !== "placement") continue;
+      if (r.scope.programId !== activeProgram.id) continue;
+      const deja = index.get(r.scope.placementId) ?? [];
+      index.set(r.scope.placementId, [...deja, r.personId]);
+    }
+    return index;
+  }, [roles, activeProgram.id]);
+
+  const nomDuTerrain = useMemo(() => {
+    const index = new Map((terrains ?? []).map((t) => [t.id, t.name]));
+    return (id: PlacementId) => index.get(id) ?? "terrain inconnu";
+  }, [terrains]);
+
+  /** Le vivier ENCADRANT seulement : intention explicite, ou rapporté par une
+   *  source d'équipe. Les apprenants du sas n'ont rien à faire ici. */
+  const vivierEncadrant = useMemo(
+    () =>
+      (vivier ?? []).filter(
+        (p) =>
+          p.status !== "cancelled" &&
+          (p.intendedRole === "placement_supervisor" || p.origin === "sync"),
+      ),
+    [vivier],
+  );
+
+  const terrainParDefaut = source?.placementId ?? terrains?.[0]?.id ?? "";
+  const terrainChoisi = (terrainSaisi || terrainParDefaut) as PlacementId;
 
   const enregistrer = useMutation({
     mutationFn: () =>
@@ -148,24 +230,262 @@ export function AdminEncadrementSync() {
       setRapport(r);
       void queryClient.invalidateQueries({ queryKey: ["encadrement-runs"] });
       void queryClient.invalidateQueries({ queryKey: ["encadrement-sources"] });
+      void queryClient.invalidateQueries({ queryKey: ["pending-people"] });
     },
     onError: (raison) =>
       toast.error(raison instanceof Error ? raison.message : "Synchronisation impossible."),
   });
+
+  /**
+   * AJOUT À LA MAIN. L'INTENTION DE RÔLE EST POSÉE DÈS LE VIVIER : sans elle,
+   * l'activation du compte ne saurait rien accorder et la personne arriverait
+   * sans aucun rôle. Le rôle est porté par le TERRAIN, jamais par la
+   * promotion — et à l'activation, le déclencheur la rattache à TOUS les
+   * groupes de ce terrain, donc à ceux de la promotion en cours.
+   */
+  const ajouter = useMutation({
+    mutationFn: () =>
+      data.peopleStaging.createPendingPerson({
+        programId: activeProgram.id,
+        firstName: prenom.trim(),
+        lastName: nom.trim(),
+        loginEmail: email,
+        intendedRole: "placement_supervisor",
+        intendedPlacementId: terrainChoisi,
+      }),
+    onSuccess: (personne) => {
+      setPrenom("");
+      setNom("");
+      setEmail("");
+      void queryClient.invalidateQueries({ queryKey: ["pending-people"] });
+      toast.success(
+        `${fullNameOfPendingPerson(personne)} est au vivier. Aucun compte n'a été créé : il reste à l'inviter.`,
+      );
+    },
+    onError: (raison) =>
+      toast.error(raison instanceof Error ? raison.message : "Ajout impossible."),
+  });
+
+  const inviter = useMutation({
+    mutationFn: async (personId: PendingPersonId) => {
+      const resultats = await data.peopleStaging.sendInvitations([personId]);
+      const resultat = resultats.find((r) => r.personId === personId);
+      if (resultat && !resultat.ok) {
+        throw new Error(resultat.error ?? "Envoi de l'invitation impossible.");
+      }
+      return resultat;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["pending-people"] });
+      toast.success("Invitation envoyée.");
+    },
+    onError: (raison) =>
+      toast.error(raison instanceof Error ? raison.message : "Invitation non envoyée."),
+  });
+
+  const saisieIncomplete =
+    prenom.trim() === "" || nom.trim() === "" || email.trim() === "" || terrainChoisi === "";
+  const problemes = saisieIncomplete
+    ? []
+    : validatePendingPersonCreation({
+        programId: activeProgram.id,
+        firstName: prenom.trim(),
+        lastName: nom.trim(),
+        loginEmail: email,
+      });
 
   if (isPending) return <Skeleton className="h-64 w-full" />;
 
   return (
     <div className="space-y-6">
       <SectionHeading
-        title="Mise à jour de l'équipe d'encadrement"
+        title="Équipe d'encadrement"
         level={1}
-        description="Récupère l'équipe d'un service depuis son application, et la verse au vivier du programme."
+        description="Qui encadre déjà les promotions de ce programme, et comment compléter l'équipe."
       />
+
+      {/* ---------- l'équipe actuelle, AVANT toute mise à jour ---------- */}
+      <div className="bg-card space-y-4 rounded-xl border p-4 shadow-[var(--shadow-card)]">
+        <p className="font-display text-[17px] leading-tight">Équipe actuelle</p>
+
+        {(promotions ?? []).length === 0 ? (
+          <p className="text-muted-foreground text-[13px]">
+            Ce programme n'a aucune promotion. Une équipe d'encadrement se rattache à un groupe, et
+            un groupe appartient à une promotion.
+          </p>
+        ) : (
+          <div className="space-y-4">
+            {(promotions ?? []).map((promo) => {
+              const siens = (groupes ?? []).filter((g) => g.cohortId === promo.id);
+              return (
+                <div key={promo.id} className="space-y-2">
+                  <p className="font-display text-[15px] leading-tight">
+                    {promo.label}{" "}
+                    <span className="text-muted-foreground">
+                      ({siens.length} groupe{siens.length > 1 ? "s" : ""} d'encadrement)
+                    </span>
+                  </p>
+                  {siens.length === 0 ? (
+                    <p className="text-muted-foreground text-[13px] leading-relaxed">
+                      Aucun groupe d'encadrement :{" "}
+                      <strong className="font-medium">
+                        aucune équipe n'est attachée à cette promotion
+                      </strong>
+                      . Les groupes se créent dans « Gestion des stages ».
+                    </p>
+                  ) : (
+                    <ul className="space-y-2">
+                      {siens.map((g) => {
+                        const responsables = responsablesParTerrain.get(g.placementId) ?? [];
+                        return (
+                          <li key={g.id} className="text-[13px] leading-snug">
+                            <span className="font-medium">{g.label}</span>{" "}
+                            <span className="text-muted-foreground">
+                              · {nomDuTerrain(g.placementId)} · {g.memberEnrollmentIds.length}{" "}
+                              étudiant(s)
+                            </span>
+                            <p className="text-muted-foreground mt-0.5">
+                              {g.supervisorPersonIds.length === 0
+                                ? "Aucun encadrant rattaché à ce groupe."
+                                : `Encadrants : ${g.supervisorPersonIds.map(nomDe).join(", ")}`}
+                            </p>
+                            {responsables.length > 0 ? (
+                              <p className="text-muted-foreground mt-0.5">
+                                Responsable du terrain : {responsables.map(nomDe).join(", ")}
+                              </p>
+                            ) : null}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        <p className={`${EYEBROW} text-muted-foreground`} style={TABULAIRE}>
+          Vivier encadrant : {vivierEncadrant.filter((p) => p.status === "pending").length} en
+          attente d'invitation · {vivierEncadrant.filter((p) => p.status === "invited").length}{" "}
+          invité(s) · {vivierEncadrant.filter((p) => p.status === "activated").length} activé(s)
+        </p>
+      </div>
+
+      {/* ---------- ajouter un encadrant à la main ---------- */}
+      <div className="bg-card space-y-4 rounded-xl border p-4 shadow-[var(--shadow-card)]">
+        <p className="font-display text-[17px] leading-tight">Ajouter un encadrant</p>
+        <p className="text-muted-foreground text-[12.5px] leading-relaxed">
+          La personne entre au vivier ; aucun compte n'est créé. À l'invitation, elle reçoit un lien
+          d'activation, et c'est en activant son compte qu'elle devient encadrante du terrain choisi
+          — et de tous ses groupes, donc de la promotion en cours.
+        </p>
+
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="space-y-1">
+            <Label htmlFor="enc-prenom" className="text-xs">
+              Prénom
+            </Label>
+            <Input id="enc-prenom" value={prenom} onChange={(e) => setPrenom(e.target.value)} />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="enc-nom" className="text-xs">
+              Nom
+            </Label>
+            <Input id="enc-nom" value={nom} onChange={(e) => setNom(e.target.value)} />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="enc-email" className="text-xs">
+              Adresse de connexion
+            </Label>
+            <Input
+              id="enc-email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="off"
+            />
+          </div>
+        </div>
+
+        <div className="space-y-1">
+          <Label htmlFor="enc-terrain" className="text-xs">
+            Terrain encadré
+          </Label>
+          <select
+            id="enc-terrain"
+            className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm sm:max-w-sm"
+            value={terrainChoisi}
+            onChange={(e) => setTerrainSaisi(e.target.value)}
+          >
+            {(terrains ?? []).map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {problemes.length > 0 ? (
+          <ul className="text-destructive space-y-0.5 text-[12.5px]">
+            {problemes.map((p) => (
+              <li key={p}>{PENDING_PERSON_ISSUE_LABELS_FR[p]}</li>
+            ))}
+          </ul>
+        ) : null}
+
+        <Button
+          size="sm"
+          disabled={saisieIncomplete || problemes.length > 0 || ajouter.isPending}
+          onClick={() => ajouter.mutate()}
+        >
+          <UserPlus className="size-4" aria-hidden />
+          Ajouter au vivier
+        </Button>
+
+        {vivierEncadrant.length === 0 ? (
+          <p className="text-muted-foreground text-[13px]">
+            Le vivier encadrant est vide : personne n'attend d'invitation.
+          </p>
+        ) : (
+          <ul className="divide-border divide-y border-t">
+            {vivierEncadrant.map((p: PendingPerson) => (
+              <li
+                key={p.id}
+                className="flex flex-wrap items-center justify-between gap-2 py-2.5 text-[13px] leading-snug"
+              >
+                <span>
+                  <span className="font-medium">{fullNameOfPendingPerson(p)}</span>{" "}
+                  <span className="text-muted-foreground">
+                    {p.loginEmail} · {PENDING_PERSON_STATUS_LABELS_FR[p.status]}
+                    {p.origin === "sync" ? " · venue de la synchronisation" : ""}
+                    {p.intendedPlacementId
+                      ? ` · ${nomDuTerrain(p.intendedPlacementId)}`
+                      : " · aucun terrain visé"}
+                  </span>
+                </span>
+                {p.status === "activated" ? null : (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={inviter.isPending}
+                    onClick={() => inviter.mutate(p.id)}
+                  >
+                    <Send className="size-4" aria-hidden />
+                    {p.status === "invited" ? "Renvoyer l'invitation" : "Inviter"}
+                  </Button>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
 
       {/* ---------- la source ---------- */}
       <div className="bg-card space-y-4 rounded-xl border p-4 shadow-[var(--shadow-card)]">
-        <p className="font-display text-[17px] leading-tight">Source</p>
+        <p className="font-display text-[17px] leading-tight">
+          Source — mise à jour depuis un service
+        </p>
 
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1">

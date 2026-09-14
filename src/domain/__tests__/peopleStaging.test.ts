@@ -4,11 +4,13 @@ import {
   findPersonByLoginEmail,
   normalizeLoginEmail,
   pendingPersonRemovalIssue,
+  roleIntentIssue,
   statusAfterRestore,
+  validatePendingPersonCreation,
   validatePendingPersonUpdate,
   type PendingPerson,
 } from "@/domain/peopleStaging";
-import type { CohortId, ProgramId } from "@/domain/types";
+import type { CohortId, PlacementId, ProgramId } from "@/domain/types";
 
 function person(overrides: Partial<PendingPerson> = {}): PendingPerson {
   return {
@@ -166,5 +168,68 @@ describe("les erreurs d'écriture de la base", () => {
   it("laisse passer telle quelle une erreur qu'elle ne connaît pas", () => {
     // Masquer une erreur non reconnue serait pire que la montrer.
     expect(describePendingPersonWriteError(new Error("connexion perdue"))).toBe("connexion perdue");
+  });
+});
+
+describe("creer une personne du vivier", () => {
+  const base = {
+    programId: "prog-1" as ProgramId,
+    firstName: "Jean",
+    lastName: "Dupont",
+    loginEmail: "Jean.Dupont@example.org",
+  };
+
+  it("accepte une saisie complete, majuscules comprises", () => {
+    expect(validatePendingPersonCreation(base)).toEqual([]);
+  });
+
+  it("refuse un prenom vide, un nom vide et une adresse qui n en est pas une", () => {
+    expect(
+      validatePendingPersonCreation({
+        ...base,
+        firstName: "  ",
+        lastName: "",
+        loginEmail: "jean.dupont",
+      }),
+    ).toEqual(["prenom_manquant", "nom_manquant", "email_invalide"]);
+  });
+});
+
+describe("l intention de role", () => {
+  const base = {
+    programId: "prog-1" as ProgramId,
+    firstName: "Jean",
+    lastName: "Dupont",
+    loginEmail: "jean.dupont@example.org",
+  };
+
+  it("laisse passer une saisie sans intention : ancien comportement", () => {
+    expect(roleIntentIssue(base)).toBeUndefined();
+  });
+
+  it("exige un terrain pour un encadrant, comme la contrainte de la base", () => {
+    expect(roleIntentIssue({ ...base, intendedRole: "placement_supervisor" })).toBe(
+      "Un encadrant doit viser un terrain de stage.",
+    );
+    expect(
+      roleIntentIssue({
+        ...base,
+        intendedRole: "placement_supervisor",
+        intendedPlacementId: "terrain-1" as PlacementId,
+      }),
+    ).toBeUndefined();
+  });
+
+  it("exige une promotion pour un apprenant", () => {
+    expect(roleIntentIssue({ ...base, intendedRole: "learner" })).toBe(
+      "Un apprenant doit viser une promotion.",
+    );
+    expect(
+      roleIntentIssue({
+        ...base,
+        intendedRole: "learner",
+        intendedCohortId: "promo-1" as CohortId,
+      }),
+    ).toBeUndefined();
   });
 });

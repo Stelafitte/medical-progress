@@ -99,6 +99,7 @@ import type {
 } from "@/domain/mediaLibrary";
 import {
   normalizeLoginEmail,
+  roleIntentIssue,
   statusAfterRestore,
   type CreatePendingPersonInput,
   type PendingPerson,
@@ -894,6 +895,7 @@ type PendingPersonRow = {
   origin: "individual" | "import" | "sync";
   intended_cohort_id: string | null;
   intended_role: "learner" | "placement_supervisor" | null;
+  intended_placement_id: string | null;
   status: PendingPersonStatus;
   invited_at: string | null;
   cancelled_at: string | null;
@@ -916,6 +918,7 @@ export function mapPendingPerson(row: PendingPersonRow): PendingPerson {
     ...(row.institutional_id ? { institutionalId: row.institutional_id } : {}),
     ...(row.intended_cohort_id ? { intendedCohortId: row.intended_cohort_id } : {}),
     ...(row.intended_role ? { intendedRole: row.intended_role } : {}),
+    ...(row.intended_placement_id ? { intendedPlacementId: row.intended_placement_id } : {}),
     ...(row.invited_at ? { invitedAt: row.invited_at } : {}),
     ...(row.cancelled_at ? { cancelledAt: row.cancelled_at } : {}),
     ...(row.activated_profile_id ? { activatedProfileId: row.activated_profile_id } : {}),
@@ -1082,7 +1085,7 @@ async function loadSourceAssetsByResource(
 }
 
 const pendingPersonColumns =
-  "id,program_id,first_name,last_name,login_email,institutional_id,origin,intended_cohort_id,intended_role,status,invited_at,cancelled_at,activated_profile_id,created_at,updated_at";
+  "id,program_id,first_name,last_name,login_email,institutional_id,origin,intended_cohort_id,intended_role,intended_placement_id,status,invited_at,cancelled_at,activated_profile_id,created_at,updated_at";
 
 const programColumns =
   "id,code,name,kind,institution,annual_learner_estimate,placements_enabled,simulation_enabled,audits_enabled,pre_post_tests_enabled,sessions_enabled,dpc_enabled,learner_plan_shifts_enabled,target_mastery,locale,design_draft,created_at,updated_at";
@@ -1828,6 +1831,9 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
         return ((data ?? []) as PendingPersonRow[]).map(mapPendingPerson);
       },
       async createPendingPerson(input: CreatePendingPersonInput) {
+        /* La base refuserait par contrainte, avec un message illisible. */
+        const issue = roleIntentIssue(input);
+        if (issue) throw new Error(issue);
         const { data: userData, error: userError } = await client.auth.getUser();
         assertNoSupabaseError(userError);
         if (!userData.user) throw new Error("Authentification requise.");
@@ -1840,6 +1846,8 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
             login_email: input.loginEmail.trim().toLowerCase(),
             institutional_id: input.institutionalId ?? null,
             intended_cohort_id: input.intendedCohortId ?? null,
+            intended_role: input.intendedRole ?? null,
+            intended_placement_id: input.intendedPlacementId ?? null,
             origin: "individual",
             created_by: userData.user.id,
           })

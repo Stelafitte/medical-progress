@@ -233,6 +233,8 @@ export const mockDataAccess: DataAccess = {
           updatedAt: now,
           ...(input.institutionalId ? { institutionalId: input.institutionalId } : {}),
           ...(input.intendedCohortId ? { intendedCohortId: input.intendedCohortId } : {}),
+          ...(input.intendedRole ? { intendedRole: input.intendedRole } : {}),
+          ...(input.intendedPlacementId ? { intendedPlacementId: input.intendedPlacementId } : {}),
         };
         pending = [...pending, created];
         return ok(created);

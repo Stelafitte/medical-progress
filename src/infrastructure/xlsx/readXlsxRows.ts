@@ -74,7 +74,9 @@ async function inflateEntry(entry: ZipEntry): Promise<string> {
   }
   const stream = new DecompressionStream("deflate-raw");
   const writer = stream.writable.getWriter();
-  void writer.write(entry.data);
+  /* `Uint8Array<ArrayBufferLike>` n est pas un `BufferSource` aux yeux de TS 5.7 :
+     la copie redonne un tampon non partage, et ne coute rien a ces tailles. */
+  void writer.write(new Uint8Array(entry.data));
   void writer.close();
   return await new Response(stream.readable).text();
 }
