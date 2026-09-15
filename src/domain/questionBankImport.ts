@@ -13,21 +13,25 @@
 
 export type ImportMode = "dry_run" | "merge" | "replace" | "delete";
 
+/*
+ * Le vocabulaire de l'écran (Stef, 15/09 : « rien ne stipule la fonction
+ * Importation, le bouton n'est pas compréhensible »). Deux étapes, nommées
+ * comme telles : on VÉRIFIE le fichier, puis on IMPORTE.
+ */
 export const IMPORT_MODE_LABELS_FR: Record<ImportMode, string> = {
-  dry_run: "Mesurer sans rien changer",
-  merge: "Fusionner avec la banque actuelle",
-  replace: "Remplacer la banque actuelle",
-  delete: "Supprimer la banque actuelle",
+  dry_run: "1. Vérifier le fichier",
+  merge: "2. Importer — fusionner",
+  replace: "2. Importer — remplacer",
+  delete: "Supprimer la banque",
 };
 
 export const IMPORT_MODE_HINTS_FR: Record<ImportMode, string> = {
   dry_run:
-    "Compte ce qui serait apparié, créé, mis à jour, écarté. Aucune écriture. À faire d'abord.",
+    "Lit le fichier et rend le rapport : combien de questions trouvent leur acquis, combien seraient créées ou mises à jour. Rien n'est écrit.",
   merge:
-    "Une question déjà connue (même référence) est mise à jour ; une nouvelle est créée ; ce qui n'est pas dans le fichier reste.",
-  replace:
-    "Tout ce qui porte cette source est retiré, puis le fichier est importé en entier.",
-  delete: "Tout ce qui porte cette source est retiré. Le fichier n'est pas lu.",
+    "Ajoute les questions nouvelles, met à jour celles déjà connues (même référence), garde le reste.",
+  replace: "Retire tout ce qui porte cette source, puis importe le fichier en entier.",
+  delete: "Retire tout ce qui porte cette source, sans lire de fichier.",
 };
 
 /** Une question telle que la RPC la reçoit. */

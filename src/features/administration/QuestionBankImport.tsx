@@ -178,7 +178,10 @@ export function QuestionBankImport({ programId }: { readonly programId: ProgramI
       {fichier ? (
         <p className="mt-2 text-sm">
           <strong>{fichier.nom}</strong> — {fichier.questions.length} question(s), {fichier.chapters}{" "}
-          chapitre(s).
+          chapitre(s).{" "}
+          <span className="text-muted-foreground">
+            {mesure ? "Vérifié : vous pouvez importer." : "Vérifiez-le, puis importez."}
+          </span>
         </p>
       ) : null}
 
@@ -191,6 +194,7 @@ export function QuestionBankImport({ programId }: { readonly programId: ProgramI
 
       {/* ---- les gestes ---- */}
       <div className="mt-4 space-y-2">
+        <p className="text-sm font-medium">Importation</p>
         <div className="flex flex-wrap gap-2">
           <Button
             type="button"
@@ -198,7 +202,7 @@ export function QuestionBankImport({ programId }: { readonly programId: ProgramI
             disabled={!fichier || busy !== null || source.trim() === ""}
             onClick={() => void lancer("dry_run")}
           >
-            {busy === "dry_run" ? "Mesure…" : IMPORT_MODE_LABELS_FR.dry_run}
+            {busy === "dry_run" ? "Vérification…" : IMPORT_MODE_LABELS_FR.dry_run}
           </Button>
           <Button
             type="button"
@@ -207,7 +211,7 @@ export function QuestionBankImport({ programId }: { readonly programId: ProgramI
             disabled={!fichier || !mesure || busy !== null}
             onClick={() => void lancer("merge")}
           >
-            {busy === "merge" ? "Fusion…" : IMPORT_MODE_LABELS_FR.merge}
+            {busy === "merge" ? "Import…" : IMPORT_MODE_LABELS_FR.merge}
           </Button>
           <Button
             type="button"
@@ -216,7 +220,7 @@ export function QuestionBankImport({ programId }: { readonly programId: ProgramI
             disabled={!fichier || !mesure || busy !== null}
             onClick={() => void lancer("replace")}
           >
-            {busy === "replace" ? "Remplacement…" : IMPORT_MODE_LABELS_FR.replace}
+            {busy === "replace" ? "Import…" : IMPORT_MODE_LABELS_FR.replace}
           </Button>
           <Button
             type="button"
@@ -260,7 +264,7 @@ function Rapport({ rapport, aBlanc }: { readonly rapport: ImportReport; readonly
   return (
     <div className="border-border mt-4 rounded-md border p-3">
       <p className="text-sm font-medium">
-        {aBlanc ? "Mesure — rien n'a été écrit" : `Fait — ${IMPORT_MODE_LABELS_FR[rapport.mode]}`}
+        {aBlanc ? "Vérification — rien n'a été écrit" : `Importé — ${IMPORT_MODE_LABELS_FR[rapport.mode]}`}
       </p>
       <dl className="mt-2 grid gap-2 text-sm sm:grid-cols-3">
         <div>
