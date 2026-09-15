@@ -39,6 +39,7 @@ import type {
   CohortAssessmentLink,
 } from "@/domain/assessmentModality";
 import type { LearnerNarratedDeck, MediaResource } from "@/domain/mediaLibrary";
+import type { ImportMode, ImportReport, ImportedQuestion } from "@/domain/questionBankImport";
 import type { ContentAiProfile, LearnerAiResource, ProgramAiPolicy } from "@/domain/contentAi";
 import type { AiCreditBudget, AiCreditEntry } from "@/domain/aiCredits";
 import type { AiFallbackPolicy, ProgramAiSettings, ProgramAiUsage } from "@/domain/programAi";
@@ -424,6 +425,20 @@ export interface CreateAssessmentSessionInput {
   readonly notes: string;
 }
 
+export interface QuestionBankRow {
+  readonly source: string;
+  readonly status: string;
+  readonly questions: number;
+}
+
+export interface ImportQuestionItemsInput {
+  readonly programId: ProgramId;
+  readonly mode: ImportMode;
+  readonly source: string;
+  readonly items: readonly ImportedQuestion[];
+  readonly publish: boolean;
+}
+
 export interface UpdateAssessmentSessionInput {
   readonly assessmentSessionId: string;
   readonly scheduledOn: string;
@@ -469,6 +484,14 @@ export interface AssessmentRepository {
   deleteAssessmentSession(assessmentSessionId: string): Promise<void>;
   /** Quelles promotions utilisent quelles modalités, pour tout le programme. */
   listCohortAssessmentLinks(programId: ProgramId): Promise<readonly CohortAssessmentLink[]>;
+  /**
+   * La banque de questions (15/09). `importQuestionItems` porte les quatre
+   * gestes — mesurer, fusionner, remplacer, supprimer — sur une SOURCE d'un
+   * programme ; le rapprochement question ↔ acquis se fait en base par code.
+   * Voir supabase/migrations/20260915110000_import_question_items.sql.
+   */
+  questionBankSummary(programId: ProgramId): Promise<readonly QuestionBankRow[]>;
+  importQuestionItems(input: ImportQuestionItemsInput): Promise<ImportReport>;
   /**
    * Active ou retire une modalité pour une promotion. Retirer supprime aussi
    * ses épreuves datées pour cette promotion (règle serveur).

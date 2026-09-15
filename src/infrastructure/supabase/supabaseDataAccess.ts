@@ -18,6 +18,8 @@ import type {
   CreateAssessmentModalityInput,
   CreateAssessmentSessionInput,
   CreateCohortInput,
+  ImportQuestionItemsInput,
+  QuestionBankRow,
   CreateLearningResourceInput,
   CreateOutcomeInput,
   DataAccess,
@@ -96,6 +98,7 @@ import type {
   AssessmentSession,
   CohortAssessmentLink,
 } from "@/domain/assessmentModality";
+import type { ImportReport } from "@/domain/questionBankImport";
 import type {
   MediaAsset,
   MediaKind,
@@ -2186,6 +2189,24 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
           p_enabled: enabled,
         });
         assertNoSupabaseError(error);
+      },
+      async questionBankSummary(programId: ProgramId) {
+        const { data, error } = await client.rpc("question_bank_summary", { p_program_id: programId });
+        assertNoSupabaseError(error);
+        return ((data ?? []) as { source: string; status: string; questions: number | string }[]).map(
+          (r): QuestionBankRow => ({ source: r.source, status: r.status, questions: Number(r.questions) }),
+        );
+      },
+      async importQuestionItems(input: ImportQuestionItemsInput) {
+        const { data, error } = await client.rpc("import_question_items", {
+          p_program_id: input.programId,
+          p_mode: input.mode,
+          p_source: input.source,
+          p_items: input.items,
+          p_publish: input.publish,
+        });
+        assertNoSupabaseError(error);
+        return data as ImportReport;
       },
     },
     outcomes: {

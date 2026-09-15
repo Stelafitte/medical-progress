@@ -10,6 +10,7 @@ import { SectionHeading } from "@/components/section-heading";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PanelCard, ScopeNotice } from "@/features/professional/mock-ui";
 import { CorpusImport } from "@/features/administration/CorpusImport";
+import { QuestionBankImport } from "@/features/administration/QuestionBankImport";
 import { AssessmentModalitySection } from "@/features/administration/AssessmentModalitySection";
 import { useProgramAdmin } from "@/features/administration/useProgramAdmin";
 
@@ -55,6 +56,7 @@ export function AdminAssessments() {
             onCreated={() => void refetch()}
           />
         </PanelCard>
+        <QuestionBankImport programId={program.id} />
       </AssessmentModalitySection>
     </div>
   );

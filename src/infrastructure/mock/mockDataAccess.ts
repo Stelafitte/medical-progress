@@ -645,6 +645,19 @@ export const mockDataAccess: DataAccess = {
         return ok(undefined);
       },
       listCohortAssessmentLinks: (programId) => ok(links.filter((l) => l.programId === programId)),
+      questionBankSummary: () => ok([]),
+      importQuestionItems: (input) =>
+        ok({
+          mode: input.mode,
+          source: input.source,
+          matched: input.items.length,
+          unmatched: 0,
+          unmatched_codes: [],
+          inserted: input.mode === "dry_run" || input.mode === "delete" ? 0 : input.items.length,
+          updated: 0,
+          deleted: 0,
+          retired: 0,
+        }),
       setCohortAssessmentModality: (cohortId, assessmentModalityId, enabled) => {
         const modality = modalities.find((m) => m.id === assessmentModalityId);
         if (!modality) return Promise.reject(new Error("Modalité d'évaluation introuvable."));
