@@ -190,6 +190,13 @@ nav{display:flex;align-items:center;gap:12px;padding:20px 0}
    hesite. On garde celui du titre, qui dit ce qu'on y trouve. */
 @media (max-width:640px){
   nav .btn{display:none}
+  /* Les deux appels du titre : meme largeur, meme hauteur, l'un sous l'autre
+     (15/09, constat de Stef). En flux libre, chaque bouton prenait la largeur
+     de son texte, et l'ecran montrait deux tailles pour deux choix de meme
+     rang. Pleine largeur : un seul bord, une seule colonne, l'oeil ne
+     compare plus les boutons, il lit les libelles. */
+  .acts{flex-direction:column;gap:10px}
+  .acts .btn{width:100%;min-height:52px}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}`;
 
