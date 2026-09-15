@@ -19,11 +19,17 @@ import type {
   CreateAssessmentSessionInput,
   CreateCohortInput,
   ImportQuestionItemsInput,
+  LearnerQuestionResults,
+  MyQuestionResults,
   QuestionBankRow,
   QuestionCorrection,
   QuestionFilter,
+  QuestionReportDecision,
+  QuestionReportRow,
+  QuestionSectionRow,
   QuestionToAnswer,
   SetCohortAssessmentPilotageInput,
+  ThemeQuestionResults,
   CreateLearningResourceInput,
   CreateOutcomeInput,
   DataAccess,
@@ -829,7 +835,14 @@ type AssessmentSessionRow = {
   closes_on: string | null;
   location: string | null;
   notes: string | null;
-  config: { theme_ids?: string[]; ranks?: string[]; count?: number; milestone_id?: string } | null;
+  config: {
+    theme_ids?: string[];
+    ranks?: string[];
+    count?: number;
+    milestone_id?: string;
+    chapters?: number[];
+    sections?: string[];
+  } | null;
 };
 
 /** Le jsonb `config` en clés serveur → l'objet du domaine. Tolérant : un champ absent = pas de filtre. */
@@ -841,6 +854,8 @@ function mapQcmConfig(raw: AssessmentSessionRow["config"]): QcmWindowConfig | un
     ranks,
     count: typeof raw.count === "number" ? raw.count : 20,
     ...(raw.milestone_id ? { milestoneId: raw.milestone_id } : {}),
+    ...(raw.chapters && raw.chapters.length > 0 ? { chapters: raw.chapters } : {}),
+    ...(raw.sections && raw.sections.length > 0 ? { sections: raw.sections } : {}),
   };
 }
 
@@ -851,6 +866,8 @@ function qcmConfigToRow(config: QcmWindowConfig | undefined) {
     ranks: [...config.ranks],
     count: config.count,
     ...(config.milestoneId ? { milestone_id: config.milestoneId } : {}),
+    ...(config.chapters && config.chapters.length > 0 ? { chapters: [...config.chapters] } : {}),
+    ...(config.sections && config.sections.length > 0 ? { sections: [...config.sections] } : {}),
   };
 }
 
@@ -2289,12 +2306,39 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
         });
         assertNoSupabaseError(error);
       },
+      async listQuestionSections(programId: ProgramId, source: string) {
+        const { data, error } = await client.rpc("list_question_sections", {
+          p_program_id: programId,
+          p_source: source,
+        });
+        assertNoSupabaseError(error);
+        type Row = {
+          chapter: number;
+          chapter_title: string;
+          item_code: string;
+          section_key: string;
+          section_label: string;
+          published: number | string;
+        };
+        return ((data ?? []) as Row[]).map(
+          (r): QuestionSectionRow => ({
+            chapter: r.chapter,
+            chapterTitle: r.chapter_title,
+            itemCode: r.item_code,
+            sectionKey: r.section_key,
+            sectionLabel: r.section_label,
+            published: Number(r.published),
+          }),
+        );
+      },
       async countQuestions(filter: QuestionFilter) {
         const { data, error } = await client.rpc("count_questions", {
           p_program_id: filter.programId,
           p_source: filter.source,
           p_theme_ids: [...filter.themeIds],
           p_ranks: [...filter.ranks],
+          p_chapters: [...(filter.chapters ?? [])],
+          p_sections: [...(filter.sections ?? [])],
         });
         assertNoSupabaseError(error);
         return Number(data ?? 0);
@@ -2306,6 +2350,8 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
           p_theme_ids: [...filter.themeIds],
           p_ranks: [...filter.ranks],
           p_count: count,
+          p_chapters: [...(filter.chapters ?? [])],
+          p_sections: [...(filter.sections ?? [])],
         });
         assertNoSupabaseError(error);
         return (data ?? []) as string[];
@@ -2364,6 +2410,115 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
           p_message: message.trim().length > 0 ? message.trim() : null,
         });
         assertNoSupabaseError(error);
+      },
+      /* ---- Résultats et signalements : 20260915160000_qcm_resultats_et_signalements.sql */
+      async listQuestionReports(programId: ProgramId) {
+        const { data, error } = await client.rpc("list_question_reports", { p_program_id: programId });
+        assertNoSupabaseError(error);
+        type Row = {
+          id: string;
+          question_id: string;
+          external_ref: string;
+          stem: string;
+          question_status: string;
+          reason: string;
+          message: string | null;
+          status: string;
+          reported_by_name: string | null;
+          created_at: string;
+          handled_by_name: string | null;
+          handled_at: string | null;
+          resolution: string | null;
+        };
+        return ((data ?? []) as Row[]).map(
+          (r): QuestionReportRow => ({
+            id: r.id,
+            questionId: r.question_id,
+            externalRef: r.external_ref,
+            stem: r.stem,
+            questionStatus: r.question_status,
+            reason: r.reason,
+            message: r.message ?? "",
+            status: r.status,
+            createdAt: r.created_at,
+            ...(r.reported_by_name ? { reportedByName: r.reported_by_name } : {}),
+            ...(r.handled_by_name ? { handledByName: r.handled_by_name } : {}),
+            ...(r.handled_at ? { handledAt: r.handled_at } : {}),
+            ...(r.resolution ? { resolution: r.resolution } : {}),
+          }),
+        );
+      },
+      async resolveQuestionReport(reportId: string, decision: QuestionReportDecision, resolution: string) {
+        const { error } = await client.rpc("resolve_question_report", {
+          p_report_id: reportId,
+          p_status: decision,
+          p_resolution: resolution.trim().length > 0 ? resolution.trim() : null,
+        });
+        assertNoSupabaseError(error);
+      },
+      async questionResultsByLearner(cohortId: string) {
+        const { data, error } = await client.rpc("question_results_by_learner", { p_cohort_id: cohortId });
+        assertNoSupabaseError(error);
+        type Row = {
+          enrollment_id: string;
+          person_id: string;
+          full_name: string;
+          attempts: number | string;
+          distinct_questions: number | string;
+          avg_score: number | string | null;
+          last_answered_at: string | null;
+        };
+        return ((data ?? []) as Row[]).map(
+          (r): LearnerQuestionResults => ({
+            enrollmentId: r.enrollment_id,
+            personId: r.person_id,
+            fullName: r.full_name,
+            attempts: Number(r.attempts),
+            distinctQuestions: Number(r.distinct_questions),
+            ...(r.avg_score !== null ? { avgScore: Number(r.avg_score) } : {}),
+            ...(r.last_answered_at ? { lastAnsweredAt: r.last_answered_at } : {}),
+          }),
+        );
+      },
+      async questionResultsByTheme(cohortId: string) {
+        const { data, error } = await client.rpc("question_results_by_theme", { p_cohort_id: cohortId });
+        assertNoSupabaseError(error);
+        type Row = {
+          theme_id: string | null;
+          theme_label: string;
+          attempts: number | string;
+          avg_score: number | string | null;
+          learners: number | string;
+        };
+        return ((data ?? []) as Row[]).map(
+          (r): ThemeQuestionResults => ({
+            themeLabel: r.theme_label,
+            attempts: Number(r.attempts),
+            learners: Number(r.learners),
+            ...(r.theme_id ? { themeId: r.theme_id } : {}),
+            ...(r.avg_score !== null ? { avgScore: Number(r.avg_score) } : {}),
+          }),
+        );
+      },
+      async myQuestionResults(enrollmentId: string) {
+        const { data, error } = await client.rpc("my_question_results", { p_enrollment_id: enrollmentId });
+        assertNoSupabaseError(error);
+        type Row = {
+          attempts: number | string;
+          distinct_questions: number | string;
+          avg_score: number | string | null;
+          last_answered_at: string | null;
+        };
+        const r = ((data ?? []) as Row[])[0];
+        if (!r) {
+          return { attempts: 0, distinctQuestions: 0 } satisfies MyQuestionResults;
+        }
+        return {
+          attempts: Number(r.attempts),
+          distinctQuestions: Number(r.distinct_questions),
+          ...(r.avg_score !== null ? { avgScore: Number(r.avg_score) } : {}),
+          ...(r.last_answered_at ? { lastAnsweredAt: r.last_answered_at } : {}),
+        } satisfies MyQuestionResults;
       },
     },
     outcomes: {

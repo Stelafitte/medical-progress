@@ -37,11 +37,20 @@ export const Route = createFileRoute("/espace/evaluations_/qcm")({
     const modalityId = str("modalityId") ?? "";
     const sessionId = str("sessionId");
     const themeIds = list("themeIds");
+    const sections = list("sections");
     const ranks = list("ranks");
+    const chapters = (() => {
+      const v = search["chapters"];
+      const raw = Array.isArray(v) ? v : typeof v === "string" && v.length > 0 ? v.split(",") : [];
+      const nums = raw.map((x) => Number(x)).filter((x) => Number.isInteger(x) && x > 0);
+      return nums.length > 0 ? nums : undefined;
+    })();
     return {
       modalityId,
       ...(sessionId ? { sessionId } : {}),
       ...(themeIds ? { themeIds } : {}),
+      ...(chapters ? { chapters } : {}),
+      ...(sections ? { sections } : {}),
       ...(ranks ? { ranks } : {}),
       ...(Number.isFinite(count) && count > 0 ? { count: Math.min(100, Math.floor(count)) } : {}),
     };

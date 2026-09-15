@@ -661,9 +661,15 @@ export const mockDataAccess: DataAccess = {
       },
       countQuestions: () => ok(0),
       pickQuestions: () => ok([]),
+      listQuestionSections: () => ok([]),
       readQuestion: () => Promise.reject(new Error("Aucune question en maquette.")),
       answerQuestion: () => Promise.reject(new Error("Aucune question en maquette.")),
       reportQuestion: () => ok(undefined),
+      listQuestionReports: () => ok([]),
+      resolveQuestionReport: () => ok(undefined),
+      questionResultsByLearner: () => ok([]),
+      questionResultsByTheme: () => ok([]),
+      myQuestionResults: () => ok({ attempts: 0, distinctQuestions: 0 }),
       importQuestionItems: (input) =>
         ok({
           mode: input.mode,

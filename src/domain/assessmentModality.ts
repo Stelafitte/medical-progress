@@ -230,6 +230,9 @@ export interface QcmWindowConfig {
   readonly ranks: readonly ("A" | "B" | "C")[];
   readonly count: number;
   readonly milestoneId?: string;
+  /** Items (chapitres de la banque) et sous-items (clés « chapitre|section ») ; vides = tous. */
+  readonly chapters?: readonly number[];
+  readonly sections?: readonly string[];
 }
 
 /** Une fenêtre est ouverte du matin de `scheduledOn` au soir de `closesOn` (ou du même jour). */

@@ -1,16 +1,19 @@
 /**
  * « Évaluations » — l'atelier des évaluations du programme, en entier.
  *
- * Deux modes (voir `AssessmentModalitySection`) : lecture — ce qui est retenu
- * et quand — et construction — tout ce qui est possible, à cocher, configurer
- * et dater par promotion. Le Concepteur embarque le même atelier ; le
- * pilotage le lit. Tout ce que cet écran affiche est lu en base.
+ * L'atelier (voir `AssessmentModalitySection`) : une promotion choisie, puis
+ * tout ce qui est possible pour elle, à cocher, configurer, dater et piloter
+ * — le QCM y porte aussi ses résultats. Sous l'atelier, l'import des banques
+ * et les signalements des étudiants, qui concernent le programme entier. Le
+ * Concepteur embarque le même atelier ; le pilotage le lit. Tout ce que cet
+ * écran affiche est lu en base.
  */
 import { SectionHeading } from "@/components/section-heading";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PanelCard, ScopeNotice } from "@/features/professional/mock-ui";
 import { CorpusImport } from "@/features/administration/CorpusImport";
 import { QuestionBankImport } from "@/features/administration/QuestionBankImport";
+import { QuestionReports } from "@/features/administration/QuestionReports";
 import { AssessmentModalitySection } from "@/features/administration/AssessmentModalitySection";
 import { useProgramAdmin } from "@/features/administration/useProgramAdmin";
 
@@ -60,6 +63,8 @@ export function AdminAssessments() {
         </PanelCard>
         <QuestionBankImport programId={program.id} />
       </AssessmentModalitySection>
+
+      <QuestionReports programId={program.id} />
     </div>
   );
 }

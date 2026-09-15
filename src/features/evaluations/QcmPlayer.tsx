@@ -32,6 +32,7 @@ import { SectionHeading } from "@/components/section-heading";
 import { EmptyState, PanelCard, StatCard } from "@/features/professional/mock-ui";
 import { useDataAccess, useSession } from "@/application/session";
 import { AVERTISSEMENT_REFERENTIEL_FR } from "@/domain/questionBankImport";
+import { RAISONS_SIGNALEMENT } from "@/domain/questionReport";
 import { windowState } from "@/domain/assessmentModality";
 import type { QuestionCorrection, QuestionToAnswer } from "@/application/ports/repositories";
 
@@ -40,17 +41,11 @@ export interface QcmPlayerParams {
   readonly modalityId: string;
   readonly sessionId?: string;
   readonly themeIds?: readonly string[];
+  readonly chapters?: readonly number[];
+  readonly sections?: readonly string[];
   readonly ranks?: readonly string[];
   readonly count?: number;
 }
-
-const RAISONS_SIGNALEMENT: readonly { value: string; label: string }[] = [
-  { value: "erreur", label: "La réponse me semble fausse" },
-  { value: "recommandation", label: "Une recommandation plus récente dit autre chose" },
-  { value: "ambigu", label: "L'énoncé ou une proposition est ambigu" },
-  { value: "hors_programme", label: "Hors programme" },
-  { value: "autre", label: "Autre" },
-];
 
 type Etape =
   | { readonly kind: "chargement" }
@@ -79,6 +74,8 @@ export function QcmPlayer({ params }: { readonly params: QcmPlayerParams }) {
       if (!link.questionSource) throw new Error("Aucune banque de questions n'est rattachée à cette évaluation.");
 
       let themeIds: readonly string[] = params.themeIds ?? [];
+      let chapters: readonly number[] = params.chapters ?? [];
+      let sections: readonly string[] = params.sections ?? [];
       let ranks: readonly string[] = params.ranks ?? [];
       let count = params.count ?? 20;
       if (params.sessionId) {
@@ -87,13 +84,15 @@ export function QcmPlayer({ params }: { readonly params: QcmPlayerParams }) {
         if (!s) throw new Error("Cette fenêtre n'existe plus.");
         if (windowState(s, new Date()) !== "open") throw new Error("Cette fenêtre n'est pas ouverte aujourd'hui.");
         themeIds = s.config?.themeIds ?? [];
+        chapters = s.config?.chapters ?? [];
+        sections = s.config?.sections ?? [];
         ranks = s.config?.ranks ?? [];
         count = s.config?.count ?? 20;
       } else if (!link.freeAccess) {
         throw new Error("L'accès libre n'est pas ouvert pour cette évaluation : attendez une fenêtre programmée.");
       }
       const ids = await data.assessments.pickQuestions(
-        { programId: activeProgram.id, source: link.questionSource, themeIds, ranks },
+        { programId: activeProgram.id, source: link.questionSource, themeIds, chapters, sections, ranks },
         count,
       );
       return { ids, count };

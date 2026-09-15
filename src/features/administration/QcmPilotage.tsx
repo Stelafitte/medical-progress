@@ -19,16 +19,17 @@
  * Chaque réglage s'enregistre AUSSITÔT (un interrupteur qui attend un bouton
  * plus bas trompe) ; l'atelier relit derrière.
  */
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { CalendarRange } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { formatFrDate } from "@/features/administration/adminProgramViewModel";
+import { QcmResultats } from "@/features/administration/QcmResultats";
+import { FILTRE_VIDE, FiltreQuestions, cleFiltre, type FiltreValeur } from "@/features/evaluations/FiltreQuestions";
 import { useDataAccess } from "@/application/session";
 import { milestoneDateFor } from "@/domain/acquisitionPlan";
 import {
@@ -42,7 +43,6 @@ import type { Cohort, OutcomeTheme, ProgramId } from "@/domain/types";
 import type { QuestionBankRow } from "@/application/ports/repositories";
 
 const SELECT_CLASS = "border-input bg-background min-h-11 rounded-md border px-3 text-sm";
-const RANKS = ["A", "B", "C"] as const;
 
 /* ------------------------------------------------------------------ */
 /* Les réglages                                                         */
@@ -142,8 +142,10 @@ export function QcmPilotage({
               <option value="">— aucune banque —</option>
               {banques.map((b) => (
                 <option key={b.source} value={b.source}>
-                  {b.source} — {b.published} question(s) publiée(s)
+                  {b.source} — {b.published} question(s)
                   {b.fileName ? ` — ${b.fileName}` : ""}
+                  {b.fileModifiedAt ? ` (fichier du ${formatFrDate(b.fileModifiedAt)})` : ""}
+                  {` — importée le ${formatFrDate(b.lastImportedAt)}`}
                 </option>
               ))}
             </select>
@@ -211,6 +213,9 @@ export function QcmPilotage({
           <p className="text-muted-foreground text-xs">Choisissez d'abord une banque pour programmer des fenêtres.</p>
         ) : null}
       </div>
+
+      {/* Les résultats — lus en base, agrégés */}
+      <QcmResultats cohort={cohort} />
     </div>
   );
 }
@@ -227,6 +232,9 @@ function decrireConfig(config: QcmWindowConfig | undefined, themes: readonly Out
     const noms = config.themeIds.map((id) => themes.find((t) => t.id === id)?.label ?? "?");
     parts.push(noms.length > 2 ? `${noms.length} thèmes` : noms.join(", "));
   } else parts.push("tous thèmes");
+  if (config.sections && config.sections.length > 0) parts.push(`${config.sections.length} sous-item(s)`);
+  else if (config.chapters && config.chapters.length > 0) parts.push(`${config.chapters.length} item(s)`);
+  else parts.push("tous items");
   parts.push(config.ranks.length > 0 ? `rang ${config.ranks.join("/")}` : "tous rangs");
   return parts.join(" · ");
 }
@@ -297,8 +305,7 @@ function AjouterUneFenetre({
   const dataAccess = useDataAccess();
   const [du, setDu] = useState("");
   const [au, setAu] = useState("");
-  const [themeIds, setThemeIds] = useState<readonly string[]>([]);
-  const [ranks, setRanks] = useState<readonly ("A" | "B" | "C")[]>([]);
+  const [filtre, setFiltre] = useState<FiltreValeur>(FILTRE_VIDE);
   const [count, setCount] = useState(20);
   const [milestoneId, setMilestoneId] = useState("");
   const [notes, setNotes] = useState("");
@@ -315,11 +322,9 @@ function AjouterUneFenetre({
   });
 
   const disponibles = useQuery({
-    queryKey: ["count-questions", programId, source, [...themeIds].sort().join(","), [...ranks].sort().join(",")],
-    queryFn: () => dataAccess.assessments.countQuestions({ programId, source, themeIds, ranks }),
+    queryKey: ["count-questions", programId, source, cleFiltre(filtre)],
+    queryFn: () => dataAccess.assessments.countQuestions({ programId, source, ...filtre }),
   });
-
-  const themesTries = useMemo(() => [...themes].sort((a, b) => a.position - b.position), [themes]);
 
   function depuisJalon(id: string) {
     setMilestoneId(id);
@@ -335,7 +340,7 @@ function AjouterUneFenetre({
     finSemaine.setUTCDate(finSemaine.getUTCDate() + 6);
     setAu(finSemaine.toISOString().slice(0, 10));
     const theme = themes.find((t) => t.label.trim().toLocaleLowerCase("fr") === j.label.trim().toLocaleLowerCase("fr"));
-    if (theme) setThemeIds([theme.id]);
+    if (theme) setFiltre((v) => ({ ...v, themeIds: [theme.id] }));
   }
 
   async function ajouter() {
@@ -350,12 +355,18 @@ function AjouterUneFenetre({
         location: "",
         notes,
         ...(au ? { closesOn: au } : {}),
-        config: { themeIds, ranks, count, ...(milestoneId ? { milestoneId } : {}) },
+        config: {
+          themeIds: filtre.themeIds,
+          ranks: filtre.ranks,
+          count,
+          ...(filtre.chapters.length > 0 ? { chapters: filtre.chapters } : {}),
+          ...(filtre.sections.length > 0 ? { sections: filtre.sections } : {}),
+          ...(milestoneId ? { milestoneId } : {}),
+        },
       });
       setDu("");
       setAu("");
-      setThemeIds([]);
-      setRanks([]);
+      setFiltre(FILTRE_VIDE);
       setMilestoneId("");
       setNotes("");
       onChanged?.();
@@ -427,44 +438,17 @@ function AjouterUneFenetre({
         </div>
       </div>
 
-      <div className="space-y-1">
-        <p className="text-xs">Thèmes (aucun coché = tous)</p>
-        <div className="flex flex-wrap gap-2">
-          {themesTries.map((t) => {
-            const on = themeIds.includes(t.id);
-            return (
-              <button
-                key={t.id}
-                type="button"
-                aria-pressed={on}
-                onClick={() => setThemeIds(on ? themeIds.filter((x) => x !== t.id) : [...themeIds, t.id])}
-                className={`rounded-full border px-3 py-1 text-xs ${on ? "bg-primary text-primary-foreground border-primary" : "border-border hover:bg-muted"}`}
-              >
-                {t.label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-4">
-        <p className="text-xs">Rangs (aucun coché = tous)</p>
-        {RANKS.map((r) => (
-          <div key={r} className="flex items-center gap-1.5">
-            <Checkbox
-              id={`rang-${r}-${modality.id}`}
-              checked={ranks.includes(r)}
-              onCheckedChange={(c) => setRanks(c === true ? [...ranks, r] : ranks.filter((x) => x !== r))}
-            />
-            <Label htmlFor={`rang-${r}-${modality.id}`} className="text-sm font-normal">
-              {r}
-            </Label>
-          </div>
-        ))}
-        <span className={`text-xs ${tropDemande ? "text-destructive" : "text-muted-foreground"}`}>
-          {dispo === null ? "…" : `${dispo} question(s) disponible(s) avec ce filtre`}
-        </span>
-      </div>
+      <FiltreQuestions
+        programId={programId}
+        source={source}
+        themes={themes}
+        value={filtre}
+        onChange={setFiltre}
+        idPrefix={`fen-${modality.id}`}
+      />
+      <p className={`text-xs ${tropDemande ? "text-destructive" : "text-muted-foreground"}`}>
+        {dispo === null ? "…" : `${dispo} question(s) disponible(s) avec ce filtre`}
+      </p>
 
       <div className="space-y-1">
         <Label htmlFor={`notes-${modality.id}`} className="text-xs">

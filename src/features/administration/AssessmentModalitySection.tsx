@@ -22,7 +22,7 @@
  * Le même composant sert l'onglet « Évaluations », le Concepteur (étape 1) et
  * le pilotage (lecture seule, promotion imposée).
  */
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { CalendarDays, ChevronDown, ChevronRight, Pencil, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -298,6 +298,18 @@ function LigneModalite({
   const [error, setError] = useState<string | null>(null);
   const enAttente = cochee !== utilisee;
   const estQcm = row.modality?.subtype === "qcm";
+  const depliable = utilisee && row.modality !== undefined && !enAttente;
+
+  /*
+   * Stef (15/09) : « je clique sur QCM d'entraînement et je vois les banques ».
+   * Quand l'enregistrement vient de rattacher un QCM à la promotion, la ligne
+   * se déplie d'elle-même sur le pilotage — pas de bouton « Détail » à chercher.
+   */
+  const utiliseeAvant = useRef(utilisee);
+  useEffect(() => {
+    if (!utiliseeAvant.current && utilisee && estQcm) setOpen(true);
+    utiliseeAvant.current = utilisee;
+  }, [utilisee, estQcm]);
 
   const modality = row.modality;
   const surMesure = row.entry === undefined;
@@ -342,7 +354,18 @@ function LigneModalite({
             aria-label={`${nom} pour cette promotion`}
           />
         ) : null}
-        <span className={`text-sm ${cochee ? "font-medium" : "text-muted-foreground"}`}>{nom}</span>
+        {depliable ? (
+          <button
+            type="button"
+            className="text-left text-sm font-medium underline-offset-4 hover:underline"
+            aria-expanded={open}
+            onClick={() => setOpen((v) => !v)}
+          >
+            {nom}
+          </button>
+        ) : (
+          <span className={`text-sm ${cochee ? "font-medium" : "text-muted-foreground"}`}>{nom}</span>
+        )}
         {enAttente ? (
           <Badge variant="outline" className="text-muted-foreground font-normal">
             {cochee ? "à enregistrer" : "à retirer"}
@@ -389,7 +412,7 @@ function LigneModalite({
             {link.freeAccess && link.questionSource ? " · accès libre" : ""}
           </Badge>
         ) : null}
-        {utilisee && modality && !enAttente ? (
+        {depliable ? (
           <Button
             type="button"
             size="sm"

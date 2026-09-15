@@ -42,6 +42,7 @@ export interface ImportedQuestion {
   readonly stem: string;
   readonly commentary: string;
   readonly chapter: number | null;
+  readonly chapter_title: string;
   readonly section_label: string;
   readonly options: readonly {
     readonly letter: string;
@@ -118,6 +119,7 @@ export function parseBanque(text: string):
     id?: unknown;
     outcome?: unknown;
     chapter?: unknown;
+    chapter_title?: unknown;
     stem?: unknown;
     commentary?: unknown;
     section?: unknown;
@@ -138,6 +140,7 @@ export function parseBanque(text: string):
       stem: String(q.stem ?? "").trim(),
       commentary: String(q.commentary ?? "").trim(),
       chapter,
+      chapter_title: String(q.chapter_title ?? "").trim(),
       section_label: [q.section, q.section_title].filter(Boolean).join(" — "),
       options: options.map((o) => ({
         letter: String(o.letter ?? "").trim().toUpperCase(),

@@ -20,7 +20,6 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { CalendarDays, ChevronDown, ChevronRight, MapPin, Play } from "lucide-react";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -29,6 +28,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState, PanelCard } from "@/features/professional/mock-ui";
 import { formatFrDate } from "@/features/administration/adminProgramViewModel";
 import { useDataAccess, useSession } from "@/application/session";
+import { FILTRE_VIDE, FiltreQuestions, cleFiltre, type FiltreValeur } from "@/features/evaluations/FiltreQuestions";
 import {
   ASSESSMENT_MODE_LABELS_FR,
   ASSESSMENT_SUBTYPE_LABELS_FR,
@@ -291,14 +291,38 @@ function CarteQcm({
           Rien à lancer aujourd'hui : attendez la prochaine fenêtre.
         </p>
       ) : null}
+
+      <MesResultatsQcm />
     </div>
   );
 }
 
+/** Ce que l'étudiant a fait jusqu'ici — ses propres agrégats, lus en base. */
+function MesResultatsQcm() {
+  const dataAccess = useDataAccess();
+  const { activeEnrollment } = useSession();
+  const enrollmentId = activeEnrollment?.id;
+  const resultats = useQuery({
+    queryKey: ["mes-resultats-qcm", enrollmentId],
+    queryFn: () => dataAccess.assessments.myQuestionResults(enrollmentId ?? ""),
+    enabled: Boolean(enrollmentId),
+  });
+  const r = resultats.data;
+  if (!r || r.attempts === 0) return null;
+  return (
+    <p className="text-muted-foreground text-xs">
+      Vous jusqu'ici : {r.attempts} réponse(s) sur {r.distinctQuestions} question(s)
+      {r.avgScore !== undefined ? `, score EDN moyen ${Math.round(r.avgScore * 100)} %` : ""}
+      {r.lastAnsweredAt ? ` · dernière le ${formatFrDate(r.lastAnsweredAt)}` : ""}.
+    </p>
+  );
+}
+
 /**
- * « JE M'ÉVALUE MAINTENANT » — l'étudiant compose sa série. Thèmes (aucun =
- * tous), rangs (aucun = tous), nombre. Le compte disponible se lit avant de
- * lancer, pour ne pas demander 40 questions là où il y en a 12.
+ * « JE M'ÉVALUE MAINTENANT » — l'étudiant compose sa série : thèmes, items,
+ * sous-items, rangs (aucun = tous), nombre — le filtre est `FiltreQuestions`,
+ * le même que l'équipe. Le compte disponible se lit avant de lancer, pour ne
+ * pas demander 40 questions là où il y en a 12.
  */
 function ComposerUneSerie({
   modality,
@@ -310,8 +334,7 @@ function ComposerUneSerie({
   const data = useDataAccess();
   const { activeProgram, activeEnrollment } = useSession();
   const [ouvert, setOuvert] = useState(false);
-  const [themeIds, setThemeIds] = useState<readonly string[]>([]);
-  const [ranks, setRanks] = useState<readonly string[]>([]);
+  const [filtre, setFiltre] = useState<FiltreValeur>(FILTRE_VIDE);
   const [count, setCount] = useState(20);
 
   const liens = useQuery({
@@ -323,15 +346,14 @@ function ComposerUneSerie({
   )?.questionSource;
 
   const dispo = useQuery({
-    queryKey: ["count-questions", activeProgram.id, source, [...themeIds].sort().join(","), [...ranks].sort().join(",")],
+    queryKey: ["count-questions", activeProgram.id, source, cleFiltre(filtre)],
     queryFn: () =>
       source
-        ? data.assessments.countQuestions({ programId: activeProgram.id, source, themeIds, ranks })
+        ? data.assessments.countQuestions({ programId: activeProgram.id, source, ...filtre })
         : Promise.resolve(0),
     enabled: ouvert && Boolean(source),
   });
 
-  const themesTries = useMemo(() => [...themes].sort((a, b) => a.position - b.position), [themes]);
   const n = dispo.data ?? null;
   const reel = n === null ? count : Math.min(count, n);
 
@@ -348,41 +370,16 @@ function ComposerUneSerie({
     <div className="border-border space-y-3 rounded-md border p-3">
       <p className="text-sm font-medium">Composez votre série</p>
 
-      <div className="space-y-1">
-        <p className="text-xs">Thèmes — aucun coché : tous</p>
-        <div className="flex flex-wrap gap-2">
-          {themesTries.map((t) => {
-            const on = themeIds.includes(t.id);
-            return (
-              <button
-                key={t.id}
-                type="button"
-                aria-pressed={on}
-                onClick={() => setThemeIds(on ? themeIds.filter((x) => x !== t.id) : [...themeIds, t.id])}
-                className={`rounded-full border px-3 py-1 text-xs ${on ? "bg-primary text-primary-foreground border-primary" : "border-border hover:bg-muted"}`}
-              >
-                {t.label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-4">
-        <p className="text-xs">Rangs — aucun coché : tous</p>
-        {(["A", "B", "C"] as const).map((r) => (
-          <div key={r} className="flex items-center gap-1.5">
-            <Checkbox
-              id={`me-rang-${r}-${modality.id}`}
-              checked={ranks.includes(r)}
-              onCheckedChange={(c) => setRanks(c === true ? [...ranks, r] : ranks.filter((x) => x !== r))}
-            />
-            <Label htmlFor={`me-rang-${r}-${modality.id}`} className="text-sm font-normal">
-              {r}
-            </Label>
-          </div>
-        ))}
-      </div>
+      {source ? (
+        <FiltreQuestions
+          programId={activeProgram.id}
+          source={source}
+          themes={themes}
+          value={filtre}
+          onChange={setFiltre}
+          idPrefix={`me-${modality.id}`}
+        />
+      ) : null}
 
       <div className="flex flex-wrap items-end gap-3">
         <div className="space-y-1">
@@ -411,8 +408,10 @@ function ComposerUneSerie({
             to="/espace/evaluations/qcm"
             search={{
               modalityId: modality.id,
-              ...(themeIds.length > 0 ? { themeIds } : {}),
-              ...(ranks.length > 0 ? { ranks } : {}),
+              ...(filtre.themeIds.length > 0 ? { themeIds: filtre.themeIds } : {}),
+              ...(filtre.chapters.length > 0 ? { chapters: filtre.chapters } : {}),
+              ...(filtre.sections.length > 0 ? { sections: filtre.sections } : {}),
+              ...(filtre.ranks.length > 0 ? { ranks: filtre.ranks } : {}),
               count: reel,
             }}
           >

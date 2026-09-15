@@ -453,6 +453,19 @@ export interface QuestionFilter {
   readonly source: string;
   readonly themeIds: readonly string[];
   readonly ranks: readonly string[];
+  /** Items (chapitres) et sous-items (clés « chapitre|section ») ; absents ou vides = tous. */
+  readonly chapters?: readonly number[];
+  readonly sections?: readonly string[];
+}
+
+/** Un sous-item d'une banque : son chapitre (l'item), sa section, son compte. */
+export interface QuestionSectionRow {
+  readonly chapter: number;
+  readonly chapterTitle: string;
+  readonly itemCode: string;
+  readonly sectionKey: string;
+  readonly sectionLabel: string;
+  readonly published: number;
 }
 
 /** Une question SANS sa réponse — ce que `read_question` rend. */
@@ -477,6 +490,52 @@ export interface QuestionCorrection {
     readonly explanation?: string;
     readonly flag?: string;
   }[];
+}
+
+/** Un signalement tel que l'équipe le lit : la question, l'auteur, l'état. */
+export interface QuestionReportRow {
+  readonly id: string;
+  readonly questionId: string;
+  readonly externalRef: string;
+  readonly stem: string;
+  readonly questionStatus: string;
+  readonly reason: string;
+  readonly message: string;
+  readonly status: string;
+  readonly reportedByName?: string;
+  readonly createdAt: string;
+  readonly handledByName?: string;
+  readonly handledAt?: string;
+  readonly resolution?: string;
+}
+
+export type QuestionReportDecision = "en_revue" | "corrige" | "confirme" | "rejete";
+
+/** Les tentatives d'un étudiant, agrégées (jamais la copie question par question). */
+export interface LearnerQuestionResults {
+  readonly enrollmentId: string;
+  readonly personId: string;
+  readonly fullName: string;
+  readonly attempts: number;
+  readonly distinctQuestions: number;
+  /** Score EDN moyen 0..1, absent tant qu'aucune réponse. */
+  readonly avgScore?: number;
+  readonly lastAnsweredAt?: string;
+}
+
+export interface ThemeQuestionResults {
+  readonly themeId?: string;
+  readonly themeLabel: string;
+  readonly attempts: number;
+  readonly avgScore?: number;
+  readonly learners: number;
+}
+
+export interface MyQuestionResults {
+  readonly attempts: number;
+  readonly distinctQuestions: number;
+  readonly avgScore?: number;
+  readonly lastAnsweredAt?: string;
 }
 
 export interface ImportQuestionItemsInput {
@@ -555,6 +614,8 @@ export interface AssessmentRepository {
   ): Promise<void>;
   /* ---- Pilotage des QCM (15/09) --------------------------------------- */
   setCohortAssessmentPilotage(input: SetCohortAssessmentPilotageInput): Promise<void>;
+  /** Les items et sous-items d'une banque, avec leurs comptes — pour composer un filtre. */
+  listQuestionSections(programId: ProgramId, source: string): Promise<readonly QuestionSectionRow[]>;
   /** Combien de questions publiées répondent au filtre — avant de lancer. */
   countQuestions(filter: QuestionFilter): Promise<number>;
   /** N identifiants tirés au sort dans la banque, filtrés. */
@@ -566,6 +627,18 @@ export interface AssessmentRepository {
     selected: readonly string[],
   ): Promise<QuestionCorrection>;
   reportQuestion(questionId: string, reason: string, message: string): Promise<void>;
+  /* ---- Résultats et signalements, côté équipe (15/09, suite) ---------- */
+  /** Tous les signalements du programme, nouveaux d'abord. Équipe d'encadrement. */
+  listQuestionReports(programId: ProgramId): Promise<readonly QuestionReportRow[]>;
+  /** Traiter un signalement : n'importe quel membre de l'équipe (décision de Stef). */
+  resolveQuestionReport(
+    reportId: string,
+    decision: QuestionReportDecision,
+    resolution: string,
+  ): Promise<void>;
+  questionResultsByLearner(cohortId: string): Promise<readonly LearnerQuestionResults[]>;
+  questionResultsByTheme(cohortId: string): Promise<readonly ThemeQuestionResults[]>;
+  myQuestionResults(enrollmentId: string): Promise<MyQuestionResults>;
 }
 
 export interface PlacementRepository {
