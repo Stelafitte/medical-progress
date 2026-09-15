@@ -21,7 +21,11 @@ export const libelleRaison = (value: string): string =>
 
 /** Les décisions possibles de l'équipe, dans l'ordre où on les propose. */
 export const DECISIONS_SIGNALEMENT = [
-  { value: "en_revue", label: "Prendre en charge", aide: "je regarde, le signalement reste ouvert" },
+  {
+    value: "en_revue",
+    label: "Prendre en charge",
+    aide: "je regarde, le signalement reste ouvert",
+  },
   { value: "corrige", label: "Corrigé", aide: "la question a été corrigée dans la banque" },
   { value: "confirme", label: "Confirmé", aide: "la question est juste, la réponse tient" },
   { value: "rejete", label: "Rejeté", aide: "signalement sans suite" },
@@ -36,4 +40,5 @@ export const STATUTS_SIGNALEMENT_FR: Readonly<Record<string, string>> = {
 };
 
 /** Un signalement « à traiter » attend encore une décision finale. */
-export const estATraiter = (status: string): boolean => status === "nouveau" || status === "en_revue";
+export const estATraiter = (status: string): boolean =>
+  status === "nouveau" || status === "en_revue";

@@ -47,7 +47,8 @@ export const cleFiltre = (v: FiltreValeur): string =>
   ].join("|");
 
 /** « CHAPITRE 1: Item 221 Athérome… » → « Item 221 Athérome… ». */
-const titreItem = (row: QuestionSectionRow): string => row.chapterTitle.replace(/^chapitre\s*\d+\s*[:.\-–—]\s*/i, "");
+const titreItem = (row: QuestionSectionRow): string =>
+  row.chapterTitle.replace(/^chapitre\s*\d+\s*[:.\-–—]\s*/i, "");
 
 const CHIP = "rounded-full border px-3 py-1 text-xs";
 const CHIP_ON = "bg-primary text-primary-foreground border-primary";
@@ -78,21 +79,34 @@ export function FiltreQuestions({
 
   /* Les items : un par chapitre, avec le total de ses sections. */
   const items = useMemo(() => {
-    const parChapitre = new Map<number, { titre: string; code: string; total: number; sections: QuestionSectionRow[] }>();
+    const parChapitre = new Map<
+      number,
+      { titre: string; code: string; total: number; sections: QuestionSectionRow[] }
+    >();
     for (const r of sections.data ?? []) {
-      const it = parChapitre.get(r.chapter) ?? { titre: titreItem(r), code: r.itemCode, total: 0, sections: [] };
+      const it = parChapitre.get(r.chapter) ?? {
+        titre: titreItem(r),
+        code: r.itemCode,
+        total: 0,
+        sections: [],
+      };
       it.total += r.published;
       it.sections.push(r);
       parChapitre.set(r.chapter, it);
     }
-    return [...parChapitre.entries()].sort((a, b) => a[0] - b[0]).map(([chapter, it]) => ({ chapter, ...it }));
+    return [...parChapitre.entries()]
+      .sort((a, b) => a[0] - b[0])
+      .map(([chapter, it]) => ({ chapter, ...it }));
   }, [sections.data]);
 
   const itemsChoisis = items.filter((it) => value.chapters.includes(it.chapter));
 
   function basculerTheme(id: string) {
     const on = value.themeIds.includes(id);
-    onChange({ ...value, themeIds: on ? value.themeIds.filter((x) => x !== id) : [...value.themeIds, id] });
+    onChange({
+      ...value,
+      themeIds: on ? value.themeIds.filter((x) => x !== id) : [...value.themeIds, id],
+    });
   }
   function basculerItem(chapter: number) {
     const on = value.chapters.includes(chapter);
@@ -105,7 +119,10 @@ export function FiltreQuestions({
   }
   function basculerSection(key: string) {
     const on = value.sections.includes(key);
-    onChange({ ...value, sections: on ? value.sections.filter((k) => k !== key) : [...value.sections, key] });
+    onChange({
+      ...value,
+      sections: on ? value.sections.filter((k) => k !== key) : [...value.sections, key],
+    });
   }
   function basculerRang(r: Rang, on: boolean) {
     onChange({ ...value, ranks: on ? [...value.ranks, r] : value.ranks.filter((x) => x !== r) });
@@ -120,7 +137,13 @@ export function FiltreQuestions({
             {themesTries.map((t) => {
               const on = value.themeIds.includes(t.id);
               return (
-                <button key={t.id} type="button" aria-pressed={on} onClick={() => basculerTheme(t.id)} className={`${CHIP} ${on ? CHIP_ON : CHIP_OFF}`}>
+                <button
+                  key={t.id}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() => basculerTheme(t.id)}
+                  className={`${CHIP} ${on ? CHIP_ON : CHIP_OFF}`}
+                >
                   {t.label}
                 </button>
               );
@@ -161,7 +184,9 @@ export function FiltreQuestions({
           <p className="text-xs">Sous-items — aucun coché : tout l'item</p>
           {itemsChoisis.map((it) => (
             <div key={it.chapter} className="space-y-1">
-              {itemsChoisis.length > 1 ? <p className="text-muted-foreground text-xs">{it.titre}</p> : null}
+              {itemsChoisis.length > 1 ? (
+                <p className="text-muted-foreground text-xs">{it.titre}</p>
+              ) : null}
               <div className="flex flex-wrap gap-2">
                 {it.sections.map((s) => {
                   const on = value.sections.includes(s.sectionKey);

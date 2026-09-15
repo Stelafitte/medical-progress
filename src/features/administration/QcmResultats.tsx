@@ -16,7 +16,8 @@ import { StatCard } from "@/features/professional/mock-ui";
 import { formatFrDate } from "@/features/administration/adminProgramViewModel";
 import type { Cohort } from "@/domain/types";
 
-const pourcent = (score: number | undefined) => (score === undefined ? "—" : `${Math.round(score * 100)} %`);
+const pourcent = (score: number | undefined) =>
+  score === undefined ? "—" : `${Math.round(score * 100)} %`;
 
 export function QcmResultats({ cohort }: { readonly cohort: Cohort }) {
   const dataAccess = useDataAccess();
@@ -60,7 +61,11 @@ export function QcmResultats({ cohort }: { readonly cohort: Cohort }) {
               hint="ont répondu à au moins une question"
             />
             <StatCard label="Réponses" value={reponses} hint="toutes tentatives confondues" />
-            <StatCard label="Score EDN moyen" value={pourcent(moyenne)} hint="barème 1 · 0,5 · 0,2 · 0" />
+            <StatCard
+              label="Score EDN moyen"
+              value={pourcent(moyenne)}
+              hint="barème 1 · 0,5 · 0,2 · 0"
+            />
           </div>
 
           {themes.length > 0 ? (

@@ -47,10 +47,18 @@ export function QuestionReports({ programId }: { readonly programId: ProgramId }
       description="Ce que les étudiants signalent depuis la correction : réponse discutable, recommandation plus récente, énoncé ambigu. Toute l'équipe d'encadrement les voit et peut trancher ; corriger une question passe par un ré-import de la banque."
       action={
         <div className="flex gap-1">
-          <Button size="sm" variant={vue === "ouverts" ? "default" : "outline"} onClick={() => setVue("ouverts")}>
+          <Button
+            size="sm"
+            variant={vue === "ouverts" ? "default" : "outline"}
+            onClick={() => setVue("ouverts")}
+          >
             À traiter ({ouverts.length})
           </Button>
-          <Button size="sm" variant={vue === "traites" ? "default" : "outline"} onClick={() => setVue("traites")}>
+          <Button
+            size="sm"
+            variant={vue === "traites" ? "default" : "outline"}
+            onClick={() => setVue("traites")}
+          >
             Traités ({traites.length})
           </Button>
         </div>
@@ -75,7 +83,13 @@ export function QuestionReports({ programId }: { readonly programId: ProgramId }
   );
 }
 
-function SignalementRow({ report, programId }: { readonly report: QuestionReportRow; readonly programId: ProgramId }) {
+function SignalementRow({
+  report,
+  programId,
+}: {
+  readonly report: QuestionReportRow;
+  readonly programId: ProgramId;
+}) {
   const dataAccess = useDataAccess();
   const queryClient = useQueryClient();
   const [note, setNote] = useState("");
@@ -114,7 +128,9 @@ function SignalementRow({ report, programId }: { readonly report: QuestionReport
       </div>
       <p className="mt-2 line-clamp-3 whitespace-pre-line">{report.stem}</p>
       {report.message ? (
-        <p className="text-muted-foreground mt-1 whitespace-pre-line text-xs">« {report.message} »</p>
+        <p className="text-muted-foreground mt-1 whitespace-pre-line text-xs">
+          « {report.message} »
+        </p>
       ) : null}
 
       {ouvert ? (
@@ -127,7 +143,9 @@ function SignalementRow({ report, programId }: { readonly report: QuestionReport
             disabled={busy}
           />
           <div className="flex flex-wrap gap-2">
-            {DECISIONS_SIGNALEMENT.filter((d) => !(d.value === "en_revue" && report.status === "en_revue")).map((d) => (
+            {DECISIONS_SIGNALEMENT.filter(
+              (d) => !(d.value === "en_revue" && report.status === "en_revue"),
+            ).map((d) => (
               <Button
                 key={d.value}
                 size="sm"
