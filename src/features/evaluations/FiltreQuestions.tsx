@@ -50,6 +50,13 @@ export const cleFiltre = (v: FiltreValeur): string =>
 const titreItem = (row: QuestionSectionRow): string =>
   row.chapterTitle.replace(/^chapitre\s*\d+\s*[:.\-–—]\s*/i, "");
 
+/** Le thème du référentiel qui porte cet item (« Item 221 — … »), s'il existe. */
+export const themePourItem = (
+  themes: readonly OutcomeTheme[],
+  itemCode: string,
+): OutcomeTheme | undefined =>
+  themes.find((t) => new RegExp(`^item\\s*${itemCode}\\b`, "i").test(t.label.trim()));
+
 const CHIP = "rounded-full border px-3 py-1 text-xs";
 const CHIP_ON = "bg-primary text-primary-foreground border-primary";
 const CHIP_OFF = "border-border hover:bg-muted";
@@ -77,7 +84,12 @@ export function FiltreQuestions({
 
   const themesTries = useMemo(() => [...themes].sort((a, b) => a.position - b.position), [themes]);
 
-  /* Les items : un par chapitre, avec le total de ses sections. */
+  /*
+   * Les items : un par chapitre, avec le total de ses sections. Le libellé
+   * vient du référentiel quand il a un thème « Item 221 — … » (c'est le cas
+   * du DFASM-CARDIO : ses thèmes SONT les items), sinon du titre du chapitre
+   * importé, sinon du numéro.
+   */
   const items = useMemo(() => {
     const parChapitre = new Map<
       number,
@@ -85,7 +97,7 @@ export function FiltreQuestions({
     >();
     for (const r of sections.data ?? []) {
       const it = parChapitre.get(r.chapter) ?? {
-        titre: titreItem(r),
+        titre: themePourItem(themes, r.itemCode)?.label ?? titreItem(r),
         code: r.itemCode,
         total: 0,
         sections: [],
@@ -97,7 +109,15 @@ export function FiltreQuestions({
     return [...parChapitre.entries()]
       .sort((a, b) => a[0] - b[0])
       .map(([chapter, it]) => ({ chapter, ...it }));
-  }, [sections.data]);
+  }, [sections.data, themes]);
+
+  /*
+   * Une banque de QCM se filtre par ITEM : ses questions portent sur des
+   * connaissances, pas sur des compétences. Dès que la banque a des
+   * chapitres, l'axe « Thèmes » du référentiel ferait doublon (les thèmes du
+   * DFASM-CARDIO sont les items) ou tournerait à vide (thèmes de compétences)
+   * : il n'apparaît que pour une banque sans chapitres.
+   */
 
   const itemsChoisis = items.filter((it) => value.chapters.includes(it.chapter));
 
@@ -130,7 +150,7 @@ export function FiltreQuestions({
 
   return (
     <div className="space-y-3">
-      {themesTries.length > 0 ? (
+      {themesTries.length > 0 && items.length === 0 ? (
         <div className="space-y-1">
           <p className="text-xs">Thèmes — aucun coché : tous</p>
           <div className="flex flex-wrap gap-2">

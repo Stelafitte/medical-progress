@@ -29,7 +29,12 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { formatFrDate } from "@/features/administration/adminProgramViewModel";
 import { QcmResultats } from "@/features/administration/QcmResultats";
-import { FILTRE_VIDE, FiltreQuestions, cleFiltre, type FiltreValeur } from "@/features/evaluations/FiltreQuestions";
+import {
+  FILTRE_VIDE,
+  FiltreQuestions,
+  cleFiltre,
+  type FiltreValeur,
+} from "@/features/evaluations/FiltreQuestions";
 import { useDataAccess } from "@/application/session";
 import { milestoneDateFor } from "@/domain/acquisitionPlan";
 import {
@@ -73,7 +78,9 @@ export function QcmPilotage({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function regler(patch: Partial<{ isOpen: boolean; questionSource: string; freeAccess: boolean }>) {
+  async function regler(
+    patch: Partial<{ isOpen: boolean; questionSource: string; freeAccess: boolean }>,
+  ) {
     setBusy(true);
     setError(null);
     try {
@@ -116,7 +123,10 @@ export function QcmPilotage({
             {link.isOpen ? "Ouvert" : "Fermé"}
             <span className="text-muted-foreground">
               {" "}
-              — {link.isOpen ? "l'étudiant peut lancer" : "l'étudiant voit la modalité mais ne peut rien lancer"}
+              —{" "}
+              {link.isOpen
+                ? "l'étudiant peut lancer"
+                : "l'étudiant voit la modalité mais ne peut rien lancer"}
             </span>
           </Label>
         </div>
@@ -173,7 +183,8 @@ export function QcmPilotage({
             Accès libre
             <span className="text-muted-foreground">
               {" "}
-              — « Je m'évalue maintenant » : l'étudiant choisit thèmes, rangs et nombre, quand il veut
+              — « Je m'évalue maintenant » : l'étudiant choisit thèmes, rangs et nombre, quand il
+              veut
             </span>
           </Label>
         </div>
@@ -190,12 +201,21 @@ export function QcmPilotage({
         </p>
         {fenetres.length === 0 ? (
           <p className="text-muted-foreground text-xs">
-            Aucune fenêtre. {link.freeAccess ? "L'étudiant s'entraîne en accès libre." : "Sans fenêtre ni accès libre, l'étudiant ne peut rien lancer."}
+            Aucune fenêtre.{" "}
+            {link.freeAccess
+              ? "L'étudiant s'entraîne en accès libre."
+              : "Sans fenêtre ni accès libre, l'étudiant ne peut rien lancer."}
           </p>
         ) : (
           <ul className="space-y-1.5">
             {fenetres.map((s) => (
-              <FenetreRow key={s.id} session={s} themes={themes} editable={editable} onChanged={onChanged} />
+              <FenetreRow
+                key={s.id}
+                session={s}
+                themes={themes}
+                editable={editable}
+                onChanged={onChanged}
+              />
             ))}
           </ul>
         )}
@@ -210,7 +230,9 @@ export function QcmPilotage({
           />
         ) : null}
         {editable && !link.questionSource ? (
-          <p className="text-muted-foreground text-xs">Choisissez d'abord une banque pour programmer des fenêtres.</p>
+          <p className="text-muted-foreground text-xs">
+            Choisissez d'abord une banque pour programmer des fenêtres.
+          </p>
         ) : null}
       </div>
 
@@ -224,7 +246,10 @@ export function QcmPilotage({
 /* Une fenêtre                                                          */
 /* ------------------------------------------------------------------ */
 
-function decrireConfig(config: QcmWindowConfig | undefined, themes: readonly OutcomeTheme[]): string {
+function decrireConfig(
+  config: QcmWindowConfig | undefined,
+  themes: readonly OutcomeTheme[],
+): string {
   if (!config) return "toute la banque";
   const parts: string[] = [];
   parts.push(`${config.count} question(s)`);
@@ -232,8 +257,10 @@ function decrireConfig(config: QcmWindowConfig | undefined, themes: readonly Out
     const noms = config.themeIds.map((id) => themes.find((t) => t.id === id)?.label ?? "?");
     parts.push(noms.length > 2 ? `${noms.length} thèmes` : noms.join(", "));
   } else parts.push("tous thèmes");
-  if (config.sections && config.sections.length > 0) parts.push(`${config.sections.length} sous-item(s)`);
-  else if (config.chapters && config.chapters.length > 0) parts.push(`${config.chapters.length} item(s)`);
+  if (config.sections && config.sections.length > 0)
+    parts.push(`${config.sections.length} sous-item(s)`);
+  else if (config.chapters && config.chapters.length > 0)
+    parts.push(`${config.chapters.length} item(s)`);
   else parts.push("tous items");
   parts.push(config.ranks.length > 0 ? `rang ${config.ranks.join("/")}` : "tous rangs");
   return parts.join(" · ");
@@ -270,12 +297,21 @@ function FenetreRow({
         {session.closesOn ? ` → ${formatFrDate(session.closesOn)}` : ""}
       </span>
       <span className="text-muted-foreground text-xs">{decrireConfig(session.config, themes)}</span>
-      {session.notes ? <span className="text-muted-foreground text-xs">· {session.notes}</span> : null}
+      {session.notes ? (
+        <span className="text-muted-foreground text-xs">· {session.notes}</span>
+      ) : null}
       <Badge variant={etat === "open" ? "secondary" : "outline"} className="font-normal">
         {etat === "open" ? "ouverte" : etat === "upcoming" ? "à venir" : "fermée"}
       </Badge>
       {editable ? (
-        <Button type="button" size="sm" variant="ghost" className="min-h-9" disabled={busy} onClick={() => void supprimer()}>
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          className="min-h-9"
+          disabled={busy}
+          onClick={() => void supprimer()}
+        >
           Supprimer
         </Button>
       ) : null}
@@ -320,6 +356,11 @@ function AjouterUneFenetre({
     queryKey: ["plan-milestones", cohort.id],
     queryFn: () => dataAccess.plan.listMilestones(cohort.id),
   });
+  // Même clé que FiltreQuestions : lu une fois, partagé par le cache.
+  const sections = useQuery({
+    queryKey: ["question-sections", programId, source],
+    queryFn: () => dataAccess.assessments.listQuestionSections(programId, source),
+  });
 
   const disponibles = useQuery({
     queryKey: ["count-questions", programId, source, cleFiltre(filtre)],
@@ -339,7 +380,21 @@ function AjouterUneFenetre({
     const finSemaine = new Date(milestoneDateFor(cohort.startsOn, j.weekOffsetEnd ?? j.weekOffset));
     finSemaine.setUTCDate(finSemaine.getUTCDate() + 6);
     setAu(finSemaine.toISOString().slice(0, 10));
-    const theme = themes.find((t) => t.label.trim().toLocaleLowerCase("fr") === j.label.trim().toLocaleLowerCase("fr"));
+    /*
+     * Le jalon « Item 152 — … » désigne un item : on filtre sur son chapitre
+     * dans la banque (l'axe visible), et seulement à défaut sur le thème.
+     */
+    const numero = /item\s*(\d+)/i.exec(j.label)?.[1];
+    const chapitre = numero
+      ? sections.data?.find((s) => s.itemCode === numero)?.chapter
+      : undefined;
+    if (chapitre !== undefined) {
+      setFiltre((v) => ({ ...v, chapters: [chapitre], sections: [] }));
+      return;
+    }
+    const theme = themes.find(
+      (t) => t.label.trim().toLocaleLowerCase("fr") === j.label.trim().toLocaleLowerCase("fr"),
+    );
     if (theme) setFiltre((v) => ({ ...v, themeIds: [theme.id] }));
   }
 
@@ -414,13 +469,26 @@ function AjouterUneFenetre({
           <Label htmlFor={`du-${modality.id}`} className="text-xs">
             Du
           </Label>
-          <Input id={`du-${modality.id}`} type="date" value={du} onChange={(e) => setDu(e.target.value)} className="min-h-11" />
+          <Input
+            id={`du-${modality.id}`}
+            type="date"
+            value={du}
+            onChange={(e) => setDu(e.target.value)}
+            className="min-h-11"
+          />
         </div>
         <div className="space-y-1">
           <Label htmlFor={`au-${modality.id}`} className="text-xs">
             Au (optionnel)
           </Label>
-          <Input id={`au-${modality.id}`} type="date" value={au} min={du} onChange={(e) => setAu(e.target.value)} className="min-h-11" />
+          <Input
+            id={`au-${modality.id}`}
+            type="date"
+            value={au}
+            min={du}
+            onChange={(e) => setAu(e.target.value)}
+            className="min-h-11"
+          />
         </div>
         <div className="space-y-1">
           <Label htmlFor={`n-${modality.id}`} className="text-xs">
@@ -454,11 +522,23 @@ function AjouterUneFenetre({
         <Label htmlFor={`notes-${modality.id}`} className="text-xs">
           Consigne pour l'étudiant (optionnel)
         </Label>
-        <Input id={`notes-${modality.id}`} value={notes} placeholder="Avant le cours du lundi, 20 minutes…" onChange={(e) => setNotes(e.target.value)} className="min-h-11" />
+        <Input
+          id={`notes-${modality.id}`}
+          value={notes}
+          placeholder="Avant le cours du lundi, 20 minutes…"
+          onChange={(e) => setNotes(e.target.value)}
+          className="min-h-11"
+        />
       </div>
 
       {error ? <p className="text-destructive text-xs">{error}</p> : null}
-      <Button type="button" size="sm" className="min-h-11" disabled={busy || !du || tropDemande} onClick={() => void ajouter()}>
+      <Button
+        type="button"
+        size="sm"
+        className="min-h-11"
+        disabled={busy || !du || tropDemande}
+        onClick={() => void ajouter()}
+      >
         {busy ? "Ajout…" : "Programmer cette fenêtre"}
       </Button>
     </div>
