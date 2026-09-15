@@ -670,6 +670,7 @@ export const mockDataAccess: DataAccess = {
       questionResultsByLearner: () => ok([]),
       questionResultsByTheme: () => ok([]),
       myQuestionResults: () => ok({ attempts: 0, distinctQuestions: 0 }),
+      myQuestionResultsByTheme: () => ok([]),
       importQuestionItems: (input) =>
         ok({
           mode: input.mode,

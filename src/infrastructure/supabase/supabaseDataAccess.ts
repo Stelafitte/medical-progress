@@ -21,6 +21,7 @@ import type {
   ImportQuestionItemsInput,
   LearnerQuestionResults,
   MyQuestionResults,
+  MyThemeQuestionResults,
   QuestionBankRow,
   QuestionCorrection,
   QuestionFilter,
@@ -2519,6 +2520,30 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
           ...(r.avg_score !== null ? { avgScore: Number(r.avg_score) } : {}),
           ...(r.last_answered_at ? { lastAnsweredAt: r.last_answered_at } : {}),
         } satisfies MyQuestionResults;
+      },
+      async myQuestionResultsByTheme(enrollmentId: string) {
+        const { data, error } = await client.rpc("my_question_results_by_theme", {
+          p_enrollment_id: enrollmentId,
+        });
+        assertNoSupabaseError(error);
+        type Row = {
+          theme_id: string | null;
+          theme_label: string;
+          attempts: number | string;
+          distinct_questions: number | string;
+          avg_score: number | string | null;
+          last_answered_at: string | null;
+        };
+        return ((data ?? []) as Row[]).map(
+          (r): MyThemeQuestionResults => ({
+            themeLabel: r.theme_label,
+            attempts: Number(r.attempts),
+            distinctQuestions: Number(r.distinct_questions),
+            ...(r.theme_id ? { themeId: r.theme_id } : {}),
+            ...(r.avg_score !== null ? { avgScore: Number(r.avg_score) } : {}),
+            ...(r.last_answered_at ? { lastAnsweredAt: r.last_answered_at } : {}),
+          }),
+        );
       },
     },
     outcomes: {

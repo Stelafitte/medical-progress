@@ -538,6 +538,16 @@ export interface MyQuestionResults {
   readonly lastAnsweredAt?: string;
 }
 
+/** Mes résultats par item (thème de l'acquis) — l'étudiant, lui seul. */
+export interface MyThemeQuestionResults {
+  readonly themeId?: string;
+  readonly themeLabel: string;
+  readonly attempts: number;
+  readonly distinctQuestions: number;
+  readonly avgScore?: number;
+  readonly lastAnsweredAt?: string;
+}
+
 export interface ImportQuestionItemsInput {
   readonly programId: ProgramId;
   readonly mode: ImportMode;
@@ -639,6 +649,7 @@ export interface AssessmentRepository {
   questionResultsByLearner(cohortId: string): Promise<readonly LearnerQuestionResults[]>;
   questionResultsByTheme(cohortId: string): Promise<readonly ThemeQuestionResults[]>;
   myQuestionResults(enrollmentId: string): Promise<MyQuestionResults>;
+  myQuestionResultsByTheme(enrollmentId: string): Promise<readonly MyThemeQuestionResults[]>;
 }
 
 export interface PlacementRepository {

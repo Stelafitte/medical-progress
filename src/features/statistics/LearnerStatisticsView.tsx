@@ -8,6 +8,7 @@ import { EYEBROW, TABULAIRE } from "@/components/milestone-heading";
 import { OutcomeMap } from "@/components/outcome-map";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLearnerPassport } from "@/features/dashboard/useLearnerPassport";
+import { MesResultatsEvaluations } from "@/features/statistics/MesResultatsEvaluations";
 import { useSession } from "@/application/session";
 import { NATURE_LABELS_FR, summarizeProgress } from "@/domain/mastery";
 import type { OutcomeNature } from "@/domain/types";
@@ -158,6 +159,8 @@ export function LearnerStatisticsView() {
           </p>
         </div>
       </section>
+
+      <MesResultatsEvaluations enrollmentId={activeEnrollment.id} />
     </div>
   );
 }
