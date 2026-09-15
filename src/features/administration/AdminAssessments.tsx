@@ -9,18 +9,18 @@
  * écran affiche est lu en base.
  */
 import { SectionHeading } from "@/components/section-heading";
-import { Skeleton } from "@/components/ui/skeleton";
 import { PanelCard, ScopeNotice } from "@/features/professional/mock-ui";
 import { CorpusImport } from "@/features/administration/CorpusImport";
 import { QuestionBankImport } from "@/features/administration/QuestionBankImport";
 import { QuestionReports } from "@/features/administration/QuestionReports";
 import { AssessmentModalitySection } from "@/features/administration/AssessmentModalitySection";
 import { useProgramAdmin } from "@/features/administration/useProgramAdmin";
+import { AdminChargement } from "@/features/administration/AdminChargement";
 
 export function AdminAssessments() {
-  const { data, isPending, refetch } = useProgramAdmin();
+  const { data, isPending, error, refetch } = useProgramAdmin();
 
-  if (isPending || !data || !data.program) return <Skeleton className="h-80 w-full" />;
+  if (isPending || !data || !data.program) return <AdminChargement error={error} />;
 
   const program = data.program;
 
@@ -35,8 +35,8 @@ export function AdminAssessments() {
       <ScopeNotice>
         Chaque <strong>promotion</strong> a son contenu d'évaluation. Une modalité est configurée
         une fois pour le programme — format, lieu, ce qu'elle engage, consignes — et chaque
-        promotion choisit de l'utiliser, et quand. Choisissez une promotion : tout ce qui suit
-        est à elle. Le Concepteur de programme ouvre le même atelier.
+        promotion choisit de l'utiliser, et quand. Choisissez une promotion : tout ce qui suit est à
+        elle. Le Concepteur de programme ouvre le même atelier.
       </ScopeNotice>
 
       <AssessmentModalitySection

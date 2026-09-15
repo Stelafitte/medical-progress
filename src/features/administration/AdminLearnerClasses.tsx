@@ -11,7 +11,6 @@ import { SectionHeading } from "@/components/section-heading";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   EmptyState,
   MockBadge,
@@ -25,6 +24,7 @@ import { RealRosterImportPanel } from "@/features/administration/RealRosterImpor
 import { PendingPeopleTable } from "@/features/administration/PendingPeopleTable";
 import { RealIndividualPersonForm } from "@/features/administration/RealIndividualPersonForm";
 import { useProgramAdmin } from "@/features/administration/useProgramAdmin";
+import { AdminChargement } from "@/features/administration/AdminChargement";
 import { useDataAccess } from "@/application/session";
 import {
   COHORT_PHASE_LABELS_FR,
@@ -38,7 +38,7 @@ import type { Cohort, CohortId } from "@/domain/types";
 import type { PendingPersonId, UpdatePendingPersonInput } from "@/domain/peopleStaging";
 
 export function AdminLearnerClasses() {
-  const { data, isPending, refetch } = useProgramAdmin();
+  const { data, isPending, error, refetch } = useProgramAdmin();
   const dataAccess = useDataAccess();
   const [editing, setEditing] = useState<CohortId | null>(null);
   const [importingInto, setImportingInto] = useState<CohortId | null>(null);
@@ -75,7 +75,7 @@ export function AdminLearnerClasses() {
     queryFn: () => dataAccess.peopleStaging.listPendingPeople(data!.program!.id),
   });
 
-  if (isPending || !data) return <Skeleton className="h-80 w-full" />;
+  if (isPending || !data) return <AdminChargement error={error} />;
 
   const cohorts = sortCohortsForPilot(data.cohorts);
   const running = cohorts.filter((c) => cohortPhase(c) === "running").length;

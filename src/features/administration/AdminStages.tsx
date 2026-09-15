@@ -11,7 +11,6 @@
  */
 import { useState } from "react";
 import { SectionHeading } from "@/components/section-heading";
-import { Skeleton } from "@/components/ui/skeleton";
 import { ScopeNotice, StatCard } from "@/features/professional/mock-ui";
 import { PlacementSection } from "@/features/administration/PlacementSection";
 import { StageLogTemplatesSection } from "@/features/administration/StageLogTemplatesSection";
@@ -19,13 +18,14 @@ import { SupervisionGroupSection } from "@/features/administration/SupervisionGr
 import { SupervisionWeeksSection } from "@/features/administration/SupervisionWeeksSection";
 import type { ProgramId } from "@/domain/types";
 import { useProgramAdmin } from "@/features/administration/useProgramAdmin";
+import { AdminChargement } from "@/features/administration/AdminChargement";
 import { defaultPilotCohortId } from "@/features/administration/adminProgramViewModel";
 
 export function AdminStages() {
-  const { data, isPending, refetch } = useProgramAdmin();
+  const { data, isPending, error, refetch } = useProgramAdmin();
   const [cohortId, setCohortId] = useState<string | null>(null);
 
-  if (isPending || !data) return <Skeleton className="h-80 w-full" />;
+  if (isPending || !data) return <AdminChargement error={error} />;
 
   const placements = data.placements;
   const sites = Array.from(new Set(placements.map((p) => p.site)));

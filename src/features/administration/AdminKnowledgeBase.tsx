@@ -13,7 +13,6 @@ import { SectionHeading } from "@/components/section-heading";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import {
   EmptyState,
@@ -28,6 +27,7 @@ import { ContentAiSection } from "@/features/administration/ContentAiSection";
 import { CohortSelector } from "@/features/administration/CohortSelector";
 import { KnowledgeCreationForm } from "@/features/administration/KnowledgeCreationForm";
 import { useProgramAdmin } from "@/features/administration/useProgramAdmin";
+import { AdminChargement } from "@/features/administration/AdminChargement";
 import { defaultPilotCohortId } from "@/features/administration/adminProgramViewModel";
 import { parseReferentialText } from "@/features/administration/competenceTrackingViewModel";
 import {
@@ -43,7 +43,7 @@ import { outcomeAssociationItems } from "@/domain/outcomeAssociation";
 import type { OutcomeId, ProgramId } from "@/domain/types";
 
 export function AdminKnowledgeBase() {
-  const { data, isPending, refetch } = useProgramAdmin();
+  const { data, isPending, error, refetch } = useProgramAdmin();
   const dataAccess = useDataAccess();
   const [cohortId, setCohortId] = useState<string | null>(null);
   const [importText, setImportText] = useState("");
@@ -66,7 +66,7 @@ export function AdminKnowledgeBase() {
   }, [importText, outcomes]);
   const newCount = candidates.filter((row) => row.isNew).length;
 
-  if (isPending || !data) return <Skeleton className="h-80 w-full" />;
+  if (isPending || !data) return <AdminChargement error={error} />;
 
   const knowledge = outcomes.filter((o) => o.nature === "knowledge");
   const published = data.media.filter((m) => m.status === "published").length;

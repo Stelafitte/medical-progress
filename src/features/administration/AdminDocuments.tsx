@@ -14,7 +14,6 @@ import { ArrowRight } from "lucide-react";
 import { SectionHeading } from "@/components/section-heading";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Table,
@@ -34,6 +33,7 @@ import {
 import { CohortSelector } from "@/features/administration/CohortSelector";
 import { DocumentRequirementForm } from "@/features/administration/DocumentRequirementForm";
 import { personNameFor, useProgramAdmin } from "@/features/administration/useProgramAdmin";
+import { AdminChargement } from "@/features/administration/AdminChargement";
 import { defaultPilotCohortId } from "@/features/administration/adminProgramViewModel";
 import {
   createLocalDocumentRequirement,
@@ -64,7 +64,7 @@ const ACTIONS: readonly { action: CertificateAction; label: string }[] = [
 ];
 
 export function AdminDocuments() {
-  const { data, isPending } = useProgramAdmin();
+  const { data, isPending, error } = useProgramAdmin();
   const [cohortId, setCohortId] = useState<string | null>(null);
   const [overrides, setOverrides] = useState<Record<string, CertificateStatus>>({});
   const [feedback, setFeedback] = useState<string | null>(null);
@@ -80,7 +80,7 @@ export function AdminDocuments() {
     [parsed, localRequirements],
   );
 
-  if (isPending || !data) return <Skeleton className="h-80 w-full" />;
+  if (isPending || !data) return <AdminChargement error={error} />;
 
   const cohorts = data.cohorts;
   const selectedId = cohortId ?? defaultPilotCohortId(cohorts);

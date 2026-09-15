@@ -24,7 +24,6 @@ import { SectionHeading } from "@/components/section-heading";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState, MockBadge, PanelCard, ScopeNotice } from "@/features/professional/mock-ui";
 import { CohortSelector } from "@/features/administration/CohortSelector";
 import { AssessmentModalitySection } from "@/features/administration/AssessmentModalitySection";
@@ -33,6 +32,7 @@ import { useLocalPlacements } from "@/application/placementDraftStore";
 import { mergePlacements } from "@/domain/placementDraft";
 import { LearnerTrackingSection } from "@/features/administration/LearnerTrackingSection";
 import { personNameFor, useProgramAdmin } from "@/features/administration/useProgramAdmin";
+import { AdminChargement } from "@/features/administration/AdminChargement";
 import {
   COHORT_PHASE_LABELS_FR,
   buildPilotTimeline,
@@ -67,7 +67,7 @@ const STATE_STYLES = {
 } as const;
 
 export function AdminProgramPilot() {
-  const { data, isPending } = useProgramAdmin();
+  const { data, isPending, error } = useProgramAdmin();
   const { promotion } = useSearch({ from: "/espace/administration/pilotage" });
   const [cohortId, setCohortId] = useState<string | null>(null);
   const localPlacements = useLocalPlacements(data?.program?.id);
@@ -82,7 +82,7 @@ export function AdminProgramPilot() {
     [data?.planSchedule, selected],
   );
 
-  if (isPending || !data) return <Skeleton className="h-80 w-full" />;
+  if (isPending || !data) return <AdminChargement error={error} />;
 
   const upcoming = nextMilestone(timeline);
   const cohortEnrollments = data.enrollments.filter((e) => e.cohortId === selectedId);

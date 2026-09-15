@@ -13,7 +13,6 @@ import { ArrowRight, BarChart3, CalendarClock } from "lucide-react";
 import { SectionHeading } from "@/components/section-heading";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   EmptyState,
   MockBadge,
@@ -24,6 +23,7 @@ import {
 import { CohortSelector } from "@/features/administration/CohortSelector";
 import { ProgramAiSettingsSection } from "@/features/administration/ProgramAiSettingsSection";
 import { useProgramAdmin, personNameFor } from "@/features/administration/useProgramAdmin";
+import { AdminChargement } from "@/features/administration/AdminChargement";
 import {
   buildPilotTimeline,
   defaultPilotCohortId,
@@ -41,10 +41,10 @@ const TASK_PRIORITY_FR: Record<string, string> = {
 
 export function AdminDashboard() {
   const { activeProgram } = useSession();
-  const { data, isPending } = useProgramAdmin();
+  const { data, isPending, error } = useProgramAdmin();
   const [cohortId, setCohortId] = useState<string | null>(null);
 
-  if (isPending || !data) return <Skeleton className="h-80 w-full" />;
+  if (isPending || !data) return <AdminChargement error={error} />;
 
   const selectedId = cohortId ?? defaultPilotCohortId(data.cohorts);
   const pilotSearch = selectedId ? { promotion: selectedId } : {};

@@ -12,7 +12,6 @@ import { SectionHeading } from "@/components/section-heading";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import {
   EmptyState,
@@ -23,6 +22,7 @@ import {
 } from "@/features/professional/mock-ui";
 import { CohortSelector } from "@/features/administration/CohortSelector";
 import { personNameFor, useProgramAdmin } from "@/features/administration/useProgramAdmin";
+import { AdminChargement } from "@/features/administration/AdminChargement";
 import { defaultPilotCohortId } from "@/features/administration/adminProgramViewModel";
 import {
   REFERENTIAL_DIFF_LABELS_FR,
@@ -42,7 +42,7 @@ import { COMPETENCE_MASTERY_LABELS_FR, type CompetenceNature } from "@/domain/co
 import type { OutcomeId, ProgramId } from "@/domain/types";
 
 export function AdminCompetencies() {
-  const { data, isPending, refetch } = useProgramAdmin();
+  const { data, isPending, error, refetch } = useProgramAdmin();
   /** Compétences en cours d'archivage : leurs cases sont figées le temps de l'appel. */
   const [archivingIds, setArchivingIds] = useState<ReadonlySet<string>>(new Set());
   const dataAccess = useDataAccess();
@@ -71,7 +71,7 @@ export function AdminCompetencies() {
   /** Prévisualisation des conflits : nouvelles, déjà présentes, inchangées, ignorées. */
   const diff = useMemo(() => diffReferentialRows(parsed, outcomes), [parsed, outcomes]);
 
-  if (isPending || !data) return <Skeleton className="h-80 w-full" />;
+  if (isPending || !data) return <AdminChargement error={error} />;
 
   const scoped = competenceOutcomes(outcomes);
   const simulated = scoped.filter((o) => o.nature === "simulated_competence");

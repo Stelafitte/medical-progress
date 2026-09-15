@@ -1,15 +1,15 @@
 import { SectionHeading } from "@/components/section-heading";
-import { Skeleton } from "@/components/ui/skeleton";
 import { MockBadge } from "@/features/professional/mock-ui";
 import { AccessGrantSection } from "@/features/administration/AccessGrantSection";
 import { useProgramAdmin } from "@/features/administration/useProgramAdmin";
+import { AdminChargement } from "@/features/administration/AdminChargement";
 import { useSession } from "@/application/session";
 
 export function AdminGovernance() {
   const { activeProgram } = useSession();
-  const { data, isPending, refetch } = useProgramAdmin();
+  const { data, isPending, error, refetch } = useProgramAdmin();
 
-  if (isPending || !data) return <Skeleton className="h-80 w-full" />;
+  if (isPending || !data) return <AdminChargement error={error} />;
 
   return (
     <div className="space-y-8">

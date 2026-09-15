@@ -28,7 +28,6 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { EmptyState, MockBadge, PanelCard, ScopeNotice } from "@/features/professional/mock-ui";
 import {
@@ -36,6 +35,7 @@ import {
   type AdminWorkLevel,
 } from "@/features/administration/AdminWorkLevel";
 import { useProgramAdmin } from "@/features/administration/useProgramAdmin";
+import { AdminChargement } from "@/features/administration/AdminChargement";
 import { CorpusImport } from "@/features/administration/CorpusImport";
 import { useDataAccess } from "@/application/session";
 import {
@@ -207,7 +207,7 @@ function scrollToStep(step: AdminWorkLevel) {
 }
 
 export function AdminProgramDesigner() {
-  const { data, isPending, refetch } = useProgramAdmin();
+  const { data, isPending, error, refetch } = useProgramAdmin();
 
   const [modelId, setModelId] = useState<string | null>(null);
   const [modelName, setModelName] = useState("");
@@ -656,7 +656,7 @@ export function AdminProgramDesigner() {
     programEndsOn,
   ]);
 
-  if (isPending || !data) return <Skeleton className="h-80 w-full" />;
+  if (isPending || !data) return <AdminChargement error={error} />;
 
   const cohorts = data.cohorts;
   const activeProgramId = (data.program?.id ?? "program-unknown") as ProgramId;
