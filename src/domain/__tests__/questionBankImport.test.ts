@@ -11,6 +11,7 @@ const banque = JSON.stringify({
       section: "I.A",
       section_title: "Mortalité",
       outcome: "ECN-221-04",
+      rank: "b",
       stem: "Énoncé un.",
       options: [
         { letter: "a", correct: true, text: "Oui", explanation: "parce que" },
@@ -34,6 +35,8 @@ describe("import de la banque de questions", () => {
     expect(q.section_label).toBe("I.A — Mortalité");
     expect(q.chapter_title).toBe("CHAPITRE 1: Item 221 Athérome");
     expect(r.questions[1]!.chapter_title).toBe("");
+    expect(q.rank).toBe("B");
+    expect(r.questions[1]!.rank).toBe("");
     expect(q.options[0]).toEqual({ letter: "A", body: "Oui", correct: true, explanation: "parce que" });
     expect(q.options[1]?.explanation).toBe("");
   });

@@ -44,6 +44,8 @@ export interface ImportedQuestion {
   readonly chapter: number | null;
   readonly chapter_title: string;
   readonly section_label: string;
+  /** Le rang de la question telle que la banque le donne (A, B ou C) ; vide si absent. */
+  readonly rank: string;
   readonly options: readonly {
     readonly letter: string;
     readonly body: string;
@@ -120,6 +122,7 @@ export function parseBanque(text: string):
     outcome?: unknown;
     chapter?: unknown;
     chapter_title?: unknown;
+    rank?: unknown;
     stem?: unknown;
     commentary?: unknown;
     section?: unknown;
@@ -142,6 +145,7 @@ export function parseBanque(text: string):
       chapter,
       chapter_title: String(q.chapter_title ?? "").trim(),
       section_label: [q.section, q.section_title].filter(Boolean).join(" — "),
+      rank: String(q.rank ?? "").trim().toUpperCase(),
       options: options.map((o) => ({
         letter: String(o.letter ?? "").trim().toUpperCase(),
         body: String(o.text ?? o.body ?? "").trim(),
