@@ -189,9 +189,10 @@ export function FiltreQuestions({
                   aria-pressed={on}
                   title={`${it.titre} — ${it.total} question(s)`}
                   onClick={() => basculerItem(it.chapter)}
-                  className={`${CHIP} max-w-[16rem] truncate ${on ? CHIP_ON : CHIP_OFF}`}
+                  className={`${CHIP} inline-flex max-w-full items-center gap-1 ${on ? CHIP_ON : CHIP_OFF}`}
                 >
-                  {it.titre} <span className="opacity-70">({it.total})</span>
+                  <span className="max-w-[14rem] truncate">{it.titre}</span>
+                  <span className="shrink-0 opacity-70">({it.total})</span>
                 </button>
               );
             })}
@@ -217,9 +218,10 @@ export function FiltreQuestions({
                       aria-pressed={on}
                       title={`${s.sectionLabel} — ${s.published} question(s)`}
                       onClick={() => basculerSection(s.sectionKey)}
-                      className={`${CHIP} max-w-[18rem] truncate ${on ? CHIP_ON : CHIP_OFF}`}
+                      className={`${CHIP} inline-flex max-w-full items-center gap-1 ${on ? CHIP_ON : CHIP_OFF}`}
                     >
-                      {s.sectionLabel} <span className="opacity-70">({s.published})</span>
+                      <span className="max-w-[16rem] truncate">{s.sectionLabel}</span>
+                      <span className="shrink-0 opacity-70">({s.published})</span>
                     </button>
                   );
                 })}

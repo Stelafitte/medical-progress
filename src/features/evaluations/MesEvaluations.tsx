@@ -28,7 +28,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState, PanelCard } from "@/features/professional/mock-ui";
 import { formatFrDate } from "@/features/administration/adminProgramViewModel";
 import { useDataAccess, useSession } from "@/application/session";
-import { FILTRE_VIDE, FiltreQuestions, cleFiltre, type FiltreValeur } from "@/features/evaluations/FiltreQuestions";
+import {
+  FILTRE_VIDE,
+  FiltreQuestions,
+  cleFiltre,
+  type FiltreValeur,
+} from "@/features/evaluations/FiltreQuestions";
 import {
   ASSESSMENT_MODE_LABELS_FR,
   ASSESSMENT_SUBTYPE_LABELS_FR,
@@ -96,7 +101,9 @@ function DateRow({ session }: { readonly session: AssessmentSession }) {
           {session.location}
         </span>
       ) : null}
-      {session.notes ? <span className="text-muted-foreground text-xs">· {session.notes}</span> : null}
+      {session.notes ? (
+        <span className="text-muted-foreground text-xs">· {session.notes}</span>
+      ) : null}
       <Badge variant={passee ? "outline" : "secondary"} className="font-normal">
         {passee ? "passée" : "à venir"}
       </Badge>
@@ -187,7 +194,11 @@ function CarteModalite({
             aria-expanded={voirPassees}
             onClick={() => setVoirPassees((v) => !v)}
           >
-            {voirPassees ? <ChevronDown className="size-4" aria-hidden /> : <ChevronRight className="size-4" aria-hidden />}
+            {voirPassees ? (
+              <ChevronDown className="size-4" aria-hidden />
+            ) : (
+              <ChevronRight className="size-4" aria-hidden />
+            )}
             {passees.length} passée(s)
           </Button>
           {voirPassees ? (
@@ -228,9 +239,19 @@ function CarteQcm({
     const c = s.config;
     if (!c) return "toute la banque";
     const noms = c.themeIds.map((id) => themes.find((t) => t.id === id)?.label).filter(Boolean);
+    const items =
+      c.sections && c.sections.length > 0
+        ? `${c.sections.length} sous-item(s)`
+        : c.chapters && c.chapters.length > 0
+          ? `${c.chapters.length} item(s)`
+          : noms.length === 0
+            ? "toute la banque"
+            : noms.length > 2
+              ? `${noms.length} thèmes`
+              : noms.join(", ");
     return [
       `${c.count} question(s)`,
-      noms.length === 0 ? "tous thèmes" : noms.length > 2 ? `${noms.length} thèmes` : noms.join(", "),
+      items,
       c.ranks.length > 0 ? `rang ${c.ranks.join("/")}` : "tous rangs",
     ].join(" · ");
   };
@@ -240,7 +261,10 @@ function CarteQcm({
       {ouvertes.length > 0 ? (
         <ul className="space-y-2">
           {ouvertes.map((s) => (
-            <li key={s.id} className="border-primary/40 bg-muted/40 flex flex-wrap items-center gap-2 rounded-md border p-3 text-sm">
+            <li
+              key={s.id}
+              className="border-primary/40 bg-muted/40 flex flex-wrap items-center gap-2 rounded-md border p-3 text-sm"
+            >
               <CalendarDays className="text-muted-foreground size-4 shrink-0" aria-hidden />
               <span className="font-medium">
                 Ouverte jusqu'au {formatFrDate(s.closesOn ?? s.scheduledOn)}
@@ -249,7 +273,10 @@ function CarteQcm({
               {s.notes ? <span className="text-muted-foreground text-xs">· {s.notes}</span> : null}
               {peutLancer ? (
                 <Button asChild size="sm" className="ml-auto min-h-10 gap-1">
-                  <Link to="/espace/evaluations/qcm" search={{ modalityId: modality.id, sessionId: s.id }}>
+                  <Link
+                    to="/espace/evaluations/qcm"
+                    search={{ modalityId: modality.id, sessionId: s.id }}
+                  >
                     <Play className="size-4" aria-hidden />
                     Commencer
                   </Link>
@@ -419,7 +446,12 @@ function ComposerUneSerie({
             Lancer {reel} question(s)
           </Link>
         </Button>
-        <Button type="button" variant="outline" className="min-h-11" onClick={() => setOuvert(false)}>
+        <Button
+          type="button"
+          variant="outline"
+          className="min-h-11"
+          onClick={() => setOuvert(false)}
+        >
           Annuler
         </Button>
       </div>
@@ -460,10 +492,13 @@ export function MesEvaluations() {
   return (
     <div className="space-y-6">
       {data.modalities.length === 0 ? (
-        <PanelCard title="Vos évaluations" description="Ce que votre promotion rencontrera pendant le stage.">
+        <PanelCard
+          title="Vos évaluations"
+          description="Ce que votre promotion rencontrera pendant le stage."
+        >
           <EmptyState>
-            Votre équipe pédagogique n'a pas encore défini d'évaluation pour votre promotion.
-            L'ECOS virtuel ci-dessous reste ouvert.
+            Votre équipe pédagogique n'a pas encore défini d'évaluation pour votre promotion. L'ECOS
+            virtuel ci-dessous reste ouvert.
           </EmptyState>
         </PanelCard>
       ) : (
