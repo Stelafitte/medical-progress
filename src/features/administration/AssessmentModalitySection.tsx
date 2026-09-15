@@ -709,9 +709,9 @@ export function AssessmentModalitySection({
       ) : null}
 
       <p className="text-muted-foreground text-xs">
-        Ce que l'étudiant voit : rien de tout ceci, pour l'instant. La lecture est réservée à
-        l'équipe pédagogique ; son onglet « Mes évaluations » ne présente encore que les ECOS
-        virtuels. C'est le lot suivant.
+        Ce que l'étudiant voit, dans « Mes évaluations » : les modalités servies à sa promotion,
+        leurs caractéristiques et leurs dates — rien d'autre. Une modalité non cochée pour sa
+        promotion lui reste invisible.
       </p>
     </div>
   );

@@ -29,6 +29,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SectionHeading } from "@/components/section-heading";
+import { MesEvaluations } from "@/features/evaluations/MesEvaluations";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -77,8 +78,14 @@ export function EcosVirtuelView() {
       <SectionHeading
         level={1}
         title="Mes évaluations"
-        description="Les stations ECOS virtuelles se jouent dans ChatGPT ; vous rapportez ensuite ici la grille de notation rendue au débriefing. Ce que vous déclarez reste une déclaration, visible de votre équipe de stage."
+        description="Ce que votre promotion rencontrera pendant le stage, et quand. En bas, les stations ECOS virtuelles à jouer dans ChatGPT, dont vous rapportez ici la grille de notation."
       />
+
+      {/*
+        Lot D (15/09) : ce que la promotion de l'étudiant rencontre, lu en base
+        sous RLS, AVANT l'ECOS virtuel qui n'est qu'une de ces évaluations.
+      */}
+      <MesEvaluations />
 
       <Consignes />
 
