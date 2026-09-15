@@ -294,6 +294,8 @@ export function AdminProgramPilot() {
               sessions={data.assessmentSessions}
               links={data.cohortAssessmentLinks}
               cohorts={data.cohorts}
+              banques={data.questionBanks}
+              themes={data.outcomeThemes}
               cohortFilter={selectedId}
               editable={false}
             />

@@ -23,6 +23,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { EmptyState, PanelCard } from "@/features/professional/mock-ui";
 import { useDataAccess } from "@/application/session";
+import { formatFrDate } from "@/features/administration/adminProgramViewModel";
 import {
   AVERTISSEMENT_REFERENTIEL_FR,
   DESTINATAIRES_SIGNALEMENT_FR,
@@ -50,7 +51,12 @@ export function QuestionBankImport({ programId }: { readonly programId: ProgramI
 
   const [source, setSource] = useState(SOURCE_PAR_DEFAUT);
   const [publish, setPublish] = useState(true);
-  const [fichier, setFichier] = useState<{ nom: string; questions: readonly ImportedQuestion[]; chapters: number } | null>(null);
+  const [fichier, setFichier] = useState<{
+    nom: string;
+    modifieLe: string;
+    questions: readonly ImportedQuestion[];
+    chapters: number;
+  } | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
   const [mesure, setMesure] = useState<ImportReport | null>(null);
   const [resultat, setResultat] = useState<ImportReport | null>(null);
@@ -69,7 +75,12 @@ export function QuestionBankImport({ programId }: { readonly programId: ProgramI
       setParseError(PARSE_ISSUE_LABELS_FR[parsed.issue]);
       return;
     }
-    setFichier({ nom: file.name, questions: parsed.questions, chapters: parsed.chapters });
+    setFichier({
+      nom: file.name,
+      modifieLe: new Date(file.lastModified).toISOString(),
+      questions: parsed.questions,
+      chapters: parsed.chapters,
+    });
   }
 
   async function lancer(mode: ImportMode) {
@@ -93,6 +104,7 @@ export function QuestionBankImport({ programId }: { readonly programId: ProgramI
             source: source.trim(),
             items: lots[i] ?? [],
             publish,
+            ...(fichier ? { fileName: fichier.nom, fileModifiedAt: fichier.modifieLe } : {}),
           }),
         );
       }
@@ -112,7 +124,7 @@ export function QuestionBankImport({ programId }: { readonly programId: ProgramI
   }
 
   const rows = summary.data ?? [];
-  const total = rows.reduce((n, r) => n + r.questions, 0);
+  const total = rows.reduce((n, r) => n + r.published + r.drafts + r.flagged, 0);
 
   return (
     <PanelCard
@@ -127,19 +139,35 @@ export function QuestionBankImport({ programId }: { readonly programId: ProgramI
         ) : rows.length === 0 ? (
           <EmptyState>Aucune question en base pour ce programme.</EmptyState>
         ) : (
-          <ul className="flex flex-wrap gap-2">
+          <ul className="space-y-1.5">
             {rows.map((r) => (
-              <li key={`${r.source}-${r.status}`}>
-                <Badge variant={r.status === "publiee" ? "secondary" : "outline"} className="font-normal">
-                  {r.source} · {r.status} · {r.questions}
+              <li key={r.source} className="flex flex-wrap items-center gap-2 text-sm">
+                <strong>{r.source}</strong>
+                {r.fileName ? <span className="text-muted-foreground text-xs">{r.fileName}</span> : null}
+                <Badge variant="secondary" className="font-normal">
+                  {r.published} publiée(s)
                 </Badge>
+                {r.drafts > 0 ? (
+                  <Badge variant="outline" className="font-normal">
+                    {r.drafts} brouillon(s)
+                  </Badge>
+                ) : null}
+                {r.flagged > 0 ? (
+                  <Badge variant="outline" className="font-normal">
+                    {r.flagged} signalée(s)
+                  </Badge>
+                ) : null}
+                {r.retired > 0 ? (
+                  <Badge variant="outline" className="text-muted-foreground font-normal">
+                    {r.retired} retirée(s)
+                  </Badge>
+                ) : null}
+                <span className="text-muted-foreground text-xs">
+                  importée le {formatFrDate(r.lastImportedAt)}
+                  {r.fileModifiedAt ? ` · fichier du ${formatFrDate(r.fileModifiedAt)}` : ""}
+                </span>
               </li>
             ))}
-            <li>
-              <Badge variant="outline" className="font-normal">
-                {total} au total
-              </Badge>
-            </li>
           </ul>
         )}
       </div>

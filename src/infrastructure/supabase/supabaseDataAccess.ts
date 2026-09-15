@@ -20,6 +20,10 @@ import type {
   CreateCohortInput,
   ImportQuestionItemsInput,
   QuestionBankRow,
+  QuestionCorrection,
+  QuestionFilter,
+  QuestionToAnswer,
+  SetCohortAssessmentPilotageInput,
   CreateLearningResourceInput,
   CreateOutcomeInput,
   DataAccess,
@@ -97,6 +101,7 @@ import type {
   AssessmentModality,
   AssessmentSession,
   CohortAssessmentLink,
+  QcmWindowConfig,
 } from "@/domain/assessmentModality";
 import type { ImportReport } from "@/domain/questionBankImport";
 import type {
@@ -821,19 +826,46 @@ type AssessmentSessionRow = {
   modality_id: string;
   cohort_id: string;
   scheduled_on: string;
+  closes_on: string | null;
   location: string | null;
   notes: string | null;
+  config: { theme_ids?: string[]; ranks?: string[]; count?: number; milestone_id?: string } | null;
 };
 
+/** Le jsonb `config` en clés serveur → l'objet du domaine. Tolérant : un champ absent = pas de filtre. */
+function mapQcmConfig(raw: AssessmentSessionRow["config"]): QcmWindowConfig | undefined {
+  if (!raw) return undefined;
+  const ranks = (raw.ranks ?? []).filter((r): r is "A" | "B" | "C" => r === "A" || r === "B" || r === "C");
+  return {
+    themeIds: raw.theme_ids ?? [],
+    ranks,
+    count: typeof raw.count === "number" ? raw.count : 20,
+    ...(raw.milestone_id ? { milestoneId: raw.milestone_id } : {}),
+  };
+}
+
+function qcmConfigToRow(config: QcmWindowConfig | undefined) {
+  if (!config) return null;
+  return {
+    theme_ids: [...config.themeIds],
+    ranks: [...config.ranks],
+    count: config.count,
+    ...(config.milestoneId ? { milestone_id: config.milestoneId } : {}),
+  };
+}
+
 export function mapAssessmentSession(row: AssessmentSessionRow): AssessmentSession {
+  const config = mapQcmConfig(row.config);
   return {
     id: row.id,
     programId: row.program_id,
     modalityId: row.modality_id,
     cohortId: row.cohort_id,
     scheduledOn: row.scheduled_on,
+    ...(row.closes_on ? { closesOn: row.closes_on } : {}),
     ...(row.location ? { location: row.location } : {}),
     ...(row.notes ? { notes: row.notes } : {}),
+    ...(config ? { config } : {}),
   };
 }
 
@@ -1143,7 +1175,8 @@ const programColumns =
 const assessmentModalityColumns =
   "id,program_id,name,mode,subtype,usage,notes,created_at,updated_at,retained_at";
 
-const assessmentSessionColumns = "id,program_id,modality_id,cohort_id,scheduled_on,location,notes";
+const assessmentSessionColumns =
+  "id,program_id,modality_id,cohort_id,scheduled_on,closes_on,location,notes,config";
 
 const outcomeColumns =
   "id,program_id,curriculum_version_id,code,label,description,nature,domain,target_mastery,retained_at,theme_id,position,knowledge_rank,created_at";
@@ -2147,6 +2180,8 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
           p_scheduled_on: input.scheduledOn,
           p_location: input.location.trim().length > 0 ? input.location.trim() : null,
           p_notes: input.notes.trim().length > 0 ? input.notes.trim() : null,
+          p_closes_on: input.closesOn ?? null,
+          p_config: qcmConfigToRow(input.config),
         });
         assertNoSupabaseError(error);
         return mapAssessmentSession(data as AssessmentSessionRow);
@@ -2157,6 +2192,8 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
           p_scheduled_on: input.scheduledOn,
           p_location: input.location.trim().length > 0 ? input.location.trim() : null,
           p_notes: input.notes.trim().length > 0 ? input.notes.trim() : null,
+          p_closes_on: input.closesOn ?? null,
+          p_config: qcmConfigToRow(input.config),
         });
         assertNoSupabaseError(error);
         return mapAssessmentSession(data as AssessmentSessionRow);
@@ -2171,14 +2208,25 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
       async listCohortAssessmentLinks(programId: ProgramId) {
         const { data, error } = await client
           .from("cohort_assessment_modalities")
-          .select("program_id,cohort_id,modality_id")
+          .select("program_id,cohort_id,modality_id,is_open,question_source,free_access")
           .eq("program_id", programId);
         assertNoSupabaseError(error);
-        return ((data ?? []) as { program_id: string; cohort_id: string; modality_id: string }[]).map(
+        type Row = {
+          program_id: string;
+          cohort_id: string;
+          modality_id: string;
+          is_open: boolean;
+          question_source: string | null;
+          free_access: boolean;
+        };
+        return ((data ?? []) as Row[]).map(
           (row): CohortAssessmentLink => ({
             programId: row.program_id,
             cohortId: row.cohort_id,
             modalityId: row.modality_id,
+            isOpen: row.is_open,
+            freeAccess: row.free_access,
+            ...(row.question_source ? { questionSource: row.question_source } : {}),
           }),
         );
       },
@@ -2193,8 +2241,28 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
       async questionBankSummary(programId: ProgramId) {
         const { data, error } = await client.rpc("question_bank_summary", { p_program_id: programId });
         assertNoSupabaseError(error);
-        return ((data ?? []) as { source: string; status: string; questions: number | string }[]).map(
-          (r): QuestionBankRow => ({ source: r.source, status: r.status, questions: Number(r.questions) }),
+        type Row = {
+          source: string;
+          file_name: string | null;
+          file_modified_at: string | null;
+          last_imported_at: string;
+          published: number | string;
+          drafts: number | string;
+          flagged: number | string;
+          retired: number | string;
+        };
+        // Les count(*) sont des bigint : PostgREST les sérialise en chaîne.
+        return ((data ?? []) as Row[]).map(
+          (r): QuestionBankRow => ({
+            source: r.source,
+            lastImportedAt: r.last_imported_at,
+            published: Number(r.published),
+            drafts: Number(r.drafts),
+            flagged: Number(r.flagged),
+            retired: Number(r.retired),
+            ...(r.file_name ? { fileName: r.file_name } : {}),
+            ...(r.file_modified_at ? { fileModifiedAt: r.file_modified_at } : {}),
+          }),
         );
       },
       async importQuestionItems(input: ImportQuestionItemsInput) {
@@ -2204,9 +2272,98 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
           p_source: input.source,
           p_items: input.items,
           p_publish: input.publish,
+          p_file_name: input.fileName ?? null,
+          p_file_modified_at: input.fileModifiedAt ?? null,
         });
         assertNoSupabaseError(error);
         return data as ImportReport;
+      },
+      /* ---- Pilotage des QCM (15/09) : 20260915140000_qcm_pilotage.sql ---- */
+      async setCohortAssessmentPilotage(input: SetCohortAssessmentPilotageInput) {
+        const { error } = await client.rpc("set_cohort_assessment_pilotage", {
+          p_cohort_id: input.cohortId,
+          p_modality_id: input.assessmentModalityId,
+          p_is_open: input.isOpen,
+          p_question_source: input.questionSource,
+          p_free_access: input.freeAccess,
+        });
+        assertNoSupabaseError(error);
+      },
+      async countQuestions(filter: QuestionFilter) {
+        const { data, error } = await client.rpc("count_questions", {
+          p_program_id: filter.programId,
+          p_source: filter.source,
+          p_theme_ids: [...filter.themeIds],
+          p_ranks: [...filter.ranks],
+        });
+        assertNoSupabaseError(error);
+        return Number(data ?? 0);
+      },
+      async pickQuestions(filter: QuestionFilter, count: number) {
+        const { data, error } = await client.rpc("pick_questions", {
+          p_program_id: filter.programId,
+          p_source: filter.source,
+          p_theme_ids: [...filter.themeIds],
+          p_ranks: [...filter.ranks],
+          p_count: count,
+        });
+        assertNoSupabaseError(error);
+        return (data ?? []) as string[];
+      },
+      async readQuestion(questionId: string) {
+        const { data, error } = await client.rpc("read_question", { p_question_id: questionId });
+        assertNoSupabaseError(error);
+        const raw = data as {
+          id: string;
+          format: string;
+          docimologic_class: string;
+          stem: string;
+          outcome_id: string;
+          chapter: number | null;
+          options: { letter: string; position: number; body: string }[];
+        };
+        return {
+          id: raw.id,
+          format: raw.format,
+          docimologicClass: raw.docimologic_class,
+          stem: raw.stem,
+          outcomeId: raw.outcome_id,
+          ...(raw.chapter !== null ? { chapter: raw.chapter } : {}),
+          options: raw.options.map((o) => ({ letter: o.letter, body: o.body })),
+        } satisfies QuestionToAnswer;
+      },
+      async answerQuestion(questionId: string, enrollmentId: string, selected: readonly string[]) {
+        const { data, error } = await client.rpc("answer_question", {
+          p_question_id: questionId,
+          p_enrollment_id: enrollmentId,
+          p_selected: [...selected],
+        });
+        assertNoSupabaseError(error);
+        const raw = data as {
+          score: number | string;
+          discordances: number;
+          eliminatory: boolean;
+          options: { letter: string; correct: boolean; explanation: string | null; flag: string | null }[];
+        };
+        return {
+          score: Number(raw.score),
+          discordances: raw.discordances,
+          eliminatory: raw.eliminatory,
+          options: raw.options.map((o) => ({
+            letter: o.letter,
+            correct: o.correct,
+            ...(o.explanation ? { explanation: o.explanation } : {}),
+            ...(o.flag ? { flag: o.flag } : {}),
+          })),
+        } satisfies QuestionCorrection;
+      },
+      async reportQuestion(questionId: string, reason: string, message: string) {
+        const { error } = await client.rpc("report_question", {
+          p_question_id: questionId,
+          p_reason: reason,
+          p_message: message.trim().length > 0 ? message.trim() : null,
+        });
+        assertNoSupabaseError(error);
       },
     },
     outcomes: {

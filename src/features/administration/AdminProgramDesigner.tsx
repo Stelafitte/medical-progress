@@ -595,6 +595,8 @@ export function AdminProgramDesigner() {
           sessions={data.assessmentSessions}
           links={data.cohortAssessmentLinks}
           cohorts={data.cohorts}
+          banques={data.questionBanks}
+          themes={data.outcomeThemes}
           onChanged={() => {
             void refetch();
             patch("assessments", { implemented: true });

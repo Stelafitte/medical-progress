@@ -18,7 +18,11 @@
  */
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { CalendarDays, ChevronDown, ChevronRight, MapPin } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { CalendarDays, ChevronDown, ChevronRight, MapPin, Play } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -31,10 +35,13 @@ import {
   ASSESSMENT_USAGE_LABELS_FR,
   sessionState,
   usageSeDate,
+  windowState,
   type AssessmentModality,
   type AssessmentSession,
   type AssessmentUsage,
+  type CohortAssessmentLink,
 } from "@/domain/assessmentModality";
+import type { OutcomeTheme } from "@/domain/types";
 
 const CE_QUE_CA_ENGAGE: Record<AssessmentUsage, string> = {
   self_assessment: "Vous vous y exercez quand vous voulez. Rien n'est retenu contre vous.",
@@ -52,22 +59,24 @@ function useMesEvaluations() {
   return useQuery({
     queryKey: ["mes-evaluations", activeProgram.id, cohortId],
     queryFn: async () => {
-      const [modalities, sessions, links] = await Promise.all([
+      const [modalities, sessions, links, themes] = await Promise.all([
         data.assessments.listAssessmentModalities(activeProgram.id),
         data.assessments.listAssessmentSessions(activeProgram.id),
         data.assessments.listCohortAssessmentLinks(activeProgram.id),
+        data.outcomes.listOutcomeThemes(activeProgram.id),
       ]);
       /*
        * La RLS a déjà borné à mes promotions. On reborne à MA promotion active
        * par prudence : un étudiant réinscrit d'une année sur l'autre a deux
        * inscriptions, et son écran doit parler de celle en cours.
        */
-      const miennes = new Set(
-        links.filter((l) => cohortId === null || l.cohortId === cohortId).map((l) => l.modalityId),
-      );
+      const mesLiens = links.filter((l) => cohortId === null || l.cohortId === cohortId);
+      const miennes = new Set(mesLiens.map((l) => l.modalityId));
       return {
         modalities: modalities.filter((m) => miennes.has(m.id)),
         sessions: sessions.filter((s) => cohortId === null || s.cohortId === cohortId),
+        links: mesLiens,
+        themes,
       };
     },
   });
@@ -98,9 +107,13 @@ function DateRow({ session }: { readonly session: AssessmentSession }) {
 function CarteModalite({
   modality,
   sessions,
+  link,
+  themes,
 }: {
   readonly modality: AssessmentModality;
   readonly sessions: readonly AssessmentSession[];
+  readonly link: CohortAssessmentLink | undefined;
+  readonly themes: readonly OutcomeTheme[];
 }) {
   const [voirPassees, setVoirPassees] = useState(false);
   const miennes = sessions
@@ -109,6 +122,32 @@ function CarteModalite({
   const aVenir = miennes.filter((s) => sessionState(s, new Date()) === "upcoming");
   const passees = miennes.filter((s) => sessionState(s, new Date()) === "completed");
   const seDate = usageSeDate(modality.usage);
+  const estQcm = modality.subtype === "qcm";
+
+  /*
+   * UN QCM A SA PROPRE CARTE (15/09). Pas de « date à venir » ni de
+   * « en continu » génériques : ce qu'il montre, c'est ce que l'équipe a
+   * piloté — ouvert ou fermé, l'accès libre, les fenêtres — et un bouton
+   * pour chaque chose qu'on peut lancer maintenant.
+   */
+  if (estQcm) {
+    return (
+      <li className="border-border rounded-md border p-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <strong className="text-sm">{modality.name}</strong>
+          <Badge variant="secondary">{ASSESSMENT_SUBTYPE_LABELS_FR[modality.subtype]}</Badge>
+          {link && !link.isOpen ? (
+            <Badge variant="outline" className="text-muted-foreground font-normal">
+              fermé pour l'instant
+            </Badge>
+          ) : null}
+        </div>
+        <p className="text-muted-foreground mt-1 text-xs">{CE_QUE_CA_ENGAGE[modality.usage]}</p>
+        {modality.notes ? <p className="mt-2 text-sm">{modality.notes}</p> : null}
+        <CarteQcm modality={modality} sessions={miennes} link={link} themes={themes} />
+      </li>
+    );
+  }
 
   return (
     <li className="border-border rounded-md border p-4">
@@ -161,6 +200,231 @@ function CarteModalite({
         </div>
       ) : null}
     </li>
+  );
+}
+
+/**
+ * Ce qu'un QCM offre à l'étudiant : les fenêtres programmées (ouvertes,
+ * à venir, passées) et, si l'équipe l'a permis, le compositeur de série.
+ */
+function CarteQcm({
+  modality,
+  sessions,
+  link,
+  themes,
+}: {
+  readonly modality: AssessmentModality;
+  readonly sessions: readonly AssessmentSession[];
+  readonly link: CohortAssessmentLink | undefined;
+  readonly themes: readonly OutcomeTheme[];
+}) {
+  const now = new Date();
+  const ouvertes = sessions.filter((s) => windowState(s, now) === "open");
+  const aVenir = sessions.filter((s) => windowState(s, now) === "upcoming");
+  const passees = sessions.filter((s) => windowState(s, now) === "closed");
+  const peutLancer = Boolean(link?.isOpen && link.questionSource);
+
+  const decrire = (s: AssessmentSession) => {
+    const c = s.config;
+    if (!c) return "toute la banque";
+    const noms = c.themeIds.map((id) => themes.find((t) => t.id === id)?.label).filter(Boolean);
+    return [
+      `${c.count} question(s)`,
+      noms.length === 0 ? "tous thèmes" : noms.length > 2 ? `${noms.length} thèmes` : noms.join(", "),
+      c.ranks.length > 0 ? `rang ${c.ranks.join("/")}` : "tous rangs",
+    ].join(" · ");
+  };
+
+  return (
+    <div className="mt-3 space-y-3">
+      {ouvertes.length > 0 ? (
+        <ul className="space-y-2">
+          {ouvertes.map((s) => (
+            <li key={s.id} className="border-primary/40 bg-muted/40 flex flex-wrap items-center gap-2 rounded-md border p-3 text-sm">
+              <CalendarDays className="text-muted-foreground size-4 shrink-0" aria-hidden />
+              <span className="font-medium">
+                Ouverte jusqu'au {formatFrDate(s.closesOn ?? s.scheduledOn)}
+              </span>
+              <span className="text-muted-foreground text-xs">{decrire(s)}</span>
+              {s.notes ? <span className="text-muted-foreground text-xs">· {s.notes}</span> : null}
+              {peutLancer ? (
+                <Button asChild size="sm" className="ml-auto min-h-10 gap-1">
+                  <Link to="/espace/evaluations/qcm" search={{ modalityId: modality.id, sessionId: s.id }}>
+                    <Play className="size-4" aria-hidden />
+                    Commencer
+                  </Link>
+                </Button>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+
+      {aVenir.length > 0 ? (
+        <ul className="space-y-1.5">
+          {aVenir.map((s) => (
+            <li key={s.id} className="flex flex-wrap items-center gap-2 text-sm">
+              <CalendarDays className="text-muted-foreground size-4 shrink-0" aria-hidden />
+              <span>
+                Du {formatFrDate(s.scheduledOn)}
+                {s.closesOn ? ` au ${formatFrDate(s.closesOn)}` : ""}
+              </span>
+              <span className="text-muted-foreground text-xs">{decrire(s)}</span>
+              <Badge variant="outline" className="font-normal">
+                à venir
+              </Badge>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+
+      {passees.length > 0 ? (
+        <p className="text-muted-foreground text-xs">{passees.length} fenêtre(s) passée(s).</p>
+      ) : null}
+
+      {link?.freeAccess && peutLancer ? (
+        <ComposerUneSerie modality={modality} themes={themes} />
+      ) : null}
+
+      {!link?.freeAccess && ouvertes.length === 0 && peutLancer ? (
+        <p className="text-muted-foreground text-xs">
+          Rien à lancer aujourd'hui : attendez la prochaine fenêtre.
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * « JE M'ÉVALUE MAINTENANT » — l'étudiant compose sa série. Thèmes (aucun =
+ * tous), rangs (aucun = tous), nombre. Le compte disponible se lit avant de
+ * lancer, pour ne pas demander 40 questions là où il y en a 12.
+ */
+function ComposerUneSerie({
+  modality,
+  themes,
+}: {
+  readonly modality: AssessmentModality;
+  readonly themes: readonly OutcomeTheme[];
+}) {
+  const data = useDataAccess();
+  const { activeProgram, activeEnrollment } = useSession();
+  const [ouvert, setOuvert] = useState(false);
+  const [themeIds, setThemeIds] = useState<readonly string[]>([]);
+  const [ranks, setRanks] = useState<readonly string[]>([]);
+  const [count, setCount] = useState(20);
+
+  const liens = useQuery({
+    queryKey: ["mes-liens", activeProgram.id],
+    queryFn: () => data.assessments.listCohortAssessmentLinks(activeProgram.id),
+  });
+  const source = liens.data?.find(
+    (l) => l.modalityId === modality.id && l.cohortId === activeEnrollment?.cohortId,
+  )?.questionSource;
+
+  const dispo = useQuery({
+    queryKey: ["count-questions", activeProgram.id, source, [...themeIds].sort().join(","), [...ranks].sort().join(",")],
+    queryFn: () =>
+      source
+        ? data.assessments.countQuestions({ programId: activeProgram.id, source, themeIds, ranks })
+        : Promise.resolve(0),
+    enabled: ouvert && Boolean(source),
+  });
+
+  const themesTries = useMemo(() => [...themes].sort((a, b) => a.position - b.position), [themes]);
+  const n = dispo.data ?? null;
+  const reel = n === null ? count : Math.min(count, n);
+
+  if (!ouvert) {
+    return (
+      <Button type="button" className="min-h-11 gap-2" onClick={() => setOuvert(true)}>
+        <Play className="size-4" aria-hidden />
+        Je m'évalue maintenant
+      </Button>
+    );
+  }
+
+  return (
+    <div className="border-border space-y-3 rounded-md border p-3">
+      <p className="text-sm font-medium">Composez votre série</p>
+
+      <div className="space-y-1">
+        <p className="text-xs">Thèmes — aucun coché : tous</p>
+        <div className="flex flex-wrap gap-2">
+          {themesTries.map((t) => {
+            const on = themeIds.includes(t.id);
+            return (
+              <button
+                key={t.id}
+                type="button"
+                aria-pressed={on}
+                onClick={() => setThemeIds(on ? themeIds.filter((x) => x !== t.id) : [...themeIds, t.id])}
+                className={`rounded-full border px-3 py-1 text-xs ${on ? "bg-primary text-primary-foreground border-primary" : "border-border hover:bg-muted"}`}
+              >
+                {t.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-4">
+        <p className="text-xs">Rangs — aucun coché : tous</p>
+        {(["A", "B", "C"] as const).map((r) => (
+          <div key={r} className="flex items-center gap-1.5">
+            <Checkbox
+              id={`me-rang-${r}-${modality.id}`}
+              checked={ranks.includes(r)}
+              onCheckedChange={(c) => setRanks(c === true ? [...ranks, r] : ranks.filter((x) => x !== r))}
+            />
+            <Label htmlFor={`me-rang-${r}-${modality.id}`} className="text-sm font-normal">
+              {r}
+            </Label>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="space-y-1">
+          <Label htmlFor={`me-n-${modality.id}`} className="text-xs">
+            Nombre de questions
+          </Label>
+          <Input
+            id={`me-n-${modality.id}`}
+            type="number"
+            min={1}
+            max={100}
+            value={count}
+            onChange={(e) => setCount(Math.max(1, Math.min(100, Number(e.target.value) || 1)))}
+            className="min-h-11 w-28"
+          />
+        </div>
+        <span className="text-muted-foreground pb-3 text-xs">
+          {n === null ? "…" : n === 0 ? "aucune question avec ce filtre" : `${n} disponible(s)`}
+          {n !== null && n > 0 && reel < count ? ` — la série en aura ${reel}` : ""}
+        </span>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <Button asChild className="min-h-11 gap-2" disabled={n === 0}>
+          <Link
+            to="/espace/evaluations/qcm"
+            search={{
+              modalityId: modality.id,
+              ...(themeIds.length > 0 ? { themeIds } : {}),
+              ...(ranks.length > 0 ? { ranks } : {}),
+              count: reel,
+            }}
+          >
+            <Play className="size-4" aria-hidden />
+            Lancer {reel} question(s)
+          </Link>
+        </Button>
+        <Button type="button" variant="outline" className="min-h-11" onClick={() => setOuvert(false)}>
+          Annuler
+        </Button>
+      </div>
+    </div>
   );
 }
 
@@ -242,7 +506,13 @@ export function MesEvaluations() {
             ) : (
               <ul className="grid gap-3 lg:grid-cols-2">
                 {quandJeVeux.map((m) => (
-                  <CarteModalite key={m.id} modality={m} sessions={sessions} />
+                  <CarteModalite
+                    key={m.id}
+                    modality={m}
+                    sessions={sessions}
+                    link={data.links.find((l) => l.modalityId === m.id)}
+                    themes={data.themes}
+                  />
                 ))}
               </ul>
             )}
@@ -257,7 +527,13 @@ export function MesEvaluations() {
             ) : (
               <ul className="grid gap-3 lg:grid-cols-2">
                 {programmees.map((m) => (
-                  <CarteModalite key={m.id} modality={m} sessions={sessions} />
+                  <CarteModalite
+                    key={m.id}
+                    modality={m}
+                    sessions={sessions}
+                    link={data.links.find((l) => l.modalityId === m.id)}
+                    themes={data.themes}
+                  />
                 ))}
               </ul>
             )}

@@ -45,7 +45,9 @@ import {
 } from "@/domain/assessmentModality";
 import { catalogueRows, type CatalogueRow } from "@/domain/assessmentCatalogue";
 import { AssessmentModalityForm } from "@/features/administration/AssessmentModalityForm";
-import type { Cohort, ProgramId } from "@/domain/types";
+import { QcmPilotage } from "@/features/administration/QcmPilotage";
+import type { Cohort, OutcomeTheme, ProgramId } from "@/domain/types";
+import type { QuestionBankRow } from "@/application/ports/repositories";
 
 const ORDRE_DES_USAGES: readonly AssessmentUsage[] = [
   "self_assessment",
@@ -260,17 +262,20 @@ function AjouterUneDate({
 
 function LigneModalite({
   programId,
-  cohortId,
+  cohort,
   row,
   utilisee,
   cochee,
   onToggle,
   sessions,
+  link,
+  banques,
+  themes,
   editable,
   onChanged,
 }: {
   readonly programId: ProgramId;
-  readonly cohortId: string;
+  readonly cohort: Cohort;
   readonly row: CatalogueRow;
   /** Ce que la BASE dit : cette promotion utilise cette modalité. */
   readonly utilisee: boolean;
@@ -278,15 +283,21 @@ function LigneModalite({
   readonly cochee: boolean;
   readonly onToggle: (rowId: string, voulue: boolean) => void;
   readonly sessions: readonly AssessmentSession[];
+  /** Le lien promotion ↔ modalité, quand il existe : il porte le pilotage. */
+  readonly link: CohortAssessmentLink | undefined;
+  readonly banques: readonly QuestionBankRow[];
+  readonly themes: readonly OutcomeTheme[];
   readonly editable: boolean;
   readonly onChanged?: (() => void) | undefined;
 }) {
   const dataAccess = useDataAccess();
+  const cohortId = cohort.id;
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const enAttente = cochee !== utilisee;
+  const estQcm = row.modality?.subtype === "qcm";
 
   const modality = row.modality;
   const surMesure = row.entry === undefined;
@@ -352,14 +363,30 @@ function LigneModalite({
             sur mesure
           </Badge>
         ) : null}
-        {utilisee && usageSeDate(usage) ? (
+        {utilisee && usageSeDate(usage) && !estQcm ? (
           <Badge variant={dates.length > 0 ? "secondary" : "outline"} className="font-normal">
             {dates.length === 0 ? "non datée" : `${dates.length} date(s)`}
           </Badge>
         ) : null}
-        {utilisee && !usageSeDate(usage) ? (
+        {utilisee && estQcm && dates.length > 0 ? (
+          <Badge variant="secondary" className="font-normal">
+            {dates.length} fenêtre(s)
+          </Badge>
+        ) : null}
+        {utilisee && !usageSeDate(usage) && !estQcm ? (
           <Badge variant="outline" className="font-normal">
             en continu
+          </Badge>
+        ) : null}
+        {utilisee && link && !link.isOpen ? (
+          <Badge variant="outline" className="text-destructive font-normal">
+            fermé
+          </Badge>
+        ) : null}
+        {utilisee && estQcm && link ? (
+          <Badge variant="outline" className="font-normal">
+            {link.questionSource ? `banque ${link.questionSource}` : "sans banque"}
+            {link.freeAccess && link.questionSource ? " · accès libre" : ""}
           </Badge>
         ) : null}
         {utilisee && modality && !enAttente ? (
@@ -431,6 +458,19 @@ function LigneModalite({
             )}
           </div>
 
+          {estQcm && link ? (
+            <QcmPilotage
+              programId={programId}
+              cohort={cohort}
+              modality={modality}
+              link={link}
+              banques={banques}
+              themes={themes}
+              sessions={sessions}
+              editable={editable}
+              onChanged={onChanged}
+            />
+          ) : (
           <div className="space-y-2">
             <p className="text-xs font-medium">
               Temporalité <span className="text-muted-foreground font-normal">— pour cette promotion</span>
@@ -454,6 +494,7 @@ function LigneModalite({
               </>
             )}
           </div>
+          )}
 
           {editable ? (
             <div className="flex flex-wrap items-center justify-end gap-2">
@@ -481,6 +522,8 @@ export function AssessmentModalitySection({
   sessions,
   links,
   cohorts,
+  banques = [],
+  themes = [],
   onChanged,
   editable = true,
   cohortFilter: imposed,
@@ -491,6 +534,10 @@ export function AssessmentModalitySection({
   readonly sessions: readonly AssessmentSession[];
   readonly links: readonly CohortAssessmentLink[];
   readonly cohorts: readonly Cohort[];
+  /** Les banques de questions du programme, pour le pilotage des QCM. */
+  readonly banques?: readonly QuestionBankRow[];
+  /** Les thèmes du référentiel, pour filtrer une série de QCM. */
+  readonly themes?: readonly OutcomeTheme[];
   /** Relit modalités, liens et épreuves après toute écriture. */
   readonly onChanged?: (() => void) | undefined;
   /** `false` dans le pilotage : lecture seule. */
@@ -632,12 +679,19 @@ export function AssessmentModalitySection({
                           <LigneModalite
                             key={r.id}
                             programId={programId}
-                            cohortId={cohort.id}
+                            cohort={cohort}
                             row={r}
                             utilisee={estUtilisee(r)}
                             cochee={estCochee(r)}
                             onToggle={toggle}
                             sessions={sessions}
+                            link={
+                              r.modality
+                                ? links.find((l) => l.cohortId === cohort.id && l.modalityId === r.modality?.id)
+                                : undefined
+                            }
+                            banques={banques}
+                            themes={themes}
                             editable={editable}
                             onChanged={onChanged}
                           />

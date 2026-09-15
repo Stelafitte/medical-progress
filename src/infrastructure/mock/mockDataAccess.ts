@@ -646,6 +646,24 @@ export const mockDataAccess: DataAccess = {
       },
       listCohortAssessmentLinks: (programId) => ok(links.filter((l) => l.programId === programId)),
       questionBankSummary: () => ok([]),
+      setCohortAssessmentPilotage: (input) => {
+        links = links.map((l) =>
+          l.cohortId === input.cohortId && l.modalityId === input.assessmentModalityId
+            ? {
+                ...l,
+                isOpen: input.isOpen,
+                freeAccess: input.freeAccess,
+                ...(input.questionSource ? { questionSource: input.questionSource } : {}),
+              }
+            : l,
+        );
+        return ok(undefined);
+      },
+      countQuestions: () => ok(0),
+      pickQuestions: () => ok([]),
+      readQuestion: () => Promise.reject(new Error("Aucune question en maquette.")),
+      answerQuestion: () => Promise.reject(new Error("Aucune question en maquette.")),
+      reportQuestion: () => ok(undefined),
       importQuestionItems: (input) =>
         ok({
           mode: input.mode,
@@ -663,7 +681,10 @@ export const mockDataAccess: DataAccess = {
         if (!modality) return Promise.reject(new Error("Modalité d'évaluation introuvable."));
         const deja = links.some((l) => l.cohortId === cohortId && l.modalityId === assessmentModalityId);
         if (enabled && !deja) {
-          links = [...links, { programId: modality.programId, cohortId, modalityId: assessmentModalityId }];
+          links = [
+            ...links,
+            { programId: modality.programId, cohortId, modalityId: assessmentModalityId, isOpen: true, freeAccess: true },
+          ];
         }
         if (!enabled) {
           links = links.filter((l) => !(l.cohortId === cohortId && l.modalityId === assessmentModalityId));

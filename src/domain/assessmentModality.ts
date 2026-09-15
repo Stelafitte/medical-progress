@@ -211,8 +211,36 @@ export interface AssessmentSession {
   readonly cohortId: string;
   /** Date civile, `AAAA-MM-JJ`. Pas d'heure : la convocation la précise. */
   readonly scheduledOn: string;
+  /** Fin de la fenêtre d'accès. Absente = épreuve d'un jour. (15/09) */
+  readonly closesOn?: string;
   readonly location?: string;
   readonly notes?: string;
+  /** Pour un QCM : la série que la fenêtre sert. (15/09) */
+  readonly config?: QcmWindowConfig;
+}
+
+/**
+ * Ce qu'une fenêtre de QCM sert : quels thèmes, quels rangs, combien de
+ * questions. Tableaux vides = pas de filtre. `milestoneId` garde la trace du
+ * jalon dont la fenêtre a été tirée, pour l'écran — le serveur ne s'en sert
+ * pas.
+ */
+export interface QcmWindowConfig {
+  readonly themeIds: readonly string[];
+  readonly ranks: readonly ("A" | "B" | "C")[];
+  readonly count: number;
+  readonly milestoneId?: string;
+}
+
+/** Une fenêtre est ouverte du matin de `scheduledOn` au soir de `closesOn` (ou du même jour). */
+export type WindowState = "upcoming" | "open" | "closed";
+
+export function windowState(session: AssessmentSession, now: Date): WindowState {
+  const debut = new Date(`${session.scheduledOn}T00:00:00`);
+  const fin = new Date(`${session.closesOn ?? session.scheduledOn}T23:59:59`);
+  if (now.getTime() < debut.getTime()) return "upcoming";
+  if (now.getTime() > fin.getTime()) return "closed";
+  return "open";
 }
 
 export type AssessmentSessionState = "completed" | "upcoming";
@@ -251,4 +279,10 @@ export interface CohortAssessmentLink {
   readonly programId: ProgramId;
   readonly cohortId: string;
   readonly modalityId: string;
+  /** Ouvert / fermé à la main. Fermé : l'étudiant voit, ne lance rien. (15/09) */
+  readonly isOpen: boolean;
+  /** Pour un QCM : la banque servie (`question_items.source`). */
+  readonly questionSource?: string;
+  /** Pour un QCM : « je m'évalue maintenant » autorisé. */
+  readonly freeAccess: boolean;
 }

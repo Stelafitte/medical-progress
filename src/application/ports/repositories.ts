@@ -37,6 +37,7 @@ import type {
   AssessmentSubtype,
   AssessmentUsage,
   CohortAssessmentLink,
+  QcmWindowConfig,
 } from "@/domain/assessmentModality";
 import type { LearnerNarratedDeck, MediaResource } from "@/domain/mediaLibrary";
 import type { ImportMode, ImportReport, ImportedQuestion } from "@/domain/questionBankImport";
@@ -423,12 +424,59 @@ export interface CreateAssessmentSessionInput {
   readonly scheduledOn: string;
   readonly location: string;
   readonly notes: string;
+  readonly closesOn?: string;
+  readonly config?: QcmWindowConfig;
 }
 
+export interface SetCohortAssessmentPilotageInput {
+  readonly cohortId: string;
+  readonly assessmentModalityId: string;
+  readonly isOpen: boolean;
+  readonly questionSource: string;
+  readonly freeAccess: boolean;
+}
+
+/** Une banque telle que l'écran la présente : provenance et comptes. */
 export interface QuestionBankRow {
   readonly source: string;
-  readonly status: string;
-  readonly questions: number;
+  readonly fileName?: string;
+  readonly fileModifiedAt?: string;
+  readonly lastImportedAt: string;
+  readonly published: number;
+  readonly drafts: number;
+  readonly flagged: number;
+  readonly retired: number;
+}
+
+export interface QuestionFilter {
+  readonly programId: ProgramId;
+  readonly source: string;
+  readonly themeIds: readonly string[];
+  readonly ranks: readonly string[];
+}
+
+/** Une question SANS sa réponse — ce que `read_question` rend. */
+export interface QuestionToAnswer {
+  readonly id: string;
+  readonly format: string;
+  readonly docimologicClass: string;
+  readonly stem: string;
+  readonly outcomeId: string;
+  readonly chapter?: number;
+  readonly options: readonly { readonly letter: string; readonly body: string }[];
+}
+
+/** La correction — ce que `answer_question` rend, au barème EDN. */
+export interface QuestionCorrection {
+  readonly score: number;
+  readonly discordances: number;
+  readonly eliminatory: boolean;
+  readonly options: readonly {
+    readonly letter: string;
+    readonly correct: boolean;
+    readonly explanation?: string;
+    readonly flag?: string;
+  }[];
 }
 
 export interface ImportQuestionItemsInput {
@@ -437,6 +485,8 @@ export interface ImportQuestionItemsInput {
   readonly source: string;
   readonly items: readonly ImportedQuestion[];
   readonly publish: boolean;
+  readonly fileName?: string;
+  readonly fileModifiedAt?: string;
 }
 
 export interface UpdateAssessmentSessionInput {
@@ -444,6 +494,8 @@ export interface UpdateAssessmentSessionInput {
   readonly scheduledOn: string;
   readonly location: string;
   readonly notes: string;
+  readonly closesOn?: string;
+  readonly config?: QcmWindowConfig;
 }
 
 /**
@@ -501,6 +553,19 @@ export interface AssessmentRepository {
     assessmentModalityId: string,
     enabled: boolean,
   ): Promise<void>;
+  /* ---- Pilotage des QCM (15/09) --------------------------------------- */
+  setCohortAssessmentPilotage(input: SetCohortAssessmentPilotageInput): Promise<void>;
+  /** Combien de questions publiées répondent au filtre — avant de lancer. */
+  countQuestions(filter: QuestionFilter): Promise<number>;
+  /** N identifiants tirés au sort dans la banque, filtrés. */
+  pickQuestions(filter: QuestionFilter, count: number): Promise<readonly string[]>;
+  readQuestion(questionId: string): Promise<QuestionToAnswer>;
+  answerQuestion(
+    questionId: string,
+    enrollmentId: string,
+    selected: readonly string[],
+  ): Promise<QuestionCorrection>;
+  reportQuestion(questionId: string, reason: string, message: string): Promise<void>;
 }
 
 export interface PlacementRepository {
