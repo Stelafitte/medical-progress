@@ -6,6 +6,7 @@
  * modifier l'UI ni la logique métier.
  */
 import type { CohortInterruption, CohortInterruptionMode } from "@/domain/cohortInterruption";
+import type { IncidentScope, PilotDecision, ProgramIncident } from "@/domain/pilotDecision";
 import type {
   MilestoneShift,
   PlanMilestone,
@@ -225,6 +226,40 @@ export interface ProgramRepository {
   }): Promise<{ readonly semainesDecalees: number; readonly jalonsDecales: number }>;
   /** L'historique des interruptions d'une promotion, la plus récente d'abord. */
   listCohortInterruptions(cohortId: CohortId): Promise<readonly CohortInterruption[]>;
+  /**
+   * DÉCALE LE CALENDRIER HORS PAUSE — le geste le plus demandé quand il y a un
+   * pépin, et le seul qui était impossible sans interrompre la promotion.
+   * `weeks` positif repousse, négatif avance ; `fromWeek` ne touche que ce qui
+   * n'a pas encore eu lieu. Le motif est obligatoire.
+   */
+  shiftCohortCalendar(input: {
+    readonly cohortId: CohortId;
+    readonly weeks: number;
+    readonly reason: string;
+    readonly fromWeek?: number;
+    readonly incidentId?: string | null;
+  }): Promise<{
+    readonly semaines: number;
+    readonly jalonsDecales: number;
+    readonly nouvelleFin: string;
+  }>;
+  /**
+   * DÉCLARE UN INCIDENT. Il ne bloque rien : il constate, et c'est lui qui
+   * explique les décisions prises ensuite.
+   */
+  declareIncident(input: {
+    readonly cohortId: CohortId;
+    readonly scope: IncidentScope;
+    readonly title: string;
+    readonly reason: string;
+    readonly scopeId?: string | null;
+    readonly occurredOn?: string | null;
+  }): Promise<string>;
+  /** Clôt un incident en disant COMMENT il a été réglé. */
+  resolveIncident(incidentId: string, resolution: string): Promise<void>;
+  listIncidents(cohortId: CohortId): Promise<readonly ProgramIncident[]>;
+  /** Le journal de pilotage de la promotion, la décision la plus récente d'abord. */
+  listPilotDecisions(cohortId: CohortId): Promise<readonly PilotDecision[]>;
   /**
    * Enregistre l'état en cours de conception du programme (« Concepteur de
    * programme »), avant finalisation et passage au pilotage. `draft` est un

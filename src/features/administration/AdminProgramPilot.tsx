@@ -5,7 +5,7 @@
  * successives : le pilotage se fait donc toujours promotion par promotion.
  * Aucun rappel des trois étapes ici (il reste sur le concepteur).
  */
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { Link, useSearch } from "@tanstack/react-router";
 import {
   Activity,
@@ -16,12 +16,19 @@ import {
   ChevronDown,
   ChevronUp,
   FileCheck,
+  History,
   Notebook,
   UserRound,
   Users,
 } from "lucide-react";
 import { SectionHeading } from "@/components/section-heading";
 import { CohortInterruptionPanel } from "@/features/administration/CohortInterruptionPanel";
+import { IncidentsPanel } from "@/features/administration/IncidentsPanel";
+import { CalendarShiftPanel } from "@/features/administration/CalendarShiftPanel";
+import { PilotJournalPanel } from "@/features/administration/PilotJournalPanel";
+import { RelancePanel } from "@/features/administration/RelancePanel";
+import { cleIncidents, cleJournal } from "@/features/administration/cohortInterruptionQuery";
+import { incidentsOuverts as ouverts, type ProgramIncident } from "@/domain/pilotDecision";
 import { cleInterruptions } from "@/features/administration/cohortInterruptionQuery";
 import {
   INTERRUPTION_STATE_LABELS_FR,
@@ -67,8 +74,11 @@ import {
 import { ROLE_LABELS_FR } from "@/domain/roles";
 import { buildLearnerCompetenceRows } from "@/features/administration/competenceTrackingViewModel";
 import type { LearnerCompetenceRow } from "@/features/administration/competenceTrackingViewModel";
-import type { CohortPhase } from "@/features/administration/adminProgramViewModel";
-import type { CohortId } from "@/domain/types";
+import type {
+  CohortPhase,
+  PilotTimelineItem,
+} from "@/features/administration/adminProgramViewModel";
+import type { CohortId, Placement } from "@/domain/types";
 
 const STATE_STYLES = {
   done: "border-border text-muted-foreground",
@@ -98,6 +108,12 @@ export function AdminProgramPilot() {
     queryFn: () => dataAccess.programs.listCohortInterruptions(selectedId as CohortId),
   });
 
+  const incidents = useQuery({
+    queryKey: cleIncidents(selectedId ?? "aucune"),
+    enabled: Boolean(selectedId),
+    queryFn: () => dataAccess.programs.listIncidents(selectedId as CohortId),
+  });
+
   const timeline = useMemo(
     () => buildPilotTimeline(data?.planSchedule ?? [], selected),
     [data?.planSchedule, selected],
@@ -120,6 +136,19 @@ export function AdminProgramPilot() {
       r.scope.programId === data.program?.id,
   );
   const progress = selected ? Math.round(cohortProgressRatio(selected) * 100) : 0;
+  /*
+   * LA SEMAINE OU EN EST LA PROMOTION — meme calcul que partout ailleurs dans
+   * le produit (floor(jours / 7) depuis le debut). Elle sert de defaut au
+   * decalage : ce qui precede a ete tenu, le decaler reecrirait le passe.
+   */
+  const semainesEcoulees = selected
+    ? Math.max(
+        0,
+        Math.floor(
+          (Date.now() - Date.parse(`${selected.startsOn.slice(0, 10)}T00:00:00Z`)) / 604_800_000,
+        ),
+      )
+    : 0;
 
   const learnerRows = buildLearnerActivityRows({
     enrollments: cohortEnrollments,
@@ -326,10 +355,46 @@ export function AdminProgramPilot() {
             cohortId={selected.id}
             cohortLabel={selected.label}
             interruption={interruptionEnCours(interruptions.data ?? [])}
-            onChanged={() => void refetch()}
+            incidentsOuverts={ouverts(incidents.data ?? [])}
+            placements={data.placements}
+            jalons={timeline}
+            finActuelle={selected.endsOn}
+            semainesEcoulees={semainesEcoulees}
+            onChanged={() => {
+              void refetch();
+              void incidents.refetch();
+            }}
             rows={learnerRows}
             summary={groupSummary}
             competenceRows={competenceRows}
+            atelier={
+              !data.program ? null : (
+                <AssessmentModalitySection
+                  programId={data.program.id}
+                  modalities={data.assessmentModalities}
+                  sessions={data.assessmentSessions}
+                  links={data.cohortAssessmentLinks}
+                  cohorts={data.cohorts}
+                  banques={data.questionBanks}
+                  themes={data.outcomeThemes}
+                  cohortFilter={selectedId}
+                  editable
+                  onChanged={() => void refetch()}
+                />
+              )
+            }
+            relance={
+              !data.program ? null : (
+                <RelancePanel
+                  programId={data.program.id}
+                  cohortLabel={selected.label}
+                  rows={learnerRows}
+                  personIdPour={(enrollmentId) =>
+                    data.enrollments.find((e) => e.id === enrollmentId)?.personId
+                  }
+                />
+              )
+            }
             activity={{
               milestonesTotal: timeline.length,
               milestonesPassed: timeline.filter((i) => i.state === "done").length,
@@ -688,7 +753,7 @@ function LearnerManagementPanel({
 /* Outils de pilotage : boutons en tête, contenu déplié en dessous      */
 /* ------------------------------------------------------------------ */
 
-type ToolKey = "programmation" | "activite" | "apprenants" | "documents";
+type ToolKey = "incidents" | "programmation" | "activite" | "apprenants" | "documents" | "journal";
 
 const TOOLS: readonly {
   readonly key: ToolKey;
@@ -696,11 +761,23 @@ const TOOLS: readonly {
   readonly icon: typeof CalendarClock;
   readonly hint: string;
 }[] = [
+  /*
+    L'INCIDENT PASSE EN TETE, ET CE N'EST PAS DECORATIF. On ne pilote pas en
+    parcourant un tableau de commandes : on part de ce qui ne va pas, et les
+    gestes correctifs se proposent depuis lui (Stef, 16/09 : « il faut imaginer
+    ce qui se passe en cas de probleme »).
+  */
+  {
+    key: "incidents",
+    label: "En cas de problème",
+    icon: AlertTriangle,
+    hint: "Déclarer ce qui s'est passé, puis prendre les gestes que cela appelle.",
+  },
   {
     key: "programmation",
-    label: "Programmation",
+    label: "Programmation et calendrier",
     icon: CalendarClock,
-    hint: "Activation, pause, fin, modification, urgence — pour le programme en cours.",
+    hint: "Interrompre ou reprendre le parcours, décaler la fin et les jalons.",
   },
   {
     key: "activite",
@@ -721,25 +798,47 @@ const TOOLS: readonly {
     icon: FileCheck,
     hint: "Pièces administratives et certificats de complétude.",
   },
+  {
+    key: "journal",
+    label: "Journal des décisions",
+    icon: History,
+    hint: "Ce qui a été décidé sur cette promotion, par qui, quand, et pourquoi.",
+  },
 ];
 
 function PilotTools({
   cohortId,
   cohortLabel,
   interruption,
+  incidentsOuverts,
+  placements,
+  jalons,
+  finActuelle,
+  semainesEcoulees,
   rows,
   summary,
   activity,
   competenceRows,
+  atelier,
+  relance,
   onChanged,
 }: {
   cohortId: CohortId;
   cohortLabel: string;
   interruption: CohortInterruption | undefined;
+  incidentsOuverts: readonly ProgramIncident[];
+  placements: readonly Placement[];
+  jalons: readonly PilotTimelineItem[];
+  finActuelle: string;
+  semainesEcoulees: number;
   rows: readonly LearnerActivityRow[];
   summary: GroupActivitySummary;
   activity: ProgramActivity;
   competenceRows: readonly (LearnerCompetenceRow & { readonly personName: string })[];
+  /** L'atelier des évaluations, borné à cette promotion et en ÉCRITURE. */
+  atelier: ReactNode;
+  /** La relance nominative, qui écrit un vrai brouillon de campagne. */
+  relance: ReactNode;
   onChanged: () => void;
 }) {
   const [open, setOpen] = useState<readonly ToolKey[]>([]);
@@ -752,6 +851,8 @@ function PilotTools({
     if (key === "apprenants") return `${summary.lateLearners + summary.idleLearners} à traiter`;
     if (key === "programmation")
       return interruption ? INTERRUPTION_STATE_LABELS_FR[interruption.mode] : "en cours";
+    if (key === "incidents")
+      return incidentsOuverts.length > 0 ? `${incidentsOuverts.length} ouvert(s)` : null;
     return null;
   };
 
@@ -800,20 +901,88 @@ function PilotTools({
               </div>
               {isOpen ? (
                 <div id={`pilot-tool-${tool.key}`} className="mt-3 space-y-3">
-                  {tool.key === "programmation" ? (
-                    <CohortInterruptionPanel
+                  {tool.key === "incidents" ? (
+                    <IncidentsPanel
                       cohortId={cohortId}
-                      cohortLabel={cohortLabel}
-                      onChanged={onChanged}
+                      placements={placements}
+                      jalons={jalons}
+                      apprenants={rows.map((r) => ({ id: r.enrollmentId, nom: r.personName }))}
+                      onGeste={(geste) => {
+                        /* Le geste ouvre l'outil qui l'exécute, sans quitter la
+                           promotion pilotée : c'est ce qui relie le problème au
+                           remède. */
+                        const cible: ToolKey =
+                          geste === "relancer"
+                            ? "apprenants"
+                            : geste === "parcours"
+                              ? "activite"
+                              : "programmation";
+                        setOpen((keys) => (keys.includes(cible) ? keys : [...keys, cible]));
+                        document
+                          .getElementById(`pilot-tool-${cible}`)
+                          ?.scrollIntoView({ behavior: "smooth", block: "center" });
+                      }}
                     />
                   ) : null}
-                  {tool.key === "activite" ? <ActivityPanel activity={activity} /> : null}
+                  {tool.key === "programmation" ? (
+                    <div className="space-y-6">
+                      <CohortInterruptionPanel
+                        cohortId={cohortId}
+                        cohortLabel={cohortLabel}
+                        onChanged={onChanged}
+                      />
+                      <div className="border-t pt-5">
+                        <p className="font-display mb-2 text-[17px] font-medium">
+                          Décaler le calendrier
+                        </p>
+                        <CalendarShiftPanel
+                          cohortId={cohortId}
+                          finActuelle={finActuelle}
+                          semainesEcoulees={semainesEcoulees}
+                          onChanged={onChanged}
+                        />
+                      </div>
+                    </div>
+                  ) : null}
+                  {tool.key === "journal" ? <PilotJournalPanel cohortId={cohortId} /> : null}
+                  {tool.key === "activite" ? (
+                    <div className="space-y-6">
+                      <ActivityPanel activity={activity} />
+                      <div className="border-t pt-5">
+                        <p className="font-display mb-1 text-[17px] font-medium">
+                          Retoucher le parcours de cette promotion
+                        </p>
+                        {/*
+                          PROCHE DE LA CONCEPTION, MAIS EN SIMPLIFIE (Stef,
+                          16/09). Le Pilotage n'INVENTE aucun objet : il ne cree
+                          ni modalite, ni terrain, ni carnet -- ca, c'est le
+                          Concepteur. Mais pour CETTE promotion il peut toujours
+                          dire « pas celle-ci », « decalee », « rattrapage
+                          ouvert ». Le meme atelier est donc servi ici, en
+                          ecriture, borne a la promotion pilotee.
+                        */}
+                        <p className="text-muted-foreground mb-3 text-[13px] leading-relaxed">
+                          Cochez, décochez, datez pour cette promotion seulement. Créer une modalité
+                          qui n'existe pas encore reste l'affaire du Concepteur.
+                        </p>
+                        {atelier}
+                      </div>
+                    </div>
+                  ) : null}
                   {tool.key === "apprenants" ? (
-                    <LearnerManagementPanel
-                      rows={rows}
-                      summary={summary}
-                      competenceRows={competenceRows}
-                    />
+                    <div className="space-y-6">
+                      <LearnerManagementPanel
+                        rows={rows}
+                        summary={summary}
+                        competenceRows={competenceRows}
+                      />
+                      <div className="border-t pt-5">
+                        <p className="font-display mb-3 text-[17px] font-medium">
+                          Relancer les personnes concernées
+                        </p>
+                        {relance}
+                      </div>
+                    </div>
                   ) : null}
                   {tool.key === "documents" ? <DocumentsPanel /> : null}
                 </div>

@@ -61,6 +61,12 @@ import type {
   CohortInterruptionMode,
 } from "@/domain/cohortInterruption";
 import type {
+  IncidentScope,
+  PilotDecision,
+  PilotDecisionKind,
+  ProgramIncident,
+} from "@/domain/pilotDecision";
+import type {
   Cohort,
   CohortId,
   CohortStatus,
@@ -554,6 +560,70 @@ export function mapStageLog(row: StageLogRow): StageLog {
       comment: validation.comment,
       provenance: nativeProvenance,
     })),
+  };
+}
+
+interface ProgramIncidentRow {
+  readonly id: string;
+  readonly cohort_id: string;
+  readonly scope: IncidentScope;
+  readonly scope_id: string | null;
+  readonly title: string;
+  readonly reason: string;
+  readonly occurred_on: string;
+  readonly resolved_on: string | null;
+  readonly resolution: string | null;
+  readonly declared_by: string | null;
+  readonly resolved_by: string | null;
+  readonly created_at: string;
+}
+
+interface PilotDecisionRow {
+  readonly id: string;
+  readonly cohort_id: string;
+  readonly kind: PilotDecisionKind;
+  readonly summary: string;
+  readonly reason: string;
+  readonly details: Record<string, unknown> | null;
+  readonly incident_id: string | null;
+  readonly decided_by: string | null;
+  readonly decided_at: string;
+}
+
+interface CalendarShiftRow {
+  readonly semaines: number;
+  readonly jalons_decales: number;
+  readonly nouvelle_fin: string;
+}
+
+function mapIncident(row: ProgramIncidentRow): ProgramIncident {
+  return {
+    id: row.id,
+    cohortId: row.cohort_id as CohortId,
+    scope: row.scope,
+    scopeId: row.scope_id,
+    title: row.title,
+    reason: row.reason,
+    occurredOn: row.occurred_on,
+    resolvedOn: row.resolved_on,
+    resolution: row.resolution,
+    declaredBy: row.declared_by as PersonId | null,
+    resolvedBy: row.resolved_by as PersonId | null,
+    createdAt: row.created_at,
+  };
+}
+
+function mapPilotDecision(row: PilotDecisionRow): PilotDecision {
+  return {
+    id: row.id,
+    cohortId: row.cohort_id as CohortId,
+    kind: row.kind,
+    summary: row.summary,
+    reason: row.reason,
+    details: row.details ?? {},
+    incidentId: row.incident_id,
+    decidedBy: row.decided_by as PersonId | null,
+    decidedAt: row.decided_at,
   };
 }
 
@@ -2123,6 +2193,71 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
           .order("started_on", { ascending: false });
         assertNoSupabaseError(error);
         return ((data ?? []) as CohortInterruptionRow[]).map(mapCohortInterruption);
+      },
+      /*
+       * PILOTER, C'EST DECIDER (16/09). Trois RPC et deux lectures.
+       *
+       * Aucune des deux tables ne recoit de droit d'ecriture : le decalage du
+       * calendrier touche les jalons de toute une promotion, et l'incident
+       * comme sa cloture ecrivent au journal dans la meme transaction. Un
+       * `update` client ferait l'un sans l'autre, et le journal aurait un trou
+       * la ou se prennent les decisions les plus lourdes.
+       */
+      async shiftCohortCalendar(input) {
+        const { data, error } = await client.rpc("shift_cohort_calendar", {
+          p_cohort_id: input.cohortId,
+          p_weeks: input.weeks,
+          p_reason: input.reason,
+          p_from_week: input.fromWeek ?? 0,
+          p_incident_id: input.incidentId ?? null,
+        });
+        assertNoSupabaseError(error);
+        const ligne = (data as readonly CalendarShiftRow[] | null)?.[0];
+        return {
+          semaines: ligne?.semaines ?? 0,
+          jalonsDecales: ligne?.jalons_decales ?? 0,
+          nouvelleFin: ligne?.nouvelle_fin ?? "",
+        };
+      },
+      async declareIncident(input) {
+        const { data, error } = await client.rpc("declare_incident", {
+          p_cohort_id: input.cohortId,
+          p_scope: input.scope,
+          p_title: input.title,
+          p_reason: input.reason,
+          p_scope_id: input.scopeId ?? null,
+          p_occurred_on: input.occurredOn ?? null,
+        });
+        assertNoSupabaseError(error);
+        return data as string;
+      },
+      async resolveIncident(incidentId, resolution) {
+        const { error } = await client.rpc("resolve_incident", {
+          p_incident_id: incidentId,
+          p_resolution: resolution,
+        });
+        assertNoSupabaseError(error);
+      },
+      async listIncidents(cohortId) {
+        const { data, error } = await client
+          .from("program_incidents")
+          .select(
+            "id,cohort_id,scope,scope_id,title,reason,occurred_on,resolved_on,resolution,declared_by,resolved_by,created_at",
+          )
+          .eq("cohort_id", cohortId)
+          .order("occurred_on", { ascending: false });
+        assertNoSupabaseError(error);
+        return ((data ?? []) as ProgramIncidentRow[]).map(mapIncident);
+      },
+      async listPilotDecisions(cohortId) {
+        const { data, error } = await client
+          .from("pilot_decisions")
+          .select("id,cohort_id,kind,summary,reason,details,incident_id,decided_by,decided_at")
+          .eq("cohort_id", cohortId)
+          .order("decided_at", { ascending: false })
+          .limit(60);
+        assertNoSupabaseError(error);
+        return ((data ?? []) as PilotDecisionRow[]).map(mapPilotDecision);
       },
     },
     people: {

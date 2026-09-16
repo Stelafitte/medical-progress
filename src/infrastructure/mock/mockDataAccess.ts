@@ -213,6 +213,14 @@ export const mockDataAccess: DataAccess = {
       resumeCohort: () =>
         Promise.reject(new Error("La reprise d'une promotion n'existe pas en mode local.")),
       listCohortInterruptions: () => ok([]),
+      shiftCohortCalendar: () =>
+        Promise.reject(new Error("Le décalage de calendrier n'existe pas en mode local.")),
+      declareIncident: () =>
+        Promise.reject(new Error("Les incidents n'existent pas en mode local.")),
+      resolveIncident: () =>
+        Promise.reject(new Error("Les incidents n'existent pas en mode local.")),
+      listIncidents: () => ok([]),
+      listPilotDecisions: () => ok([]),
     };
   })(),
   people: {
