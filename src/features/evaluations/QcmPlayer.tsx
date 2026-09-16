@@ -28,8 +28,8 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
-import { SectionHeading } from "@/components/section-heading";
-import { EmptyState, PanelCard, StatCard } from "@/features/professional/mock-ui";
+import { FieldHeader } from "@/components/field-header";
+import { Chiffres, Panneau, Vide } from "@/features/evaluations/ui-apprenant";
 import { useDataAccess, useSession } from "@/application/session";
 import { AVERTISSEMENT_REFERENTIEL_FR } from "@/domain/questionBankImport";
 import { RAISONS_SIGNALEMENT } from "@/domain/questionReport";
@@ -117,7 +117,12 @@ export function QcmPlayer({ params }: { readonly params: QcmPlayerParams }) {
     setEtape({ kind: "chargement" });
     setChoix([]);
     try {
-      const question = await data.assessments.readQuestion(id);
+      /*
+      * L'inscription voyage avec la lecture : c'est elle qui fixe l'ordre des
+      * propositions, stable pour cet étudiant et différent de celui du voisin
+      * (16/09, migration 20260916160000).
+      */
+      const question = await data.assessments.readQuestion(id, activeEnrollment?.id);
       setEtape({ kind: "question", index, question });
     } catch (reason) {
       setErreur(reason instanceof Error ? reason.message : "Question illisible.");
@@ -160,20 +165,25 @@ export function QcmPlayer({ params }: { readonly params: QcmPlayerParams }) {
 
   return (
     <div className="space-y-6">
-      <SectionHeading
-        level={1}
-        title={params.sessionId ? "Série programmée" : "Je m'évalue maintenant"}
-        description={
+      {/* Le bandeau marine des écrans apprenant (16/09) — voir ui-apprenant.tsx. */}
+      <FieldHeader
+        eyebrow={params.sessionId ? "Série programmée" : "Je m'évalue maintenant"}
+        title={total > 0 ? `${total} question(s)` : "Préparation…"}
+        figures={
           total > 0
-            ? `${total} question(s). Chaque réponse est corrigée aussitôt, au barème des EDN.`
-            : "Préparation de votre série…"
+            ? [
+                { value: `${faites} / ${total}`, label: "répondues" },
+                { value: `${Math.round(moyenne * 100)} %`, label: "score moyen" },
+              ]
+            : []
         }
-        action={
-          <Button asChild variant="outline" className="min-h-10">
+      >
+        <div className="mt-5">
+          <Button asChild variant="secondary" className="min-h-10">
             <Link to="/espace/evaluations">Quitter</Link>
           </Button>
-        }
-      />
+        </div>
+      </FieldHeader>
 
       {total > 0 && etape.kind !== "fin" ? (
         <div className="space-y-1">
@@ -188,16 +198,16 @@ export function QcmPlayer({ params }: { readonly params: QcmPlayerParams }) {
       {etape.kind === "chargement" ? <Skeleton className="h-48 w-full" /> : null}
 
       {etape.kind === "vide" ? (
-        <PanelCard title="Pas de série">
-          <EmptyState>{etape.raison}</EmptyState>
+        <Panneau title="Pas de série">
+          <Vide>{etape.raison}</Vide>
           <Button asChild className="mt-3 min-h-11">
             <Link to="/espace/evaluations">Retour à mes évaluations</Link>
           </Button>
-        </PanelCard>
+        </Panneau>
       ) : null}
 
       {etape.kind === "question" || etape.kind === "correction" ? (
-        <PanelCard
+        <Panneau
           title={`Question ${etape.index + 1} / ${total}`}
           description={etape.question.format.toUpperCase() + (etape.question.chapter ? ` · chapitre ${etape.question.chapter}` : "")}
         >
@@ -236,7 +246,16 @@ export function QcmPlayer({ params }: { readonly params: QcmPlayerParams }) {
                       <span className="mt-0.5 size-4 shrink-0" aria-hidden />
                     )}
                     <Label htmlFor={`opt-${o.letter}`} className="cursor-pointer text-sm font-normal leading-relaxed">
-                      <span className="mr-2 font-mono text-xs">{o.letter}.</span>
+                      {/*
+                        LA LETTRE AFFICHÉE EST CELLE DE LA PLACE, pas celle du
+                        fichier : l'ordre étant mélangé par inscription, une
+                        proposition peut être la « C » de l'étudiant et la « A »
+                        de son voisin. La vraie lettre continue de voyager avec
+                        la réponse, le barème et le signalement.
+                      */}
+                      <span className="mr-2 font-mono text-xs">
+                        {String.fromCharCode(65 + etape.question.options.indexOf(o))}.
+                      </span>
                       {o.body}
                       {corr?.explanation ? (
                         <span className="text-muted-foreground mt-1 block text-xs">{corr.explanation}</span>
@@ -271,17 +290,19 @@ export function QcmPlayer({ params }: { readonly params: QcmPlayerParams }) {
               onSuivante={() => void ouvrir(etape.index + 1)}
             />
           ) : null}
-        </PanelCard>
+        </Panneau>
       ) : null}
 
       {etape.kind === "fin" ? (
-        <PanelCard title="Série terminée" description="Chaque réponse a été enregistrée dans votre passeport.">
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <StatCard label="Questions" value={faites} />
-            <StatCard label="Score moyen" value={`${Math.round(moyenne * 100)} %`} />
-            <StatCard label="Sans faute" value={scores.filter((s) => s === 1).length} />
-            <StatCard label="À revoir" value={scores.filter((s) => s < 0.5).length} />
-          </div>
+        <Panneau title="Série terminée" description="Chaque réponse a été enregistrée dans votre passeport.">
+          <Chiffres
+            items={[
+              { value: faites, label: "questions" },
+              { value: `${Math.round(moyenne * 100)} %`, label: "score moyen" },
+              { value: scores.filter((s) => s === 1).length, label: "sans faute" },
+              { value: scores.filter((s) => s < 0.5).length, label: "à revoir" },
+            ]}
+          />
           <div className="mt-4 flex flex-wrap gap-2">
             {!params.sessionId ? (
               <Button asChild className="min-h-11 gap-2">
@@ -296,7 +317,7 @@ export function QcmPlayer({ params }: { readonly params: QcmPlayerParams }) {
               </Button>
             )}
           </div>
-        </PanelCard>
+        </Panneau>
       ) : null}
     </div>
   );

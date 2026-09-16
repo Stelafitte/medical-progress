@@ -25,7 +25,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { EmptyState, PanelCard } from "@/features/professional/mock-ui";
+import { Panneau, Vide } from "@/features/evaluations/ui-apprenant";
 import { formatFrDate } from "@/features/administration/adminProgramViewModel";
 import { useDataAccess, useSession } from "@/application/session";
 import {
@@ -487,7 +487,7 @@ export function MesEvaluations() {
 
   if (isPending) return <Skeleton className="h-40 w-full" />;
   if (isError || !data) {
-    return <EmptyState>Impossible de lire vos évaluations pour l'instant.</EmptyState>;
+    return <Vide>Impossible de lire vos évaluations pour l'instant.</Vide>;
   }
 
   const sessions = data.sessions;
@@ -498,18 +498,18 @@ export function MesEvaluations() {
   return (
     <div className="space-y-6">
       {data.modalities.length === 0 ? (
-        <PanelCard
+        <Panneau
           title="Vos évaluations"
           description="Ce que votre promotion rencontrera pendant le stage."
         >
-          <EmptyState>
+          <Vide>
             Pas d'évaluation ou auto-évaluation programmée dans votre parcours.
-          </EmptyState>
-        </PanelCard>
+          </Vide>
+        </Panneau>
       ) : (
         <>
           {prochaines.length > 0 ? (
-            <PanelCard
+            <Panneau
               title="Prochaines échéances"
               description="Les épreuves datées à venir pour votre promotion, dans l'ordre."
             >
@@ -533,15 +533,15 @@ export function MesEvaluations() {
                   );
                 })}
               </ul>
-            </PanelCard>
+            </Panneau>
           ) : null}
 
-          <PanelCard
+          <Panneau
             title="Quand vous voulez"
             description="En continu, du début à la fin du stage. Rien n'est retenu contre vous."
           >
             {quandJeVeux.length === 0 ? (
-              <EmptyState>Aucune auto-évaluation prévue pour votre promotion.</EmptyState>
+              <Vide>Aucune auto-évaluation prévue pour votre promotion.</Vide>
             ) : (
               <ul className="grid gap-3 lg:grid-cols-2">
                 {quandJeVeux.map((m) => (
@@ -555,14 +555,14 @@ export function MesEvaluations() {
                 ))}
               </ul>
             )}
-          </PanelCard>
+          </Panneau>
 
-          <PanelCard
+          <Panneau
             title="Programmé pour vous"
             description="Ce qu'on vous demande, et ce qui valide votre stage — avec les dates dès qu'elles sont fixées."
           >
             {programmees.length === 0 ? (
-              <EmptyState>Aucune épreuve programmée pour votre promotion.</EmptyState>
+              <Vide>Aucune épreuve programmée pour votre promotion.</Vide>
             ) : (
               <ul className="grid gap-3 lg:grid-cols-2">
                 {programmees.map((m) => (
@@ -576,7 +576,7 @@ export function MesEvaluations() {
                 ))}
               </ul>
             )}
-          </PanelCard>
+          </Panneau>
         </>
       )}
 

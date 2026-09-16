@@ -28,7 +28,7 @@ import { useDataAccess, useSession } from "@/application/session";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { SectionHeading } from "@/components/section-heading";
+import { FieldHeader } from "@/components/field-header";
 import { MesEvaluations, useMesEvaluations } from "@/features/evaluations/MesEvaluations";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
@@ -54,7 +54,7 @@ function dateCourte(iso: string): string {
 
 export function EcosVirtuelView() {
   const data = useDataAccess();
-  const { activeEnrollment } = useSession();
+  const { activeEnrollment, activeProgram } = useSession();
   const [stationOuverte, setStationOuverte] = useState<EcosExternalStation | null>(null);
 
   const cleRuns = ["ecos-external-runs", activeEnrollment?.id ?? "none"] as const;
@@ -92,14 +92,18 @@ export function EcosVirtuelView() {
 
   return (
     <div className="space-y-8">
-      <SectionHeading
-        level={1}
+      {/*
+        LE BANDEAU MARINE, comme les huit autres onglets (16/09). Trois chiffres
+        et rien d'autre : ce qui est ouvert maintenant, ce qui est daté, ce que
+        l'étudiant a déjà déclaré.
+      */}
+      <FieldHeader
+        eyebrow={activeProgram.name}
         title="Mes évaluations"
-        description={
-          stations.length > 0
-            ? "Ce que votre promotion rencontrera pendant le stage, et quand. En bas, les stations ECOS virtuelles à jouer dans ChatGPT, dont vous rapportez ici la grille de notation."
-            : "Ce que votre promotion rencontrera pendant le stage, et quand."
-        }
+        figures={[
+          { value: stations.length, label: "stations ouvertes" },
+          { value: (passages ?? []).length, label: "passages déclarés" },
+        ]}
       />
 
       {/*
@@ -116,8 +120,11 @@ export function EcosVirtuelView() {
         hidden={stations.length === 0}
       >
         <div>
-          <p className={EYEBROW}>ECOS virtuel</p>
-          <h2 id="stations-titre" className="text-xl font-semibold">
+          <p className={`${EYEBROW} text-muted-foreground`}>ECOS virtuel</p>
+          <h2
+            id="stations-titre"
+            className="font-display text-[21px] font-medium tracking-[-0.015em]"
+          >
             Stations ChatGPT
           </h2>
         </div>
@@ -194,8 +201,11 @@ export function EcosVirtuelView() {
         hidden={stations.length === 0 && !aDesPassages}
       >
         <div>
-          <p className={EYEBROW}>Historique</p>
-          <h2 id="passages-titre" className="text-xl font-semibold">
+          <p className={`${EYEBROW} text-muted-foreground`}>Historique</p>
+          <h2
+            id="passages-titre"
+            className="font-display text-[21px] font-medium tracking-[-0.015em]"
+          >
             Mes passages déclarés
           </h2>
         </div>
@@ -228,7 +238,10 @@ function Consignes() {
       className="bg-card rounded-xl border p-4 shadow-[var(--shadow-card)]"
     >
       <p className={EYEBROW}>Avant de cliquer sur une station</p>
-      <h2 id="consignes-titre" className="text-lg font-semibold">
+      <h2
+        id="consignes-titre"
+        className="font-display text-[19px] font-medium tracking-[-0.015em]"
+      >
         Comment jouer une station et rapporter sa grille
       </h2>
       <ol className="mt-3 list-decimal space-y-1.5 pl-5 text-sm">

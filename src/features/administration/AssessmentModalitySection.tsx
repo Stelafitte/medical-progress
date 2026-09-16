@@ -31,7 +31,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { EmptyState, PanelCard, StatCard } from "@/features/professional/mock-ui";
 import { formatFrDate } from "@/features/administration/adminProgramViewModel";
-import { useDataAccess } from "@/application/session";
+import { useDataAccess, useSession } from "@/application/session";
 import {
   ASSESSMENT_MODE_LABELS_FR,
   ASSESSMENT_SUBTYPE_LABELS_FR,
@@ -47,6 +47,7 @@ import { catalogueRows, type CatalogueRow } from "@/domain/assessmentCatalogue";
 import { AssessmentModalityForm } from "@/features/administration/AssessmentModalityForm";
 import { QcmPilotage } from "@/features/administration/QcmPilotage";
 import { EcosPilotage } from "@/features/administration/EcosPilotage";
+import { DossiersPilotage } from "@/features/administration/DossiersPilotage";
 import { estEcosSimule } from "@/domain/ecos";
 import type { Cohort, OutcomeTheme, ProgramId } from "@/domain/types";
 import type { QuestionBankRow } from "@/application/ports/repositories";
@@ -312,6 +313,7 @@ function LigneModalite({
   readonly onChanged?: (() => void) | undefined;
 }) {
   const dataAccess = useDataAccess();
+  const { activeProgram } = useSession();
   const cohortId = cohort.id;
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -320,6 +322,39 @@ function LigneModalite({
   const estQcm = row.modality?.subtype === "qcm";
   /* Un ECOS SIMULÉ est un ECOS en ligne : il se pilote station par station. */
   const estEcos = row.modality !== undefined && estEcosSimule(row.modality);
+  /*
+   * LES TROIS FORMATS DE DOSSIER PROGRESSIF (Stef, 16/09 : « quand je clique
+   * Cas cliniques progressifs, je devrais avoir la liste des mini-DP »). Ils
+   * partagent un même pilotage : une banque de dossiers, et la liste de ce
+   * qu'elle porte. `dp` est l'intitulé du catalogue (« Cas cliniques
+   * progressifs »), `mini_dp` et `kfp` ceux des lots importés.
+   */
+  const estDossier =
+    row.modality?.subtype === "dp" ||
+    row.modality?.subtype === "mini_dp" ||
+    row.modality?.subtype === "kfp";
+  /*
+   * ⚠️ LE CARNET DE STAGE N'EST PAS OUVERT PAR CETTE CASE (Stef, 16/09 : « la
+   * case Journal de stage n'est pas cochée côté Admin, mais le suivi de stage
+   * est actif côté Apprenant »).
+   *
+   * CE SONT DEUX OBJETS DIFFÉRENTS, et c'est la seule chose à retenir :
+   *   - le CARNET DE STAGE est un MODULE DU PROGRAMME (`placementsEnabled`,
+   *     réglé dans le Concepteur). Tant qu'il est actif, l'apprenant a son
+   *     onglet « Mon carnet de stage » — présence, journée par journée,
+   *     validation par l'encadrant. Rien ici ne l'ouvre ni ne le ferme ;
+   *   - la MODALITÉ « Journal de stage » dit que ce carnet compte comme une
+   *     ÉVALUATION FORMATIVE de cette promotion : elle lui donne des dates, un
+   *     bilan, une place dans « Mes évaluations ».
+   *
+   * L'écran ne peut donc pas cocher la case tout seul — ce serait décider à la
+   * place de l'équipe — mais il ne doit plus laisser croire que le carnet est
+   * fermé. Il le dit.
+   */
+  const estCarnetDeStage =
+    row.entry?.key === "journal-de-stage" || (row.modality?.subtype ?? row.entry?.subtype) === "portfolio";
+  const carnetServiParLeModule = estCarnetDeStage && activeProgram.config.placementsEnabled;
+
   /*
    * Stef (16/09) : « dès qu'on clique sur la case, le contenu apparaît ».
    * Une ligne cochée se déplie donc AVANT l'enregistrement — elle dit alors ce
@@ -428,6 +463,19 @@ function LigneModalite({
             {link.freeAccess && link.questionSource ? " · accès libre" : ""}
           </Badge>
         ) : null}
+        {carnetServiParLeModule ? (
+          <Badge variant="secondary" className="font-normal">
+            carnet déjà servi par le module Stage
+          </Badge>
+        ) : null}
+        {utilisee && estDossier && link ? (
+          <Badge
+            variant={link.questionSource ? "secondary" : "outline"}
+            className="font-normal"
+          >
+            {link.questionSource ? `lot ${link.questionSource}` : "sans lot de dossiers"}
+          </Badge>
+        ) : null}
         {utilisee && estEcos && link ? (
           <Badge
             variant={(link.ecosStations?.length ?? 0) > 0 ? "secondary" : "outline"}
@@ -492,6 +540,15 @@ function LigneModalite({
         </div>
       ) : null}
 
+      {carnetServiParLeModule && ouverte ? (
+        <p className="border-border text-muted-foreground border-t px-3 py-2.5 text-xs">
+          Le carnet de stage est <strong>déjà ouvert à vos apprenants</strong> : c'est le module
+          Stage du programme qui le sert (onglet « Mon carnet de stage »), pas cette case. La cocher
+          ne l'ouvre ni ne le ferme — elle inscrit le carnet au référentiel d'évaluation de cette
+          promotion, pour lui poser des dates et en tirer un bilan.
+        </p>
+      ) : null}
+
       {utilisee && modality && ouverte ? (
         <div className="border-border space-y-4 border-t p-3">
           <div className="space-y-2">
@@ -544,7 +601,17 @@ function LigneModalite({
             )}
           </div>
 
-          {estEcos && link ? (
+          {estDossier && link ? (
+            <DossiersPilotage
+              programId={programId}
+              cohort={cohort}
+              modality={modality}
+              link={link}
+              banques={banques}
+              editable={editable}
+              onChanged={onChanged}
+            />
+          ) : estEcos && link ? (
             <EcosPilotage
               modality={modality}
               link={link}
