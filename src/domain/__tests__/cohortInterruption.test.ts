@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   decalagePropose,
+  parcoursCache,
   finPrevueDepassee,
   interruptionEnCours,
   joursEcoules,
@@ -94,5 +95,37 @@ describe("la fin prévue dépassée", () => {
   it("ne se signale pas quand aucune fin n'était prévue", () => {
     const i = ep({ mode: "suspended", startedOn: "2026-01-01" });
     expect(finPrevueDepassee(i, new Date("2030-01-01T12:00:00Z"))).toBe(false);
+  });
+});
+
+describe("cacher le programme, ou pas", () => {
+  /* ⚠️ CETTE RÈGLE MANQUAIT au premier jet : la garde d'ÉCRITURE et le bandeau
+     existaient, mais rien n'empêchait de VOIR. Stef l'a trouvé en testant —
+     « malgré suspension, l'accès apprenant maintenu malgré présence du
+     message ». Ces cas sont là pour que ça ne se reperde pas. */
+  const suspendu = ep({ mode: "suspended" });
+  const gele = ep({ mode: "frozen" });
+  const signale = ep({ mode: "flagged" });
+
+  it("suspendre cache le programme à l'apprenant", () => {
+    expect(parcoursCache(suspendu, false, "/espace")).toBe(true);
+    expect(parcoursCache(suspendu, false, "/espace/ressources")).toBe(true);
+    expect(parcoursCache(suspendu, false, "/espace/evaluations")).toBe(true);
+  });
+
+  it("geler et signaler ne cachent rien : la base refuse les rendus, l'écran laisse lire", () => {
+    expect(parcoursCache(gele, false, "/espace")).toBe(false);
+    expect(parcoursCache(signale, false, "/espace")).toBe(false);
+    expect(parcoursCache(undefined, false, "/espace")).toBe(false);
+  });
+
+  it("le personnel du programme continue de tout voir : c'est lui qui rattrape", () => {
+    expect(parcoursCache(suspendu, true, "/espace")).toBe(false);
+    expect(parcoursCache(suspendu, true, "/espace/administration/pilotage")).toBe(false);
+  });
+
+  it("suspendre n'est pas couper le contact : profil et messagerie restent ouverts", () => {
+    expect(parcoursCache(suspendu, false, "/espace/profil")).toBe(false);
+    expect(parcoursCache(suspendu, false, "/espace/messages")).toBe(false);
   });
 });

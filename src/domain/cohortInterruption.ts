@@ -130,3 +130,36 @@ export function finPrevueDepassee(
   const fin = Date.parse(`${interruption.expectedUntil}T23:59:59Z`);
   return !Number.isNaN(fin) && aujourdhui.getTime() > fin;
 }
+
+/**
+ * LES ROUTES QU'UNE SUSPENSION NE FERME JAMAIS.
+ *
+ * Suspendre un parcours n'est pas couper le contact : un étudiant qui trouve
+ * son programme fermé sans pouvoir écrire à personne appelle le secrétariat.
+ */
+export const ROUTES_OUVERTES_MALGRE_SUSPENSION: readonly string[] = [
+  "/espace/profil",
+  "/espace/messages",
+];
+
+/**
+ * LE PROGRAMME DOIT-IL ÊTRE CACHÉ À CETTE PERSONNE, SUR CETTE PAGE ?
+ *
+ * ⚠️ Cette règle manquait au 16/09 : la garde d'ÉCRITURE (trigger de base) et
+ * le bandeau d'annonce existaient, mais rien n'empêchait de VOIR. Stef l'a
+ * trouvé en testant — « malgré suspension, l'accès apprenant maintenu ».
+ *
+ * Trois conditions, et les trois comptent :
+ *   - seul `suspended` cache ; `frozen` laisse tout lire, `flagged` ne fait rien ;
+ *   - le personnel du programme continue de voir : c'est lui qui rattrape ;
+ *   - le profil et la messagerie restent ouverts.
+ */
+export function parcoursCache(
+  interruption: CohortInterruption | undefined,
+  estPersonnel: boolean,
+  pathname: string,
+): boolean {
+  if (interruption?.mode !== "suspended") return false;
+  if (estPersonnel) return false;
+  return !ROUTES_OUVERTES_MALGRE_SUSPENSION.some((route) => pathname.startsWith(route));
+}

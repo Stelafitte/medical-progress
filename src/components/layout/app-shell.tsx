@@ -22,6 +22,9 @@ import { initials } from "@/lib/initials";
 import { ROLE_LABELS_FR, roleAssignmentKey, rolesByPreference } from "@/domain/roles";
 import { IS_DEV } from "@/lib/env";
 import { CohortInterruptionBanner } from "@/components/cohort-interruption-banner";
+import { useInterruptionDeMonParcours } from "@/application/useInterruptionDeMonParcours";
+import { ParcoursSuspendu } from "@/components/parcours-suspendu";
+import { parcoursCache } from "@/domain/cohortInterruption";
 import type { PersonId, Program, RoleAssignment } from "@/domain/types";
 
 const linkClass =
@@ -491,7 +494,7 @@ export function AppShell() {
           le blocage au moment ou il essaie de rendre.
         */}
         <CohortInterruptionBanner />
-        <Outlet />
+        <ContenuOuSuspension />
       </main>
 
       {/*
@@ -517,4 +520,35 @@ export function AppShell() {
       </footer>
     </div>
   );
+}
+
+/*
+  ⚠️ « SUSPENDRE » NE SUSPENDAIT RIEN À L'ÉCRAN (Stef, 16/09 au soir : « malgré
+  suspension, l'accès apprenant maintenu malgré présence du message »).
+
+  Deux gardes avaient été posées — le trigger de base qui refuse les ÉCRITURES,
+  et le bandeau qui annonce — mais aucune qui empêche de VOIR. Or « suspendre »
+  veut dire depuis le premier jour : l'apprenant ne voit plus le programme. Un
+  bandeau qui l'annonce au-dessus d'un parcours qui fonctionne inquiète sans
+  protéger.
+
+  Le remplacement se fait ICI et pas route par route : une promotion suspendue
+  l'est pour tout le parcours, et une garde posée écran par écran finirait par
+  oublier celui qu'on ajoutera demain.
+
+  Ce qui reste ouvert : le profil et la messagerie. Suspendre un parcours n'est
+  pas couper le contact. Le personnel du programme, lui, continue de tout voir :
+  c'est lui qui rattrape.
+*/
+function ContenuOuSuspension() {
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const { enCours, estPersonnel } = useInterruptionDeMonParcours();
+
+  /* La règle vit dans le domaine, où elle est vérifiée par des tests : une
+     garde de visibilité écrite au fil d'un composant se contredit tôt ou tard
+     avec celle de la base. */
+  if (enCours && parcoursCache(enCours, estPersonnel, pathname)) {
+    return <ParcoursSuspendu motif={enCours.reason} jusquA={enCours.expectedUntil} />;
+  }
+  return <Outlet />;
 }

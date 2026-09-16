@@ -15,16 +15,12 @@
  * il continue d'écrire (la garde de base l'exempte), il doit simplement savoir
  * dans quel état est la promotion qu'il regarde.
  */
-import { useQuery } from "@tanstack/react-query";
 import { Pause } from "lucide-react";
-import { useDataAccess, useSession } from "@/application/session";
-import { cleInterruptions } from "@/features/administration/cohortInterruptionQuery";
+import { useInterruptionDeMonParcours } from "@/application/useInterruptionDeMonParcours";
 import {
   INTERRUPTION_LEARNER_NOTICE_FR,
   INTERRUPTION_STATE_LABELS_FR,
-  interruptionEnCours,
 } from "@/domain/cohortInterruption";
-import type { CohortId } from "@/domain/types";
 
 function dateFr(iso: string): string {
   const d = new Date(`${iso}T00:00:00`);
@@ -34,20 +30,9 @@ function dateFr(iso: string): string {
 }
 
 export function CohortInterruptionBanner() {
-  const session = useSession();
-  const dataAccess = useDataAccess();
-  const cohortId = session.activeEnrollment?.cohortId;
-
-  const interruptions = useQuery({
-    queryKey: cleInterruptions(cohortId ?? "aucune"),
-    enabled: Boolean(cohortId),
-    queryFn: () => dataAccess.programs.listCohortInterruptions(cohortId as CohortId),
-  });
-
-  const enCours = interruptionEnCours(interruptions.data ?? []);
+  const { enCours, estPersonnel } = useInterruptionDeMonParcours();
   if (!enCours || enCours.mode === "flagged") return null;
 
-  const estPersonnel = session.canAccessProgramAdministration || session.canAccessSupervision;
   const titre = estPersonnel
     ? `Promotion en pause — ${INTERRUPTION_STATE_LABELS_FR[enCours.mode]}`
     : INTERRUPTION_LEARNER_NOTICE_FR[enCours.mode];
