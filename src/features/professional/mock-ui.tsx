@@ -21,8 +21,16 @@
  *     contenu qu'il annote.
  *
  * Les six règles appliquées ici :
- *   1. l'en-tête d'un panneau se lit AVANT son contenu — fond creusé
- *      (`card-sunk`), filet de séparation, titre en serif ;
+ *   1. l'en-tête d'un panneau se lit AVANT son contenu — titre en serif 23 px
+ *      et filet de séparation. PAS de fond creusé : mesuré le 16/09 au soir,
+ *      `--background` vaut 0.99 de clarté et `--card-sunk` 0.975 — un pas de
+ *      1,5 %, invisible. L'en-tête prenait donc la couleur du fond de l'onglet
+ *      pendant que le corps restait blanc, et se lisait comme un trou dans la
+ *      carte, pas comme sa tête (Stef, sur « Terrains de stage » : « son titre
+ *      peu visible, petite police, fond du bloc bleu ciel, peu ou pas
+ *      différent du fond de l'onglet »). La carte est maintenant UN SEUL objet
+ *      blanc pose sur le fond bleute de la page, et la hierarchie est portee
+ *      par la typographie — ce que dit deja la regle 2 ;
  *   2. la hiérarchie se lit à la FORME (serif pour un titre, sans-serif pour la
  *      matière), pas à deux pixels de corps ;
  *   3. chaque bloc respire : 20 à 24 px de garde intérieure, jamais 12 ;
@@ -163,13 +171,13 @@ export function PanelCard({
       )}
     >
       {tone === "neutral" ? null : <div className={cn("h-[3px]", RAIL[tone])} />}
-      <div className="border-b bg-card-sunk px-5 py-4 sm:px-6">
+      <div className="border-b border-border px-5 pb-4 pt-5 sm:px-6">
         <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
           <div className="flex min-w-0 items-start gap-3">
             {step === undefined ? null : (
               <span
                 className={cn(
-                  "mt-0.5 grid size-7 shrink-0 place-items-center rounded-full text-[13px] font-semibold",
+                  "mt-1 grid size-7 shrink-0 place-items-center rounded-full text-[13px] font-semibold",
                   PASTILLE[tone === "neutral" ? "action" : tone],
                 )}
                 style={{ fontVariantNumeric: "tabular-nums" }}
@@ -179,11 +187,11 @@ export function PanelCard({
               </span>
             )}
             <div className="min-w-0">
-              <h2 className="font-display text-[19px] font-medium leading-snug tracking-[-0.015em]">
+              <h2 className="font-display text-[23px] font-medium leading-[1.15] tracking-[-0.02em]">
                 {title}
               </h2>
               {description ? (
-                <p className="mt-1.5 max-w-2xl text-[13px] leading-relaxed text-muted-foreground">
+                <p className="mt-2 max-w-2xl text-[13px] leading-relaxed text-ink-soft">
                   {description}
                 </p>
               ) : null}
