@@ -195,7 +195,7 @@ export function MilestoneTemplateBar({
 
   return (
     <section
-      className="border-border space-y-3 rounded-md border p-3"
+      className="border-border space-y-3 rounded-lg border p-4"
       aria-label="Modèles de rétroplanning"
     >
       <h4 className="text-sm font-medium">Modèles de rétroplanning</h4>

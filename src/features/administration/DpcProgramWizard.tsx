@@ -403,7 +403,7 @@ export function DpcProgramWizard() {
                   setKindError(null);
                   setPublishNotice(null);
                 }}
-                className={`${touch} rounded-md border p-3 text-left text-sm ${
+                className={`${touch} rounded-lg border p-4 text-left text-sm ${
                   active ? "border-primary bg-primary/5 font-medium" : "border-border"
                 }`}
               >

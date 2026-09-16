@@ -83,7 +83,7 @@ export function StageEnPlace({ scope }: { scope: ProgramAdminScope }) {
         );
 
         return (
-          <article key={placement.id} className="border-border space-y-3 rounded-md border p-3">
+          <article key={placement.id} className="border-border space-y-3 rounded-lg border p-4">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <p className="font-medium">{placement.name}</p>
               <Badge variant="outline" className="font-normal">

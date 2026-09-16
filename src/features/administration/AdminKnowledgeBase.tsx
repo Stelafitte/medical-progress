@@ -377,7 +377,7 @@ export function AdminKnowledgeBase() {
         ) : (
           <ul className="mt-4 space-y-2 text-sm">
             {trackingRows.map((row) => (
-              <li key={row.enrollmentId} className="border-border space-y-2 rounded-md border p-3">
+              <li key={row.enrollmentId} className="border-border space-y-2 rounded-lg border p-4">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-medium">{row.personName}</span>
                   <Badge variant="secondary" className="font-normal">

@@ -139,7 +139,7 @@ export function ConceptionRecap({
    */
   return (
     <div className="space-y-3">
-      <p className="border-border bg-muted/40 rounded-md border p-3 text-sm">
+      <p className="border-border bg-muted/40 rounded-lg border p-4 text-sm">
         <span className="font-medium">{scope.program?.name ?? "Programme"}</span>
         {" · "}
         {promotion ? (

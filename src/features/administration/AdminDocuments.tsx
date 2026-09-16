@@ -133,7 +133,7 @@ export function AdminDocuments() {
         ) : (
           <ul className="space-y-2 text-sm">
             {localRequirements.map((item) => (
-              <li key={item.id} className="border-border space-y-1 rounded-md border p-3">
+              <li key={item.id} className="border-border space-y-1 rounded-lg border p-4">
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge variant="secondary" className="font-mono text-[10px]">
                     {item.code}

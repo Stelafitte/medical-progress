@@ -82,7 +82,7 @@ export function StageTrackingPilotage({
         {STAGE_TRACKING_MODES.map((mode) => {
           const id = `trace-${modality.id}-${mode}`;
           return (
-            <li key={mode} className="border-border flex items-start gap-3 rounded-md border p-3">
+            <li key={mode} className="border-border flex items-start gap-3 rounded-lg border p-4">
               <Checkbox
                 id={id}
                 className="mt-0.5"

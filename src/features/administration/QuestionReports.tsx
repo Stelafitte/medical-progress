@@ -112,7 +112,7 @@ function SignalementRow({
   }
 
   return (
-    <li className="border-border rounded-md border p-3 text-sm">
+    <li className="border-border rounded-lg border p-4 text-sm">
       <div className="flex flex-wrap items-center gap-2">
         <span className="font-mono text-xs">{report.externalRef}</span>
         <Badge variant={report.status === "nouveau" ? "default" : "secondary"}>

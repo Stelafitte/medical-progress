@@ -1046,7 +1046,7 @@ export function CorpusImport({
 
               <ul className="space-y-3">
                 {visibleRows.map((row) => (
-                  <li key={row.key} className="border-border space-y-2 rounded-md border p-3">
+                  <li key={row.key} className="border-border space-y-2 rounded-lg border p-4">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="text-sm font-medium">{row.document.path}</span>
                       <Badge variant="outline" className="font-normal">

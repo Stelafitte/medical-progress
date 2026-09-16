@@ -79,12 +79,12 @@ export function AdminWorkLevelBanner({
           return (
             <li key={item.id} aria-current={active ? "step" : undefined}>
               {onSelect === undefined ? (
-                <div className={`rounded-md border p-3 ${shell}`}>{body}</div>
+                <div className={`rounded-lg border p-4 ${shell}`}>{body}</div>
               ) : (
                 <button
                   type="button"
                   onClick={() => onSelect(item.id)}
-                  className={`hover:border-primary/60 hover:bg-background min-h-11 w-full rounded-md border p-3 text-left transition ${shell}`}
+                  className={`hover:border-primary/60 hover:bg-background min-h-11 w-full rounded-lg border p-4 text-left transition ${shell}`}
                 >
                   {body}
                 </button>

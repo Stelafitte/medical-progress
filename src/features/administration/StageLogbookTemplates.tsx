@@ -176,7 +176,7 @@ export function StageLogbookTemplates({ programId }: { readonly programId: Progr
       ) : null}
 
       {ouvert ? (
-        <div className="border-border space-y-3 rounded-md border p-3">
+        <div className="border-border space-y-3 rounded-lg border p-4">
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1">
               <Label htmlFor="carnet-nom" className="text-xs">

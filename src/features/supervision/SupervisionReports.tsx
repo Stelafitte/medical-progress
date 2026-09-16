@@ -619,7 +619,7 @@ export function SupervisionReports() {
                 bouton « annuler ».
               */}
               {canValidatePlacement ? (
-                <div className="border-border space-y-3 rounded-md border p-3">
+                <div className="border-border space-y-3 rounded-lg border p-4">
                   <div className="flex flex-wrap items-center gap-2">
                     {/*
                       ⚠️ UN BOUTON GRIS QUI NE DIT PAS POURQUOI PASSE POUR UN

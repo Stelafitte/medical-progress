@@ -170,7 +170,7 @@ export function EcosMigrationSection({
                   type="button"
                   onClick={() => setSelectedId(scenario.id)}
                   aria-pressed={selected?.id === scenario.id}
-                  className={`min-h-11 w-full rounded-md border p-3 text-left text-sm transition-colors ${
+                  className={`min-h-11 w-full rounded-lg border p-4 text-left text-sm transition-colors ${
                     selected?.id === scenario.id
                       ? "border-primary bg-secondary/50"
                       : "border-border hover:bg-accent"

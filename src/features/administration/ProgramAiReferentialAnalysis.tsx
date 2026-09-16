@@ -361,7 +361,7 @@ export function ProgramAiReferentialAnalysis({
                 {outcomeRows.map((row) => (
                   <div
                     key={row.key}
-                    className={`rounded-md border p-3 ${row.selected ? "border-primary/40 bg-primary/5" : "border-border"}`}
+                    className={`rounded-lg border p-4 ${row.selected ? "border-primary/40 bg-primary/5" : "border-border"}`}
                   >
                     <div className="flex flex-wrap items-start gap-3">
                       <Checkbox
@@ -456,7 +456,7 @@ export function ProgramAiReferentialAnalysis({
                 {assessmentRows.map((row) => (
                   <div
                     key={row.key}
-                    className={`rounded-md border p-3 ${row.selected ? "border-primary/40 bg-primary/5" : "border-border"}`}
+                    className={`rounded-lg border p-4 ${row.selected ? "border-primary/40 bg-primary/5" : "border-border"}`}
                   >
                     <div className="flex flex-wrap items-start gap-3">
                       <Checkbox

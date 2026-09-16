@@ -321,7 +321,7 @@ export function AdminLearnerClasses() {
             {archived.map((cohort) => (
               <li
                 key={cohort.id}
-                className="border-border flex flex-wrap items-center gap-2 rounded-md border p-3"
+                className="border-border flex flex-wrap items-center gap-2 rounded-lg border p-4"
               >
                 <span className="font-medium">{cohort.label}</span>
                 <span className="text-muted-foreground text-sm">

@@ -158,7 +158,7 @@ export function PlacementSection({
                     aria-current={selected}
                     disabled={!onCohortChange}
                     onClick={() => onCohortChange?.(item.id)}
-                    className={`border-border w-full rounded-md border p-3 text-start ${
+                    className={`border-border w-full rounded-lg border p-4 text-start ${
                       selected ? "bg-accent border-primary" : ""
                     } ${onCohortChange ? "hover:bg-accent" : ""}`}
                   >
@@ -215,7 +215,7 @@ export function PlacementSection({
               return (
                 <li
                   key={enrollment.id}
-                  className="border-border flex flex-wrap items-center gap-2 rounded-md border p-3"
+                  className="border-border flex flex-wrap items-center gap-2 rounded-lg border p-4"
                 >
                   <span className="font-medium">{nameOf(enrollment)}</span>
                   {attached ? (

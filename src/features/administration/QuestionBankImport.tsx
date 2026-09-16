@@ -382,7 +382,7 @@ function Rapport({
   readonly aBlanc: boolean;
 }) {
   return (
-    <div className="border-border mt-4 rounded-md border p-3">
+    <div className="border-border mt-4 rounded-lg border p-4">
       <p className="text-sm font-medium">
         {aBlanc
           ? "Vérification — rien n'a été écrit"

@@ -144,7 +144,7 @@ export function AdminDashboard() {
               {data.tasks.map((task) => (
                 <li
                   key={task.id}
-                  className="border-border flex flex-wrap items-center justify-between gap-2 rounded-md border p-3"
+                  className="border-border flex flex-wrap items-center justify-between gap-2 rounded-lg border p-4"
                 >
                   <span>{task.label}</span>
                   <span className="flex flex-wrap items-center gap-2">
@@ -181,7 +181,7 @@ export function AdminDashboard() {
               {alerts.map((alert) => (
                 <li
                   key={alert.id}
-                  className="border-border flex flex-wrap items-center justify-between gap-2 rounded-md border p-3"
+                  className="border-border flex flex-wrap items-center justify-between gap-2 rounded-lg border p-4"
                 >
                   <span>
                     <span className="font-medium">{personNameFor(data, alert.enrollmentId)}</span> —{" "}
@@ -211,7 +211,7 @@ export function AdminDashboard() {
             {certificates.map((c) => (
               <li
                 key={c.id}
-                className="border-border flex flex-wrap items-center justify-between gap-2 rounded-md border p-3"
+                className="border-border flex flex-wrap items-center justify-between gap-2 rounded-lg border p-4"
               >
                 <span>{personNameFor(data, c.enrollmentId)}</span>
                 <span className="flex items-center gap-2">

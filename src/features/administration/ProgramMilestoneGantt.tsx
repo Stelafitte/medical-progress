@@ -158,7 +158,7 @@ export function ProgramMilestoneGantt({
   return (
     <section className="space-y-2" aria-label="Rétroplanning de la promotion">
       <h4 className="text-sm font-medium">Le rétroplanning, semaine par semaine</h4>
-      <div className="border-border overflow-x-auto rounded-md border p-3">
+      <div className="border-border overflow-x-auto rounded-lg border p-4">
         <div className="min-w-[36rem] space-y-2">
           <div className="grid gap-2" style={{ gridTemplateColumns: "12rem 1fr" }}>
             <span />

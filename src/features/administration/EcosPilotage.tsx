@@ -102,7 +102,7 @@ export function EcosPilotage({
           return (
             <li
               key={station.key}
-              className="border-border flex items-start gap-3 rounded-md border p-3"
+              className="border-border flex items-start gap-3 rounded-lg border p-4"
             >
               <Checkbox
                 id={id}

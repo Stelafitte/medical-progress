@@ -59,7 +59,7 @@ export function LearnerPlanShiftsToggle({ programId }: { readonly programId: Pro
   const ouvert = programme.config.learnerPlanShiftsEnabled === true;
 
   return (
-    <div className="border-border bg-muted/30 flex flex-wrap items-start gap-3 rounded-md border p-3">
+    <div className="border-border bg-muted/30 flex flex-wrap items-start gap-3 rounded-lg border p-4">
       <CalendarClock className="text-muted-foreground mt-0.5 size-4 shrink-0" aria-hidden />
       <div className="min-w-56 flex-1 space-y-1">
         <Label htmlFor="learner-plan-shifts" className="text-sm font-medium">

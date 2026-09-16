@@ -169,7 +169,7 @@ export function AdminProgramPilot() {
                 { icon: Notebook, label: "Carnets reçus", value: cohortLogs.length },
                 { icon: AlertTriangle, label: "Alertes ouvertes", value: cohortAlerts.length },
               ].map(({ icon: Icon, label, value }) => (
-                <div key={label} className="border-border rounded-md border p-3">
+                <div key={label} className="border-border rounded-lg border p-4">
                   <Icon className="text-muted-foreground size-4" aria-hidden />
                   <dd className="mt-1 text-2xl font-semibold tabular-nums">{value}</dd>
                   <dt className="text-muted-foreground text-xs">{label}</dt>
@@ -187,7 +187,7 @@ export function AdminProgramPilot() {
                 <li
                   key={item.id}
                   aria-current={item.state === "current" ? "step" : undefined}
-                  className={`flex flex-wrap items-center gap-2 rounded-md border p-3 ${STATE_STYLES[item.state]}`}
+                  className={`flex flex-wrap items-center gap-2 rounded-lg border p-4 ${STATE_STYLES[item.state]}`}
                 >
                   <span className="font-mono text-xs">{formatFrDate(item.date)}</span>
                   <span className="font-medium">{item.label}</span>
@@ -214,7 +214,7 @@ export function AdminProgramPilot() {
                   {cohortAlerts.map((alert) => (
                     <li
                       key={alert.id}
-                      className="border-border flex flex-wrap items-center gap-2 rounded-md border p-3"
+                      className="border-border flex flex-wrap items-center gap-2 rounded-lg border p-4"
                     >
                       <AlertTriangle className="text-muted-foreground size-4" aria-hidden />
                       <span className="font-medium">{personNameFor(data, alert.enrollmentId)}</span>
@@ -376,7 +376,7 @@ function ProgrammingPanel({ phase }: { phase: CohortPhase }) {
         ))}
       </div>
 
-      <div className="border-border grid gap-2 rounded-md border p-3 sm:grid-cols-2">
+      <div className="border-border grid gap-2 rounded-lg border p-4 sm:grid-cols-2">
         <Button variant="outline" className="min-h-11 justify-start" disabled>
           Modifier le calendrier (prévu)
         </Button>
@@ -424,7 +424,7 @@ function GroupStats({ summary }: { summary: GroupActivitySummary }) {
   return (
     <dl className="grid grid-cols-2 gap-2 sm:grid-cols-3">
       {stats.map((stat) => (
-        <div key={stat.label} className="border-border rounded-md border p-3">
+        <div key={stat.label} className="border-border rounded-lg border p-4">
           <dd className="text-xl font-semibold tabular-nums">{stat.value}</dd>
           <dt className="text-muted-foreground text-xs">{stat.label}</dt>
         </div>
@@ -484,7 +484,7 @@ function ActivityPanel({ activity }: { activity: ProgramActivity }) {
 
       <dl className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         {stats.map((stat) => (
-          <div key={stat.label} className="border-border rounded-md border p-3">
+          <div key={stat.label} className="border-border rounded-lg border p-4">
             <dd className="text-xl font-semibold tabular-nums">{stat.value}</dd>
             <dt className="text-muted-foreground text-xs">{stat.label}</dt>
           </div>
@@ -530,7 +530,7 @@ function LearnerManagementPanel({
   return (
     <div className="space-y-5">
       {/* Frontière b : ici on suit, on ne compose pas. Toute action d'inscription part vers Classes. */}
-      <div className="border-border bg-muted/40 flex flex-wrap items-center justify-between gap-2 rounded-md border p-3">
+      <div className="border-border bg-muted/40 flex flex-wrap items-center justify-between gap-2 rounded-lg border p-4">
         <p className="text-muted-foreground text-xs">
           Liste en lecture seule : inscrire, retirer, importer ou archiver un apprenant se fait dans
           « Classes d'apprenants ».
@@ -550,7 +550,7 @@ function LearnerManagementPanel({
           {rows.map((row) => (
             <li
               key={`activity-${row.enrollmentId}`}
-              className="border-border flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md border p-3"
+              className="border-border flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border p-4"
             >
               <span className="font-medium">{row.personName}</span>
               <MarkerBadge row={row} />
@@ -575,7 +575,7 @@ function LearnerManagementPanel({
 
         <ul className="space-y-2 text-sm">
           {rows.map((row) => (
-            <li key={row.enrollmentId} className="border-border space-y-2 rounded-md border p-3">
+            <li key={row.enrollmentId} className="border-border space-y-2 rounded-lg border p-4">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="font-medium">{row.personName}</span>
                 <MarkerBadge row={row} />
@@ -612,7 +612,7 @@ function LearnerManagementPanel({
             {competenceRows.map((row) => (
               <li
                 key={`competence-${row.enrollmentId}`}
-                className="border-border space-y-2 rounded-md border p-3"
+                className="border-border space-y-2 rounded-lg border p-4"
               >
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-medium">{row.personName}</span>
@@ -663,7 +663,7 @@ function LearnerManagementPanel({
         ) : (
           <ul className="space-y-2 text-sm">
             {notifications.map((notification) => (
-              <li key={notification.id} className="border-border space-y-2 rounded-md border p-3">
+              <li key={notification.id} className="border-border space-y-2 rounded-lg border p-4">
                 <div className="flex flex-wrap items-center gap-2">
                   <Bell className="text-muted-foreground size-4" aria-hidden />
                   <span className="font-medium">{notification.label}</span>

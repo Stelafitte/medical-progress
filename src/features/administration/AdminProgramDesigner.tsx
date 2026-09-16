@@ -29,6 +29,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { SectionHeading } from "@/components/section-heading";
 import { EmptyState, MockBadge, PanelCard, ScopeNotice } from "@/features/professional/mock-ui";
 import {
   AdminWorkLevelBanner,
@@ -848,16 +849,31 @@ export function AdminProgramDesigner() {
 
   return (
     <div className="space-y-6">
-      <div className="mb-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h1 id="concepteur-de-programme" className="text-2xl font-semibold">
-            Concepteur de programme
-          </h1>
-          <div className="flex flex-wrap items-center gap-2">
+      {/*
+       * L'en-tete etait ecrit a la main ici, avec son propre `text-2xl` : le
+       * Concepteur etait donc le seul ecran professionnel a ne pas ouvrir comme
+       * les autres. Il passe au bandeau commun (Stef, 16/09), qui porte le
+       * surtitre de programme, les chiffres de la conception et l'action
+       * d'enregistrement du brouillon.
+       */}
+      <SectionHeading
+        id="concepteur-de-programme"
+        level={1}
+        eyebrow={data.program?.name ?? "Programme"}
+        title="Concepteur de programme"
+        description="Concevez le programme et préparez sa promotion sans quitter cet onglet. Le brouillon (modèle, objectifs, planning) est enregistré automatiquement au fil de la saisie, avant finalisation."
+        figures={[
+          { value: data.versions.length, label: "Modèles" },
+          { value: data.cohorts.length, label: "Promotions" },
+          { value: data.assessmentModalities.length, label: "Évaluations" },
+          { value: data.placements.length, label: "Terrains de stage" },
+        ]}
+        action={
+          <div className="flex flex-wrap items-center justify-end gap-2">
             {draftError ? (
-              <span className="text-destructive text-xs">{draftError}</span>
+              <span className="text-[12px] text-live">{draftError}</span>
             ) : draftSavedAt ? (
-              <span className="text-muted-foreground text-xs">
+              <span className="text-field-mute text-[12px]">
                 Brouillon enregistré à{" "}
                 {new Date(draftSavedAt).toLocaleTimeString("fr-FR", {
                   hour: "2-digit",
@@ -868,7 +884,7 @@ export function AdminProgramDesigner() {
             <Button
               type="button"
               size="sm"
-              variant="outline"
+              variant="secondary"
               className="min-h-11"
               disabled={savingDraft}
               onClick={() => void handleSaveDraft()}
@@ -882,13 +898,8 @@ export function AdminProgramDesigner() {
             </Button>
             <MockBadge />
           </div>
-        </div>
-        <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-          Concevez le programme et préparez sa promotion sans quitter cet onglet. Le brouillon
-          (modèle, objectifs, planning) est enregistré automatiquement au fil de la saisie, avant
-          finalisation.
-        </p>
-      </div>
+        }
+      />
 
       <AdminWorkLevelBanner
         onSelect={scrollToStep}
@@ -906,7 +917,9 @@ export function AdminProgramDesigner() {
       {/* ---------------- Étape 1 : concevoir ---------------- */}
       <PanelCard
         id={STEP_ANCHORS.program}
-        title="1. Concevoir le programme"
+        title="Concevoir le programme"
+        step={1}
+        tone={designReady ? "done" : "action"}
         description="Partez d'un modèle existant ou créez-en un, puis laissez l'analyse proposer les ressources."
         action={
           <Badge variant={designReady ? "secondary" : "outline"} className="font-normal">
@@ -933,7 +946,7 @@ export function AdminProgramDesigner() {
                         setModelName(next ? version.label : "");
                       }}
                       aria-pressed={active}
-                      className={`flex min-h-11 w-full flex-wrap items-center gap-2 rounded-md border p-3 text-start text-sm ${
+                      className={`flex min-h-11 w-full flex-wrap items-center gap-2 rounded-lg border p-4 text-start text-sm ${
                         active ? "border-primary bg-primary/5" : "border-border"
                       }`}
                     >
@@ -1408,7 +1421,9 @@ export function AdminProgramDesigner() {
       {/* ---------------- Étape 2 : promotion ---------------- */}
       <PanelCard
         id={STEP_ANCHORS.promotion}
-        title="2. Préparer et associer la promotion"
+        title="Préparer et associer la promotion"
+        step={2}
+        tone={selectedCohort ? "done" : "action"}
         description="Créez la classe ici avec le même outil que l'onglet « Classes d'apprenants », ou réutilisez une classe déjà créée, puis associez-la au programme conçu."
         action={
           <Badge variant={selectedCohort ? "secondary" : "outline"} className="font-normal">
@@ -1449,7 +1464,7 @@ export function AdminProgramDesigner() {
                       type="button"
                       aria-pressed={active}
                       onClick={() => setSelectedCohortId(active ? null : cohort.id)}
-                      className={`flex min-h-11 w-full flex-wrap items-center gap-2 rounded-md border p-3 text-start text-sm ${
+                      className={`flex min-h-11 w-full flex-wrap items-center gap-2 rounded-lg border p-4 text-start text-sm ${
                         active ? "border-primary bg-primary/5" : "border-border"
                       }`}
                     >
@@ -1494,7 +1509,7 @@ export function AdminProgramDesigner() {
           porte les deux. On annonce l'écriture AVANT de la faire.
         */}
         {resources.stage.selected && data.placements.length > 0 ? (
-          <fieldset className="border-border space-y-2 rounded-md border p-3">
+          <fieldset className="border-border space-y-2 rounded-lg border p-4">
             <legend className="px-1 text-sm font-medium">Stage rattaché à cette promotion</legend>
             {data.placements.length === 1 ? (
               <p className="text-muted-foreground text-xs">
@@ -1566,7 +1581,9 @@ export function AdminProgramDesigner() {
       {/* ---------------- Étape 3 : planning général ---------------- */}
       <PanelCard
         id={STEP_ANCHORS.schedule}
-        title="3. Programmer le planning général du programme"
+        title="Programmer le planning général du programme"
+        step={3}
+        tone="action"
         description="Chaque chapitre du programme peut recevoir une semaine, une période, ou rester non daté. Les semaines se comptent depuis le début de la promotion choisie."
         action={
           <Badge variant="outline" className="font-normal">
@@ -1623,92 +1640,92 @@ export function AdminProgramDesigner() {
       </PanelCard>
 
       {/* ---------------- Étape 4 : bascule dans le pilotage ---------------- */}
-      <section
+      {/*
+        Cette etape etait la seule ecrite a la main, avec son propre `border p-5`
+        et un `h2` en 16 px : elle ne ressemblait donc pas aux trois qui la
+        precedent. Elle passe au panneau commun, avec son numero et l'action de
+        sortie en tete (Stef, 16/09).
+      */}
+      <PanelCard
         id={STEP_ANCHORS.operations}
-        tabIndex={-1}
-        className="border-border bg-card flex scroll-mt-20 flex-wrap items-start justify-between gap-3 rounded-lg border p-5"
+        step={4}
+        tone={readyForPilot ? "done" : "action"}
+        title="Vérifier, enregistrer, puis piloter"
+        description="Tout ce qui a été décidé au-dessus, relu depuis la base. C'est le seul moment où l'on quitte le concepteur : le suivi se fait dans le pilotage."
+        action={
+          <Button asChild={readyForPilot} className="min-h-11" disabled={!readyForPilot}>
+            {readyForPilot ? (
+              <Link to="/espace/administration/pilotage">
+                Piloter le programme
+                <ArrowRight className="ms-1 size-4" aria-hidden />
+              </Link>
+            ) : (
+              <span>Piloter le programme</span>
+            )}
+          </Button>
+        }
       >
-        <div className="min-w-0 flex-1 space-y-3">
-          <div>
-            <h2 className="text-base font-semibold">4. Vérifier, enregistrer, puis piloter</h2>
-            <p className="text-muted-foreground text-sm">
-              Tout ce qui a été décidé au-dessus, relu depuis la base. C'est le seul moment où l'on
-              quitte le concepteur : le suivi se fait dans le pilotage.
-            </p>
-          </div>
-
-          {/*
+        {/*
             LE RECAPITULATIF NE REFAIT RIEN : il relit. Les boutons de chaque
             ligne ramènent à l'étape qui décide, ou à l'onglet qui écrit — un
             second formulaire pour les mêmes tables serait une seconde façon de
             se tromper.
           */}
-          <ConceptionRecap
-            scope={data}
-            modele={modelName.trim().length > 0 ? modelName : (selectedVersion?.label ?? "")}
-            rubriques={RESOURCES.map((r) => ({
-              id: r.id,
-              label: r.label,
-              retenue: resources[r.id].selected,
-              mode: MODE_LABELS[resources[r.id].mode].toLowerCase(),
-              elements: existingCounts[r.id],
-            }))}
-            cohortId={selectedCohortId}
-            programStartsOn={programStartsOn}
-            programEndsOn={programEndsOn}
-            onEtape={(etape) => scrollToStep(etape)}
-          />
+        <ConceptionRecap
+          scope={data}
+          modele={modelName.trim().length > 0 ? modelName : (selectedVersion?.label ?? "")}
+          rubriques={RESOURCES.map((r) => ({
+            id: r.id,
+            label: r.label,
+            retenue: resources[r.id].selected,
+            mode: MODE_LABELS[resources[r.id].mode].toLowerCase(),
+            elements: existingCounts[r.id],
+          }))}
+          cohortId={selectedCohortId}
+          programStartsOn={programStartsOn}
+          programEndsOn={programEndsOn}
+          onEtape={(etape) => scrollToStep(etape)}
+        />
 
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="min-h-11"
-              disabled={savingDraft}
-              onClick={() => void handleSaveDraft()}
-            >
-              {savingDraft ? (
-                <Loader2 className="me-1 size-4 animate-spin" aria-hidden />
-              ) : (
-                <Save className="me-1 size-4" aria-hidden />
-              )}
-              Enregistrer la conception
-            </Button>
-            {draftError ? (
-              <span className="text-destructive text-xs">{draftError}</span>
-            ) : draftSavedAt ? (
-              <span className="text-muted-foreground text-xs">
-                Conception enregistrée à {new Date(draftSavedAt).toLocaleTimeString("fr-FR")}.
-              </span>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="min-h-11"
+            disabled={savingDraft}
+            onClick={() => void handleSaveDraft()}
+          >
+            {savingDraft ? (
+              <Loader2 className="me-1 size-4 animate-spin" aria-hidden />
             ) : (
-              <span className="text-muted-foreground text-xs">
-                Enregistre les choix de conception (modèle, rubriques, promotion, bornes). Les
-                terrains, groupes et jalons sont déjà en base, ils ne dépendent pas de ce bouton.
-              </span>
+              <Save className="me-1 size-4" aria-hidden />
             )}
-          </div>
-          {/*
+            Enregistrer la conception
+          </Button>
+          {draftError ? (
+            <span className="text-destructive text-xs">{draftError}</span>
+          ) : draftSavedAt ? (
+            <span className="text-muted-foreground text-xs">
+              Conception enregistrée à {new Date(draftSavedAt).toLocaleTimeString("fr-FR")}.
+            </span>
+          ) : (
+            <span className="text-muted-foreground text-xs">
+              Enregistre les choix de conception (modèle, rubriques, promotion, bornes). Les
+              terrains, groupes et jalons sont déjà en base, ils ne dépendent pas de ce bouton.
+            </span>
+          )}
+        </div>
+        {/*
             Le sceau. Jusqu'au 02/09 cette étape n'était qu'un lien : rien
             n'écrivait jamais `cohorts.status`, toutes les promotions restaient
             des brouillons, et « valider le programme » ne voulait rien dire.
           */}
-          <CohortSealPanel cohort={selectedCohort} onChanged={() => void refetch()} />
-        </div>
-        <Button asChild={readyForPilot} className="min-h-11" disabled={!readyForPilot}>
-          {readyForPilot ? (
-            <Link to="/espace/administration/pilotage">
-              Piloter le programme
-              <ArrowRight className="ms-1 size-4" aria-hidden />
-            </Link>
-          ) : (
-            <span>Piloter le programme</span>
-          )}
-        </Button>
+        <CohortSealPanel cohort={selectedCohort} onChanged={() => void refetch()} />
         {readyForPilot ? null : (
-          <p className="text-muted-foreground w-full text-xs">{pilotBlockedReason}</p>
+          <p className="text-muted-foreground text-[12px]">{pilotBlockedReason}</p>
         )}
-      </section>
+      </PanelCard>
     </div>
   );
 }

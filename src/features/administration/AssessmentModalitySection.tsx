@@ -117,7 +117,7 @@ function PromotionsEnTete({
                   aria-pressed={active}
                   disabled={imposed}
                   onClick={() => onSelect(cohort.id)}
-                  className={`border-border flex w-full flex-wrap items-center gap-2 rounded-md border p-3 text-left text-sm ${
+                  className={`border-border flex w-full flex-wrap items-center gap-2 rounded-lg border p-4 text-left text-sm ${
                     active ? "bg-muted ring-primary ring-2" : "hover:bg-muted/50"
                   }`}
                 >
