@@ -5,6 +5,7 @@
  * sous-type, usage prévu). Elle est rattachée à un programme et sert ensuite
  * aux sessions passées ou à venir de chaque cohorte.
  */
+import type { StageTrackingMode } from "./stageTracking";
 import type { IsoDateTime, ProgramId } from "./types";
 
 export type AssessmentMode = "in_person" | "online";
@@ -155,6 +156,13 @@ export interface AssessmentModality {
    * Distinct de l'archivage, qui la sort de la liste.
    */
   readonly retainedAt?: IsoDateTime;
+  /**
+   * JOURNAL DE STAGE : de quoi la trace est faite (16/09). Vide = rien de
+   * décidé, le module Stage décide seul — voir `domain/stageTracking.ts`.
+   */
+  readonly stageTracking?: readonly StageTrackingMode[];
+  /** Le modèle de carnet servi quand « carnet dématérialisé » est retenu. */
+  readonly stageLogTemplateId?: string;
 }
 
 /** Saisie brute du formulaire unique de création de modalité. */

@@ -23,6 +23,7 @@ import { ProgressionLegend, type EtatAcquis } from "@/features/supervision/Progr
 import { BarreDeGroupe, repartitionDuGroupe } from "@/features/supervision/BarreDeGroupe";
 import { PasseportEtudiant } from "@/features/supervision/PasseportEtudiant";
 import { EcosDeclares } from "@/features/supervision/EcosDeclares";
+import { StageTraceReview } from "@/features/supervision/StageTraceReview";
 import { useDataAccess, useSession } from "@/application/session";
 import type { StageLogId } from "@/domain/stageLog";
 import type { EnrollmentId, OutcomeId } from "@/domain/types";
@@ -142,6 +143,16 @@ export function SupervisionReports() {
   const [texteLot, setTexteLot] = useState("");
 
   const enrollmentIds = scope?.enrollmentIds ?? [];
+
+  /*
+   * LES MODALITES DU PROGRAMME, pas celles d'une promotion de l'encadrant :
+   * il n'est inscrit nulle part. C'est elles qui disent de quoi la trace du
+   * stage est faite (« Journal de stage », 16/09).
+   */
+  const { data: modalitesDuProgramme } = useQuery({
+    queryKey: ["modalites-du-programme", activeProgram.id],
+    queryFn: () => data.assessments.listAssessmentModalities(activeProgram.id),
+  });
 
   const { data: notes } = useQuery({
     queryKey: ["experience-notes", "encadrement", enrollmentIds.join(",")],
@@ -496,6 +507,21 @@ export function SupervisionReports() {
             description="Stations ChatGPT jouées hors du hub ; la grille rapportée par l'étudiant, en lecture seule."
           >
             <EcosDeclares enrollmentId={choisi.log.enrollmentId} />
+          </PanelCard>
+
+          {/*
+            LA TRACE DU STAGE (16/09) : le carnet déclaré et ce qui est tenu
+            hors plateforme, AVANT le prononcé — c'est ce qu'il faut avoir sous
+            les yeux pour décider.
+          */}
+          <PanelCard
+            title="Trace du stage"
+            description="Ce que le programme a retenu sous « Journal de stage » : le carnet déclaré par l'étudiant, et ce qui est attesté hors de la plateforme."
+          >
+            <StageTraceReview
+              enrollmentId={choisi.log.enrollmentId}
+              modalities={modalitesDuProgramme ?? []}
+            />
           </PanelCard>
 
           <PanelCard

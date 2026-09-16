@@ -659,6 +659,7 @@ export const mockDataAccess: DataAccess = {
         );
         return ok(undefined);
       },
+      setStageTracking: () => ok(undefined),
       setCohortAssessmentEcos: (input) => {
         links = links.map((l) =>
           l.cohortId === input.cohortId && l.modalityId === input.assessmentModalityId
@@ -1176,6 +1177,14 @@ export const mockDataAccess: DataAccess = {
     deleteStageLogDay: () => ok(undefined),
     validateStageLogBlock: () => ok(undefined),
     openStageLogsForGroup: () => ok(undefined),
+    upsertStageLogTemplate: () => Promise.reject(new Error("Aucun modèle de carnet en maquette.")),
+    archiveStageLogTemplate: () => ok(undefined),
+    listLogbookReports: () => ok([]),
+    declareLogbookCount: () => Promise.reject(new Error("Aucun carnet en maquette.")),
+    validateLogbookReport: () => ok(undefined),
+    listStageAttestations: () => ok([]),
+    grantStageAttestation: () => ok(undefined),
+    revokeStageAttestation: () => ok(undefined),
   },
   statistics: {
     listCohortStatistics: (programId) =>

@@ -107,9 +107,15 @@ import type {
   StageLogEntryId,
   StageLogId,
   StageLogStatus,
+  StageLogTemplate,
   StageLogTemplateId,
 } from "@/domain/stageLog";
 import type { EcosExternalRun, EcosGridItem } from "@/domain/ecos";
+import type {
+  StageAttestation,
+  StageLogbookReport,
+  StageTrackingMode,
+} from "@/domain/stageTracking";
 import type { OutcomeSelfReport } from "@/domain/passport";
 import type {
   AssessmentModality,
@@ -832,6 +838,8 @@ type AssessmentModalityRow = {
   created_at: string;
   updated_at: string;
   retained_at: string | null;
+  stage_tracking: string[] | null;
+  stage_log_template_id: string | null;
 };
 
 type AssessmentSessionRow = {
@@ -906,6 +914,10 @@ export function mapAssessmentModality(row: AssessmentModalityRow): AssessmentMod
     usage: row.usage,
     ...(row.notes ? { notes: row.notes } : {}),
     ...(row.retained_at ? { retainedAt: row.retained_at } : {}),
+    ...(row.stage_tracking && row.stage_tracking.length > 0
+      ? { stageTracking: row.stage_tracking as readonly StageTrackingMode[] }
+      : {}),
+    ...(row.stage_log_template_id ? { stageLogTemplateId: row.stage_log_template_id } : {}),
   };
 }
 
@@ -1198,7 +1210,7 @@ const programColumns =
   "id,code,name,kind,institution,annual_learner_estimate,placements_enabled,simulation_enabled,audits_enabled,pre_post_tests_enabled,sessions_enabled,dpc_enabled,learner_plan_shifts_enabled,target_mastery,locale,design_draft,created_at,updated_at";
 
 const assessmentModalityColumns =
-  "id,program_id,name,mode,subtype,usage,notes,created_at,updated_at,retained_at";
+  "id,program_id,name,mode,subtype,usage,notes,created_at,updated_at,retained_at,stage_tracking,stage_log_template_id";
 
 const assessmentSessionColumns =
   "id,program_id,modality_id,cohort_id,scheduled_on,closes_on,location,notes,config";
@@ -1370,10 +1382,169 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
     },
     stageLogs: {
       ...mockDataAccess.stageLogs,
-      async listTemplates() {
-        // Aucun modele de carnet n'est configure : la table est vide, et
-        // inventer un modele donnerait un formulaire qui ne correspond a rien.
-        return [];
+      /*
+       * LES MODELES DE CARNET SONT ENFIN LUS (16/09). Cette methode rendait
+       * un tableau vide avec ce commentaire : « aucun modele n'est configure ».
+       * C'etait vrai tant qu'aucun ecran ne savait en creer ; l'onglet
+       * Evaluations le fait depuis la migration 20260916220000.
+       */
+      async listTemplates(programId?: ProgramId) {
+        let requete = client
+          .from("stage_log_templates")
+          .select(
+            "id,program_id,version,label,description,module_label,cohort_ids,enabled,fields,objectives,entry_frequency,validator_role,completeness_rules,photo_policy,created_at,updated_at",
+          )
+          .order("created_at");
+        if (programId) requete = requete.eq("program_id", programId);
+        const { data, error } = await requete;
+        assertNoSupabaseError(error);
+        type Row = {
+          id: string; program_id: string; version: number; label: string; description: string;
+          module_label: string; cohort_ids: string[]; enabled: boolean; fields: unknown;
+          objectives: unknown; entry_frequency: string; validator_role: string;
+          completeness_rules: string[]; photo_policy: unknown;
+          created_at: string; updated_at: string;
+        };
+        return ((data ?? []) as Row[]).map(
+          (row): StageLogTemplate => ({
+            id: row.id as StageLogTemplate["id"],
+            programId: row.program_id,
+            version: row.version,
+            label: row.label,
+            description: row.description,
+            moduleLabel: row.module_label,
+            cohortIds: (row.cohort_ids ?? []) as StageLogTemplate["cohortIds"],
+            enabled: row.enabled,
+            fields: (row.fields ?? []) as StageLogTemplate["fields"],
+            objectives: (row.objectives ?? []) as StageLogTemplate["objectives"],
+            entryFrequency: row.entry_frequency as StageLogTemplate["entryFrequency"],
+            validatorRole: row.validator_role as StageLogTemplate["validatorRole"],
+            completenessRules: row.completeness_rules ?? [],
+            photoPolicy: (row.photo_policy ?? {
+              enabled: false,
+              allowedObjects: [],
+              allowCustomObject: false,
+              maxPhotosPerEntry: 0,
+              supervisorValidationRequired: false,
+              retentionPolicyLabel: "à définir avant backend",
+              automaticCheck: "not_active",
+            }) as StageLogTemplate["photoPolicy"],
+            createdAt: row.created_at,
+            updatedAt: row.updated_at,
+            provenance: { sourceSystem: "native" },
+          }),
+        );
+      },
+      async upsertStageLogTemplate(input) {
+        const { data, error } = await client.rpc("upsert_stage_log_template", {
+          p_program_id: input.programId,
+          p_template_id: input.templateId ?? null,
+          p_label: input.label,
+          p_description: input.description,
+          p_objectives: input.objectives.map((o) => ({ label: o.label, quota: o.quota })),
+        });
+        assertNoSupabaseError(error);
+        const row = data as { id: string; label: string };
+        /* La liste est relue par l'écran : on ne rend que de quoi la retrouver. */
+        return { id: row.id, label: row.label } as unknown as StageLogTemplate;
+      },
+      async archiveStageLogTemplate(templateId, enabled) {
+        const { error } = await client.rpc("archive_stage_log_template", {
+          p_template_id: templateId,
+          p_enabled: enabled,
+        });
+        assertNoSupabaseError(error);
+      },
+      async listLogbookReports(enrollmentId) {
+        const { data, error } = await client
+          .from("stage_logbook_reports")
+          .select("id,enrollment_id,template_id,objective_key,declared_count,note,updated_at,validated_at,validated_by")
+          .eq("enrollment_id", enrollmentId);
+        assertNoSupabaseError(error);
+        type Row = {
+          id: string; enrollment_id: string; template_id: string; objective_key: string;
+          declared_count: number; note: string; updated_at: string;
+          validated_at: string | null; validated_by: string | null;
+        };
+        return ((data ?? []) as Row[]).map(
+          (row): StageLogbookReport => ({
+            id: row.id,
+            enrollmentId: row.enrollment_id,
+            templateId: row.template_id,
+            objectiveKey: row.objective_key,
+            declaredCount: row.declared_count,
+            note: row.note,
+            updatedAt: row.updated_at,
+            ...(row.validated_at ? { validatedAt: row.validated_at } : {}),
+            ...(row.validated_by ? { validatedBy: row.validated_by } : {}),
+          }),
+        );
+      },
+      async declareLogbookCount(input) {
+        const { data, error } = await client.rpc("declare_stage_logbook_count", {
+          p_enrollment_id: input.enrollmentId,
+          p_template_id: input.templateId,
+          p_objective_key: input.objectiveKey,
+          p_count: input.count,
+          p_note: input.note,
+        });
+        assertNoSupabaseError(error);
+        const row = data as {
+          id: string; enrollment_id: string; template_id: string; objective_key: string;
+          declared_count: number; note: string; updated_at: string;
+        };
+        return {
+          id: row.id,
+          enrollmentId: row.enrollment_id,
+          templateId: row.template_id,
+          objectiveKey: row.objective_key,
+          declaredCount: row.declared_count,
+          note: row.note,
+          updatedAt: row.updated_at,
+        };
+      },
+      async validateLogbookReport(reportId, valide) {
+        const { error } = await client.rpc("validate_stage_logbook_report", {
+          p_report_id: reportId,
+          p_valide: valide,
+        });
+        assertNoSupabaseError(error);
+      },
+      async listStageAttestations(enrollmentId) {
+        const { data, error } = await client
+          .from("stage_attestations")
+          .select("id,enrollment_id,kind,note,granted_by,granted_at")
+          .eq("enrollment_id", enrollmentId);
+        assertNoSupabaseError(error);
+        type Row = {
+          id: string; enrollment_id: string; kind: StageAttestation["kind"];
+          note: string; granted_by: string; granted_at: string;
+        };
+        return ((data ?? []) as Row[]).map(
+          (row): StageAttestation => ({
+            id: row.id,
+            enrollmentId: row.enrollment_id,
+            kind: row.kind,
+            note: row.note,
+            grantedBy: row.granted_by,
+            grantedAt: row.granted_at,
+          }),
+        );
+      },
+      async grantStageAttestation(input) {
+        const { error } = await client.rpc("grant_stage_attestation", {
+          p_enrollment_id: input.enrollmentId,
+          p_kind: input.kind,
+          p_note: input.note,
+        });
+        assertNoSupabaseError(error);
+      },
+      async revokeStageAttestation(enrollmentId, kind) {
+        const { error } = await client.rpc("revoke_stage_attestation", {
+          p_enrollment_id: enrollmentId,
+          p_kind: kind,
+        });
+        assertNoSupabaseError(error);
       },
       async listLogsForEnrollment(enrollmentId: EnrollmentId) {
         const { data, error } = await client
@@ -2317,6 +2488,15 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
           p_is_open: input.isOpen,
           p_question_source: input.questionSource,
           p_free_access: input.freeAccess,
+        });
+        assertNoSupabaseError(error);
+      },
+      /* ---- Journal de stage : 20260916220000_trace_du_stage.sql ---- */
+      async setStageTracking(input) {
+        const { error } = await client.rpc("set_stage_tracking", {
+          p_modality_id: input.assessmentModalityId,
+          p_modes: input.modes,
+          p_template_id: input.stageLogTemplateId ?? null,
         });
         assertNoSupabaseError(error);
       },

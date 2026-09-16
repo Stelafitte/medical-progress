@@ -48,6 +48,9 @@ import { AssessmentModalityForm } from "@/features/administration/AssessmentModa
 import { QcmPilotage } from "@/features/administration/QcmPilotage";
 import { EcosPilotage } from "@/features/administration/EcosPilotage";
 import { DossiersPilotage } from "@/features/administration/DossiersPilotage";
+import { StageTrackingPilotage } from "@/features/administration/StageTrackingPilotage";
+import type { StageTrackingMode } from "@/domain/stageTracking";
+import type { StageLogTemplate } from "@/domain/stageLog";
 import { estEcosSimule } from "@/domain/ecos";
 import type { Cohort, OutcomeTheme, ProgramId } from "@/domain/types";
 import type { QuestionBankRow } from "@/application/ports/repositories";
@@ -274,6 +277,10 @@ function LigneModalite({
   onOuvrir,
   stations,
   onStations,
+  carnets,
+  traces,
+  traceTemplateId,
+  onTraces,
   sessions,
   link,
   banques,
@@ -304,6 +311,14 @@ function LigneModalite({
   /** ECOS simulé : les stations voulues (intention), et de quoi les changer. */
   readonly stations: readonly string[];
   readonly onStations: (stationKeys: readonly string[]) => void;
+  /** Journal de stage : de quoi la trace est faite (intention en cours). */
+  readonly carnets: readonly StageLogTemplate[];
+  readonly traces: readonly StageTrackingMode[];
+  readonly traceTemplateId: string | undefined;
+  readonly onTraces: (
+    modes: readonly StageTrackingMode[],
+    templateId: string | undefined,
+  ) => void;
   readonly sessions: readonly AssessmentSession[];
   /** Le lien promotion ↔ modalité, quand il existe : il porte le pilotage. */
   readonly link: CohortAssessmentLink | undefined;
@@ -601,7 +616,16 @@ function LigneModalite({
             )}
           </div>
 
-          {estDossier && link ? (
+          {carnetServiParLeModule && modality ? (
+            <StageTrackingPilotage
+              modality={modality}
+              carnets={carnets}
+              editable={editable}
+              modes={traces}
+              templateId={traceTemplateId}
+              onChange={onTraces}
+            />
+          ) : estDossier && link ? (
             <DossiersPilotage
               programId={programId}
               cohort={cohort}
@@ -685,6 +709,7 @@ export function AssessmentModalitySection({
   cohorts,
   banques = [],
   themes = [],
+  carnets = [],
   onChanged,
   editable = true,
   cohortFilter: imposed,
@@ -699,6 +724,8 @@ export function AssessmentModalitySection({
   readonly banques?: readonly QuestionBankRow[];
   /** Les thèmes du référentiel, pour filtrer une série de QCM. */
   readonly themes?: readonly OutcomeTheme[];
+  /** Les modèles de carnet du programme, pour le Journal de stage. */
+  readonly carnets?: readonly StageLogTemplate[];
   /** Relit modalités, liens et épreuves après toute écriture. */
   readonly onChanged?: (() => void) | undefined;
   /** `false` dans le pilotage : lecture seule. */
@@ -748,6 +775,27 @@ export function AssessmentModalitySection({
    * un seul geste pour tout l'écran, et « Annuler » rend vraiment tout.
    */
   const [stationsVoulues, setStationsVoulues] = useState<Map<string, readonly string[]>>(new Map());
+
+  /*
+   * JOURNAL DE STAGE : de quoi la trace est faite. Intention, comme le reste ;
+   * mais ce réglage-là vaut pour le PROGRAMME, pas pour la promotion — le DIU
+   * ne change pas de nature d'une année sur l'autre.
+   */
+  const [tracesVoulues, setTracesVoulues] = useState<
+    Map<string, { readonly modes: readonly StageTrackingMode[]; readonly templateId?: string }>
+  >(new Map());
+  const tracesDe = (row: CatalogueRow) => {
+    const modalityId = row.modality?.id;
+    if (!modalityId) return { modes: [] as readonly StageTrackingMode[] };
+    const enAttente = tracesVoulues.get(modalityId);
+    if (enAttente) return enAttente;
+    return {
+      modes: row.modality?.stageTracking ?? ([] as readonly StageTrackingMode[]),
+      ...(row.modality?.stageLogTemplateId
+        ? { templateId: row.modality.stageLogTemplateId }
+        : {}),
+    };
+  };
   const stationsDe = (row: CatalogueRow) => {
     const modalityId = row.modality?.id;
     if (!modalityId) return [];
@@ -767,6 +815,7 @@ export function AssessmentModalitySection({
     setChosen(id);
     setPending(new Map());
     setStationsVoulues(new Map());
+    setTracesVoulues(new Map());
     setOuvertes(new Set());
     setSaveError(null);
   };
@@ -834,15 +883,30 @@ export function AssessmentModalitySection({
       }
     }
 
+    /* La trace du stage, enfin : elle porte sur la modalité, pas sur le lien. */
+    for (const [modalityId, choix] of tracesVoulues) {
+      try {
+        await dataAccess.assessments.setStageTracking({
+          assessmentModalityId: modalityId,
+          modes: choix.modes,
+          ...(choix.templateId ? { stageLogTemplateId: choix.templateId } : {}),
+        });
+      } catch (reason) {
+        const nom = rows.find((r) => r.modality?.id === modalityId)?.modality?.name ?? "Journal de stage";
+        erreurs.push(`${nom} : ${reason instanceof Error ? reason.message : "échec"}`);
+      }
+    }
+
     setPending(new Map());
     setStationsVoulues(new Map());
+    setTracesVoulues(new Map());
     setSaving(false);
     if (erreurs.length > 0) setSaveError(erreurs.join(" · "));
     onChanged?.();
   }
 
   /* Une modification en attente = une case de modalité, ou une sélection de stations. */
-  const aEnregistrer = pending.size + stationsVoulues.size;
+  const aEnregistrer = pending.size + stationsVoulues.size + tracesVoulues.size;
 
   const datesDeLaPromo = sessions.filter((s) => s.cohortId === cohortId);
   const compter = (usage: AssessmentUsage) =>
@@ -907,6 +971,19 @@ export function AssessmentModalitySection({
                             onToggle={toggle}
                             ouverte={ouvertes.has(cleDOuverture(r))}
                             onOuvrir={(v) => ouvrir(cleDOuverture(r), v)}
+                            carnets={carnets}
+                            traces={tracesDe(r).modes}
+                            traceTemplateId={tracesDe(r).templateId}
+                            onTraces={(modes, templateId) => {
+                              const modalityId = r.modality?.id;
+                              if (!modalityId) return;
+                              setTracesVoulues((prev) =>
+                                new Map(prev).set(modalityId, {
+                                  modes,
+                                  ...(templateId ? { templateId } : {}),
+                                }),
+                              );
+                            }}
                             stations={stationsDe(r)}
                             onStations={(cles) => {
                               const modalityId = r.modality?.id;
@@ -957,6 +1034,7 @@ export function AssessmentModalitySection({
                       onClick={() => {
                         setPending(new Map());
                         setStationsVoulues(new Map());
+                        setTracesVoulues(new Map());
                       }}
                     >
                       Annuler

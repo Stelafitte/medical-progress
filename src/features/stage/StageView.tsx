@@ -18,6 +18,14 @@ import { useDataAccess, useSession } from "@/application/session";
 import { StageGroupChoice } from "@/features/stage/StageGroupChoice";
 import { StageLogWeek } from "@/features/stage/StageLogWeek";
 import { StageLogsToValidate } from "@/features/stage/StageLogReviewSection";
+import { StageLogbookDeclaration } from "@/features/stage/StageLogbookDeclaration";
+import { useMesEvaluations } from "@/features/evaluations/MesEvaluations";
+import {
+  STAGE_TRACKING_LABELS_FR,
+  modeleDeCarnetRetenu,
+  suiviDePresenceAttendu,
+  tracesDuStage,
+} from "@/domain/stageTracking";
 import type { PlacementId } from "@/domain/types";
 
 const DATE_FORMAT = new Intl.DateTimeFormat("fr-FR", {
@@ -37,6 +45,31 @@ export function StageView() {
     queryKey: ["stage-logs-mine", enrollmentId],
     enabled: enrollmentId !== undefined,
     queryFn: () => dataAccess.stageLogs.listLogsForEnrollment(enrollmentId!),
+  });
+
+  /*
+   * DE QUOI LA TRACE DE CE STAGE EST-ELLE FAITE ? (16/09)
+   *
+   * Jusqu'ici cet écran ne savait afficher qu'une chose : la présence cochée
+   * jour par jour, imposée dès qu'un stage existait. L'équipe décide désormais,
+   * au Concepteur, sous « Journal de stage » — et tant qu'elle n'a rien décidé,
+   * on garde le comportement d'avant (voir `domain/stageTracking.ts`).
+   *
+   * Même clé de requête que « Mes évaluations » : aucune requête de plus.
+   */
+  const mesEvaluations = useMesEvaluations();
+  const modalites = mesEvaluations.data?.modalities ?? [];
+  const traces = tracesDuStage(modalites);
+  const presenceAttendue = suiviDePresenceAttendu(modalites, activeProgram.config.placementsEnabled);
+  const carnetId = modeleDeCarnetRetenu(modalites);
+  const horsPlateforme = traces.filter(
+    (m) => m === "logbook_paper" || m === "supervisor_attestation",
+  );
+
+  const attestations = useQuery({
+    queryKey: ["mes-attestations-de-stage", enrollmentId],
+    enabled: enrollmentId !== undefined && horsPlateforme.length > 0,
+    queryFn: () => dataAccess.stageLogs.listStageAttestations(enrollmentId!),
   });
 
   if (!activeEnrollment) {
@@ -91,7 +124,40 @@ export function StageView() {
         ]}
       />
 
-      {myLogs.length === 0 ? (
+      {carnetId && activeEnrollment ? (
+        <StageLogbookDeclaration enrollmentId={activeEnrollment.id} templateId={carnetId} />
+      ) : null}
+
+      {horsPlateforme.length > 0 ? (
+        <section className="rounded-xl border bg-card p-4 shadow-[var(--shadow-card)]">
+          <h2 className="font-display text-[16.5px] leading-tight tracking-[-0.01em]">
+            Ce qui est tenu hors de la plateforme
+          </h2>
+          <ul className="mt-2 space-y-1.5">
+            {horsPlateforme.map((mode) => {
+              const posee = (attestations.data ?? []).find((a) => a.kind === mode);
+              return (
+                <li key={mode} className="text-[13px] leading-relaxed">
+                  <span className="font-medium">{STAGE_TRACKING_LABELS_FR[mode]}</span>{" "}
+                  <span className="text-muted-foreground">
+                    {posee
+                      ? `— attesté par votre responsable de stage${posee.note ? ` : ${posee.note}` : ""}`
+                      : "— rien à remplir ici ; votre responsable de stage l'attestera au bilan."}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      ) : null}
+
+      {!presenceAttendue ? (
+        <div className="rounded-xl border bg-card p-4 shadow-[var(--shadow-card)]">
+          <p className="text-[13px] leading-relaxed text-muted-foreground">
+            Votre programme ne demande pas de relevé de présence quotidien pour ce stage.
+          </p>
+        </div>
+      ) : myLogs.length === 0 ? (
         <div className="rounded-xl border bg-card p-4 shadow-[var(--shadow-card)]">
           <p className="text-[13px] leading-relaxed text-muted-foreground">
             Aucun carnet n'est encore ouvert à votre nom. Il l'est par l'administration du programme

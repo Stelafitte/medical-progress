@@ -63,7 +63,12 @@ import type {
   SupervisionAlert,
 } from "@/domain/supervision";
 import type { LearnerMessage } from "@/domain/communication";
-import type { StageLog, StageLogId, StageLogTemplate } from "@/domain/stageLog";
+import type { StageLog, StageLogId, StageLogTemplate, StageLogTemplateId } from "@/domain/stageLog";
+import type {
+  StageAttestation,
+  StageLogbookReport,
+  StageTrackingMode,
+} from "@/domain/stageTracking";
 import type { EcosExternalRun, EcosGridItem, RecordEcosExternalRunInput } from "@/domain/ecos";
 import type { CohortStatisticsSnapshot } from "@/domain/statistics";
 import type {
@@ -711,6 +716,12 @@ export interface AssessmentRepository {
   setCohortAssessmentPilotage(input: SetCohortAssessmentPilotageInput): Promise<void>;
   /* ---- Pilotage de l'ECOS simulé (16/09) ------------------------------- */
   setCohortAssessmentEcos(input: SetCohortAssessmentEcosInput): Promise<void>;
+  /* ---- Journal de stage : de quoi la trace est faite (16/09) ----------- */
+  setStageTracking(input: {
+    readonly assessmentModalityId: string;
+    readonly modes: readonly StageTrackingMode[];
+    readonly stageLogTemplateId?: string;
+  }): Promise<void>;
   /** Les items et sous-items d'une banque, avec leurs comptes — pour composer un filtre. */
   listQuestionSections(programId: ProgramId, source: string): Promise<readonly QuestionSectionRow[]>;
   /** Combien de questions publiées répondent au filtre — avant de lancer. */
@@ -1511,6 +1522,50 @@ export interface StageLogRepository {
 
   /** Ouvre les carnets de tous les membres d'un groupe. Idempotent. */
   openStageLogsForGroup(groupId: SupervisionGroupId): Promise<void>;
+
+  /* ---------------------------------------------------------------- */
+  /* LA TRACE DU STAGE (16/09) — 20260916220000_trace_du_stage.sql     */
+  /* ---------------------------------------------------------------- */
+
+  /** Crée ou corrige un modèle de carnet (nom, items, nombres attendus). */
+  upsertStageLogTemplate(input: UpsertStageLogTemplateInput): Promise<StageLogTemplate>;
+  /** Sort un modèle de la liste servie à la conception, sans rien supprimer. */
+  archiveStageLogTemplate(templateId: StageLogTemplateId, enabled: boolean): Promise<void>;
+
+  /** Le carnet déclaré par un apprenant, item par item. */
+  listLogbookReports(enrollmentId: EnrollmentId): Promise<readonly StageLogbookReport[]>;
+  /** L'apprenant déclare son compte pour un item ; la validation retombe. */
+  declareLogbookCount(input: DeclareLogbookCountInput): Promise<StageLogbookReport>;
+  /** L'encadrant confirme — ou retire sa confirmation. */
+  validateLogbookReport(reportId: string, valide: boolean): Promise<void>;
+
+  /** Les traces tenues hors plateforme, attestées pour cette inscription. */
+  listStageAttestations(enrollmentId: EnrollmentId): Promise<readonly StageAttestation[]>;
+  /** Réservé au responsable de stage et à l'administration du programme. */
+  grantStageAttestation(input: {
+    readonly enrollmentId: EnrollmentId;
+    readonly kind: StageAttestation["kind"];
+    readonly note: string;
+  }): Promise<void>;
+  revokeStageAttestation(enrollmentId: EnrollmentId, kind: StageAttestation["kind"]): Promise<void>;
+}
+
+export interface UpsertStageLogTemplateInput {
+  readonly programId: ProgramId;
+  /** Absent = création. */
+  readonly templateId?: StageLogTemplateId;
+  readonly label: string;
+  readonly description: string;
+  /** Un item = un libellé libre et un nombre attendu (« ETT », 150). */
+  readonly objectives: readonly { readonly label: string; readonly quota: number }[];
+}
+
+export interface DeclareLogbookCountInput {
+  readonly enrollmentId: EnrollmentId;
+  readonly templateId: StageLogTemplateId;
+  readonly objectiveKey: string;
+  readonly count: number;
+  readonly note: string;
 }
 
 export interface SaveStageLogDayInput {

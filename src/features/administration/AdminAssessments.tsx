@@ -8,6 +8,7 @@
  * Concepteur embarque le même atelier ; le pilotage le lit. Tout ce que cet
  * écran affiche est lu en base.
  */
+import { useQuery } from "@tanstack/react-query";
 import { SectionHeading } from "@/components/section-heading";
 import { PanelCard, ScopeNotice } from "@/features/professional/mock-ui";
 import { CorpusImport } from "@/features/administration/CorpusImport";
@@ -16,9 +17,22 @@ import { QuestionReports } from "@/features/administration/QuestionReports";
 import { AssessmentModalitySection } from "@/features/administration/AssessmentModalitySection";
 import { useProgramAdmin } from "@/features/administration/useProgramAdmin";
 import { AdminChargement } from "@/features/administration/AdminChargement";
+import { StageLogbookTemplates } from "@/features/administration/StageLogbookTemplates";
+import { useDataAccess } from "@/application/session";
 
 export function AdminAssessments() {
   const { data, isPending, error, refetch } = useProgramAdmin();
+  const dataAccess = useDataAccess();
+  /*
+   * MÊME CLÉ QUE « Carnets de stage » plus bas : l'atelier a besoin de la liste
+   * pour proposer un modèle sous « Journal de stage », et il ne part pas une
+   * requête de plus pour cela.
+   */
+  const carnets = useQuery({
+    queryKey: ["carnets-de-stage", data?.program?.id ?? "aucun"],
+    enabled: Boolean(data?.program),
+    queryFn: () => dataAccess.stageLogs.listTemplates(data!.program!.id),
+  });
 
   if (isPending || !data || !data.program) return <AdminChargement error={error} />;
 
@@ -47,7 +61,11 @@ export function AdminAssessments() {
         cohorts={data.cohorts}
         banques={data.questionBanks}
         themes={data.outcomeThemes}
-        onChanged={() => void refetch()}
+        carnets={carnets.data ?? []}
+        onChanged={() => {
+          void refetch();
+          void carnets.refetch();
+        }}
       >
         <PanelCard
           title="Voie automatique — importer un corpus de documents"
@@ -61,6 +79,7 @@ export function AdminAssessments() {
             onCreated={() => void refetch()}
           />
         </PanelCard>
+        <StageLogbookTemplates programId={program.id} />
         <QuestionBankImport programId={program.id} />
       </AssessmentModalitySection>
 
