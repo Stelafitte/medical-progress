@@ -671,6 +671,23 @@ export const mockDataAccess: DataAccess = {
       questionResultsByTheme: () => ok([]),
       myQuestionResults: () => ok({ attempts: 0, distinctQuestions: 0 }),
       myQuestionResultsByTheme: () => ok([]),
+      importQuestionCases: (input) =>
+        ok({
+          mode: input.mode,
+          source: input.source,
+          matched: input.cases.length,
+          unmatched: 0,
+          unmatched_codes: [],
+          inserted: input.mode === "dry_run" ? 0 : input.cases.length,
+          updated: 0,
+          deleted: 0,
+          retired: 0,
+        }),
+      listQuestionCases: () => ok([]),
+      readCase: () => Promise.reject(new Error("Aucun dossier en maquette.")),
+      answerCaseStep: () => Promise.reject(new Error("Aucun dossier en maquette.")),
+      myCaseResults: () => ok([]),
+      caseResultsByCohort: () => ok([]),
       importQuestionItems: (input) =>
         ok({
           mode: input.mode,

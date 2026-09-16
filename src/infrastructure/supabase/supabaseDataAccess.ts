@@ -18,7 +18,13 @@ import type {
   CreateAssessmentModalityInput,
   CreateAssessmentSessionInput,
   CreateCohortInput,
+  ImportQuestionCasesInput,
   ImportQuestionItemsInput,
+  CaseStepCorrection,
+  CaseToPlay,
+  CohortCaseResults,
+  MyCaseResults,
+  QuestionCaseRow,
   LearnerQuestionResults,
   MyQuestionResults,
   MyThemeQuestionResults,
@@ -2268,6 +2274,7 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
           drafts: number | string;
           flagged: number | string;
           retired: number | string;
+          cases?: number | string | null;
         };
         // Les count(*) sont des bigint : PostgREST les sérialise en chaîne.
         return ((data ?? []) as Row[]).map(
@@ -2278,6 +2285,7 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
             drafts: Number(r.drafts),
             flagged: Number(r.flagged),
             retired: Number(r.retired),
+            cases: Number(r.cases ?? 0),
             ...(r.file_name ? { fileName: r.file_name } : {}),
             ...(r.file_modified_at ? { fileModifiedAt: r.file_modified_at } : {}),
           }),
@@ -2520,6 +2528,150 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
           ...(r.avg_score !== null ? { avgScore: Number(r.avg_score) } : {}),
           ...(r.last_answered_at ? { lastAnsweredAt: r.last_answered_at } : {}),
         } satisfies MyQuestionResults;
+      },
+      /* ---- Dossiers progressifs : 20260915220000_dossiers_progressifs.sql ---- */
+      async importQuestionCases(input: ImportQuestionCasesInput) {
+        const { data, error } = await client.rpc("import_question_cases", {
+          p_program_id: input.programId,
+          p_mode: input.mode,
+          p_source: input.source,
+          p_cases: input.cases,
+          p_publish: input.publish,
+          p_file_name: input.fileName ?? null,
+          p_file_modified_at: input.fileModifiedAt ?? null,
+        });
+        assertNoSupabaseError(error);
+        return data as ImportReport;
+      },
+      async listQuestionCases(programId: ProgramId, source: string) {
+        const { data, error } = await client.rpc("list_question_cases", {
+          p_program_id: programId,
+          p_source: source,
+        });
+        assertNoSupabaseError(error);
+        type Row = {
+          id: string; external_ref: string; kind: "mini_dp" | "kfp"; title: string;
+          chapter: number | null; chapter_title: string | null; item_code: string | null;
+          status: string; validated: boolean; steps: number | string;
+        };
+        return ((data ?? []) as Row[]).map(
+          (r): QuestionCaseRow => ({
+            id: r.id,
+            externalRef: r.external_ref,
+            kind: r.kind,
+            title: r.title,
+            status: r.status,
+            validated: r.validated,
+            steps: Number(r.steps),
+            ...(r.chapter !== null ? { chapter: r.chapter } : {}),
+            ...(r.chapter_title ? { chapterTitle: r.chapter_title } : {}),
+            ...(r.item_code ? { itemCode: r.item_code } : {}),
+          }),
+        );
+      },
+      async readCase(caseId: string) {
+        const { data, error } = await client.rpc("read_case", { p_case_id: caseId });
+        assertNoSupabaseError(error);
+        if (!data) throw new Error("Ce dossier n'est pas ouvert.");
+        const raw = data as {
+          id: string; external_ref: string; kind: "mini_dp" | "kfp"; title: string; vignette: string;
+          chapter: number | null; chapter_title: string | null; item_code: string | null;
+          steps: {
+            id: string; position: number; format: string; reveal: string | null; stem: string;
+            expected: number | null; options: { letter: string; body: string }[];
+          }[];
+        };
+        return {
+          id: raw.id,
+          externalRef: raw.external_ref,
+          kind: raw.kind,
+          title: raw.title,
+          vignette: raw.vignette,
+          ...(raw.chapter !== null ? { chapter: raw.chapter } : {}),
+          ...(raw.chapter_title ? { chapterTitle: raw.chapter_title } : {}),
+          ...(raw.item_code ? { itemCode: raw.item_code } : {}),
+          steps: raw.steps.map((s) => ({
+            id: s.id,
+            position: s.position,
+            format: s.format,
+            stem: s.stem,
+            options: s.options,
+            ...(s.reveal ? { reveal: s.reveal } : {}),
+            ...(s.expected !== null ? { expected: s.expected } : {}),
+          })),
+        } satisfies CaseToPlay;
+      },
+      async answerCaseStep(questionId: string, enrollmentId: string, selected: readonly string[]) {
+        const { data, error } = await client.rpc("answer_case_step", {
+          p_question_id: questionId,
+          p_enrollment_id: enrollmentId,
+          p_selected: [...selected],
+        });
+        assertNoSupabaseError(error);
+        const raw = data as {
+          score: number | string;
+          discordances: number;
+          eliminatory: boolean;
+          note: string | null;
+          options: { letter: string; correct: boolean; explanation: string | null; flag: string | null }[];
+        };
+        return {
+          score: Number(raw.score),
+          discordances: raw.discordances,
+          eliminatory: raw.eliminatory,
+          ...(raw.note ? { note: raw.note } : {}),
+          options: raw.options.map((o) => ({
+            letter: o.letter,
+            correct: o.correct,
+            ...(o.explanation ? { explanation: o.explanation } : {}),
+            ...(o.flag ? { flag: o.flag } : {}),
+          })),
+        } satisfies CaseStepCorrection;
+      },
+      async myCaseResults(enrollmentId: string) {
+        const { data, error } = await client.rpc("my_case_results", { p_enrollment_id: enrollmentId });
+        assertNoSupabaseError(error);
+        type Row = {
+          case_id: string; external_ref: string; title: string; kind: string; chapter: number | null;
+          item_code: string | null; steps: number | string; answered: number | string;
+          avg_score: number | string | null; last_answered_at: string | null;
+        };
+        return ((data ?? []) as Row[]).map(
+          (r): MyCaseResults => ({
+            caseId: r.case_id,
+            externalRef: r.external_ref,
+            title: r.title,
+            kind: r.kind,
+            steps: Number(r.steps),
+            answered: Number(r.answered),
+            ...(r.chapter !== null ? { chapter: r.chapter } : {}),
+            ...(r.item_code ? { itemCode: r.item_code } : {}),
+            ...(r.avg_score !== null ? { avgScore: Number(r.avg_score) } : {}),
+            ...(r.last_answered_at ? { lastAnsweredAt: r.last_answered_at } : {}),
+          }),
+        );
+      },
+      async caseResultsByCohort(cohortId: string) {
+        const { data, error } = await client.rpc("case_results_by_cohort", { p_cohort_id: cohortId });
+        assertNoSupabaseError(error);
+        type Row = {
+          case_id: string; external_ref: string; title: string; kind: string; chapter: number | null;
+          item_code: string | null; learners: number | string; attempts: number | string;
+          avg_score: number | string | null;
+        };
+        return ((data ?? []) as Row[]).map(
+          (r): CohortCaseResults => ({
+            caseId: r.case_id,
+            externalRef: r.external_ref,
+            title: r.title,
+            kind: r.kind,
+            learners: Number(r.learners),
+            attempts: Number(r.attempts),
+            ...(r.chapter !== null ? { chapter: r.chapter } : {}),
+            ...(r.item_code ? { itemCode: r.item_code } : {}),
+            ...(r.avg_score !== null ? { avgScore: Number(r.avg_score) } : {}),
+          }),
+        );
       },
       async myQuestionResultsByTheme(enrollmentId: string) {
         const { data, error } = await client.rpc("my_question_results_by_theme", {

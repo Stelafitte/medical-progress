@@ -41,6 +41,7 @@ import type {
 } from "@/domain/assessmentModality";
 import type { LearnerNarratedDeck, MediaResource } from "@/domain/mediaLibrary";
 import type { ImportMode, ImportReport, ImportedQuestion } from "@/domain/questionBankImport";
+import type { ImportedCase } from "@/domain/questionCaseImport";
 import type { ContentAiProfile, LearnerAiResource, ProgramAiPolicy } from "@/domain/contentAi";
 import type { AiCreditBudget, AiCreditEntry } from "@/domain/aiCredits";
 import type { AiFallbackPolicy, ProgramAiSettings, ProgramAiUsage } from "@/domain/programAi";
@@ -446,6 +447,8 @@ export interface QuestionBankRow {
   readonly drafts: number;
   readonly flagged: number;
   readonly retired: number;
+  /** Dossiers progressifs publiés (mini-DP, KFP) portés par cette source. */
+  readonly cases: number;
 }
 
 export interface QuestionFilter {
@@ -546,6 +549,81 @@ export interface MyThemeQuestionResults {
   readonly distinctQuestions: number;
   readonly avgScore?: number;
   readonly lastAnsweredAt?: string;
+}
+
+/** Un dossier tel que l'écran le liste : pour choisir lequel jouer. */
+export interface QuestionCaseRow {
+  readonly id: string;
+  readonly externalRef: string;
+  readonly kind: "mini_dp" | "kfp";
+  readonly title: string;
+  readonly chapter?: number;
+  readonly chapterTitle?: string;
+  readonly itemCode?: string;
+  readonly status: string;
+  readonly validated: boolean;
+  readonly steps: number;
+}
+
+/** Un dossier entier SANS ses réponses — ce que `read_case` rend. */
+export interface CaseToPlay {
+  readonly id: string;
+  readonly externalRef: string;
+  readonly kind: "mini_dp" | "kfp";
+  readonly title: string;
+  readonly vignette: string;
+  readonly chapter?: number;
+  readonly chapterTitle?: string;
+  readonly itemCode?: string;
+  readonly steps: readonly {
+    readonly id: string;
+    readonly position: number;
+    readonly format: string;
+    readonly reveal?: string;
+    readonly stem: string;
+    readonly expected?: number;
+    readonly options: readonly { readonly letter: string; readonly body: string }[];
+  }[];
+}
+
+/** La correction d'une étape : celle d'une question, plus le corrigé du dossier. */
+export interface CaseStepCorrection extends QuestionCorrection {
+  readonly note?: string;
+}
+
+export interface MyCaseResults {
+  readonly caseId: string;
+  readonly externalRef: string;
+  readonly title: string;
+  readonly kind: string;
+  readonly chapter?: number;
+  readonly itemCode?: string;
+  readonly steps: number;
+  readonly answered: number;
+  readonly avgScore?: number;
+  readonly lastAnsweredAt?: string;
+}
+
+export interface CohortCaseResults {
+  readonly caseId: string;
+  readonly externalRef: string;
+  readonly title: string;
+  readonly kind: string;
+  readonly chapter?: number;
+  readonly itemCode?: string;
+  readonly learners: number;
+  readonly attempts: number;
+  readonly avgScore?: number;
+}
+
+export interface ImportQuestionCasesInput {
+  readonly programId: ProgramId;
+  readonly mode: ImportMode;
+  readonly source: string;
+  readonly cases: readonly ImportedCase[];
+  readonly publish: boolean;
+  readonly fileName?: string;
+  readonly fileModifiedAt?: string;
 }
 
 export interface ImportQuestionItemsInput {
@@ -650,6 +728,13 @@ export interface AssessmentRepository {
   questionResultsByTheme(cohortId: string): Promise<readonly ThemeQuestionResults[]>;
   myQuestionResults(enrollmentId: string): Promise<MyQuestionResults>;
   myQuestionResultsByTheme(enrollmentId: string): Promise<readonly MyThemeQuestionResults[]>;
+  /* ---- Dossiers progressifs (mini-DP, KFP) — 15/09 soir ---------------- */
+  importQuestionCases(input: ImportQuestionCasesInput): Promise<ImportReport>;
+  listQuestionCases(programId: ProgramId, source: string): Promise<readonly QuestionCaseRow[]>;
+  readCase(caseId: string): Promise<CaseToPlay>;
+  answerCaseStep(questionId: string, enrollmentId: string, selected: readonly string[]): Promise<CaseStepCorrection>;
+  myCaseResults(enrollmentId: string): Promise<readonly MyCaseResults[]>;
+  caseResultsByCohort(cohortId: string): Promise<readonly CohortCaseResults[]>;
 }
 
 export interface PlacementRepository {

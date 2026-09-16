@@ -37,10 +37,18 @@ import {
   type ImportReport,
   type ImportedQuestion,
 } from "@/domain/questionBankImport";
+import {
+  CASE_PARSE_ISSUE_LABELS_FR,
+  estUnLotDeDossiers,
+  parseDossiers,
+  type ImportedCase,
+} from "@/domain/questionCaseImport";
 import type { ProgramId } from "@/domain/types";
 
 const SOURCE_PAR_DEFAUT = "banque-cardio-2026";
 const TAILLE_DE_LOT = 100;
+/* Un dossier pèse cinq à six questions : des lots plus petits, même durée par appel. */
+const TAILLE_DE_LOT_DOSSIERS = 10;
 
 export function QuestionBankImport({ programId }: { readonly programId: ProgramId }) {
   const dataAccess = useDataAccess();
@@ -51,12 +59,28 @@ export function QuestionBankImport({ programId }: { readonly programId: ProgramI
 
   const [source, setSource] = useState(SOURCE_PAR_DEFAUT);
   const [publish, setPublish] = useState(true);
-  const [fichier, setFichier] = useState<{
-    nom: string;
-    modifieLe: string;
-    questions: readonly ImportedQuestion[];
-    chapters: number;
-  } | null>(null);
+  /*
+   * Un même bouton « Choisir un fichier » accepte une BANQUE DE QUESTIONS
+   * (banque.json : { questions }) ou un LOT DE DOSSIERS progressifs
+   * (minidp_lot1.json : { cases }). C'est le fichier qui dit ce qu'il est.
+   */
+  const [fichier, setFichier] = useState<
+    | {
+        genre: "questions";
+        nom: string;
+        modifieLe: string;
+        questions: readonly ImportedQuestion[];
+        chapters: number;
+      }
+    | {
+        genre: "dossiers";
+        nom: string;
+        modifieLe: string;
+        cases: readonly ImportedCase[];
+        steps: number;
+      }
+    | null
+  >(null);
   const [parseError, setParseError] = useState<string | null>(null);
   const [mesure, setMesure] = useState<ImportReport | null>(null);
   const [resultat, setResultat] = useState<ImportReport | null>(null);
@@ -69,6 +93,25 @@ export function QuestionBankImport({ programId }: { readonly programId: ProgramI
     setMesure(null);
     setResultat(null);
     const text = await file.text();
+    const modifieLe = new Date(file.lastModified).toISOString();
+    if (estUnLotDeDossiers(text)) {
+      const parsed = parseDossiers(text);
+      if (!parsed.ok) {
+        setFichier(null);
+        setParseError(CASE_PARSE_ISSUE_LABELS_FR[parsed.issue]);
+        return;
+      }
+      setFichier({
+        genre: "dossiers",
+        nom: file.name,
+        modifieLe,
+        cases: parsed.cases,
+        steps: parsed.steps,
+      });
+      /* Un lot de dossiers porte son propre nom de source : celui du lot, pas celui des QRM. */
+      if (source === SOURCE_PAR_DEFAUT) setSource(file.name.replace(/\.json$/i, ""));
+      return;
+    }
     const parsed = parseBanque(text);
     if (!parsed.ok) {
       setFichier(null);
@@ -76,8 +119,9 @@ export function QuestionBankImport({ programId }: { readonly programId: ProgramI
       return;
     }
     setFichier({
+      genre: "questions",
       nom: file.name,
-      modifieLe: new Date(file.lastModified).toISOString(),
+      modifieLe,
       questions: parsed.questions,
       chapters: parsed.chapters,
     });
@@ -88,25 +132,46 @@ export function QuestionBankImport({ programId }: { readonly programId: ProgramI
     setError(null);
     setProgress(null);
     try {
-      const items = mode === "delete" ? [] : (fichier?.questions ?? []);
-      const lots = mode === "delete" ? [[]] : chunk(items, TAILLE_DE_LOT);
+      const dossiers = fichier?.genre === "dossiers";
+      const provenance = fichier
+        ? { fileName: fichier.nom, fileModifiedAt: fichier.modifieLe }
+        : {};
       const rapports: ImportReport[] = [];
-      for (let i = 0; i < lots.length; i += 1) {
-        setProgress(`${mode === "delete" ? "Retrait" : "Lot"} ${i + 1} / ${lots.length}…`);
-        rapports.push(
-          await dataAccess.assessments.importQuestionItems({
-            programId,
-            /*
-             * En `replace`, seul le PREMIER lot retire l'existant ; les suivants
-             * s'ajoutent en `merge`, sinon chaque lot effacerait le précédent.
-             */
-            mode: mode === "replace" && i > 0 ? "merge" : mode,
-            source: source.trim(),
-            items: lots[i] ?? [],
-            publish,
-            ...(fichier ? { fileName: fichier.nom, fileModifiedAt: fichier.modifieLe } : {}),
-          }),
-        );
+      if (dossiers) {
+        const lots = mode === "delete" ? [[]] : chunk(fichier.cases, TAILLE_DE_LOT_DOSSIERS);
+        for (let i = 0; i < lots.length; i += 1) {
+          setProgress(`${mode === "delete" ? "Retrait" : "Lot"} ${i + 1} / ${lots.length}…`);
+          rapports.push(
+            await dataAccess.assessments.importQuestionCases({
+              programId,
+              mode: mode === "replace" && i > 0 ? "merge" : mode,
+              source: source.trim(),
+              cases: lots[i] ?? [],
+              publish,
+              ...provenance,
+            }),
+          );
+        }
+      } else {
+        const items = mode === "delete" ? [] : (fichier?.questions ?? []);
+        const lots = mode === "delete" ? [[]] : chunk(items, TAILLE_DE_LOT);
+        for (let i = 0; i < lots.length; i += 1) {
+          setProgress(`${mode === "delete" ? "Retrait" : "Lot"} ${i + 1} / ${lots.length}…`);
+          rapports.push(
+            await dataAccess.assessments.importQuestionItems({
+              programId,
+              /*
+               * En `replace`, seul le PREMIER lot retire l'existant ; les suivants
+               * s'ajoutent en `merge`, sinon chaque lot effacerait le précédent.
+               */
+              mode: mode === "replace" && i > 0 ? "merge" : mode,
+              source: source.trim(),
+              items: lots[i] ?? [],
+              publish,
+              ...provenance,
+            }),
+          );
+        }
       }
       const total = mergeReports(rapports);
       if (mode === "dry_run") setMesure(total);
@@ -143,10 +208,19 @@ export function QuestionBankImport({ programId }: { readonly programId: ProgramI
             {rows.map((r) => (
               <li key={r.source} className="flex flex-wrap items-center gap-2 text-sm">
                 <strong>{r.source}</strong>
-                {r.fileName ? <span className="text-muted-foreground text-xs">{r.fileName}</span> : null}
-                <Badge variant="secondary" className="font-normal">
-                  {r.published} publiée(s)
-                </Badge>
+                {r.fileName ? (
+                  <span className="text-muted-foreground text-xs">{r.fileName}</span>
+                ) : null}
+                {r.published > 0 || r.cases === 0 ? (
+                  <Badge variant="secondary" className="font-normal">
+                    {r.published} publiée(s)
+                  </Badge>
+                ) : null}
+                {r.cases > 0 ? (
+                  <Badge variant="secondary" className="font-normal">
+                    {r.cases} dossier(s)
+                  </Badge>
+                ) : null}
                 {r.drafts > 0 ? (
                   <Badge variant="outline" className="font-normal">
                     {r.drafts} brouillon(s)
@@ -175,7 +249,7 @@ export function QuestionBankImport({ programId }: { readonly programId: ProgramI
       {/* ---- le fichier ---- */}
       <div className="grid gap-3 sm:grid-cols-[1fr_1fr] sm:items-end">
         <div className="space-y-1.5">
-          <Label htmlFor="qb-file">Fichier de la banque (banque.json)</Label>
+          <Label htmlFor="qb-file">Fichier — banque de questions ou lot de dossiers (.json)</Label>
           <Input
             id="qb-file"
             type="file"
@@ -205,8 +279,11 @@ export function QuestionBankImport({ programId }: { readonly programId: ProgramI
       {parseError ? <p className="text-destructive mt-2 text-sm">{parseError}</p> : null}
       {fichier ? (
         <p className="mt-2 text-sm">
-          <strong>{fichier.nom}</strong> — {fichier.questions.length} question(s), {fichier.chapters}{" "}
-          chapitre(s).{" "}
+          <strong>{fichier.nom}</strong> —{" "}
+          {fichier.genre === "dossiers"
+            ? `${fichier.cases.length} dossier(s) progressif(s), ${fichier.steps} étape(s)`
+            : `${fichier.questions.length} question(s), ${fichier.chapters} chapitre(s)`}
+          .{" "}
           <span className="text-muted-foreground">
             {mesure ? "Vérifié : vous pouvez importer." : "Vérifiez-le, puis importez."}
           </span>
@@ -214,7 +291,11 @@ export function QuestionBankImport({ programId }: { readonly programId: ProgramI
       ) : null}
 
       <div className="mt-3 flex items-center gap-2">
-        <Checkbox id="qb-publish" checked={publish} onCheckedChange={(c) => setPublish(c === true)} />
+        <Checkbox
+          id="qb-publish"
+          checked={publish}
+          onCheckedChange={(c) => setPublish(c === true)}
+        />
         <Label htmlFor="qb-publish" className="text-sm font-normal">
           Publier à l'import (sinon : brouillon, invisible des étudiants)
         </Label>
@@ -256,7 +337,9 @@ export function QuestionBankImport({ programId }: { readonly programId: ProgramI
             className="min-h-11"
             disabled={busy !== null || source.trim() === "" || total === 0}
             onClick={() => {
-              if (window.confirm(`Retirer toutes les questions de la source « ${source.trim()} » ?`))
+              if (
+                window.confirm(`Retirer toutes les questions de la source « ${source.trim()} » ?`)
+              )
                 void lancer("delete");
             }}
           >
@@ -266,7 +349,8 @@ export function QuestionBankImport({ programId }: { readonly programId: ProgramI
         <ul className="text-muted-foreground grid gap-1 text-xs sm:grid-cols-2">
           {(Object.keys(IMPORT_MODE_HINTS_FR) as ImportMode[]).map((m) => (
             <li key={m}>
-              <strong className="font-medium">{IMPORT_MODE_LABELS_FR[m]}</strong> — {IMPORT_MODE_HINTS_FR[m]}
+              <strong className="font-medium">{IMPORT_MODE_LABELS_FR[m]}</strong> —{" "}
+              {IMPORT_MODE_HINTS_FR[m]}
             </li>
           ))}
         </ul>
@@ -275,7 +359,9 @@ export function QuestionBankImport({ programId }: { readonly programId: ProgramI
       </div>
 
       {/* ---- le rapport ---- */}
-      {mesure || resultat ? <Rapport rapport={(resultat ?? mesure)!} aBlanc={resultat === null} /> : null}
+      {mesure || resultat ? (
+        <Rapport rapport={(resultat ?? mesure)!} aBlanc={resultat === null} />
+      ) : null}
 
       <div className="border-border mt-5 space-y-1 border-t pt-3">
         <p className="text-muted-foreground text-xs">
@@ -288,11 +374,19 @@ export function QuestionBankImport({ programId }: { readonly programId: ProgramI
   );
 }
 
-function Rapport({ rapport, aBlanc }: { readonly rapport: ImportReport; readonly aBlanc: boolean }) {
+function Rapport({
+  rapport,
+  aBlanc,
+}: {
+  readonly rapport: ImportReport;
+  readonly aBlanc: boolean;
+}) {
   return (
     <div className="border-border mt-4 rounded-md border p-3">
       <p className="text-sm font-medium">
-        {aBlanc ? "Vérification — rien n'a été écrit" : `Importé — ${IMPORT_MODE_LABELS_FR[rapport.mode]}`}
+        {aBlanc
+          ? "Vérification — rien n'a été écrit"
+          : `Importé — ${IMPORT_MODE_LABELS_FR[rapport.mode]}`}
       </p>
       <dl className="mt-2 grid gap-2 text-sm sm:grid-cols-3">
         <div>
@@ -308,7 +402,9 @@ function Rapport({ rapport, aBlanc }: { readonly rapport: ImportReport; readonly
           <dd>{rapport.inserted}</dd>
         </div>
         <div>
-          <dt className="text-muted-foreground text-xs">{aBlanc ? "Seraient mises à jour" : "Mises à jour"}</dt>
+          <dt className="text-muted-foreground text-xs">
+            {aBlanc ? "Seraient mises à jour" : "Mises à jour"}
+          </dt>
           <dd>{rapport.updated}</dd>
         </div>
         <div>
@@ -329,8 +425,8 @@ function Rapport({ rapport, aBlanc }: { readonly rapport: ImportReport; readonly
             {rapport.unmatched_codes.join("  ")}
           </p>
           <p className="text-muted-foreground mt-1 text-xs">
-            Ces questions ne sont pas importées : leur code ne correspond à aucun acquis du référentiel.
-            Créez ou renommez l'acquis, puis relancez.
+            Ces questions ne sont pas importées : leur code ne correspond à aucun acquis du
+            référentiel. Créez ou renommez l'acquis, puis relancez.
           </p>
         </details>
       ) : null}
