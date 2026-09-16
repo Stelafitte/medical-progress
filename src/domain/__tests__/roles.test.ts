@@ -3,6 +3,8 @@ import {
   canValidateEvidence,
   hasRole,
   isRoleScopeConsistent,
+  preferredRoleAssignment,
+  rolesByPreference,
   rolesInContext,
   scopeCovers,
 } from "../roles";
@@ -127,5 +129,61 @@ describe("isRoleScopeConsistent", () => {
         }),
       ),
     ).toBe(false);
+  });
+});
+
+/**
+ * LE ROLE ACTIF PAR DEFAUT NE DOIT PLUS DEPENDRE DE L'ORDRE DE LA BASE.
+ * `listRoleAssignments` ne trie pas : un compte multi-roles retombait sur le
+ * premier rang rendu par PostgreSQL — d'ou « Acces restreint » apres chaque
+ * connexion sur un ecran d'administration.
+ */
+describe("rôle actif par défaut", () => {
+  const admin = assignment({
+    role: "administrator",
+    scope: { kind: "program", programId: "prog-a" },
+  });
+  const supervisor = assignment({
+    role: "placement_supervisor",
+    scope: { kind: "placement", programId: "prog-a", placementId: "pla-1" },
+  });
+  const learner = assignment({
+    role: "learner",
+    scope: { kind: "cohort", programId: "prog-a", cohortId: "coh-1" },
+  });
+
+  it("préfère le rôle le plus large, quel que soit l'ordre reçu", () => {
+    expect(preferredRoleAssignment([supervisor, admin, learner])).toBe(admin);
+    expect(preferredRoleAssignment([learner, supervisor])).toBe(supervisor);
+  });
+
+  it("préfère un rôle qui couvre le programme ouvert à un rôle plus large ailleurs", () => {
+    const adminAilleurs = assignment({
+      role: "administrator",
+      scope: { kind: "program", programId: "prog-b" },
+    });
+    expect(preferredRoleAssignment([adminAilleurs, supervisor], { programId: "prog-a" })).toBe(
+      supervisor,
+    );
+    expect(preferredRoleAssignment([adminAilleurs, supervisor], { programId: "prog-b" })).toBe(
+      adminAilleurs,
+    );
+  });
+
+  it("une portée plateforme couvre tous les programmes", () => {
+    const platformAdmin = assignment({ role: "administrator", scope: { kind: "platform" } });
+    expect(preferredRoleAssignment([supervisor, platformAdmin], { programId: "prog-a" })).toBe(
+      platformAdmin,
+    );
+  });
+
+  it("rend null quand la personne n'a aucun rôle", () => {
+    expect(preferredRoleAssignment([])).toBeNull();
+  });
+
+  it("trie sans modifier la liste d'origine", () => {
+    const source = [supervisor, admin];
+    expect(rolesByPreference(source)).toEqual([admin, supervisor]);
+    expect(source).toEqual([supervisor, admin]);
   });
 });

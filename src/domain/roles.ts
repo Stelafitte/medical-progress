@@ -107,3 +107,60 @@ export function isRoleScopeConsistent(assignment: RoleAssignment): boolean {
       return false;
   }
 }
+
+/**
+ * ORDRE DE PRÉFÉRENCE DES RÔLES — utilisé tant que personne n'a choisi son
+ * rôle actif (« Voir en tant que »).
+ *
+ * ⚠️ `roles[0]` NE VEUT RIEN DIRE : `listRoleAssignments` ne trie pas, donc le
+ * rôle actif par défaut dépendait de l'ordre rendu par PostgreSQL. C'est ce qui
+ * faisait retomber un compte multi-rôles sur « encadrant » à chaque
+ * rechargement, et affichait « Accès restreint » sur des écrans
+ * d'administration auxquels la personne a pourtant droit.
+ */
+const ROLE_PREFERENCE: readonly RoleName[] = [
+  "administrator",
+  "placement_manager",
+  "placement_supervisor",
+  "teacher",
+  "learner",
+];
+
+/**
+ * Rôles triés : d'abord ceux qui couvrent le contexte demandé (le programme
+ * ouvert), puis du plus large au plus étroit. Tri stable — à rang égal l'ordre
+ * d'origine est conservé.
+ */
+export function rolesByPreference(
+  assignments: readonly RoleAssignment[],
+  context: RoleContext = {},
+): readonly RoleAssignment[] {
+  /*
+   * ⚠️ PAS `scopeCovers` ICI. Une portée STAGE n'est couverte par `scopeCovers`
+   * que si le contexte porte un `placementId` : un contexte de simple programme
+   * rend donc `false` pour un encadrant, qui exerce pourtant bien dans ce
+   * programme. `scopeCovers` a raison pour ce qu'elle décide (un droit sur un
+   * stage précis) ; ici la question est seulement « ce rôle s'exerce-t-il dans
+   * le programme ouvert ? ».
+   */
+  const covers = (a: RoleAssignment) =>
+    !context.programId ||
+    a.scope.kind === "platform" ||
+    ("programId" in a.scope && a.scope.programId === context.programId);
+  const rank = (a: RoleAssignment) => {
+    const index = ROLE_PREFERENCE.indexOf(a.role);
+    return index < 0 ? ROLE_PREFERENCE.length : index;
+  };
+  return [...assignments].sort((a, b) => {
+    if (covers(a) !== covers(b)) return covers(a) ? -1 : 1;
+    return rank(a) - rank(b);
+  });
+}
+
+/** Rôle à activer par défaut dans ce contexte, ou null si la personne n'en a aucun. */
+export function preferredRoleAssignment(
+  assignments: readonly RoleAssignment[],
+  context: RoleContext = {},
+): RoleAssignment | null {
+  return rolesByPreference(assignments, context)[0] ?? null;
+}

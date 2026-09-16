@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { ArrowLeft, HeartPulse, Mail, Menu, RotateCcw, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,7 @@ import { ProgramSwitcher } from "@/components/program-switcher";
 import { isRouteWithinSpaces, landingRouteFor, navSpacesFor } from "@/components/layout/navigation";
 import { useSession } from "@/application/session";
 import { initials } from "@/lib/initials";
-import { ROLE_LABELS_FR, roleAssignmentKey } from "@/domain/roles";
+import { ROLE_LABELS_FR, roleAssignmentKey, rolesByPreference } from "@/domain/roles";
 import { IS_DEV } from "@/lib/env";
 import type { PersonId, Program, RoleAssignment } from "@/domain/types";
 
@@ -140,6 +140,46 @@ export function AppShell() {
     if (isRouteWithinSpaces(allSpaces, pathname)) return;
     void navigate({ to: landingRouteFor(allSpaces), replace: true });
   }, [allSpaces, navigate, pathname, pendingLanding]);
+
+  /**
+   * LE ROLE ACTIF SUIT LA PAGE OUVERTE.
+   *
+   * Une personne qui cumule plusieurs roles n'en porte qu'un a la fois. Quand la
+   * page ouverte -- un favori, un lien recu, la page rechargee apres la
+   * connexion -- n'appartient a aucun espace du role actif mais releve d'un
+   * AUTRE de ses roles reels, on met le bon role au lieu d'afficher « Acces
+   * restreint » sur un ecran auquel la personne a droit.
+   *
+   * Un choix explicite gagne toujours : `adapteFor` retient le chemin deja
+   * arbitre, et le selecteur « Voir en tant que » l'y inscrit lui-meme.
+   */
+  const adapteFor = useRef<string | null>(null);
+  const adaptationKey = `${pathname}|${activeProgram.id}`;
+  useEffect(() => {
+    if (isSimulated || pendingLanding) return;
+    if (adapteFor.current === adaptationKey) return;
+    if (isRouteWithinSpaces(allSpaces, pathname)) return;
+    const granting = rolesByPreference(roles, { programId: activeProgram.id }).find((role) =>
+      isRouteWithinSpaces(
+        navSpacesFor([role], activeProgram.id, activeProgram.config, activeProgram.code),
+        pathname,
+      ),
+    );
+    if (!granting) return;
+    if (activeRole && roleAssignmentKey(granting) === roleAssignmentKey(activeRole)) return;
+    adapteFor.current = adaptationKey;
+    setActiveRole(granting);
+  }, [
+    activeProgram,
+    activeRole,
+    adaptationKey,
+    allSpaces,
+    isSimulated,
+    pathname,
+    pendingLanding,
+    roles,
+    setActiveRole,
+  ]);
 
   const switchPerson = (id: PersonId) => {
     setActivePersonId(id);
@@ -378,6 +418,8 @@ export function AppShell() {
                           value={activeRole ? roleAssignmentKey(activeRole) : ""}
                           onValueChange={(value) => {
                             const next = roles.find((r) => roleAssignmentKey(r) === value) ?? null;
+                            /* Choix explicite : plus aucune adaptation automatique ici. */
+                            adapteFor.current = adaptationKey;
                             setActiveRole(next);
                             setPendingLanding(true);
                           }}

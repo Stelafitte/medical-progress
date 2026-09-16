@@ -23,8 +23,10 @@ import {
 import * as fx from "@/infrastructure/mock/fixtures";
 import {
   clearDemoSession,
+  readActiveRoleKey,
   readDemoSession,
   reconcileDemoSession,
+  writeActiveRoleKey,
   writeDemoSession,
 } from "@/application/sessionPersistence";
 import {
@@ -38,7 +40,7 @@ import {
   canManagePlacementCalendar,
   canValidatePlacement,
 } from "@/domain/access";
-import { rolesInContext, roleAssignmentKey } from "@/domain/roles";
+import { preferredRoleAssignment, rolesInContext, roleAssignmentKey } from "@/domain/roles";
 import type {
   Enrollment,
   Person,
@@ -251,6 +253,13 @@ function SupabaseSessionProvider({ children }: { children: ReactNode }) {
       (program) => !HIDDEN_PROGRAM_CODES.includes(program.code),
     );
     setState({ person, programs, enrollments, roles });
+    /*
+     * RÔLE ACTIF : on reprend celui que la personne a choisi la dernière fois.
+     * Sans cela il repartait de `roles[0]`, c'est-à-dire de l'ordre rendu par la
+     * base : un compte multi-rôles retombait sur « encadrant » à chaque
+     * connexion et lisait « Accès restreint » sur ses propres écrans.
+     */
+    setActiveRoleKeyState((current) => current ?? readActiveRoleKey(person.id));
     setActiveProgramId((current) =>
       current && programs.some((program) => program.id === current) ? current : programs[0]!.id,
     );
@@ -268,12 +277,20 @@ function SupabaseSessionProvider({ children }: { children: ReactNode }) {
    * Change le rôle actif. Si ce rôle est rattaché à un programme précis, le
    * programme actif est aligné dessus (une portée plateforme laisse le choix libre).
    */
-  const setActiveRole = useCallback((role: RoleAssignment | null) => {
-    setActiveRoleKeyState(role ? roleAssignmentKey(role) : null);
-    if (role && "programId" in role.scope) {
-      setActiveProgramId(role.scope.programId);
-    }
-  }, []);
+  const personId = state?.person.id;
+  const setActiveRole = useCallback(
+    (role: RoleAssignment | null) => {
+      const key = role ? roleAssignmentKey(role) : null;
+      setActiveRoleKeyState(key);
+      /* Le choix survit au rechargement : c'est lui, et non l'ordre de la base,
+         qui décide du rôle actif à la prochaine connexion. */
+      if (personId) writeActiveRoleKey(personId, key);
+      if (role && "programId" in role.scope) {
+        setActiveProgramId(role.scope.programId);
+      }
+    },
+    [personId],
+  );
 
   useEffect(() => {
     void load().catch(handleLoadError);
@@ -294,14 +311,17 @@ function SupabaseSessionProvider({ children }: { children: ReactNode }) {
     );
     /**
      * Une personne peut cumuler plusieurs rôles réels (ex. Admin Plateforme +
-     * Enseignant). Par défaut on affiche le premier ; l'utilisateur peut
+     * Enseignant). Par défaut on active le rôle le plus large qui couvre le
+     * programme ouvert — JAMAIS `roles[0]`, dont l'ordre vient de la base et ne
+     * veut rien dire. L'utilisateur peut
      * ensuite choisir un rôle actif ("voir en tant que") via le sélecteur de
      * l'en-tête. Les droits affichés ne portent alors que sur CE rôle, jamais
      * sur l'union de tous ses rôles — cohérence avec la règle "aucun rôle
      * global implicite".
      */
     const activeRole =
-      state.roles.find((r) => roleAssignmentKey(r) === activeRoleKey) ?? state.roles[0] ?? null;
+      state.roles.find((r) => roleAssignmentKey(r) === activeRoleKey) ??
+      preferredRoleAssignment(state.roles, { programId: activeProgram.id });
     const rolesForAccess = activeRole ? [activeRole] : state.roles;
     const rolesInActiveProgram = rolesInContext(rolesForAccess, { programId: activeProgram.id });
     return {
@@ -340,6 +360,8 @@ function SupabaseSessionProvider({ children }: { children: ReactNode }) {
       },
       signOut: async () => {
         if (!client) return;
+        /* Le rôle choisi ne survit pas à la déconnexion. */
+        writeActiveRoleKey(state.person.id, null);
         const { error: signOutError } = await client.auth.signOut();
         if (signOutError) throw new Error(signOutError.message);
       },
