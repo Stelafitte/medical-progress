@@ -68,6 +68,9 @@ describe("import des dossiers progressifs", () => {
       correct: true,
       explanation: "",
       flag: "",
+      /* La source du drapeau voyage avec lui depuis le 16/09 — voir la migration
+         20260916180000 : la base refuse un drapeau non documenté. */
+      flag_source: "",
     });
     expect(c.steps[0]!.answer_note).toBe("Forte.");
   });

@@ -24,6 +24,13 @@ export interface ImportedCaseStep {
     readonly correct: boolean;
     readonly explanation: string;
     readonly flag: string;
+    /**
+     * ⚠️ LA SOURCE VOYAGE AVEC LE DRAPEAU (16/09). La base refuse un drapeau
+     * non documenté (`question_options_flag_documented`) : sans ce champ, UNE
+     * proposition signalée « inacceptable » dans le lot 1 faisait refuser les
+     * 636 autres.
+     */
+    readonly flag_source: string;
   }[];
 }
 
@@ -90,6 +97,8 @@ export function parseDossiers(
     t?: unknown;
     c?: unknown;
     flag?: unknown;
+    flag_source?: unknown;
+    source?: unknown;
     letter?: unknown;
     text?: unknown;
     body?: unknown;
@@ -152,6 +161,7 @@ export function parseDossiers(
           correct: o.c === true || o.correct === true,
           explanation: texte(o.explanation),
           flag: texte(o.flag),
+          flag_source: texte(o.flag_source) || texte(o.source),
         })),
       };
     });
