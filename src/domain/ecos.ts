@@ -17,6 +17,7 @@
  * jour où le moteur ECOS interne existe (décision 4), ce fichier disparaît au
  * profit d'une table ; en attendant, une station de plus est une ligne de plus.
  */
+import type { AssessmentModality, CohortAssessmentLink } from "@/domain/assessmentModality";
 import type { EnrollmentId, ProgramId } from "@/domain/types";
 
 export interface EcosExternalStation {
@@ -117,4 +118,46 @@ export interface RecordEcosExternalRunInput {
 export function ecosRunPercent(run: Pick<EcosExternalRun, "score" | "maxScore">): number {
   if (run.maxScore <= 0) return 0;
   return Math.round((run.score / run.maxScore) * 100);
+}
+
+/**
+ * L'ECOS SIMULÉ EST MIS À DISPOSITION, STATION PAR STATION (16/09).
+ *
+ * Jusqu'ici l'écran apprenant affichait les cinq stations à tout inscrit, sans
+ * que personne ne les ait ouvertes — Stef, le 16/09 : « l'Admin les coche ou
+ * pas, et ils apparaissent ou pas pour l'Apprenant, et après que l'Admin ait
+ * sélectionné lesquels ».
+ *
+ * Une modalité d'ECOS SIMULÉ, c'est un ECOS **en ligne** : l'ECOS de fin de
+ * stage et les ECOS nationaux à blanc se passent en présentiel et ne se jouent
+ * pas dans le hub.
+ *
+ * ⚠️ UNE CLÉ INCONNUE DU CATALOGUE EST IGNORÉE. La base garde des clés de
+ * station, le catalogue vit dans ce fichier : retirer une station du code ne
+ * doit pas afficher une ligne vide chez l'étudiant.
+ */
+export function estEcosSimule(modality: Pick<AssessmentModality, "subtype" | "mode">): boolean {
+  return modality.subtype === "ecos" && modality.mode === "online";
+}
+
+/**
+ * Les stations réellement offertes à l'apprenant : celles que son équipe a
+ * cochées pour sa promotion. Aucune sélection = aucune station.
+ *
+ * `isOpen` n'entre PAS dans la règle : aucun écran d'ECOS ne le pose, et la
+ * sélection dit déjà tout — ce qui est coché est offert. Le jour où un
+ * interrupteur ouvert/fermé apparaît pour l'ECOS, c'est ici qu'il se lit.
+ */
+export function ecosStationsOffertes(
+  modalities: readonly AssessmentModality[],
+  links: readonly CohortAssessmentLink[],
+): readonly EcosExternalStation[] {
+  const modalitesEcos = new Set(modalities.filter(estEcosSimule).map((m) => m.id));
+  if (modalitesEcos.size === 0) return [];
+  const cles = new Set<string>();
+  for (const lien of links) {
+    if (!modalitesEcos.has(lien.modalityId)) continue;
+    for (const cle of lien.ecosStations ?? []) cles.add(cle);
+  }
+  return ECOS_EXTERNAL_STATIONS.filter((station) => cles.has(station.key));
 }

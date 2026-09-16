@@ -29,12 +29,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SectionHeading } from "@/components/section-heading";
-import { MesEvaluations } from "@/features/evaluations/MesEvaluations";
+import { MesEvaluations, useMesEvaluations } from "@/features/evaluations/MesEvaluations";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  ECOS_EXTERNAL_STATIONS,
   ecosRunPercent,
+  ecosStationsOffertes,
   type EcosExternalRun,
   type EcosExternalStation,
 } from "@/domain/ecos";
@@ -73,12 +73,33 @@ export function EcosVirtuelView() {
     return map;
   }, [passages]);
 
+  /*
+   * LES STATIONS NE SONT PLUS OFFERTES D'OFFICE (Stef, 16/09). L'écran
+   * n'affiche que ce que l'équipe a mis à disposition de CETTE promotion —
+   * même requête que « Mes évaluations », même clé, aucune requête de plus.
+   *
+   * L'HISTORIQUE, LUI, RESTE. Un passage déjà déclaré appartient à l'étudiant :
+   * retirer une station de la sélection ferme la porte, elle n'efface pas ce
+   * qu'il a rapporté.
+   */
+  const { data: mesEvaluations } = useMesEvaluations();
+  const stations = useMemo(
+    () =>
+      mesEvaluations ? ecosStationsOffertes(mesEvaluations.modalities, mesEvaluations.links) : [],
+    [mesEvaluations],
+  );
+  const aDesPassages = (passages ?? []).length > 0;
+
   return (
     <div className="space-y-8">
       <SectionHeading
         level={1}
         title="Mes évaluations"
-        description="Ce que votre promotion rencontrera pendant le stage, et quand. En bas, les stations ECOS virtuelles à jouer dans ChatGPT, dont vous rapportez ici la grille de notation."
+        description={
+          stations.length > 0
+            ? "Ce que votre promotion rencontrera pendant le stage, et quand. En bas, les stations ECOS virtuelles à jouer dans ChatGPT, dont vous rapportez ici la grille de notation."
+            : "Ce que votre promotion rencontrera pendant le stage, et quand."
+        }
       />
 
       {/*
@@ -87,9 +108,13 @@ export function EcosVirtuelView() {
       */}
       <MesEvaluations />
 
-      <Consignes />
+      {stations.length > 0 ? <Consignes /> : null}
 
-      <section aria-labelledby="stations-titre" className="space-y-3">
+      <section
+        aria-labelledby="stations-titre"
+        className="space-y-3"
+        hidden={stations.length === 0}
+      >
         <div>
           <p className={EYEBROW}>ECOS virtuel</p>
           <h2 id="stations-titre" className="text-xl font-semibold">
@@ -103,7 +128,7 @@ export function EcosVirtuelView() {
           </p>
         ) : null}
         <ul className="space-y-3">
-          {ECOS_EXTERNAL_STATIONS.map((station) => {
+          {stations.map((station) => {
             const dernier = dernierPar.get(station.key);
             return (
               <li
@@ -163,7 +188,11 @@ export function EcosVirtuelView() {
         </ul>
       </section>
 
-      <section aria-labelledby="passages-titre" className="space-y-3">
+      <section
+        aria-labelledby="passages-titre"
+        className="space-y-3"
+        hidden={stations.length === 0 && !aDesPassages}
+      >
         <div>
           <p className={EYEBROW}>Historique</p>
           <h2 id="passages-titre" className="text-xl font-semibold">

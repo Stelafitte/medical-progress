@@ -288,4 +288,10 @@ export interface CohortAssessmentLink {
   readonly questionSource?: string;
   /** Pour un QCM : « je m'évalue maintenant » autorisé. */
   readonly freeAccess: boolean;
+  /**
+   * Pour un ECOS simulé : les clés de stations offertes à cette promotion
+   * (`src/domain/ecos.ts`). Absent ou vide = aucune station, l'apprenant ne
+   * voit rien. (16/09)
+   */
+  readonly ecosStations?: readonly string[];
 }

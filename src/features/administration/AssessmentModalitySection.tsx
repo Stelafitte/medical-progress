@@ -46,6 +46,8 @@ import {
 import { catalogueRows, type CatalogueRow } from "@/domain/assessmentCatalogue";
 import { AssessmentModalityForm } from "@/features/administration/AssessmentModalityForm";
 import { QcmPilotage } from "@/features/administration/QcmPilotage";
+import { EcosPilotage } from "@/features/administration/EcosPilotage";
+import { estEcosSimule } from "@/domain/ecos";
 import type { Cohort, OutcomeTheme, ProgramId } from "@/domain/types";
 import type { QuestionBankRow } from "@/application/ports/repositories";
 
@@ -298,6 +300,8 @@ function LigneModalite({
   const [error, setError] = useState<string | null>(null);
   const enAttente = cochee !== utilisee;
   const estQcm = row.modality?.subtype === "qcm";
+  /* Un ECOS SIMULÉ est un ECOS en ligne : il se pilote station par station. */
+  const estEcos = row.modality !== undefined && estEcosSimule(row.modality);
   const depliable = utilisee && row.modality !== undefined && !enAttente;
 
   /*
@@ -307,9 +311,9 @@ function LigneModalite({
    */
   const utiliseeAvant = useRef(utilisee);
   useEffect(() => {
-    if (!utiliseeAvant.current && utilisee && estQcm) setOpen(true);
+    if (!utiliseeAvant.current && utilisee && (estQcm || estEcos)) setOpen(true);
     utiliseeAvant.current = utilisee;
-  }, [utilisee, estQcm]);
+  }, [utilisee, estQcm, estEcos]);
 
   const modality = row.modality;
   const surMesure = row.entry === undefined;
@@ -412,6 +416,16 @@ function LigneModalite({
             {link.freeAccess && link.questionSource ? " · accès libre" : ""}
           </Badge>
         ) : null}
+        {utilisee && estEcos && link ? (
+          <Badge
+            variant={(link.ecosStations?.length ?? 0) > 0 ? "secondary" : "outline"}
+            className="font-normal"
+          >
+            {(link.ecosStations?.length ?? 0) > 0
+              ? `${link.ecosStations?.length} station(s)`
+              : "aucune station"}
+          </Badge>
+        ) : null}
         {depliable ? (
           <Button
             type="button"
@@ -481,7 +495,15 @@ function LigneModalite({
             )}
           </div>
 
-          {estQcm && link ? (
+          {estEcos && link ? (
+            <EcosPilotage
+              cohort={cohort}
+              modality={modality}
+              link={link}
+              editable={editable}
+              onChanged={onChanged}
+            />
+          ) : estQcm && link ? (
             <QcmPilotage
               programId={programId}
               cohort={cohort}

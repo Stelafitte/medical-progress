@@ -437,6 +437,13 @@ export interface SetCohortAssessmentPilotageInput {
   readonly freeAccess: boolean;
 }
 
+/** Les stations d'ECOS simulé offertes à une promotion (16/09). Liste vide = aucune. */
+export interface SetCohortAssessmentEcosInput {
+  readonly cohortId: string;
+  readonly assessmentModalityId: string;
+  readonly stationKeys: readonly string[];
+}
+
 /** Une banque telle que l'écran la présente : provenance et comptes. */
 export interface QuestionBankRow {
   readonly source: string;
@@ -702,6 +709,8 @@ export interface AssessmentRepository {
   ): Promise<void>;
   /* ---- Pilotage des QCM (15/09) --------------------------------------- */
   setCohortAssessmentPilotage(input: SetCohortAssessmentPilotageInput): Promise<void>;
+  /* ---- Pilotage de l'ECOS simulé (16/09) ------------------------------- */
+  setCohortAssessmentEcos(input: SetCohortAssessmentEcosInput): Promise<void>;
   /** Les items et sous-items d'une banque, avec leurs comptes — pour composer un filtre. */
   listQuestionSections(programId: ProgramId, source: string): Promise<readonly QuestionSectionRow[]>;
   /** Combien de questions publiées répondent au filtre — avant de lancer. */

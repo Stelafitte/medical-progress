@@ -659,6 +659,17 @@ export const mockDataAccess: DataAccess = {
         );
         return ok(undefined);
       },
+      setCohortAssessmentEcos: (input) => {
+        links = links.map((l) =>
+          l.cohortId === input.cohortId && l.modalityId === input.assessmentModalityId
+            ? {
+                ...l,
+                ...(input.stationKeys.length > 0 ? { ecosStations: input.stationKeys } : {}),
+              }
+            : l,
+        );
+        return ok(undefined);
+      },
       countQuestions: () => ok(0),
       pickQuestions: () => ok([]),
       listQuestionSections: () => ok([]),

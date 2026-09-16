@@ -78,6 +78,23 @@ export const CATALOGUE_MODALITES: readonly CatalogueEntry[] = [
     usage: "self_assessment",
     notes: "Mobilisation progressive des connaissances et génération d'hypothèses.",
   },
+  /*
+   * L'ECOS SIMULÉ EST UNE AUTO-ÉVALUATION (Stef, 16/09) : « il n'y aura pas
+   * d'ECOS simulé en ECOS de fin de stage, les ECOS de fin de stage sont en
+   * présentiel ». Il était rangé sous « Examen de validation », donc invisible
+   * dans le paragraphe Auto-évaluation du Concepteur — alors que ses stations
+   * s'affichaient déjà chez l'apprenant. La migration 20260916120000 reclasse
+   * de la même façon les lignes déjà créées en base.
+   */
+  {
+    key: "ecos-simule",
+    name: "ECOS simulé",
+    subtype: "ecos",
+    mode: "online",
+    usage: "self_assessment",
+    notes:
+      "Stations jouées dans ChatGPT, hors présentiel ; l'étudiant rapporte sa grille. L'équipe choisit les stations offertes à la promotion.",
+  },
 
   /* ------------------------- Ce qu'on lui demande ------------------------- */
   {
@@ -137,14 +154,6 @@ export const CATALOGUE_MODALITES: readonly CatalogueEntry[] = [
     mode: "in_person",
     usage: "validation_exam",
     notes: "Stations chronométrées, patients standardisés, grille par station.",
-  },
-  {
-    key: "ecos-simule",
-    name: "ECOS simulé",
-    subtype: "ecos",
-    mode: "online",
-    usage: "validation_exam",
-    notes: "Mise en situation standardisée jouée hors présentiel, grille rapportée.",
   },
   {
     key: "qcm-sur-table",

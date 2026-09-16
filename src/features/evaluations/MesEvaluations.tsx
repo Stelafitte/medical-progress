@@ -46,6 +46,7 @@ import {
   type AssessmentUsage,
   type CohortAssessmentLink,
 } from "@/domain/assessmentModality";
+import { ecosStationsOffertes } from "@/domain/ecos";
 import type { OutcomeTheme } from "@/domain/types";
 
 const CE_QUE_CA_ENGAGE: Record<AssessmentUsage, string> = {
@@ -57,7 +58,12 @@ const CE_QUE_CA_ENGAGE: Record<AssessmentUsage, string> = {
 
 const EYEBROW = "text-muted-foreground text-[11px] font-semibold tracking-[0.14em] uppercase";
 
-function useMesEvaluations() {
+/**
+ * ⚠️ MÊME CLÉ, MÊME REQUÊTE. `EcosVirtuelView` appelle ce hook pour savoir
+ * quelles stations sont offertes à la promotion : la clé étant identique, il ne
+ * part AUCUNE requête de plus et les deux écrans ne peuvent pas diverger.
+ */
+export function useMesEvaluations() {
   const data = useDataAccess();
   const { activeProgram, activeEnrollment } = useSession();
   const cohortId = activeEnrollment?.cohortId ?? null;
@@ -497,8 +503,7 @@ export function MesEvaluations() {
           description="Ce que votre promotion rencontrera pendant le stage."
         >
           <EmptyState>
-            Votre équipe pédagogique n'a pas encore défini d'évaluation pour votre promotion. L'ECOS
-            virtuel ci-dessous reste ouvert.
+            Pas d'évaluation ou auto-évaluation programmée dans votre parcours.
           </EmptyState>
         </PanelCard>
       ) : (
@@ -575,7 +580,13 @@ export function MesEvaluations() {
         </>
       )}
 
-      <p className={EYEBROW}>ECOS virtuel — à jouer depuis le hub</p>
+      {/*
+        L'annonce de l'ECOS ne s'affiche que s'il y a quelque chose à annoncer :
+        les stations sont celles que l'équipe a mises à disposition (16/09).
+      */}
+      {ecosStationsOffertes(data.modalities, data.links).length > 0 ? (
+        <p className={EYEBROW}>ECOS virtuel — à jouer depuis le hub</p>
+      ) : null}
     </div>
   );
 }
