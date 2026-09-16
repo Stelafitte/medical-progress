@@ -717,7 +717,12 @@ export interface AssessmentRepository {
   countQuestions(filter: QuestionFilter): Promise<number>;
   /** N identifiants tirés au sort dans la banque, filtrés. */
   pickQuestions(filter: QuestionFilter, count: number): Promise<readonly string[]>;
-  readQuestion(questionId: string): Promise<QuestionToAnswer>;
+  /**
+   * L'inscription mélange l'ordre des propositions, de façon stable par
+   * (question, inscription) — voir 20260916160000. Sans elle (relecture par
+   * l'équipe), l'ordre du fichier est conservé.
+   */
+  readQuestion(questionId: string, enrollmentId?: string): Promise<QuestionToAnswer>;
   answerQuestion(
     questionId: string,
     enrollmentId: string,
@@ -740,7 +745,7 @@ export interface AssessmentRepository {
   /* ---- Dossiers progressifs (mini-DP, KFP) — 15/09 soir ---------------- */
   importQuestionCases(input: ImportQuestionCasesInput): Promise<ImportReport>;
   listQuestionCases(programId: ProgramId, source: string): Promise<readonly QuestionCaseRow[]>;
-  readCase(caseId: string): Promise<CaseToPlay>;
+  readCase(caseId: string, enrollmentId?: string): Promise<CaseToPlay>;
   answerCaseStep(questionId: string, enrollmentId: string, selected: readonly string[]): Promise<CaseStepCorrection>;
   myCaseResults(enrollmentId: string): Promise<readonly MyCaseResults[]>;
   caseResultsByCohort(cohortId: string): Promise<readonly CohortCaseResults[]>;

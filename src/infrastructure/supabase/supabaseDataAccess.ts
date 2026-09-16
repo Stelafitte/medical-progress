@@ -2379,8 +2379,11 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
         assertNoSupabaseError(error);
         return (data ?? []) as string[];
       },
-      async readQuestion(questionId: string) {
-        const { data, error } = await client.rpc("read_question", { p_question_id: questionId });
+      async readQuestion(questionId: string, enrollmentId?: string) {
+        const { data, error } = await client.rpc("read_question", {
+          p_question_id: questionId,
+          p_enrollment_id: enrollmentId ?? null,
+        });
         assertNoSupabaseError(error);
         const raw = data as {
           id: string;
@@ -2583,8 +2586,11 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
           }),
         );
       },
-      async readCase(caseId: string) {
-        const { data, error } = await client.rpc("read_case", { p_case_id: caseId });
+      async readCase(caseId: string, enrollmentId?: string) {
+        const { data, error } = await client.rpc("read_case", {
+          p_case_id: caseId,
+          p_enrollment_id: enrollmentId ?? null,
+        });
         assertNoSupabaseError(error);
         if (!data) throw new Error("Ce dossier n'est pas ouvert.");
         const raw = data as {
