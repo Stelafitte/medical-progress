@@ -14,10 +14,19 @@
  *     dit en clair plutôt que de laisser croire à un oubli.
  *
  * Le catalogue des stations vit dans `src/domain/ecos.ts` (décision du 13/09) ;
- * la base ne garde que des CLÉS. Chaque case s'enregistre AUSSITÔT : un
- * interrupteur qui attend un bouton plus bas trompe.
+ * la base ne garde que des CLÉS.
+ *
+ * ⚠️ LA CASE OBÉIT AU DOIGT, PAS AU RÉSEAU (corrigé le 16/09 sur constat de
+ * Stef : « la case montre un sens interdit, il faut cliquer plusieurs fois »).
+ * Chaque clic enregistrait, et TOUT l'écran d'administration se rechargeait
+ * derrière — une trentaine de requêtes — pendant que les cases restaient
+ * désactivées : le curseur affichait un sens interdit et les clics de
+ * l'intervalle étaient perdus. Désormais l'affichage suit la sélection LOCALE,
+ * l'enregistrement part derrière, et si une écriture est déjà en vol la
+ * suivante attend son tour — la dernière voulue gagne. Rien n'est jamais
+ * désactivé ; en cas d'échec, l'écran revient à ce que dit la base et le dit.
  */
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ExternalLink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -41,36 +50,72 @@ export function EcosPilotage({
   readonly onChanged?: (() => void) | undefined;
 }) {
   const dataAccess = useDataAccess();
-  const [busy, setBusy] = useState(false);
+  const [selection, setSelection] = useState<readonly string[]>(link.ecosStations ?? []);
+  const [enCours, setEnCours] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const offertes = new Set(link.ecosStations ?? []);
+  const enVol = useRef(false);
+  const suivante = useRef<readonly string[] | null>(null);
 
-  async function enregistrer(cles: readonly string[]) {
-    setBusy(true);
+  /*
+   * Ce que dit la base reprend la main QUAND PLUS RIEN N'EST EN VOL. Sans cette
+   * garde, la relecture déclenchée par un enregistrement écraserait un clic
+   * plus récent que la requête en cours.
+   */
+  const cleServeur = (link.ecosStations ?? []).join("|");
+  useEffect(() => {
+    if (enVol.current) return;
+    setSelection(cleServeur === "" ? [] : cleServeur.split("|"));
+  }, [cleServeur]);
+
+  async function envoyer(cles: readonly string[]) {
+    if (enVol.current) {
+      suivante.current = cles;
+      return;
+    }
+    enVol.current = true;
+    setEnCours(true);
     setError(null);
     try {
-      await dataAccess.assessments.setCohortAssessmentEcos({
-        cohortId: cohort.id,
-        assessmentModalityId: modality.id,
-        stationKeys: cles,
-      });
+      let aEnvoyer: readonly string[] | null = cles;
+      while (aEnvoyer) {
+        await dataAccess.assessments.setCohortAssessmentEcos({
+          cohortId: cohort.id,
+          assessmentModalityId: modality.id,
+          stationKeys: aEnvoyer,
+        });
+        aEnvoyer = suivante.current;
+        suivante.current = null;
+      }
+      enVol.current = false;
+      /* La relecture vient APRÈS la dernière écriture : le badge de la ligne suit. */
       onChanged?.();
     } catch (reason) {
+      enVol.current = false;
+      suivante.current = null;
       setError(reason instanceof Error ? reason.message : "Enregistrement impossible.");
+      setSelection(link.ecosStations ?? []);
     } finally {
-      setBusy(false);
+      setEnCours(false);
     }
   }
 
   function basculer(cle: string, voulue: boolean) {
-    const suivantes = ECOS_EXTERNAL_STATIONS.filter((s) =>
-      s.key === cle ? voulue : offertes.has(s.key),
+    const cles = ECOS_EXTERNAL_STATIONS.filter((s) =>
+      s.key === cle ? voulue : selection.includes(s.key),
     ).map((s) => s.key);
-    void enregistrer(suivantes);
+    setSelection(cles);
+    void envoyer(cles);
   }
 
-  const toutesCochees = offertes.size === ECOS_EXTERNAL_STATIONS.length;
+  function toutBasculer() {
+    const cles =
+      selection.length === ECOS_EXTERNAL_STATIONS.length
+        ? []
+        : ECOS_EXTERNAL_STATIONS.map((s) => s.key);
+    setSelection(cles);
+    void envoyer(cles);
+  }
 
   return (
     <div className="space-y-3">
@@ -79,20 +124,20 @@ export function EcosPilotage({
           Stations mises à disposition{" "}
           <span className="text-muted-foreground font-normal">— pour cette promotion</span>
         </p>
-        {editable ? (
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            className="min-h-9"
-            disabled={busy}
-            onClick={() =>
-              void enregistrer(toutesCochees ? [] : ECOS_EXTERNAL_STATIONS.map((s) => s.key))
-            }
-          >
-            {toutesCochees ? "Tout décocher" : "Tout cocher"}
-          </Button>
-        ) : null}
+        <div className="flex items-center gap-2">
+          {enCours ? <span className="text-muted-foreground text-xs">Enregistrement…</span> : null}
+          {editable ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="min-h-9"
+              onClick={toutBasculer}
+            >
+              {selection.length === ECOS_EXTERNAL_STATIONS.length ? "Tout décocher" : "Tout cocher"}
+            </Button>
+          ) : null}
+        </div>
       </div>
 
       <ul className="space-y-2">
@@ -106,8 +151,8 @@ export function EcosPilotage({
               <Checkbox
                 id={id}
                 className="mt-0.5"
-                checked={offertes.has(station.key)}
-                disabled={!editable || busy}
+                checked={selection.includes(station.key)}
+                disabled={!editable}
                 onCheckedChange={(v) => basculer(station.key, v === true)}
               />
               <label htmlFor={id} className="min-w-0 flex-1 cursor-pointer space-y-0.5">
@@ -128,7 +173,7 @@ export function EcosPilotage({
         })}
       </ul>
 
-      {offertes.size === 0 ? (
+      {selection.length === 0 ? (
         <p className="text-muted-foreground text-xs">
           Aucune station cochée : l'apprenant lit « Pas d'évaluation ou auto-évaluation programmée
           dans votre parcours. » et ne voit aucune station.
@@ -136,7 +181,7 @@ export function EcosPilotage({
       ) : (
         <p className="text-muted-foreground text-xs">
           <Badge variant="secondary" className="font-normal">
-            {offertes.size} station(s)
+            {selection.length} station(s)
           </Badge>{" "}
           offerte(s) à cette promotion. L'apprenant les joue dans ChatGPT et rapporte sa grille.
         </p>

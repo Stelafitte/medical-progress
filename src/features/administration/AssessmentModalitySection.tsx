@@ -22,7 +22,7 @@
  * Le même composant sert l'onglet « Évaluations », le Concepteur (étape 1) et
  * le pilotage (lecture seule, promotion imposée).
  */
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { CalendarDays, ChevronDown, ChevronRight, Pencil, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -269,6 +269,8 @@ function LigneModalite({
   utilisee,
   cochee,
   onToggle,
+  ouverte,
+  onOuvrir,
   sessions,
   link,
   banques,
@@ -284,6 +286,18 @@ function LigneModalite({
   /** Ce que la CASE dit : l'intention, enregistrée ou pas encore. */
   readonly cochee: boolean;
   readonly onToggle: (rowId: string, voulue: boolean) => void;
+  /**
+   * ⚠️ L'OUVERTURE EST PORTÉE PAR LE BLOC, PAS PAR LA LIGNE (16/09).
+   *
+   * Cocher une entrée de catalogue puis enregistrer CHANGE L'IDENTIFIANT de la
+   * ligne (`catalogue:ecos-simule` devient l'identifiant réel de la modalité) :
+   * React démonte le composant et en remonte un autre, donc tout état local —
+   * et tout `useRef` qui surveillait « vient-elle d'être rattachée ? » — repart
+   * de zéro. C'est pour cela que le dépliage automatique ne se produisait pas.
+   * Le bloc, lui, retient une clé stable qui survit à la création.
+   */
+  readonly ouverte: boolean;
+  readonly onOuvrir: (ouverte: boolean) => void;
   readonly sessions: readonly AssessmentSession[];
   /** Le lien promotion ↔ modalité, quand il existe : il porte le pilotage. */
   readonly link: CohortAssessmentLink | undefined;
@@ -294,7 +308,6 @@ function LigneModalite({
 }) {
   const dataAccess = useDataAccess();
   const cohortId = cohort.id;
-  const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -302,18 +315,12 @@ function LigneModalite({
   const estQcm = row.modality?.subtype === "qcm";
   /* Un ECOS SIMULÉ est un ECOS en ligne : il se pilote station par station. */
   const estEcos = row.modality !== undefined && estEcosSimule(row.modality);
-  const depliable = utilisee && row.modality !== undefined && !enAttente;
-
   /*
-   * Stef (15/09) : « je clique sur QCM d'entraînement et je vois les banques ».
-   * Quand l'enregistrement vient de rattacher un QCM à la promotion, la ligne
-   * se déplie d'elle-même sur le pilotage — pas de bouton « Détail » à chercher.
+   * Stef (16/09) : « dès qu'on clique sur la case, le contenu apparaît ».
+   * Une ligne cochée se déplie donc AVANT l'enregistrement — elle dit alors ce
+   * qu'elle attend — et le reste après.
    */
-  const utiliseeAvant = useRef(utilisee);
-  useEffect(() => {
-    if (!utiliseeAvant.current && utilisee && (estQcm || estEcos)) setOpen(true);
-    utiliseeAvant.current = utilisee;
-  }, [utilisee, estQcm, estEcos]);
+  const depliable = (utilisee || cochee) && (row.modality !== undefined || row.entry !== undefined);
 
   const modality = row.modality;
   const surMesure = row.entry === undefined;
@@ -338,7 +345,7 @@ function LigneModalite({
     setError(null);
     try {
       await dataAccess.assessments.archiveAssessmentModality(modality.id);
-      setOpen(false);
+      onOuvrir(false);
       onChanged?.();
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Retrait impossible.");
@@ -362,8 +369,8 @@ function LigneModalite({
           <button
             type="button"
             className="text-left text-sm font-medium underline-offset-4 hover:underline"
-            aria-expanded={open}
-            onClick={() => setOpen((v) => !v)}
+            aria-expanded={ouverte}
+            onClick={() => onOuvrir(!ouverte)}
           >
             {nom}
           </button>
@@ -432,18 +439,55 @@ function LigneModalite({
             size="sm"
             variant="ghost"
             className="ml-auto min-h-9 gap-1"
-            aria-expanded={open}
-            onClick={() => setOpen((v) => !v)}
+            aria-expanded={ouverte}
+            onClick={() => onOuvrir(!ouverte)}
           >
-            {open ? <ChevronDown className="size-4" aria-hidden /> : <ChevronRight className="size-4" aria-hidden />}
-            {open ? "Replier" : "Détail"}
+            {ouverte ? (
+              <ChevronDown className="size-4" aria-hidden />
+            ) : (
+              <ChevronRight className="size-4" aria-hidden />
+            )}
+            {ouverte ? "Replier" : "Détail"}
           </Button>
         ) : null}
       </div>
 
       {error ? <p className="text-destructive px-3 pb-2 text-xs">{error}</p> : null}
 
-      {utilisee && modality && open ? (
+      {/*
+        COCHÉE MAIS PAS ENCORE ENREGISTRÉE : la ligne s'ouvre quand même et dit
+        ce qu'elle attend. Ses réglages (stations, banque, dates) ont besoin du
+        rattachement à la promotion pour exister — un panneau vide ferait croire
+        à une panne.
+      */}
+      {!utilisee && cochee && ouverte && row.entry ? (
+        <div className="border-border space-y-2 border-t p-3">
+          <dl className="grid gap-2 text-sm sm:grid-cols-3">
+            <div>
+              <dt className="text-muted-foreground text-xs">Format</dt>
+              <dd>{ASSESSMENT_SUBTYPE_LABELS_FR[row.entry.subtype]}</dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground text-xs">Lieu</dt>
+              <dd>{ASSESSMENT_MODE_LABELS_FR[row.entry.mode]}</dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground text-xs">Ce qu'elle engage</dt>
+              <dd>{ASSESSMENT_USAGE_LABELS_FR[row.entry.usage]}</dd>
+            </div>
+            <div className="sm:col-span-3">
+              <dt className="text-muted-foreground text-xs">Consignes</dt>
+              <dd>{row.entry.notes}</dd>
+            </div>
+          </dl>
+          <p className="text-muted-foreground text-xs">
+            Cochée, pas encore enregistrée. <strong>Enregistrer</strong>, en bas du bloc, rattache
+            cette modalité à la promotion : ses réglages s'ouvriront ici même.
+          </p>
+        </div>
+      ) : null}
+
+      {utilisee && modality && ouverte ? (
         <div className="border-border space-y-4 border-t p-3">
           <div className="space-y-2">
             <div className="flex items-center justify-between gap-2">
@@ -613,14 +657,36 @@ export function AssessmentModalitySection({
   const [pending, setPending] = useState<Map<string, boolean>>(new Map());
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+
+  /*
+   * LES LIGNES OUVERTES, PAR UNE CLÉ QUI SURVIT À LA CRÉATION.
+   *
+   * L'identifiant d'une ligne change quand on l'enregistre : une entrée de
+   * catalogue (`catalogue:ecos-simule`) devient la modalité réelle. La clé
+   * d'ouverture est donc celle du CATALOGUE quand elle existe — la seule chose
+   * qui ne bouge pas de part et d'autre de l'enregistrement.
+   */
+  const cleDOuverture = (row: CatalogueRow) => row.entry?.key ?? row.modality?.id ?? row.id;
+  const [ouvertes, setOuvertes] = useState<ReadonlySet<string>>(new Set());
+  const ouvrir = (cle: string, ouverte: boolean) =>
+    setOuvertes((prev) => {
+      const next = new Set(prev);
+      if (ouverte) next.add(cle);
+      else next.delete(cle);
+      return next;
+    });
+
   const choisir = (id: string) => {
     setChosen(id);
     setPending(new Map());
+    setOuvertes(new Set());
     setSaveError(null);
   };
   const toggle = (rowId: string, voulue: boolean) => {
     const row = rows.find((r) => r.id === rowId);
     if (!row) return;
+    /* Cocher OUVRE la ligne aussitôt (Stef, 16/09) ; décocher la referme. */
+    ouvrir(cleDOuverture(row), voulue);
     setPending((prev) => {
       const next = new Map(prev);
       if (voulue === estUtilisee(row)) next.delete(rowId);
@@ -729,6 +795,8 @@ export function AssessmentModalitySection({
                             utilisee={estUtilisee(r)}
                             cochee={estCochee(r)}
                             onToggle={toggle}
+                            ouverte={ouvertes.has(cleDOuverture(r))}
+                            onOuvrir={(v) => ouvrir(cleDOuverture(r), v)}
                             sessions={sessions}
                             link={
                               r.modality
