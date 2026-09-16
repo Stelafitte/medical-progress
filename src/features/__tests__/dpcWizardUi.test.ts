@@ -58,7 +58,7 @@ describe("marqueurs simulés", () => {
     expect(wizard).toContain("DPC_SIMULATED_EXTRACTION_NOTICE_FR");
     expect(wizard).toContain("DPC_SIMULATED_UPLOAD_NOTICE_FR");
     expect(wizard).toContain("Ouvrir cette implémentation (simulé)");
-    expect(wizard).toContain('label="Ouverture simulée"');
+    expect(wizard).not.toContain("MockBadge");
     expect(wizard).not.toContain("Publier (simulé)");
   });
 
@@ -138,6 +138,6 @@ describe("portabilité et accessibilité", () => {
   });
 
   it("n'annonce jamais d'envoi réel pour la visioconférence", () => {
-    expect(wizard).toContain("aucun lien réel dans la maquette");
+    expect(wizard).toContain("lien non encore branché");
   });
 });

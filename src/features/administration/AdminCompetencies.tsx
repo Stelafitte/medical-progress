@@ -13,13 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  EmptyState,
-  MockBadge,
-  PanelCard,
-  ScopeNotice,
-  StatCard,
-} from "@/features/professional/mock-ui";
+import { EmptyState, PanelCard, ScopeNotice, StatCard } from "@/features/professional/mock-ui";
 import { CohortSelector } from "@/features/administration/CohortSelector";
 import { personNameFor, useProgramAdmin } from "@/features/administration/useProgramAdmin";
 import { AdminChargement } from "@/features/administration/AdminChargement";
@@ -88,7 +82,6 @@ export function AdminCompetencies() {
         eyebrow={data.program?.name ?? "Programme"}
         title="Compétences"
         level={1}
-        action={<MockBadge />}
         description="Savoir-faire à acquérir en stage ou en simulation : référentiel, création par import ou à la main, puis suivi d'acquisition par classe."
       />
 

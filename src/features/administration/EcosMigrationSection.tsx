@@ -15,7 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { EmptyState, MockBadge, PanelCard, ScopeNotice } from "@/features/professional/mock-ui";
+import { EmptyState, PanelCard, ScopeNotice } from "@/features/professional/mock-ui";
 import {
   ECOS_EVIDENCE_RULE_FR,
   ECOS_MODE_LABELS_FR,
@@ -65,7 +65,6 @@ export function EcosMigrationSection({
       <PanelCard
         title="Workflow de migration sélective"
         description="Inventorier → Mapper → Adapter → Tester → Importer"
-        action={<MockBadge />}
       >
         <ol className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
           {MIGRATION_STEPS.map((step, index) => (
@@ -179,7 +178,7 @@ export function EcosMigrationSection({
                   <span className="block font-medium">{scenario.title}</span>
                   <span className="block text-xs text-muted-foreground">
                     {scenario.durationMinutes} min · {ECOS_MODE_LABELS_FR[scenario.mode]} ·{" "}
-                    {scenario.status === "mock" ? "maquette" : "à adapter"}
+                    {scenario.status === "mock" ? "non branché" : "à adapter"}
                   </span>
                 </button>
               </li>
@@ -192,7 +191,6 @@ export function EcosMigrationSection({
         <PanelCard
           title={`Fiche de scénario — ${selected.title}`}
           description="Contenu de démonstration, aucune session réelle ne peut être lancée."
-          action={<MockBadge label="Maquette" />}
         >
           <dl className="grid gap-x-4 gap-y-2 sm:grid-cols-2">
             <div>

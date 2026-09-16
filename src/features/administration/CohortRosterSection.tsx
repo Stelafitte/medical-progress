@@ -28,7 +28,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { EmptyState, MockBadge, PanelCard, StatCard } from "@/features/professional/mock-ui";
+import { EmptyState, PanelCard, StatCard } from "@/features/professional/mock-ui";
 import type { ProgramAdminScope } from "@/features/administration/useProgramAdmin";
 import {
   ROSTER_TEMPLATE_CSV,
@@ -338,9 +338,7 @@ export function CohortRosterSection({
   if (section === "export") return exportBlock;
   return (
     <div className="space-y-8">
-      <PanelCard title="Importer une promotion (liste d'étudiants)" action={<MockBadge />}>
-        {importBlock}
-      </PanelCard>
+      <PanelCard title="Importer une promotion (liste d'étudiants)">{importBlock}</PanelCard>
       {exportBlock}
     </div>
   );

@@ -46,7 +46,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { toast } from "sonner";
-import { EmptyState, MockBadge, PanelCard, ScopeNotice } from "@/features/professional/mock-ui";
+import { EmptyState, PanelCard, ScopeNotice } from "@/features/professional/mock-ui";
 import { useDataAccess } from "@/application/session";
 import {
   ACCOUNT_STATUS_LABELS_FR,
@@ -118,7 +118,6 @@ export function PlatformPilotageView() {
         eyebrow="Campus Santé Augmenté"
         title="Pilotage et paramétrage"
         level={1}
-        action={<MockBadge label="Maquette limitée" />}
         description="Utilisateurs et fiches, cadre général, cadre par programme, sécurité, conservation, délégations de rôles, fonctionnalités, maintenance, exports d'audit, notifications et courriel aux intervenants."
       />
 
@@ -443,9 +442,7 @@ function GeneralSettingsSection({ value }: { value: PlatformGeneralSettings }) {
         />
       </div>
       <div className="border-border flex items-center justify-between gap-3 rounded-md border px-3 py-2">
-        <Label htmlFor="platform-ai">
-          Exploitation IA autorisée (aucun appel réel dans cette maquette)
-        </Label>
+        <Label htmlFor="platform-ai">Exploitation IA autorisée (appel non encore branché)</Label>
         <Switch
           id="platform-ai"
           checked={current.aiEnabled}

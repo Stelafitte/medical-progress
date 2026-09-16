@@ -34,7 +34,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
-import { MockBadge, PanelCard, StatCard } from "@/features/professional/mock-ui";
+import { PanelCard, StatCard } from "@/features/professional/mock-ui";
 import { useDataAccess } from "@/application/session";
 import {
   EMAIL_PATTERN_PLACEHOLDER,
@@ -202,7 +202,6 @@ export function RealRosterImportPanel({
     <PanelCard
       title={title}
       description="Fichier CSV ou Excel, ou liste collée. Ce qui est deviné reste affiché et corrigeable ; rien n'est écrit avant votre confirmation."
-      action={<MockBadge label="Données réelles (Supabase)" />}
     >
       <div className="flex flex-wrap items-center gap-2">
         <input

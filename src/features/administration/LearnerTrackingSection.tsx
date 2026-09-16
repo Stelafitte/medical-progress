@@ -8,7 +8,7 @@ import { Link } from "@tanstack/react-router";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { EmptyState, MockBadge, PanelCard, StatCard } from "@/features/professional/mock-ui";
+import { EmptyState, PanelCard, StatCard } from "@/features/professional/mock-ui";
 import { CohortSelector } from "@/features/administration/CohortSelector";
 import type { ProgramAdminScope } from "@/features/administration/useProgramAdmin";
 import { defaultPilotCohortId } from "@/features/administration/adminProgramViewModel";
@@ -80,11 +80,7 @@ export function LearnerTrackingSection({
         />
       ) : null}
 
-      <PanelCard
-        title="Table de suivi croisée des apprenants"
-        description={description}
-        action={<MockBadge />}
-      >
+      <PanelCard title="Table de suivi croisée des apprenants" description={description}>
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
           <StatCard label="Apprenants suivis" value={summary.learners} />
           <StatCard label="Théorie (moy.)" value={`${summary.theoryPercent} %`} />

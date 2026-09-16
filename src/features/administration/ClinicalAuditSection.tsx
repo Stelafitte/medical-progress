@@ -7,13 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDataAccess, useSession } from "@/application/session";
-import {
-  EmptyState,
-  MockBadge,
-  PanelCard,
-  ScopeNotice,
-  StatCard,
-} from "@/features/professional/mock-ui";
+import { EmptyState, PanelCard, ScopeNotice, StatCard } from "@/features/professional/mock-ui";
 import {
   AUDIT_PHASE_LABELS_FR,
   SESSION_MODALITY_LABELS_FR,
@@ -58,7 +52,11 @@ export function ClinicalAuditSection() {
       <PanelCard
         title="Audits de pratique"
         description="Module optionnel"
-        action={<MockBadge label="Désactivé" />}
+        action={
+          <Badge variant="outline" className="font-normal">
+            Désactivé
+          </Badge>
+        }
       >
         <EmptyState>
           Ce module n'est pas activé pour <strong>{activeProgram.name}</strong>. Il s'active par
@@ -126,7 +124,6 @@ export function ClinicalAuditSection() {
       <PanelCard
         title="Grilles d'audit configurées"
         description="Une grille publiée est immuable pour les campagnes ouvertes."
-        action={<MockBadge />}
       >
         {scope.templates.length === 0 ? (
           <EmptyState>Aucune grille configurée.</EmptyState>

@@ -163,7 +163,7 @@ export const contentAiProfiles: readonly ContentAiProfile[] = [
     citations: [],
     outcomeIds: [],
     enabledModes: [],
-    alerts: ["Brouillon : explications et objectifs manquants, extraction non lancée (maquette)."],
+    alerts: ["Brouillon : explications et objectifs manquants, extraction non lancée (simulé)."],
     ...invariants,
   },
   {

@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { MockBadge, PanelCard } from "@/features/professional/mock-ui";
+import { PanelCard } from "@/features/professional/mock-ui";
 import { useDataAccess } from "@/application/session";
 import {
   PENDING_PERSON_STATUS_LABELS_FR,
@@ -123,7 +123,6 @@ export function RealIndividualPersonForm({
     <PanelCard
       title={title}
       description="Crée pour de vrai une ligne dans le sas de pré-inscription de ce programme. Aucun e-mail n'est envoyé tant que l'invitation n'est pas déclenchée explicitement."
-      action={<MockBadge label="Données réelles (Supabase)" />}
     >
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-2">

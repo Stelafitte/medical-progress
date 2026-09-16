@@ -8,7 +8,7 @@
  */
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MockBadge, PanelCard, ScopeNotice, StatCard } from "@/features/professional/mock-ui";
+import { PanelCard, ScopeNotice, StatCard } from "@/features/professional/mock-ui";
 import {
   DPC_IMPLEMENTATION_STATUS_LABELS_FR,
   DPC_MODULE_LABELS_FR,
@@ -46,7 +46,6 @@ function ImplementationCard({ implementation }: { implementation: DpcProgramImpl
     <PanelCard
       title={implementation.name}
       description={`Version implémentée du programme de référence : ${implementation.programDefinitionVersion} — fuseau ${implementation.timeZone}`}
-      action={<MockBadge label="Implémentation simulée" />}
     >
       <div className="flex flex-wrap gap-2">
         <Badge variant="secondary">
@@ -140,7 +139,6 @@ export function DpcImplementationsSection() {
       <PanelCard
         title={`Programme importé — ${dpcHvgProgramDefinition.title}`}
         description="Données structurées issues du programme : objectifs, méthode, grilles, QCM et bibliographie, sans date d'exploitation."
-        action={<MockBadge label="Import simulé" />}
       >
         <p className="text-sm text-muted-foreground">
           Public visé : {dpcHvgProgramDefinition.targetAudience}

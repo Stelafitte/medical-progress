@@ -14,7 +14,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useDataAccess, useSession } from "@/application/session";
 import {
   EmptyState,
-  MockBadge,
   PanelCard,
   ScopeNotice,
   StatCard,
@@ -183,7 +182,6 @@ export function DpcLearnerView() {
           <PanelCard
             title="Chronologie du programme intégré"
             description="Calendrier relatif : J-30 à J0, jour J, puis J+90."
-            action={<MockBadge />}
           >
             <ol className="space-y-3">
               {journey.steps.map((step) => (
@@ -353,7 +351,7 @@ export function DpcLearnerView() {
                   ) : (
                     <p className="text-muted-foreground text-xs">
                       Répondez aux {view.questions.length} questions puis validez la tentative. Une
-                      tentative validée ne peut pas être repassée dans cette maquette.
+                      tentative validée ne peut pas être repassée.
                     </p>
                   )}
                   <ul className="space-y-4">

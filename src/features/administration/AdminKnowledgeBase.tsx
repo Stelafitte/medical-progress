@@ -14,13 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  EmptyState,
-  MockBadge,
-  PanelCard,
-  ScopeNotice,
-  StatCard,
-} from "@/features/professional/mock-ui";
+import { EmptyState, PanelCard, ScopeNotice, StatCard } from "@/features/professional/mock-ui";
 import { CorpusImport } from "@/features/administration/CorpusImport";
 import { MediaLibrarySection } from "@/features/administration/MediaLibrarySection";
 import { ContentAiSection } from "@/features/administration/ContentAiSection";
@@ -94,7 +88,6 @@ export function AdminKnowledgeBase() {
         eyebrow={data.program?.name ?? "Programme"}
         title="Base de connaissances"
         level={1}
-        action={<MockBadge />}
         description="Connaissances visées, supports théoriques et conversion HTML5 des diaporamas sonorisés, puis suivi d'acquisition par classe."
       />
 
@@ -364,7 +357,6 @@ export function AdminKnowledgeBase() {
             : "Apprenants de la classe"
         }
         description="Vue de lecture : acquisition des bases théoriques. Les relances et validations se traitent dans le Pilotage."
-        action={<MockBadge />}
       >
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <StatCard label="Apprenants suivis" value={summary.learners} />

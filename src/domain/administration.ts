@@ -20,7 +20,7 @@ export const EXPORT_NO_PATIENT_DATA_FR =
   "Aucune donnée patient n'est incluse dans les exports de la plateforme.";
 
 export const NO_REAL_SEND_FR =
-  "Aucun envoi réel dans cette maquette : les messages sont uniquement affichés.";
+  "Aucun envoi réel : les messages sont uniquement affichés.";
 
 /* ------------------------------------------------------------------ */
 /* Pièces administratives                                              */

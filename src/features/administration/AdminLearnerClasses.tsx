@@ -11,13 +11,7 @@ import { SectionHeading } from "@/components/section-heading";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import {
-  EmptyState,
-  MockBadge,
-  PanelCard,
-  ScopeNotice,
-  StatCard,
-} from "@/features/professional/mock-ui";
+import { EmptyState, PanelCard, ScopeNotice, StatCard } from "@/features/professional/mock-ui";
 import { CohortRosterSection } from "@/features/administration/CohortRosterSection";
 import { LearnerTrackingSection } from "@/features/administration/LearnerTrackingSection";
 import { RealRosterImportPanel } from "@/features/administration/RealRosterImportPanel";
@@ -129,7 +123,6 @@ export function AdminLearnerClasses() {
         eyebrow={data.program?.name ?? "Programme"}
         title="Classes d'apprenants"
         level={1}
-        action={<MockBadge />}
         description="Promotions du programme, effectifs, périodes et import des listes d'apprenants."
       />
 

@@ -171,7 +171,7 @@ export function ContentAiTutorPanel({
               <p className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
                 {turn.role === "assistant" ? (
                   <>
-                    <Bot className="size-3.5" aria-hidden /> Assistant (maquette)
+                    <Bot className="size-3.5" aria-hidden /> Assistant
                   </>
                 ) : (
                   "Vous"

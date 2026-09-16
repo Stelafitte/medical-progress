@@ -132,8 +132,8 @@ export function AccessGrantSection({
             l'administration.
           </li>
           <li>
-            Fragments photo : stockage privé prévu, jamais d'URL publique. Aucun stockage réel dans
-            cette maquette.
+            Fragments photo : stockage privé prévu, jamais d'URL publique. Aucun stockage réel à ce
+            jour.
           </li>
         </ul>
       </PanelCard>
@@ -157,7 +157,7 @@ export function AccessGrantSection({
 
       <PanelCard
         title="Sécurité, confidentialité et rapports"
-        description="Actions prévues, non actives dans cette maquette."
+        description="Actions prévues, pas encore actives."
       >
         <div className="flex flex-wrap gap-2">
           <Button size="sm" variant="outline" disabled>

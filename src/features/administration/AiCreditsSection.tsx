@@ -18,13 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  EmptyState,
-  MockBadge,
-  PanelCard,
-  ScopeNotice,
-  StatCard,
-} from "@/features/professional/mock-ui";
+import { EmptyState, PanelCard, ScopeNotice, StatCard } from "@/features/professional/mock-ui";
 import { useDataAccess, useSession } from "@/application/session";
 import {
   AI_CREDITS_GOVERNANCE_NOTICE_FR,
@@ -122,7 +116,6 @@ export function AiCreditsSection() {
       <PanelCard
         title="Consommation de la période"
         description="Suivi de l'enveloppe déclarée pour cet enseignement."
-        action={<MockBadge />}
       >
         <div className="space-y-3">
           <Progress value={percent} aria-label="Consommation des crédits IA" />

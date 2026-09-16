@@ -26,7 +26,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import { EmptyState, MockBadge, PanelCard, ScopeNotice } from "@/features/professional/mock-ui";
+import { EmptyState, PanelCard, ScopeNotice } from "@/features/professional/mock-ui";
 import { useDataAccess, useSession } from "@/application/session";
 import { canAccessProgramAdministration } from "@/domain/access";
 import {
@@ -95,7 +95,6 @@ export function AllProgramsView() {
         eyebrow="Campus Santé Augmenté"
         title="Tous les programmes"
         level={1}
-        action={<MockBadge />}
         description="Vue d'ensemble des programmes que vous administrez, avec leur classe active et leur prochaine échéance."
       />
 

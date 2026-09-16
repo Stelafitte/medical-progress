@@ -13,13 +13,7 @@ import { ArrowRight, BarChart3, CalendarClock } from "lucide-react";
 import { SectionHeading } from "@/components/section-heading";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  EmptyState,
-  MockBadge,
-  PanelCard,
-  ScopeNotice,
-  StatCard,
-} from "@/features/professional/mock-ui";
+import { EmptyState, PanelCard, ScopeNotice, StatCard } from "@/features/professional/mock-ui";
 import { CohortSelector } from "@/features/administration/CohortSelector";
 import { ProgramAiSettingsSection } from "@/features/administration/ProgramAiSettingsSection";
 import { useProgramAdmin, personNameFor } from "@/features/administration/useProgramAdmin";
@@ -65,7 +59,6 @@ export function AdminDashboard() {
         eyebrow={activeProgram.name}
         title="Administration du programme"
         level={1}
-        action={<MockBadge />}
         description={`Vue d'ensemble de ${activeProgram.name}, promotion par promotion. Un seul moteur, plusieurs programmes configurés.`}
       />
 

@@ -67,14 +67,6 @@ const PASTILLE: Record<PanelTone, string> = {
   done: "bg-success text-success-foreground",
 };
 
-export function MockBadge({ label = "Maquette" }: { label?: string }) {
-  return (
-    <span className="inline-flex items-center rounded-full border border-current/30 px-2.5 py-0.5 text-[11px] font-medium uppercase tracking-[0.08em] opacity-75">
-      {label}
-    </span>
-  );
-}
-
 /**
  * Bandeau de périmètre : rappelle ce que le rôle peut voir et ne peut pas voir.
  * Une annotation, pas une alerte : un filet à gauche, aucun encadré.

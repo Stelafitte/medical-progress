@@ -65,8 +65,11 @@ describe("vocabulaire", () => {
     expect(section).toContain("canOpenImplementation");
   });
 
-  it("conserve les marqueurs simulés et n'effectue aucun envoi", () => {
-    expect(section).toContain("<MockBadge");
+  it("n'affiche plus de marqueur de chantier et n'effectue aucun envoi", () => {
+    /* Stef, 16/09 : « le mot maquette apparait dans beaucoup d'onglets, traque
+       le et supprime le ». Le marqueur visuel a disparu de tous les ecrans ; ce
+       que le contrat garde, c'est l'absence d'envoi reel. */
+    expect(section).not.toContain("MockBadge");
     expect(section).not.toContain("fetch(");
     expect(section).not.toContain("joinUrl}");
   });

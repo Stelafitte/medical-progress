@@ -23,13 +23,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  EmptyState,
-  MockBadge,
-  PanelCard,
-  ScopeNotice,
-  StatCard,
-} from "@/features/professional/mock-ui";
+import { EmptyState, PanelCard, ScopeNotice, StatCard } from "@/features/professional/mock-ui";
 import { useStatistics } from "@/features/statistics/useStatistics";
 import { compareCohorts, formatDelta, formatRate, sortByAcademicYear } from "@/domain/statistics";
 import { useSession } from "@/application/session";
@@ -54,7 +48,6 @@ export function StatisticsView() {
         eyebrow={activeProgram.name}
         title="Statistiques et suivi pluriannuel"
         level={1}
-        action={<MockBadge />}
         description={`${activeProgram.name} — comparaison des promotions et des années universitaires.`}
       />
 

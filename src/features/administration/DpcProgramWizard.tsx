@@ -49,7 +49,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { MockBadge, PanelCard, ScopeNotice } from "@/features/professional/mock-ui";
+import { PanelCard, ScopeNotice } from "@/features/professional/mock-ui";
 import { CommunicationPlanSection } from "@/features/administration/CommunicationPlanSection";
 import { calendarFromScheduledSlots } from "@/application/communicationPlanSource";
 import type { PersonId } from "@/domain/types";
@@ -388,7 +388,6 @@ export function DpcProgramWizard() {
       <PanelCard
         title="Programme importé (démonstration)"
         description="Réutiliser un programme déjà importé : trois jeux de données structurées pour éprouver l'assistant."
-        action={<MockBadge label="Simulé" />}
       >
         <div className="grid gap-3 sm:grid-cols-3">
           {dpcDraftDemoStates.map((state) => {
@@ -1273,7 +1272,7 @@ export function DpcProgramWizard() {
                       {slot.delivery === "virtual_classroom" ? (
                         <div className="space-y-1 sm:col-span-2">
                           <Label htmlFor={`${slot.id}-join`}>
-                            Modalités de connexion (aucun lien réel dans la maquette)
+                            Modalités de connexion (lien non encore branché)
                           </Label>
                           <Input
                             id={`${slot.id}-join`}
@@ -1512,7 +1511,6 @@ export function DpcProgramWizard() {
               >
                 Ouvrir cette implémentation (simulé)
               </Button>
-              <MockBadge label="Ouverture simulée" />
             </div>
             {publishNotice ? (
               <p role="status" className="rounded-md border border-border p-3 text-sm">

@@ -209,7 +209,7 @@ export function availableMediaActions(resource: MediaResource): readonly MediaAc
 }
 
 /** Mention obligatoire : la maquette ne transporte aucun binaire. */
-export const MEDIA_STORAGE_NOTICE_FR = "Stockage non activé dans cette maquette";
+export const MEDIA_STORAGE_NOTICE_FR = "Stockage non activé à ce jour";
 
 /* ==========================================================================
  * POWERPOINT SONORISÉ → LECTEUR WEB HTML5 (MAQUETTE)
@@ -406,7 +406,7 @@ export const NARRATED_SOURCE_RESTRICTION_FR =
 export const NARRATED_RECOMMENDED_FORMAT_FR =
   "Le lecteur web HTML5 est le format recommandé : plus interactif et traçable que le MP4 de secours";
 export const NARRATED_ONLINE_ONLY_FR = "Consultable en ligne";
-export const NARRATED_SUBMIT_LABEL_FR = "Enregistrer et préparer la conversion (maquette)";
+export const NARRATED_SUBMIT_LABEL_FR = "Enregistrer et préparer la conversion (simulé)";
 export const NARRATED_HUMAN_REVIEW_FR =
   "Aucune version web n'est publiée sans contrôle pédagogique humain";
 

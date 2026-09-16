@@ -21,7 +21,7 @@ export const Route = createFileRoute("/espace/administration/assistant-dpc")({
       {
         property: "og:description",
         content:
-          "Maquette locale : import documentaire simulé, implémentation structurée à vérifier, aucune ouverture réelle.",
+          "Import documentaire simulé, implémentation structurée à vérifier, aucune ouverture réelle.",
       },
       { name: "robots", content: "noindex" },
     ],

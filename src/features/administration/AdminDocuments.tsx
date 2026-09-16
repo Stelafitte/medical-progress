@@ -23,13 +23,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  EmptyState,
-  MockBadge,
-  PanelCard,
-  ScopeNotice,
-  StatCard,
-} from "@/features/professional/mock-ui";
+import { EmptyState, PanelCard, ScopeNotice, StatCard } from "@/features/professional/mock-ui";
 import { CohortSelector } from "@/features/administration/CohortSelector";
 import { DocumentRequirementForm } from "@/features/administration/DocumentRequirementForm";
 import { personNameFor, useProgramAdmin } from "@/features/administration/useProgramAdmin";
@@ -99,7 +93,6 @@ export function AdminDocuments() {
         eyebrow={data.program?.name ?? "Programme"}
         title="Documents et certificats"
         level={1}
-        action={<MockBadge />}
         description="Pièces exigées par le programme, création par import ou à la main, puis suivi des dépôts et du certificat de complétude pour une classe."
       />
 
@@ -169,7 +162,6 @@ export function AdminDocuments() {
       <PanelCard
         title="Voie rapide — coller une liste de pièces"
         description="Un tableau CSV/TSV : code, intitulé, obligation (obligatoire / facultative). Analyse locale uniquement, rien n'est envoyé."
-        action={<MockBadge />}
       >
         <Textarea
           value={importText}
@@ -229,7 +221,7 @@ export function AdminDocuments() {
         </p>
       </PanelCard>
 
-      <PanelCard title="Saisie manuelle — une pièce à la fois" action={<MockBadge />}>
+      <PanelCard title="Saisie manuelle — une pièce à la fois">
         <DocumentRequirementForm
           programId={programId}
           idPrefix="documents-tab"
@@ -253,7 +245,7 @@ export function AdminDocuments() {
             ? `Pièces déposées — classe « ${selectedCohort.label} »`
             : "Pièces déposées"
         }
-        description="Vue de lecture simulée : aucun dépôt réel de fichier dans cette maquette."
+        description="Vue de lecture : le dépôt de fichier n'est pas encore branché."
       >
         {documents.length === 0 ? (
           <EmptyState>Aucune pièce suivie pour cette classe.</EmptyState>

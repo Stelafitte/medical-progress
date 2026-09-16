@@ -23,7 +23,6 @@ import {
 } from "@/components/ui/table";
 import {
   EmptyState,
-  MockBadge,
   PanelCard,
   ScopeNotice,
   StatCard,
@@ -113,7 +112,6 @@ export function PlatformOverview() {
         eyebrow="Campus Santé Augmenté"
         title="Vue d'ensemble de la plateforme"
         level={1}
-        action={<MockBadge label="Maquette limitée" />}
         description="Programmes, classes, usage, supports, intervenants, stockage et crédits IA — tous programmes confondus."
       />
 

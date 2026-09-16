@@ -1,5 +1,4 @@
 import { SectionHeading } from "@/components/section-heading";
-import { MockBadge } from "@/features/professional/mock-ui";
 import { AccessGrantSection } from "@/features/administration/AccessGrantSection";
 import { useProgramAdmin } from "@/features/administration/useProgramAdmin";
 import { AdminChargement } from "@/features/administration/AdminChargement";
@@ -17,7 +16,6 @@ export function AdminGovernance() {
         eyebrow={activeProgram.name}
         title="Administration et sécurité"
         level={1}
-        action={<MockBadge />}
         description="Droits par programme, partage, conservation, audit et paramètres de sécurité."
       />
 

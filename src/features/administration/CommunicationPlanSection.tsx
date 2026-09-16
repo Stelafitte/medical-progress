@@ -22,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { MockBadge, PanelCard, ScopeNotice, StatCard } from "@/features/professional/mock-ui";
+import { PanelCard, ScopeNotice, StatCard } from "@/features/professional/mock-ui";
 import {
   PLAN_AUDIENCE_LABELS_FR,
   PLAN_DIFF_LABELS_FR,
@@ -173,7 +173,6 @@ export function CommunicationPlanSection({
       <PanelCard
         title="Plan proposé (simulation)"
         description={`Calendrier ${calendar.calendarVersion} — fuseau ${calendar.timeZone} — règles ${currentPlan.generatedByRuleVersion}`}
-        action={<MockBadge label="Simulé — aucun envoi" />}
       >
         <div className="grid gap-3 sm:grid-cols-3">
           <StatCard label="Propositions" value={timeline.length} />
@@ -413,7 +412,6 @@ export function CommunicationPlanSection({
       <PanelCard
         title="Ajouter un message libre"
         description="Message ponctuel rattaché au plan, d'origine manuelle : il n'est jamais écrasé par un recalcul."
-        action={<MockBadge label="Simulé" />}
       >
         <div className="grid gap-3">
           <div className="space-y-1">

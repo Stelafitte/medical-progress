@@ -20,13 +20,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  EmptyState,
-  MockBadge,
-  PanelCard,
-  ScopeNotice,
-  StatCard,
-} from "@/features/professional/mock-ui";
+import { EmptyState, PanelCard, ScopeNotice, StatCard } from "@/features/professional/mock-ui";
 import {
   AI_GROUNDING_NOTICE_FR,
   AI_MOCK_NOTICE_FR,
@@ -223,7 +217,6 @@ export function ContentAiSection({
       <PanelCard
         title="Modes d'usage et coûts prévus"
         description="Escalade documentée : contenu validé seul, modèle léger, modèle avancé, vocal temps réel. Aucune requête n'est émise."
-        action={<MockBadge />}
       >
         <div className="space-y-3">
           <p className="text-sm text-muted-foreground">

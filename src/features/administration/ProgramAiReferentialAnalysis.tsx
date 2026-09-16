@@ -36,7 +36,6 @@ const OUTCOME_NATURE_LABELS_FR: Record<OutcomeNature, string> = {
   ...COMPETENCE_NATURE_LABELS_FR,
 };
 
-
 function slugifyDomain(domain: string): string {
   const cleaned = domain
     .normalize("NFD")

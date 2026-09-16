@@ -87,7 +87,7 @@ export interface WebUrlPrecheck {
 }
 
 export const WEB_PRECHECK_NOTICE_FR =
-  "Pré-contrôle simulé : la maquette n'appelle jamais l'URL et ne télécharge aucune page";
+  "Pré-contrôle simulé : l'URL n'est jamais appelée, aucune page n'est téléchargée";
 export const WEB_SNAPSHOT_NOTICE_FR =
   "L'IA exploite uniquement l'instantané extrait, versionné et validé — jamais une relecture libre du Web";
 export const WEB_CHANGE_NOTICE_FR =

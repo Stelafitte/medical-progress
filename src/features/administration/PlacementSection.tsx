@@ -20,7 +20,7 @@ import type { ReactNode } from "react";
 import { Check, MapPin, Notebook, Send, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { EmptyState, MockBadge, PanelCard } from "@/features/professional/mock-ui";
+import { EmptyState, PanelCard } from "@/features/professional/mock-ui";
 import { PlacementCreationForm } from "@/features/administration/PlacementCreationForm";
 import { formatFrDate } from "@/features/administration/adminProgramViewModel";
 import type { StageLog, StageLogTemplate } from "@/domain/stageLog";
@@ -295,7 +295,6 @@ export function PlacementSection({
       <PanelCard
         title="Éléments de validation du stage"
         description="Ce qui est envoyé au responsable de stage et ce qui doit revenir. Cette partie n'est pas encore branchée."
-        action={<MockBadge />}
       >
         <ul className="grid gap-3 md:grid-cols-2">
           <li className="border-border rounded-md border p-4">

@@ -11,13 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  EmptyState,
-  MockBadge,
-  PanelCard,
-  ScopeNotice,
-  StatCard,
-} from "@/features/professional/mock-ui";
+import { EmptyState, PanelCard, ScopeNotice, StatCard } from "@/features/professional/mock-ui";
 import { useDataAccess } from "@/application/session";
 import { RETENTION_TBD_FR, platformAdminCanOpenLearnerFile } from "@/domain/administration";
 import { ROLE_LABELS_FR } from "@/domain/roles";
@@ -67,7 +61,6 @@ export function PlatformAdminView() {
         eyebrow="Campus Santé Augmenté"
         title="Administration plateforme"
         level={1}
-        action={<MockBadge label="Maquette limitée" />}
         description="Programmes, administrateurs autorisés, paramètres communs et supervision."
       />
 

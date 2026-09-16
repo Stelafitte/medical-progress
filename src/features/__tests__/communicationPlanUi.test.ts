@@ -232,8 +232,10 @@ describe("absence d'envoi réel", () => {
   });
 
   it("annonce explicitement la simulation", () => {
+    /* Le marqueur visuel a ete retire de tous les ecrans (Stef, 16/09) ; ce
+       que ce contrat garde, c'est l'annonce EN CLAIR de l'absence d'envoi,
+       portee par le libelle de domaine. */
     expect(ui).toContain("COMMUNICATION_PLAN_NO_SEND_FR");
-    expect(ui).toContain("Simulé — aucun envoi");
     expect(ui).toContain("perdu au");
   });
 });

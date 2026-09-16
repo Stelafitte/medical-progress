@@ -237,7 +237,7 @@ export function evaluatePublicationGate(
 }
 
 export const PUBLICATION_BLOCKED_NOTICE_FR =
-  "Publication bloquée dans la maquette : le traitement IA doit être prêt et les références validées";
+  "Publication bloquée : le traitement IA doit être prêt et les références validées";
 
 /** Indicateur « Couverture IA des contenus publiés ». */
 export interface ContentAiCoverage {
@@ -412,7 +412,7 @@ export function plannedTierForMode(mode: ContentAiMode): AiTier {
 }
 
 export const AI_MOCK_NOTICE_FR =
-  "Maquette : aucun traitement IA réel, aucun index, aucun appel réseau n'a eu lieu";
+  "Simulation : aucun traitement IA réel, aucun index, aucun appel réseau n'a eu lieu";
 export const AI_GROUNDING_NOTICE_FR =
   "Les réponses seront fondées sur les contenus pédagogiques validés et citeront leur référence ; toute sortie du corpus doit être signalée";
 export const AI_VOICE_MOCK_NOTICE_FR =
@@ -482,11 +482,11 @@ export function buildMockAnswer(
 ): MockAiTurn {
   const citation = resource.citations[0];
   const intro: Record<ContentAiMode, string> = {
-    ask: `Réponse maquette fondée sur « ${resource.title} » (${resource.sourceVersion}).`,
-    be_questioned: `Question maquette issue de « ${resource.title} » : décrivez la démarche attendue.`,
-    generate_quiz: `QCM maquette à partir de « ${resource.title} » : 3 questions, une seule réponse exacte.`,
-    guided_clinical_case: `Cas clinique guidé maquette adossé à « ${resource.title} », entièrement fictif.`,
-    adaptive_review: `Plan de révision maquette calé sur vos objectifs et « ${resource.title} ».`,
+    ask: `Réponse simulée fondée sur « ${resource.title} » (${resource.sourceVersion}).`,
+    be_questioned: `Question simulée issue de « ${resource.title} » : décrivez la démarche attendue.`,
+    generate_quiz: `QCM simulé à partir de « ${resource.title} » : 3 questions, une seule réponse exacte.`,
+    guided_clinical_case: `Cas clinique guidé simulé adossé à « ${resource.title} », entièrement fictif.`,
+    adaptive_review: `Plan de révision simulé calé sur vos objectifs et « ${resource.title} ».`,
     voice: `Restitution vocale simulée du contenu « ${resource.title} ».`,
   };
   const trimmed = question.trim();

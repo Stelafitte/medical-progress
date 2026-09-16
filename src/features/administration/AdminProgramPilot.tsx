@@ -24,7 +24,7 @@ import { SectionHeading } from "@/components/section-heading";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { EmptyState, MockBadge, PanelCard, ScopeNotice } from "@/features/professional/mock-ui";
+import { EmptyState, PanelCard, ScopeNotice } from "@/features/professional/mock-ui";
 import { CohortSelector } from "@/features/administration/CohortSelector";
 import { AssessmentModalitySection } from "@/features/administration/AssessmentModalitySection";
 import { PlacementSection } from "@/features/administration/PlacementSection";
@@ -122,7 +122,6 @@ export function AdminProgramPilot() {
         eyebrow={data.program?.name ?? "Programme"}
         title="Pilotage de programme"
         level={1}
-        action={<MockBadge />}
         description="Suivez une promotion en cours : calendrier daté, inscriptions, carnets, alertes et intervenants."
       />
 
@@ -387,7 +386,7 @@ function ProgrammingPanel({ phase }: { phase: CohortPhase }) {
       </div>
 
       <p className="text-muted-foreground text-xs">
-        Aucune action réelle : les changements d'état restent locaux à cette maquette.
+        Les changements d'état restent locaux : rien n'est encore écrit en base.
       </p>
 
       {journal.length > 0 ? (
@@ -657,7 +656,7 @@ function LearnerManagementPanel({
       <div className="space-y-2">
         <h3 className="text-sm font-semibold">Notifications</h3>
         <p className="text-muted-foreground text-xs">
-          Actions qui découlent des marqueurs d'avancement. Aucun envoi réel dans cette maquette.
+          Actions qui découlent des marqueurs d'avancement. L'envoi n'est pas encore branché.
         </p>
         {notifications.length === 0 ? (
           <EmptyState>Aucune notification déclenchée par les marqueurs actuels.</EmptyState>
@@ -775,7 +774,6 @@ function PilotTools({
     <PanelCard
       title="Outils de pilotage"
       description="Chaque outil se déplie directement dans la liste, sans quitter la promotion pilotée."
-      action={<MockBadge />}
     >
       <div className="divide-border border-border divide-y rounded-lg border">
         {TOOLS.map((tool) => {

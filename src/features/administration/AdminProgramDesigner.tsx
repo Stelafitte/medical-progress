@@ -30,7 +30,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { SectionHeading } from "@/components/section-heading";
-import { EmptyState, MockBadge, PanelCard, ScopeNotice } from "@/features/professional/mock-ui";
+import { EmptyState, PanelCard, ScopeNotice } from "@/features/professional/mock-ui";
 import {
   AdminWorkLevelBanner,
   type AdminWorkLevel,
@@ -896,7 +896,6 @@ export function AdminProgramDesigner() {
               )}
               Enregistrer le brouillon
             </Button>
-            <MockBadge />
           </div>
         }
       />
@@ -1022,7 +1021,7 @@ export function AdminProgramDesigner() {
                 {importedFile}
                 {/\.(pdf|docx|txt|md|zip)$/i.test(importedFile)
                   ? " — texte ajouté ci-dessus"
-                  : " (maquette)"}
+                  : " — format non lu"}
               </span>
             ) : null}
           </div>

@@ -14,14 +14,16 @@ const nav = read("src/components/layout/navigation.ts");
 const domain = read("src/domain/directory.ts");
 
 describe("marqueurs de simulation", () => {
-  it("affiche « Données simulées » et rappelle l'absence d'écriture serveur", () => {
-    expect(view).toContain('"Données simulées"');
+  it("rappelle en clair l'absence d'écriture serveur", () => {
+    /* Le badge « Données simulées » a ete retire (Stef, 16/09) : la phrase du
+       bandeau de perimetre dit deja la meme chose, en francais. */
+    expect(view).not.toContain("MockBadge");
     expect(view).toContain("aucune écriture serveur");
     expect(view).toContain("aucun e-mail ni invitation réels");
   });
 
   it("indique explicitement que XLSX n'est pas pris en charge, sans simuler un succès", () => {
-    expect(view).toContain("XLSX non pris en charge dans cette maquette");
+    expect(view).toContain("XLSX non pris en charge");
     expect(view).toContain("Aucun import n'a été simulé.");
   });
 

@@ -94,7 +94,7 @@ describe("apprenant — le tuteur IA de démonstration est débranché", () => {
     expect(RESOURCES).toContain("useProgramAiEnabled");
   });
 
-  it("cite systématiquement une référence et signale la maquette", () => {
+  it("cite systématiquement une référence et signale la simulation", () => {
     expect(TUTOR).toContain("CITATION_KIND_LABELS_FR");
     expect(TUTOR).toContain("AI_GROUNDING_NOTICE_FR");
     expect(TUTOR).toContain("AI_MOCK_NOTICE_FR");

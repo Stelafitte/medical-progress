@@ -60,7 +60,7 @@ export function AdminWorkLevelBanner({
           <Badge variant="outline" className="bg-background font-normal">
             {cohortCount === 0
               ? "Aucune promotion"
-              : `${cohortCount} promotion${cohortCount > 1 ? "s" : ""} dans la maquette`}
+              : `${cohortCount} promotion${cohortCount > 1 ? "s" : ""} sur ce programme`}
           </Badge>
         ) : null}
       </div>

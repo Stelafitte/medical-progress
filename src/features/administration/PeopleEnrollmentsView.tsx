@@ -45,13 +45,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import {
-  EmptyState,
-  MockBadge,
-  PanelCard,
-  ScopeNotice,
-  StatCard,
-} from "@/features/professional/mock-ui";
+import { EmptyState, PanelCard, ScopeNotice, StatCard } from "@/features/professional/mock-ui";
 import { RealRosterImportPanel } from "@/features/administration/RealRosterImportPanel";
 import { PendingPeopleTable } from "@/features/administration/PendingPeopleTable";
 import { RealIndividualPersonForm } from "@/features/administration/RealIndividualPersonForm";
@@ -149,17 +143,13 @@ function MockPeopleEnrollmentsView() {
         eyebrow={activeProgram.name}
         title="Personnes et inscriptions"
         level={1}
-        action={
-          <MockBadge label={isSimulated ? "Données simulées" : "Données réelles (Supabase)"} />
-        }
         description="Ajout individuel, import groupé, inscriptions, retraits et archivage — pour tout type de programme."
       />
 
       <ScopeNotice>
         Périmètre : {activeProgram.name}. Aucune personne extérieure à ce programme n'est chargée.
-        Maquette locale : aucune écriture serveur, aucun e-mail ni invitation réels, aucune
-        suppression définitive. Le filtrage de périmètre devra être imposé côté serveur dans le
-        produit réel.
+        Mode local : aucune écriture serveur, aucun e-mail ni invitation réels, aucune suppression
+        définitive. Le filtrage de périmètre devra être imposé côté serveur dans le produit réel.
       </ScopeNotice>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
@@ -286,7 +276,6 @@ function RealPeopleEnrollmentsView() {
         eyebrow={activeProgram.name}
         title="Personnes et inscriptions"
         level={1}
-        action={<MockBadge label="Données réelles (Supabase)" />}
         description="Ajout individuel et envoi d'invitation réelle — pour tout type de programme."
       />
 
@@ -330,7 +319,6 @@ function RealPeopleEnrollmentsView() {
       <PanelCard
         title="Personnes du sas de pré-inscription"
         description="Toute personne créée ici pour ce programme, avec le statut réel de son invitation."
-        action={<MockBadge label="Données réelles (Supabase)" />}
       >
         {loading ? (
           <p className="text-xs text-muted-foreground">Chargement…</p>
@@ -417,7 +405,6 @@ function IndividualForm({
     <PanelCard
       title="Ajouter une personne"
       description="Recherche globale par e-mail normalisé avant toute création : une personne connue est rattachée, jamais dupliquée."
-      action={<MockBadge label={isSimulated ? "Données simulées" : "Données réelles (Supabase)"} />}
     >
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-2">
@@ -601,7 +588,7 @@ function BulkImportPanel({ programCohortId }: { programCohortId: string }) {
     if (/\.(xlsx|xls)$/i.test(file.name)) {
       setRawText("");
       setUnsupported(
-        "XLSX non pris en charge dans cette maquette : aucune dépendance de lecture sûre côté client n'est installée. Exportez la feuille en CSV (séparateur point-virgule) ou collez le tableau ci-dessous. Aucun import n'a été simulé.",
+        "XLSX non pris en charge : aucune dépendance de lecture sûre côté client n'est installée. Exportez la feuille en CSV (séparateur point-virgule) ou collez le tableau ci-dessous. Aucun import n'a été simulé.",
       );
       return;
     }
@@ -630,7 +617,6 @@ function BulkImportPanel({ programCohortId }: { programCohortId: string }) {
     <PanelCard
       title="Import groupé (CSV, TSV)"
       description="Prévisualisation, détection automatique des colonnes, mapping manuel si nécessaire, erreurs ligne par ligne, puis confirmation avant création locale."
-      action={<MockBadge label={isSimulated ? "Données simulées" : "Données réelles (Supabase)"} />}
     >
       <div className="flex flex-wrap items-center gap-2">
         <input
@@ -922,7 +908,6 @@ function RosterListPanel() {
     <PanelCard
       title="Liste des inscrits"
       description="Recherche, filtres, export CSV. L'accès au détail de progression sera raccordé dans un lot ultérieur."
-      action={<MockBadge label={isSimulated ? "Données simulées" : "Données réelles (Supabase)"} />}
     >
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <div className="space-y-2">
@@ -1138,7 +1123,6 @@ function LifecyclePanel() {
     <PanelCard
       title="Cycle de vie des cohortes"
       description="Une cohorte archivée reste consultable et n'accepte plus de nouvelle inscription. Aucune suppression n'est possible."
-      action={<MockBadge label={isSimulated ? "Données simulées" : "Données réelles (Supabase)"} />}
     >
       <ul className="space-y-3">
         {scope.cohorts.map((c) => (

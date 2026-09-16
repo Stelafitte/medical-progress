@@ -171,7 +171,7 @@ export function NarratedSlidesPlayer({
             {NARRATED_ONLINE_ONLY_FR}
           </Badge>
           <Badge variant="outline" className="font-normal">
-            Lecteur web HTML5 (maquette)
+            Lecteur web HTML5
           </Badge>
           {completed ? (
             <Badge className="gap-1 font-normal">

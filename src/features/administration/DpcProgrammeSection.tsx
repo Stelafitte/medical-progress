@@ -8,13 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDataAccess, useSession } from "@/application/session";
-import {
-  EmptyState,
-  MockBadge,
-  PanelCard,
-  ScopeNotice,
-  StatCard,
-} from "@/features/professional/mock-ui";
+import { EmptyState, PanelCard, ScopeNotice, StatCard } from "@/features/professional/mock-ui";
 import {
   DPC_NO_PATIENT_DATA_NOTICE_FR,
   DPC_ROUND_LABELS_FR,
@@ -51,7 +45,11 @@ export function DpcProgrammeSection() {
       <PanelCard
         title="Programme DPC"
         description="Module optionnel"
-        action={<MockBadge label="Désactivé" />}
+        action={
+          <Badge variant="outline" className="font-normal">
+            Désactivé
+          </Badge>
+        }
       >
         <EmptyState>
           Le module DPC n'est pas activé pour <strong>{activeProgram.name}</strong>. Il s'active par
@@ -111,7 +109,6 @@ export function DpcProgrammeSection() {
       <PanelCard
         title="Grilles et versions"
         description="Une grille publiée est immuable tant qu'un tour l'utilise : la comparaison avant/après reste valide."
-        action={<MockBadge />}
       >
         <ul className="space-y-2">
           {scope.grids.map((item) => (

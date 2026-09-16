@@ -32,7 +32,7 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
-import { EmptyState, MockBadge, PanelCard, ScopeNotice } from "@/features/professional/mock-ui";
+import { EmptyState, PanelCard, ScopeNotice } from "@/features/professional/mock-ui";
 import { buildDomainColors, DOMAIN_NEUTRAL } from "@/features/dashboard/domainColor";
 import { useLearnerPassport } from "@/features/dashboard/useLearnerPassport";
 import { useSession } from "@/application/session";
