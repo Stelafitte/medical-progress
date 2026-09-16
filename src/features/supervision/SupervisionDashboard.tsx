@@ -48,6 +48,7 @@ export function SupervisionDashboard() {
   return (
     <div className="space-y-8">
       <SectionHeading
+        eyebrow={activeProgram.name}
         title="Espace encadrant"
         level={1}
         description={`Encadrement clinique pour ${activeProgram.name}.`}

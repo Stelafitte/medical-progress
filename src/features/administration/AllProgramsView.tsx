@@ -92,6 +92,7 @@ export function AllProgramsView() {
   return (
     <div className="space-y-6">
       <SectionHeading
+        eyebrow="Campus Santé Augmenté"
         title="Tous les programmes"
         level={1}
         action={<MockBadge />}

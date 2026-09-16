@@ -14,6 +14,7 @@ export function AdminGovernance() {
   return (
     <div className="space-y-8">
       <SectionHeading
+        eyebrow={activeProgram.name}
         title="Administration et sécurité"
         level={1}
         action={<MockBadge />}

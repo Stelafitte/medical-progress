@@ -64,6 +64,7 @@ export function PlatformAdminView() {
   return (
     <div className="space-y-8">
       <SectionHeading
+        eyebrow="Campus Santé Augmenté"
         title="Administration plateforme"
         level={1}
         action={<MockBadge label="Maquette limitée" />}

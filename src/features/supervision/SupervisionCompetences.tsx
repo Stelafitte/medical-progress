@@ -138,6 +138,7 @@ export function SupervisionCompetences() {
   return (
     <div className="space-y-8">
       <SectionHeading
+        eyebrow="Encadrement clinique"
         title="Compétences à confirmer"
         level={1}
         description="Ce que l'étudiant déclare avoir acquis, et que vous seul pouvez confirmer."

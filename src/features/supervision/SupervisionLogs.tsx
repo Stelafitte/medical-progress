@@ -36,6 +36,7 @@ export function SupervisionLogs() {
   return (
     <div className="space-y-8">
       <SectionHeading
+        eyebrow="Encadrement clinique"
         title="Carnets à valider"
         level={1}
         description="Les jours de présence déclarés par vos étudiants, semaine par semaine, et le commentaire laissé."

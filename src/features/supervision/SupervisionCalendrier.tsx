@@ -68,6 +68,7 @@ export function SupervisionCalendrier() {
   return (
     <div className="space-y-6">
       <SectionHeading
+        eyebrow={activeProgram.name}
         title="Calendrier du stage"
         level={1}
         description="Les semaines en service et les semaines de travail personnel, groupe par groupe."

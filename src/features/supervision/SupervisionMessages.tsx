@@ -80,6 +80,7 @@ export function SupervisionMessages() {
   return (
     <div className="space-y-7">
       <SectionHeading
+        eyebrow={activeProgram.name}
         title="Messagerie"
         level={1}
         description="Les annonces qui vous sont adressées, et les échanges ouverts par vos étudiants."

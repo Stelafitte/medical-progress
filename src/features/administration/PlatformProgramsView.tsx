@@ -75,6 +75,7 @@ export function PlatformProgramsView() {
   return (
     <div className="space-y-6">
       <SectionHeading
+        eyebrow="Campus Santé Augmenté"
         title="Programmes agrégés"
         level={1}
         action={<MockBadge label="Maquette limitée" />}

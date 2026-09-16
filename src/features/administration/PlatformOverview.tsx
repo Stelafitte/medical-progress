@@ -110,6 +110,7 @@ export function PlatformOverview() {
   return (
     <div className="space-y-6">
       <SectionHeading
+        eyebrow="Campus Santé Augmenté"
         title="Vue d'ensemble de la plateforme"
         level={1}
         action={<MockBadge label="Maquette limitée" />}

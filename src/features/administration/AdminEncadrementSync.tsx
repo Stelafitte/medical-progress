@@ -299,6 +299,7 @@ export function AdminEncadrementSync() {
   return (
     <div className="space-y-6">
       <SectionHeading
+        eyebrow={activeProgram.name}
         title="Équipe d'encadrement"
         level={1}
         description="Qui encadre déjà les promotions de ce programme, et comment compléter l'équipe."

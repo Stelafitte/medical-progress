@@ -119,6 +119,7 @@ export function AdminProgramPilot() {
   return (
     <div className="space-y-6">
       <SectionHeading
+        eyebrow={data.program?.name ?? "Programme"}
         title="Pilotage de programme"
         level={1}
         action={<MockBadge />}

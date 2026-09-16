@@ -126,6 +126,7 @@ export function AdminLearnerClasses() {
   return (
     <div className="space-y-6">
       <SectionHeading
+        eyebrow={data.program?.name ?? "Programme"}
         title="Classes d'apprenants"
         level={1}
         action={<MockBadge />}

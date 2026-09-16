@@ -40,6 +40,7 @@ export function AdminStages() {
   return (
     <div className="space-y-6">
       <SectionHeading
+        eyebrow={data.program?.name ?? "Programme"}
         title="Gestion des stages"
         level={1}
         description="Terrains de stage, promotions concernées, encadrement, et suivi des carnets."

@@ -104,6 +104,7 @@ export function SupervisionConnaissances() {
   return (
     <div className="space-y-8">
       <SectionHeading
+        eyebrow="Encadrement clinique"
         title="Connaissances"
         level={1}
         description="Le contenu servi aux étudiants, et où chacun en est."

@@ -414,6 +414,7 @@ export function SupervisionReports() {
   return (
     <div className="space-y-8">
       <SectionHeading
+        eyebrow={activeProgram.name}
         title="Bilans de stage"
         level={1}
         description="Présence, compétences, connaissances et échanges — puis la validation du stage."

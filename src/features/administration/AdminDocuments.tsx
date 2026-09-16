@@ -96,6 +96,7 @@ export function AdminDocuments() {
   return (
     <div className="space-y-6">
       <SectionHeading
+        eyebrow={data.program?.name ?? "Programme"}
         title="Documents et certificats"
         level={1}
         action={<MockBadge />}

@@ -51,6 +51,7 @@ export function StatisticsView() {
   return (
     <div className="space-y-8">
       <SectionHeading
+        eyebrow={activeProgram.name}
         title="Statistiques et suivi pluriannuel"
         level={1}
         action={<MockBadge />}

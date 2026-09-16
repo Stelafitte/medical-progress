@@ -115,6 +115,7 @@ export function PlatformPilotageView() {
   return (
     <div className="space-y-6">
       <SectionHeading
+        eyebrow="Campus Santé Augmenté"
         title="Pilotage et paramétrage"
         level={1}
         action={<MockBadge label="Maquette limitée" />}

@@ -53,6 +53,7 @@ export function SupervisionStudents() {
   return (
     <div className="space-y-6">
       <SectionHeading
+        eyebrow="Encadrement clinique"
         title="Mes étudiants"
         level={1}
         description="Fiche synthétique par étudiant : progression, activité de stage et dernier contact."

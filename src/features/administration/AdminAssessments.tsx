@@ -41,6 +41,7 @@ export function AdminAssessments() {
   return (
     <div className="space-y-6">
       <SectionHeading
+        eyebrow={program.name}
         title="Évaluations"
         level={1}
         description={`${program.name} (${program.code}) — ce que chaque promotion rencontrera, sous quel format, où, ce que ça engage, et quand.`}

@@ -62,6 +62,7 @@ export function AdminDashboard() {
   return (
     <div className="space-y-6">
       <SectionHeading
+        eyebrow={activeProgram.name}
         title="Administration du programme"
         level={1}
         action={<MockBadge />}

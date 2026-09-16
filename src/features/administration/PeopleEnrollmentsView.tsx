@@ -146,6 +146,7 @@ function MockPeopleEnrollmentsView() {
   return (
     <div className="space-y-8">
       <SectionHeading
+        eyebrow={activeProgram.name}
         title="Personnes et inscriptions"
         level={1}
         action={
@@ -282,6 +283,7 @@ function RealPeopleEnrollmentsView() {
   return (
     <div className="space-y-8">
       <SectionHeading
+        eyebrow={activeProgram.name}
         title="Personnes et inscriptions"
         level={1}
         action={<MockBadge label="Données réelles (Supabase)" />}

@@ -32,6 +32,7 @@ export function SupervisorProfile() {
   return (
     <div className="space-y-6">
       <SectionHeading
+        eyebrow={activeProgram.name}
         title="Mon profil d'encadrant"
         level={1}
         description="Fonction, terrains et périodes d’encadrement."

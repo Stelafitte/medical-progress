@@ -110,6 +110,7 @@ export function ArchitectureView() {
   return (
     <div className="space-y-6">
       <SectionHeading
+        eyebrow="Socle technique"
         title="Architecture / état du socle"
         level={1}
         description="Monolithe modulaire : UI, logique métier, accès aux données et intégrations sont séparés. Cette page liste explicitement ce qui est réel et ce qui est encore simulé."
