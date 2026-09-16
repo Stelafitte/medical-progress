@@ -36,7 +36,9 @@ function Guarded() {
   return (
     <div className="space-y-6">
       <SectionHeading
-        title="Importer et implémenter un programme DPC"
+        level={1}
+        eyebrow={session.activeProgram.name}
+        title="Importer un programme DPC"
         description="Importez le programme DPC et ses documents associés. Campus Santé Augmenté prépare une implémentation structurée que vous pourrez vérifier, planifier et ouvrir pour une cohorte. Aucun fichier transmis, aucune analyse réelle, aucune ouverture réelle."
       />
       <Button asChild variant="outline" className="min-h-11">

@@ -33,8 +33,10 @@ function Guarded() {
   return (
     <div className="space-y-6">
       <SectionHeading
-        title="Programmes DPC importés et implémentations"
-        description="Module optionnel activable par programme : audits avant/après, formation, tests et attestation."
+        level={1}
+        eyebrow={session.activeProgram.name}
+        title="Programmes DPC"
+        description="Module optionnel activable par programme : programmes importés, implémentations, audits avant/après, formation, tests et attestation."
       />
       <div className="space-y-2">
         <Button asChild className="min-h-11 w-full sm:w-auto">

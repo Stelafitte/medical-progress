@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useSession } from "@/application/session";
 import { AccessRestricted } from "@/components/access-restricted";
+import { SectionHeading } from "@/components/section-heading";
 import { CommunicationDirectorySection } from "@/features/administration/CommunicationDirectorySection";
 import { EquipeDuProgrammeAutonome } from "@/features/supervision/EquipeDuProgramme";
 
@@ -56,6 +57,19 @@ function Guarded() {
     return <AccessRestricted area="La communication interne du programme" />;
   return (
     <div className="space-y-6">
+      {/*
+        CET ONGLET ETAIT LE SEUL ECRAN PROFESSIONNEL SANS TITRE DE PAGE : il
+        ouvrait directement sur ses panneaux, sans dire ni ou l'on est ni ce
+        qu'on y fait (Stef, 16/09). Il porte desormais le meme bandeau que les
+        autres onglets.
+      */}
+      <SectionHeading
+        level={1}
+        eyebrow={session.activeProgram.name}
+        title="Communication interne"
+        description="À qui s'adresser dans ce programme, puis l'annuaire des destinataires, les invitations et les envois."
+      />
+
       {/* A QUI S'ADRESSER, AVANT DE SAVOIR QUOI ECRIRE (Stef, 11/09). La carte
           n'apparait que pour qui encadre : l'administration a deja sa propre
           vue de l'equipe dans « Equipe d'encadrement ». */}
