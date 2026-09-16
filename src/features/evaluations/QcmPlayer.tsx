@@ -118,9 +118,10 @@ export function QcmPlayer({ params }: { readonly params: QcmPlayerParams }) {
     setChoix([]);
     try {
       /*
-      * L'inscription voyage avec la lecture : c'est elle qui fixe l'ordre des
-      * propositions, stable pour cet étudiant et différent de celui du voisin
-      * (16/09, migration 20260916160000).
+      * L'inscription voyage avec la lecture : c'est elle qui déclenche le
+      * tirage de l'ordre des propositions, REFAIT À CHAQUE LECTURE (16/09,
+      * migration 20260916200000). Recharger la page redistribue donc les
+      * propositions — voulu : on retient le contenu, pas la place.
       */
       const question = await data.assessments.readQuestion(id, activeEnrollment?.id);
       setEtape({ kind: "question", index, question });
@@ -248,10 +249,10 @@ export function QcmPlayer({ params }: { readonly params: QcmPlayerParams }) {
                     <Label htmlFor={`opt-${o.letter}`} className="cursor-pointer text-sm font-normal leading-relaxed">
                       {/*
                         LA LETTRE AFFICHÉE EST CELLE DE LA PLACE, pas celle du
-                        fichier : l'ordre étant mélangé par inscription, une
-                        proposition peut être la « C » de l'étudiant et la « A »
-                        de son voisin. La vraie lettre continue de voyager avec
-                        la réponse, le barème et le signalement.
+                        fichier : l'ordre est tiré à chaque lecture, donc la
+                        même proposition peut être « C » ici et « A » au tour
+                        suivant. La vraie lettre continue de voyager avec la
+                        réponse, le barème et le signalement.
                       */}
                       <span className="mr-2 font-mono text-xs">
                         {String.fromCharCode(65 + etape.question.options.indexOf(o))}.

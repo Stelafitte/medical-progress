@@ -718,9 +718,10 @@ export interface AssessmentRepository {
   /** N identifiants tirés au sort dans la banque, filtrés. */
   pickQuestions(filter: QuestionFilter, count: number): Promise<readonly string[]>;
   /**
-   * L'inscription mélange l'ordre des propositions, de façon stable par
-   * (question, inscription) — voir 20260916160000. Sans elle (relecture par
-   * l'équipe), l'ordre du fichier est conservé.
+   * L'inscription fait TIRER l'ordre des propositions À CHAQUE LECTURE
+   * (20260916200000, arbitrage de Stef du 16/09 : une question rejouée ne doit
+   * pas remontrer le même ordre). Sans elle — relecture par l'équipe —, l'ordre
+   * du fichier est conservé, c'est celui qu'on corrige.
    */
   readQuestion(questionId: string, enrollmentId?: string): Promise<QuestionToAnswer>;
   answerQuestion(
