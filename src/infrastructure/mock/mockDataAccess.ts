@@ -202,6 +202,17 @@ export const mockDataAccess: DataAccess = {
         cohorts = cohorts.map((c) => (c.id === updated.id ? updated : c));
         return ok(updated);
       },
+      /*
+        L'INTERRUPTION N'EXISTE QU'EN BASE. Elle repose sur un trigger qui
+        refuse les ecritures d'apprenant : la simuler ici donnerait un bouton
+        qui change une pastille et ne bloque rien, c'est-a-dire exactement le
+        theatre qu'on a retire des ecrans le 16/09.
+      */
+      pauseCohort: () =>
+        Promise.reject(new Error("L'interruption d'une promotion n'existe pas en mode local.")),
+      resumeCohort: () =>
+        Promise.reject(new Error("La reprise d'une promotion n'existe pas en mode local.")),
+      listCohortInterruptions: () => ok([]),
     };
   })(),
   people: {
@@ -593,8 +604,7 @@ export const mockDataAccess: DataAccess = {
         if (!updated) return Promise.reject(new Error("Modalité d'évaluation introuvable."));
         return ok(updated);
       },
-      listAssessmentSessions: (programId) =>
-        ok(sessions.filter((s) => s.programId === programId)),
+      listAssessmentSessions: (programId) => ok(sessions.filter((s) => s.programId === programId)),
       createAssessmentSession: (input) => {
         const modality = modalities.find((m) => m.id === input.assessmentModalityId);
         if (!modality) return Promise.reject(new Error("Modalité d'évaluation introuvable."));
@@ -604,7 +614,10 @@ export const mockDataAccess: DataAccess = {
             s.cohortId === input.cohortId &&
             s.scheduledOn === input.scheduledOn,
         );
-        if (doublon) return Promise.reject(new Error("Une épreuve existe déjà ce jour-là pour cette promotion."));
+        if (doublon)
+          return Promise.reject(
+            new Error("Une épreuve existe déjà ce jour-là pour cette promotion."),
+          );
         counter += 1;
         const location = input.location.trim();
         const notes = input.notes.trim();
@@ -715,15 +728,25 @@ export const mockDataAccess: DataAccess = {
       setCohortAssessmentModality: (cohortId, assessmentModalityId, enabled) => {
         const modality = modalities.find((m) => m.id === assessmentModalityId);
         if (!modality) return Promise.reject(new Error("Modalité d'évaluation introuvable."));
-        const deja = links.some((l) => l.cohortId === cohortId && l.modalityId === assessmentModalityId);
+        const deja = links.some(
+          (l) => l.cohortId === cohortId && l.modalityId === assessmentModalityId,
+        );
         if (enabled && !deja) {
           links = [
             ...links,
-            { programId: modality.programId, cohortId, modalityId: assessmentModalityId, isOpen: true, freeAccess: true },
+            {
+              programId: modality.programId,
+              cohortId,
+              modalityId: assessmentModalityId,
+              isOpen: true,
+              freeAccess: true,
+            },
           ];
         }
         if (!enabled) {
-          links = links.filter((l) => !(l.cohortId === cohortId && l.modalityId === assessmentModalityId));
+          links = links.filter(
+            (l) => !(l.cohortId === cohortId && l.modalityId === assessmentModalityId),
+          );
           sessions = sessions.filter(
             (s) => !(s.cohortId === cohortId && s.modalityId === assessmentModalityId),
           );
@@ -1143,7 +1166,10 @@ export const mockDataAccess: DataAccess = {
           itemCount: input.items.length,
           createdAt: new Date().toISOString(),
         });
-        items.set(id, input.items.map((i) => ({ ...i })));
+        items.set(
+          id,
+          input.items.map((i) => ({ ...i })),
+        );
         return ok(id);
       },
       deleteRun: (runId: string) => {
@@ -1177,7 +1203,8 @@ export const mockDataAccess: DataAccess = {
     deleteStageLogDay: () => ok(undefined),
     validateStageLogBlock: () => ok(undefined),
     openStageLogsForGroup: () => ok(undefined),
-    upsertStageLogTemplate: () => Promise.reject(new Error("Aucun modèle de carnet en mode local.")),
+    upsertStageLogTemplate: () =>
+      Promise.reject(new Error("Aucun modèle de carnet en mode local.")),
     archiveStageLogTemplate: () => ok(undefined),
     listLogbookReports: () => ok([]),
     declareLogbookCount: () => Promise.reject(new Error("Aucun carnet en mode local.")),

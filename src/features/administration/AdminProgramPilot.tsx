@@ -21,6 +21,13 @@ import {
   Users,
 } from "lucide-react";
 import { SectionHeading } from "@/components/section-heading";
+import { CohortInterruptionPanel } from "@/features/administration/CohortInterruptionPanel";
+import { cleInterruptions } from "@/features/administration/cohortInterruptionQuery";
+import {
+  INTERRUPTION_STATE_LABELS_FR,
+  interruptionEnCours,
+  type CohortInterruption,
+} from "@/domain/cohortInterruption";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -32,6 +39,8 @@ import { useLocalPlacements } from "@/application/placementDraftStore";
 import { mergePlacements } from "@/domain/placementDraft";
 import { LearnerTrackingSection } from "@/features/administration/LearnerTrackingSection";
 import { personNameFor, useProgramAdmin } from "@/features/administration/useProgramAdmin";
+import { useDataAccess } from "@/application/session";
+import { useQuery } from "@tanstack/react-query";
 import { AdminChargement } from "@/features/administration/AdminChargement";
 import {
   COHORT_PHASE_LABELS_FR,
@@ -59,6 +68,7 @@ import { ROLE_LABELS_FR } from "@/domain/roles";
 import { buildLearnerCompetenceRows } from "@/features/administration/competenceTrackingViewModel";
 import type { LearnerCompetenceRow } from "@/features/administration/competenceTrackingViewModel";
 import type { CohortPhase } from "@/features/administration/adminProgramViewModel";
+import type { CohortId } from "@/domain/types";
 
 const STATE_STYLES = {
   done: "border-border text-muted-foreground",
@@ -67,7 +77,8 @@ const STATE_STYLES = {
 } as const;
 
 export function AdminProgramPilot() {
-  const { data, isPending, error } = useProgramAdmin();
+  const { data, isPending, error, refetch } = useProgramAdmin();
+  const dataAccess = useDataAccess();
   const { promotion } = useSearch({ from: "/espace/administration/pilotage" });
   const [cohortId, setCohortId] = useState<string | null>(null);
   const localPlacements = useLocalPlacements(data?.program?.id);
@@ -76,6 +87,16 @@ export function AdminProgramPilot() {
   // Priorité : choix explicite de l'utilisateur, puis lien profond venu de « Classes ».
   const selectedId = cohortId ?? promotion ?? defaultPilotCohortId(cohorts);
   const selected = cohorts.find((c) => c.id === selectedId);
+
+  /*
+   * L'ÉTAT RÉEL DE LA PROMOTION, LU EN BASE. L'ancien panneau le déduisait des
+   * dates ; il ne pouvait donc pas savoir qu'une promotion était en pause.
+   */
+  const interruptions = useQuery({
+    queryKey: cleInterruptions(selectedId ?? "aucune"),
+    enabled: Boolean(selectedId),
+    queryFn: () => dataAccess.programs.listCohortInterruptions(selectedId as CohortId),
+  });
 
   const timeline = useMemo(
     () => buildPilotTimeline(data?.planSchedule ?? [], selected),
@@ -302,7 +323,10 @@ export function AdminProgramPilot() {
           ) : null}
 
           <PilotTools
-            phase={cohortPhase(selected)}
+            cohortId={selected.id}
+            cohortLabel={selected.label}
+            interruption={interruptionEnCours(interruptions.data ?? [])}
+            onChanged={() => void refetch()}
             rows={learnerRows}
             summary={groupSummary}
             competenceRows={competenceRows}
@@ -339,66 +363,20 @@ export function AdminProgramPilot() {
 /* Programmation (simulée)                                             */
 /* ------------------------------------------------------------------ */
 
-const PHASE_TO_PROGRAMMING: Record<CohortPhase, ProgrammingState> = {
-  planned: "planned",
-  running: "active",
-  closed: "closed",
-};
+/*
+  CE QUE CE FICHIER PORTAIT ICI, ET POURQUOI C'EST PARTI (Stef, 16/09 : « quand
+  on parle de Pilotage, on est censé agir… ici rien à faire on dirait »).
 
-function ProgrammingPanel({ phase }: { phase: CohortPhase }) {
-  const [state, setState] = useState<ProgrammingState>(PHASE_TO_PROGRAMMING[phase]);
-  const [journal, setJournal] = useState<readonly string[]>([]);
+  `ProgrammingPanel` tenait une machine à états correcte — activer, pause,
+  reprendre, terminer, réouvrir — dans un `useState`. On cliquait, la pastille
+  changeait, on rechargeait, tout était revenu. Son état de départ n'était même
+  pas lu en base : il était déduit des DATES de la promotion. Le pied du
+  panneau l'avouait : « les changements d'état restent locaux ».
 
-  const apply = (action: keyof typeof PROGRAMMING_ACTION_LABELS_FR) => {
-    const next = nextProgrammingState(state, action);
-    if (!next) return;
-    setState(next);
-    setJournal((entries) => [
-      `${PROGRAMMING_ACTION_LABELS_FR[action]} → ${PROGRAMMING_STATE_LABELS_FR[next]}`,
-      ...entries,
-    ]);
-  };
-
-  return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-sm font-medium">État de la programmation</span>
-        <Badge variant="secondary" className="font-normal">
-          {PROGRAMMING_STATE_LABELS_FR[state]}
-        </Badge>
-      </div>
-
-      <div className="flex flex-wrap gap-2">
-        {allowedProgrammingActions(state).map((action) => (
-          <Button key={action} variant="outline" className="min-h-11" onClick={() => apply(action)}>
-            {PROGRAMMING_ACTION_LABELS_FR[action]}
-          </Button>
-        ))}
-      </div>
-
-      <div className="border-border grid gap-2 rounded-lg border p-4 sm:grid-cols-2">
-        <Button variant="outline" className="min-h-11 justify-start" disabled>
-          Modifier le calendrier (prévu)
-        </Button>
-        <Button variant="outline" className="min-h-11 justify-start" disabled>
-          Message d'urgence à la promotion (prévu)
-        </Button>
-      </div>
-
-      <p className="text-muted-foreground text-xs">
-        Les changements d'état restent locaux : rien n'est encore écrit en base.
-      </p>
-
-      {journal.length > 0 ? (
-        <ul className="text-muted-foreground space-y-1 text-xs">
-          {journal.map((entry, index) => (
-            <li key={`${entry}-${index}`}>· {entry}</li>
-          ))}
-        </ul>
-      ) : null}
-    </div>
-  );
-}
+  Il est remplacé par `CohortInterruptionPanel`, qui écrit réellement par
+  `pause_cohort` / `resume_cohort`, et dont les effets sont tenus par un trigger
+  de base — pas par l'écran.
+*/
 
 /* ------------------------------------------------------------------ */
 /* Activité DU PROGRAMME (jamais des apprenants)                       */
@@ -746,17 +724,23 @@ const TOOLS: readonly {
 ];
 
 function PilotTools({
-  phase,
+  cohortId,
+  cohortLabel,
+  interruption,
   rows,
   summary,
   activity,
   competenceRows,
+  onChanged,
 }: {
-  phase: CohortPhase;
+  cohortId: CohortId;
+  cohortLabel: string;
+  interruption: CohortInterruption | undefined;
   rows: readonly LearnerActivityRow[];
   summary: GroupActivitySummary;
   activity: ProgramActivity;
   competenceRows: readonly (LearnerCompetenceRow & { readonly personName: string })[];
+  onChanged: () => void;
 }) {
   const [open, setOpen] = useState<readonly ToolKey[]>([]);
   const toggle = (key: ToolKey) =>
@@ -766,7 +750,8 @@ function PilotTools({
     if (key === "activite")
       return `${activity.milestonesPassed}/${activity.milestonesTotal} jalons`;
     if (key === "apprenants") return `${summary.lateLearners + summary.idleLearners} à traiter`;
-    if (key === "programmation") return PROGRAMMING_STATE_LABELS_FR[PHASE_TO_PROGRAMMING[phase]];
+    if (key === "programmation")
+      return interruption ? INTERRUPTION_STATE_LABELS_FR[interruption.mode] : "en cours";
     return null;
   };
 
@@ -815,7 +800,13 @@ function PilotTools({
               </div>
               {isOpen ? (
                 <div id={`pilot-tool-${tool.key}`} className="mt-3 space-y-3">
-                  {tool.key === "programmation" ? <ProgrammingPanel phase={phase} /> : null}
+                  {tool.key === "programmation" ? (
+                    <CohortInterruptionPanel
+                      cohortId={cohortId}
+                      cohortLabel={cohortLabel}
+                      onChanged={onChanged}
+                    />
+                  ) : null}
                   {tool.key === "activite" ? <ActivityPanel activity={activity} /> : null}
                   {tool.key === "apprenants" ? (
                     <LearnerManagementPanel

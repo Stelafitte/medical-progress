@@ -57,6 +57,10 @@ import type {
   UploadUrlResult,
 } from "@/application/ports/repositories";
 import type {
+  CohortInterruption,
+  CohortInterruptionMode,
+} from "@/domain/cohortInterruption";
+import type {
   Cohort,
   CohortId,
   CohortStatus,
@@ -550,6 +554,43 @@ export function mapStageLog(row: StageLogRow): StageLog {
       comment: validation.comment,
       provenance: nativeProvenance,
     })),
+  };
+}
+
+interface CohortInterruptionRow {
+  readonly id: string;
+  readonly cohort_id: string;
+  readonly mode: CohortInterruptionMode;
+  readonly reason: string;
+  readonly started_on: string;
+  readonly expected_until: string | null;
+  readonly ended_on: string | null;
+  readonly ended_note: string | null;
+  readonly shift_weeks: number;
+  readonly declared_by: string | null;
+  readonly ended_by: string | null;
+  readonly created_at: string;
+}
+
+interface CohortResumeRow {
+  readonly semaines_decalees: number;
+  readonly jalons_decales: number;
+}
+
+function mapCohortInterruption(row: CohortInterruptionRow): CohortInterruption {
+  return {
+    id: row.id,
+    cohortId: row.cohort_id as CohortId,
+    mode: row.mode,
+    reason: row.reason,
+    startedOn: row.started_on,
+    expectedUntil: row.expected_until,
+    endedOn: row.ended_on,
+    endedNote: row.ended_note,
+    shiftWeeks: row.shift_weeks,
+    declaredBy: row.declared_by as PersonId | null,
+    endedBy: row.ended_by as PersonId | null,
+    createdAt: row.created_at,
   };
 }
 
@@ -2039,6 +2080,49 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
         });
         assertNoSupabaseError(error);
         return mapCohort(data as CohortRow, 0);
+      },
+      /*
+       * INTERROMPRE ET REPRENDRE UNE PROMOTION (16/09).
+       *
+       * Deux RPC et non deux `update` : `cohort_interruptions` ne recoit AUCUN
+       * droit d'ecriture (la migration les revoque explicitement). Poser une
+       * pause engage trop -- des dizaines de parcours fermes d'un clic -- pour
+       * passer par une table ouverte en ecriture. Les fonctions verifient les
+       * droits, le motif et l'unicite de l'interruption ouverte, et c'est
+       * `resume_cohort` qui decale le calendrier, pas le client.
+       */
+      async pauseCohort(input) {
+        const { error } = await client.rpc("pause_cohort", {
+          p_cohort_id: input.cohortId,
+          p_mode: input.mode,
+          p_reason: input.reason,
+          p_expected_until: input.expectedUntil ?? null,
+        });
+        assertNoSupabaseError(error);
+      },
+      async resumeCohort(input) {
+        const { data, error } = await client.rpc("resume_cohort", {
+          p_cohort_id: input.cohortId,
+          p_shift_weeks: input.shiftWeeks,
+          p_note: input.note ?? "",
+        });
+        assertNoSupabaseError(error);
+        const ligne = (data as readonly CohortResumeRow[] | null)?.[0];
+        return {
+          semainesDecalees: ligne?.semaines_decalees ?? 0,
+          jalonsDecales: ligne?.jalons_decales ?? 0,
+        };
+      },
+      async listCohortInterruptions(cohortId) {
+        const { data, error } = await client
+          .from("cohort_interruptions")
+          .select(
+            "id,cohort_id,mode,reason,started_on,expected_until,ended_on,ended_note,shift_weeks,declared_by,ended_by,created_at",
+          )
+          .eq("cohort_id", cohortId)
+          .order("started_on", { ascending: false });
+        assertNoSupabaseError(error);
+        return ((data ?? []) as CohortInterruptionRow[]).map(mapCohortInterruption);
       },
     },
     people: {

@@ -5,6 +5,7 @@
  * sélectif depuis un système historique) devra respecter ces interfaces sans
  * modifier l'UI ni la logique métier.
  */
+import type { CohortInterruption, CohortInterruptionMode } from "@/domain/cohortInterruption";
 import type {
   MilestoneShift,
   PlanMilestone,
@@ -199,6 +200,31 @@ export interface ProgramRepository {
    * n'existe pas : cinq tables pointent vers `cohorts`.
    */
   setCohortArchived(cohortId: CohortId, archived: boolean): Promise<Cohort>;
+  /**
+   * INTERROMPT une promotion selon l'un des trois degrés (Stef, 16/09 : « il
+   * faut des boutons pour chaque situation »). Le motif est obligatoire — la
+   * fonction SQL le refuse vide, et c'est voulu : une promotion arrêtée sans
+   * motif, six semaines plus tard, plus personne ne sait pourquoi.
+   */
+  pauseCohort(input: {
+    readonly cohortId: CohortId;
+    readonly mode: CohortInterruptionMode;
+    readonly reason: string;
+    readonly expectedUntil?: string | null;
+  }): Promise<void>;
+  /**
+   * LÈVE l'interruption en cours. `shiftWeeks` décale la fin de la promotion
+   * et les jalons POSTÉRIEURS au début de la pause : c'est ce décalage qui
+   * sépare une pause qui répare d'une pause qui laisse la promotion en retard.
+   * Zéro est une décision comme une autre — la promotion rattrape.
+   */
+  resumeCohort(input: {
+    readonly cohortId: CohortId;
+    readonly shiftWeeks: number;
+    readonly note?: string;
+  }): Promise<{ readonly semainesDecalees: number; readonly jalonsDecales: number }>;
+  /** L'historique des interruptions d'une promotion, la plus récente d'abord. */
+  listCohortInterruptions(cohortId: CohortId): Promise<readonly CohortInterruption[]>;
   /**
    * Enregistre l'état en cours de conception du programme (« Concepteur de
    * programme »), avant finalisation et passage au pilotage. `draft` est un
@@ -723,7 +749,10 @@ export interface AssessmentRepository {
     readonly stageLogTemplateId?: string;
   }): Promise<void>;
   /** Les items et sous-items d'une banque, avec leurs comptes — pour composer un filtre. */
-  listQuestionSections(programId: ProgramId, source: string): Promise<readonly QuestionSectionRow[]>;
+  listQuestionSections(
+    programId: ProgramId,
+    source: string,
+  ): Promise<readonly QuestionSectionRow[]>;
   /** Combien de questions publiées répondent au filtre — avant de lancer. */
   countQuestions(filter: QuestionFilter): Promise<number>;
   /** N identifiants tirés au sort dans la banque, filtrés. */
@@ -758,7 +787,11 @@ export interface AssessmentRepository {
   importQuestionCases(input: ImportQuestionCasesInput): Promise<ImportReport>;
   listQuestionCases(programId: ProgramId, source: string): Promise<readonly QuestionCaseRow[]>;
   readCase(caseId: string, enrollmentId?: string): Promise<CaseToPlay>;
-  answerCaseStep(questionId: string, enrollmentId: string, selected: readonly string[]): Promise<CaseStepCorrection>;
+  answerCaseStep(
+    questionId: string,
+    enrollmentId: string,
+    selected: readonly string[],
+  ): Promise<CaseStepCorrection>;
   myCaseResults(enrollmentId: string): Promise<readonly MyCaseResults[]>;
   caseResultsByCohort(cohortId: string): Promise<readonly CohortCaseResults[]>;
 }

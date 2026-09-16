@@ -21,6 +21,7 @@ import { useSession } from "@/application/session";
 import { initials } from "@/lib/initials";
 import { ROLE_LABELS_FR, roleAssignmentKey, rolesByPreference } from "@/domain/roles";
 import { IS_DEV } from "@/lib/env";
+import { CohortInterruptionBanner } from "@/components/cohort-interruption-banner";
 import type { PersonId, Program, RoleAssignment } from "@/domain/types";
 
 const linkClass =
@@ -484,6 +485,12 @@ export function AppShell() {
       </header>
 
       <main id="contenu" className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+        {/*
+          UNE PROMOTION SUSPENDUE OU GELEE L'EST POUR TOUT LE PARCOURS, donc le
+          bandeau est ici et pas dans un ecran : sinon l'etudiant decouvrirait
+          le blocage au moment ou il essaie de rendre.
+        */}
+        <CohortInterruptionBanner />
         <Outlet />
       </main>
 
