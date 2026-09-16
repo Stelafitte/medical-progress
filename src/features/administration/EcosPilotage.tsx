@@ -1,6 +1,6 @@
 /**
  * LES STATIONS D'ECOS SIMULÉ OFFERTES À UNE PROMOTION — le bloc que l'atelier
- * déplie, sur le modèle du pilotage QCM.
+ * déplie, sous la ligne « ECOS simulé ».
  *
  * Stef (16/09) : « une fois l'ECOS simulé activé côté Admin, il faut pouvoir
  * [choisir] quels ECOS sont mis à disposition de l'apprenant. Donc il faut
@@ -16,105 +16,57 @@
  * Le catalogue des stations vit dans `src/domain/ecos.ts` (décision du 13/09) ;
  * la base ne garde que des CLÉS.
  *
- * ⚠️ LA CASE OBÉIT AU DOIGT, PAS AU RÉSEAU (corrigé le 16/09 sur constat de
- * Stef : « la case montre un sens interdit, il faut cliquer plusieurs fois »).
- * Chaque clic enregistrait, et TOUT l'écran d'administration se rechargeait
- * derrière — une trentaine de requêtes — pendant que les cases restaient
- * désactivées : le curseur affichait un sens interdit et les clics de
- * l'intervalle étaient perdus. Désormais l'affichage suit la sélection LOCALE,
- * l'enregistrement part derrière, et si une écriture est déjà en vol la
- * suivante attend son tour — la dernière voulue gagne. Rien n'est jamais
- * désactivé ; en cas d'échec, l'écran revient à ce que dit la base et le dit.
+ * ⚠️ CE PANNEAU N'ÉCRIT RIEN LUI-MÊME (16/09, deuxième correction de Stef :
+ * « dès que je change un état des cases à cocher, il faut pouvoir enregistrer
+ * le changement avec le bouton enregistrement »). Une case cochée est une
+ * INTENTION, exactement comme les cases des modalités au-dessus ; c'est le
+ * bouton « Enregistrer les modifications », en bas du bloc, qui la porte en
+ * base. Un seul geste d'enregistrement pour tout l'écran, et « Annuler » rend
+ * vraiment ce qu'il promet.
+ *
+ * C'est aussi ce qui a réglé le sens interdit du premier essai : quand chaque
+ * clic écrivait, tout l'écran d'administration se rechargeait derrière — une
+ * trentaine de requêtes — et les cases restaient désactivées pendant ce temps.
  */
-import { useEffect, useRef, useState } from "react";
 import { ExternalLink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useDataAccess } from "@/application/session";
 import { ECOS_EXTERNAL_STATIONS } from "@/domain/ecos";
 import type { AssessmentModality, CohortAssessmentLink } from "@/domain/assessmentModality";
-import type { Cohort } from "@/domain/types";
+
+/** Deux sélections identiques, quel que soit l'ordre. */
+function memeSelection(a: readonly string[], b: readonly string[]): boolean {
+  if (a.length !== b.length) return false;
+  const gauche = [...a].sort();
+  const droite = [...b].sort();
+  return gauche.every((cle, i) => cle === droite[i]);
+}
 
 export function EcosPilotage({
-  cohort,
   modality,
   link,
   editable,
-  onChanged,
+  selection,
+  onSelection,
 }: {
-  readonly cohort: Cohort;
   readonly modality: AssessmentModality;
   readonly link: CohortAssessmentLink;
   readonly editable: boolean;
-  readonly onChanged?: (() => void) | undefined;
+  /** Ce que les cases montrent : l'intention en cours, ou ce que dit la base. */
+  readonly selection: readonly string[];
+  readonly onSelection: (stationKeys: readonly string[]) => void;
 }) {
-  const dataAccess = useDataAccess();
-  const [selection, setSelection] = useState<readonly string[]>(link.ecosStations ?? []);
-  const [enCours, setEnCours] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const enVol = useRef(false);
-  const suivante = useRef<readonly string[] | null>(null);
-
-  /*
-   * Ce que dit la base reprend la main QUAND PLUS RIEN N'EST EN VOL. Sans cette
-   * garde, la relecture déclenchée par un enregistrement écraserait un clic
-   * plus récent que la requête en cours.
-   */
-  const cleServeur = (link.ecosStations ?? []).join("|");
-  useEffect(() => {
-    if (enVol.current) return;
-    setSelection(cleServeur === "" ? [] : cleServeur.split("|"));
-  }, [cleServeur]);
-
-  async function envoyer(cles: readonly string[]) {
-    if (enVol.current) {
-      suivante.current = cles;
-      return;
-    }
-    enVol.current = true;
-    setEnCours(true);
-    setError(null);
-    try {
-      let aEnvoyer: readonly string[] | null = cles;
-      while (aEnvoyer) {
-        await dataAccess.assessments.setCohortAssessmentEcos({
-          cohortId: cohort.id,
-          assessmentModalityId: modality.id,
-          stationKeys: aEnvoyer,
-        });
-        aEnvoyer = suivante.current;
-        suivante.current = null;
-      }
-      enVol.current = false;
-      /* La relecture vient APRÈS la dernière écriture : le badge de la ligne suit. */
-      onChanged?.();
-    } catch (reason) {
-      enVol.current = false;
-      suivante.current = null;
-      setError(reason instanceof Error ? reason.message : "Enregistrement impossible.");
-      setSelection(link.ecosStations ?? []);
-    } finally {
-      setEnCours(false);
-    }
-  }
+  const enBase = link.ecosStations ?? [];
+  const modifiee = !memeSelection(selection, enBase);
+  const toutes = ECOS_EXTERNAL_STATIONS.map((s) => s.key);
 
   function basculer(cle: string, voulue: boolean) {
-    const cles = ECOS_EXTERNAL_STATIONS.filter((s) =>
-      s.key === cle ? voulue : selection.includes(s.key),
-    ).map((s) => s.key);
-    setSelection(cles);
-    void envoyer(cles);
-  }
-
-  function toutBasculer() {
-    const cles =
-      selection.length === ECOS_EXTERNAL_STATIONS.length
-        ? []
-        : ECOS_EXTERNAL_STATIONS.map((s) => s.key);
-    setSelection(cles);
-    void envoyer(cles);
+    onSelection(
+      ECOS_EXTERNAL_STATIONS.filter((s) =>
+        s.key === cle ? voulue : selection.includes(s.key),
+      ).map((s) => s.key),
+    );
   }
 
   return (
@@ -125,16 +77,20 @@ export function EcosPilotage({
           <span className="text-muted-foreground font-normal">— pour cette promotion</span>
         </p>
         <div className="flex items-center gap-2">
-          {enCours ? <span className="text-muted-foreground text-xs">Enregistrement…</span> : null}
+          {modifiee ? (
+            <Badge variant="outline" className="text-muted-foreground font-normal">
+              à enregistrer
+            </Badge>
+          ) : null}
           {editable ? (
             <Button
               type="button"
               size="sm"
               variant="outline"
               className="min-h-9"
-              onClick={toutBasculer}
+              onClick={() => onSelection(selection.length === toutes.length ? [] : toutes)}
             >
-              {selection.length === ECOS_EXTERNAL_STATIONS.length ? "Tout décocher" : "Tout cocher"}
+              {selection.length === toutes.length ? "Tout décocher" : "Tout cocher"}
             </Button>
           ) : null}
         </div>
@@ -183,11 +139,11 @@ export function EcosPilotage({
           <Badge variant="secondary" className="font-normal">
             {selection.length} station(s)
           </Badge>{" "}
-          offerte(s) à cette promotion. L'apprenant les joue dans ChatGPT et rapporte sa grille.
+          {modifiee
+            ? "seront offertes à cette promotion après enregistrement."
+            : "offerte(s) à cette promotion. L'apprenant les joue dans ChatGPT et rapporte sa grille."}
         </p>
       )}
-
-      {error ? <p className="text-destructive text-xs">{error}</p> : null}
     </div>
   );
 }

@@ -271,6 +271,8 @@ function LigneModalite({
   onToggle,
   ouverte,
   onOuvrir,
+  stations,
+  onStations,
   sessions,
   link,
   banques,
@@ -298,6 +300,9 @@ function LigneModalite({
    */
   readonly ouverte: boolean;
   readonly onOuvrir: (ouverte: boolean) => void;
+  /** ECOS simulé : les stations voulues (intention), et de quoi les changer. */
+  readonly stations: readonly string[];
+  readonly onStations: (stationKeys: readonly string[]) => void;
   readonly sessions: readonly AssessmentSession[];
   /** Le lien promotion ↔ modalité, quand il existe : il porte le pilotage. */
   readonly link: CohortAssessmentLink | undefined;
@@ -541,11 +546,11 @@ function LigneModalite({
 
           {estEcos && link ? (
             <EcosPilotage
-              cohort={cohort}
               modality={modality}
               link={link}
               editable={editable}
-              onChanged={onChanged}
+              selection={stations}
+              onSelection={onStations}
             />
           ) : estQcm && link ? (
             <QcmPilotage
@@ -668,6 +673,21 @@ export function AssessmentModalitySection({
    */
   const cleDOuverture = (row: CatalogueRow) => row.entry?.key ?? row.modality?.id ?? row.id;
   const [ouvertes, setOuvertes] = useState<ReadonlySet<string>>(new Set());
+
+  /*
+   * LES STATIONS D'ECOS SIMULÉ SONT UNE INTENTION, COMME LES CASES DE MODALITÉ
+   * (Stef, 16/09). Clé = identifiant de modalité, valeur = les stations
+   * voulues. C'est « Enregistrer les modifications » qui les porte en base :
+   * un seul geste pour tout l'écran, et « Annuler » rend vraiment tout.
+   */
+  const [stationsVoulues, setStationsVoulues] = useState<Map<string, readonly string[]>>(new Map());
+  const stationsDe = (row: CatalogueRow) => {
+    const modalityId = row.modality?.id;
+    if (!modalityId) return [];
+    const enAttente = stationsVoulues.get(modalityId);
+    if (enAttente) return enAttente;
+    return links.find((l) => l.cohortId === cohortId && l.modalityId === modalityId)?.ecosStations ?? [];
+  };
   const ouvrir = (cle: string, ouverte: boolean) =>
     setOuvertes((prev) => {
       const next = new Set(prev);
@@ -679,6 +699,7 @@ export function AssessmentModalitySection({
   const choisir = (id: string) => {
     setChosen(id);
     setPending(new Map());
+    setStationsVoulues(new Map());
     setOuvertes(new Set());
     setSaveError(null);
   };
@@ -728,11 +749,33 @@ export function AssessmentModalitySection({
         erreurs.push(`${nom} : ${reason instanceof Error ? reason.message : "échec"}`);
       }
     }
+    /*
+     * Les stations APRÈS les rattachements : une modalité cochée à l'instant
+     * n'a son lien promotion↔modalité qu'à la ligne précédente, et c'est lui
+     * que `set_cohort_assessment_ecos` exige.
+     */
+    for (const [modalityId, cles] of stationsVoulues) {
+      try {
+        await dataAccess.assessments.setCohortAssessmentEcos({
+          cohortId,
+          assessmentModalityId: modalityId,
+          stationKeys: cles,
+        });
+      } catch (reason) {
+        const nom = rows.find((r) => r.modality?.id === modalityId)?.modality?.name ?? "Stations";
+        erreurs.push(`${nom} : ${reason instanceof Error ? reason.message : "échec"}`);
+      }
+    }
+
     setPending(new Map());
+    setStationsVoulues(new Map());
     setSaving(false);
     if (erreurs.length > 0) setSaveError(erreurs.join(" · "));
     onChanged?.();
   }
+
+  /* Une modification en attente = une case de modalité, ou une sélection de stations. */
+  const aEnregistrer = pending.size + stationsVoulues.size;
 
   const datesDeLaPromo = sessions.filter((s) => s.cohortId === cohortId);
   const compter = (usage: AssessmentUsage) =>
@@ -797,6 +840,12 @@ export function AssessmentModalitySection({
                             onToggle={toggle}
                             ouverte={ouvertes.has(cleDOuverture(r))}
                             onOuvrir={(v) => ouvrir(cleDOuverture(r), v)}
+                            stations={stationsDe(r)}
+                            onStations={(cles) => {
+                              const modalityId = r.modality?.id;
+                              if (!modalityId) return;
+                              setStationsVoulues((prev) => new Map(prev).set(modalityId, cles));
+                            }}
                             sessions={sessions}
                             link={
                               r.modality
@@ -823,29 +872,33 @@ export function AssessmentModalitySection({
                   <Button
                     type="button"
                     className="min-h-11"
-                    disabled={saving || pending.size === 0}
+                    disabled={saving || aEnregistrer === 0}
                     onClick={() => void enregistrer()}
                   >
                     {saving
                       ? "Enregistrement…"
-                      : pending.size === 0
+                      : aEnregistrer === 0
                         ? "Enregistrer les modifications"
-                        : `Enregistrer les modifications (${pending.size})`}
+                        : `Enregistrer les modifications (${aEnregistrer})`}
                   </Button>
-                  {pending.size > 0 ? (
+                  {aEnregistrer > 0 ? (
                     <Button
                       type="button"
                       variant="outline"
                       className="min-h-11"
                       disabled={saving}
-                      onClick={() => setPending(new Map())}
+                      onClick={() => {
+                        setPending(new Map());
+                        setStationsVoulues(new Map());
+                      }}
                     >
                       Annuler
                     </Button>
                   ) : null}
                 </div>
                 <p className="text-muted-foreground text-xs">
-                  Cocher ne change rien tant que vous n'avez pas enregistré. À l'enregistrement,
+                  Cocher ne change rien tant que vous n'avez pas enregistré — les modalités comme
+                  les stations d'ECOS simulé. À l'enregistrement,
                   une modalité cochée est créée si besoin, puis servie à cette promotion ; une
                   modalité décochée lui est retirée, avec ses dates. Les caractéristiques et les
                   dates, elles, se règlent dans le détail d'une ligne enregistrée.
