@@ -18,6 +18,13 @@ import { buildDomainColors } from "@/features/dashboard/domainColor";
 import { useLearnerPassport } from "@/features/dashboard/useLearnerPassport";
 import { useStageToday } from "@/features/dashboard/useStageToday";
 import { MonEquipeDeStage } from "@/features/dashboard/MonEquipeDeStage";
+import { useMesEvaluations } from "@/features/evaluations/MesEvaluations";
+import {
+  ASSESSMENT_MODE_LABELS_FR,
+  ASSESSMENT_SUBTYPE_LABELS_FR,
+  ASSESSMENT_USAGE_LABELS_FR,
+  type AssessmentUsage,
+} from "@/domain/assessmentModality";
 
 const JOUR = 24 * 60 * 60 * 1000;
 
@@ -582,6 +589,8 @@ export function DashboardView() {
         </div>
       </section>
 
+      <PaveMesEvaluations />
+
       <PaveStage />
 
       {/*
@@ -593,6 +602,84 @@ export function DashboardView() {
         compte pas, et le refaire.
       */}
     </div>
+  );
+}
+
+/**
+ * MES ÉVALUATIONS, SUR LE TABLEAU DE BORD (Stef, 17/09), ET AVANT MON STAGE.
+ *
+ * L'étudiant demande d'abord « qu'est-ce qu'on attend de moi ? ». Le genre —
+ * ce que l'épreuve ENGAGE — se lit avant le type : s'exercer sans conséquence
+ * et passer une épreuve qui valide le stage ne se préparent pas pareil. D'où
+ * l'ordre croissant en enjeu, le même que dans « Mes évaluations » et que dans
+ * l'atelier côté équipe : aucun des trois écrans n'invente son propre ordre.
+ *
+ * Ce pavé ne montre QUE ce qui est servi à sa promotion — `useMesEvaluations`
+ * reborne déjà à l'inscription active. Une modalité non cochée pour sa
+ * promotion n'existe pas pour lui, et surtout pas ici.
+ */
+const GENRES_PAR_ENJEU: readonly AssessmentUsage[] = [
+  "self_assessment",
+  "formative",
+  "validation_exam",
+  "certification",
+];
+
+const ENGAGEMENT_COURT: Record<AssessmentUsage, string> = {
+  self_assessment: "rien n'est retenu contre vous",
+  formative: "commenté, sans effet sur la validation",
+  validation_exam: "conditionne la validation de votre stage",
+  certification: "au-delà du stage",
+};
+
+function PaveMesEvaluations() {
+  const evaluations = useMesEvaluations();
+  const modalites = evaluations.data?.modalities ?? [];
+  const liens = evaluations.data?.links ?? [];
+
+  if (evaluations.isPending || modalites.length === 0) return null;
+
+  return (
+    <section>
+      <h2 className="mb-3 font-display text-[21px] font-medium tracking-[-0.015em]">
+        Mes évaluations
+      </h2>
+      <div className="space-y-3">
+        {GENRES_PAR_ENJEU.map((genre) => {
+          const lignes = modalites.filter((m) => m.usage === genre);
+          if (lignes.length === 0) return null;
+          return (
+            <div key={genre} className="rounded-xl border bg-card p-4 shadow-[var(--shadow-card)]">
+              <p className="text-sm font-medium">
+                {ASSESSMENT_USAGE_LABELS_FR[genre]}{" "}
+                <span className="text-ink-soft font-normal">— {ENGAGEMENT_COURT[genre]}</span>
+              </p>
+              <ul className="mt-2 space-y-1.5">
+                {lignes.map((modality) => {
+                  const lien = liens.find((l) => l.modalityId === modality.id);
+                  return (
+                    <li key={modality.id} className="flex flex-wrap items-baseline gap-x-2 text-sm">
+                      <span className="font-medium">{modality.name}</span>
+                      <span className="text-ink-soft text-xs">
+                        {ASSESSMENT_SUBTYPE_LABELS_FR[modality.subtype]} ·{" "}
+                        {ASSESSMENT_MODE_LABELS_FR[modality.mode]}
+                        {lien && !lien.isOpen ? " · fermé pour l'instant" : ""}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          );
+        })}
+      </div>
+      <Button asChild variant="outline" className="mt-3 min-h-11">
+        <Link to="/espace/evaluations">
+          Ouvrir mes évaluations
+          <ArrowRight className="ms-1 size-4" aria-hidden />
+        </Link>
+      </Button>
+    </section>
   );
 }
 
