@@ -149,6 +149,39 @@ def media_duration_ms(path: Path) -> int | None:
         return None
 
 
+NARRATION_KBIT = 64
+
+
+def recoder_narration(source: Path, cible: Path) -> bool:
+    """
+    LA NARRATION SORT DU POWERPOINT BEAUCOUP TROP LOURDE (mesure du 17/09).
+
+    PowerPoint enregistre la voix autour de 169 kbit/s en stereo. Pour de la
+    parole, 64 kbit/s en mono est ample -- personne n'entend la difference, et
+    ca divise le poids par pres de trois. Mesure sur cinq narrations reelles du
+    DIU : -59 a -62 %, systematiquement.
+
+    Jusqu'ici ce fichier RECOPIAIT l'audio tel quel (`write_bytes`), pendant que
+    la video, elle, etait bien transcodee ailleurs dans la chaine
+    (`overlay_slide_videos.py`, CRF 23). L'audio etait le seul trou, et il se
+    rouvrait a chaque cours converti.
+
+    Rend True si le recodage a produit un fichier PLUS LEGER. Sinon l'appelant
+    garde l'original : une source deja sobre ne se recode pas, ca ne ferait que
+    degrader sans rien gagner.
+    """
+    try:
+        subprocess.run(
+            ["ffmpeg", "-nostdin", "-v", "error", "-y", "-i", str(source),
+             "-vn", "-c:a", "aac", "-b:a", f"{NARRATION_KBIT}k", "-ac", "1",
+             "-movflags", "+faststart", str(cible)],
+            capture_output=True, text=True, check=True,
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return False
+    return cible.exists() and cible.stat().st_size > 0 and cible.stat().st_size < source.stat().st_size
+
+
 def text_nodes(xml_bytes: bytes) -> list[str]:
     root = ET.fromstring(xml_bytes)
     return [
@@ -313,9 +346,28 @@ def build(args: argparse.Namespace) -> None:
             audio_path = None
             if audio_targets:
                 extension = PurePosixPath(audio_targets[0]).suffix.lower()
-                audio_name = f"slide-{index:03d}{extension}"
+                brut = audio_dir / f"slide-{index:03d}.brut{extension}"
+                brut.write_bytes(zf.read(audio_targets[0]))
+
+                # La narration est recodee en 64 kbit/s mono : voir
+                # `recoder_narration`. Si ffmpeg manque ou si le resultat n'est
+                # pas plus leger, on garde l'original -- la conversion ne doit
+                # jamais echouer pour une question de poids.
+                audio_name = f"slide-{index:03d}.m4a"
                 audio_path = audio_dir / audio_name
-                audio_path.write_bytes(zf.read(audio_targets[0]))
+                if recoder_narration(brut, audio_path):
+                    warnings.append(
+                        f"slide {index}: narration recodee "
+                        f"{brut.stat().st_size // 1024} ko -> "
+                        f"{audio_path.stat().st_size // 1024} ko"
+                    )
+                    brut.unlink()
+                else:
+                    audio_path.unlink(missing_ok=True)
+                    audio_name = f"slide-{index:03d}{extension}"
+                    audio_path = audio_dir / audio_name
+                    brut.rename(audio_path)
+                    warnings.append(f"slide {index}: narration gardee telle quelle")
                 audio_url = f"audio/{audio_name}"
 
             # Duree : le minutage enregistre fait foi ; a defaut, la narration.
