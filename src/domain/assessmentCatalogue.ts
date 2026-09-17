@@ -70,10 +70,21 @@ export const CATALOGUE_MODALITES: readonly CatalogueEntry[] = [
     usage: "self_assessment",
     notes: "Concordance de script : confronter son raisonnement à celui d'experts.",
   },
+  /*
+   * UNE SEULE ENTRÉE POUR LE DOSSIER PROGRESSIF D'ENTRAÎNEMENT (Stef, 17/09).
+   * Le catalogue en proposait deux — « Cas cliniques progressifs » (`dp`,
+   * auto-évaluation) et « Mini-dossier progressif » (`mini_dp`, formative) —
+   * pour une seule réalité et une seule banque. Cochées toutes les deux, elles
+   * servaient les mêmes dossiers sous deux cartes dans « Mes évaluations ».
+   *
+   * Ce qui reste est le format réel des 21 dossiers importés le 16/09
+   * (`question_cases.kind = 'mini_dp'`), en AUTO-ÉVALUATION : l'entraînement
+   * libre ne retient rien contre l'étudiant.
+   */
   {
-    key: "cas-cliniques-progressifs",
-    name: "Cas cliniques progressifs",
-    subtype: "dp",
+    key: "mini-dp",
+    name: "Mini-dossier progressif",
+    subtype: "mini_dp",
     mode: "online",
     usage: "self_assessment",
     notes: "Mobilisation progressive des connaissances et génération d'hypothèses.",
@@ -104,14 +115,6 @@ export const CATALOGUE_MODALITES: readonly CatalogueEntry[] = [
     mode: "online",
     usage: "formative",
     notes: "Traçabilité des situations rencontrées et réflexivité.",
-  },
-  {
-    key: "mini-dp",
-    name: "Mini-dossier progressif",
-    subtype: "mini_dp",
-    mode: "online",
-    usage: "formative",
-    notes: "Format court, rythmé, sur une situation clinique du stage.",
   },
   {
     key: "kfp-formative",

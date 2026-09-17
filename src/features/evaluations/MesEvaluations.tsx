@@ -143,12 +143,16 @@ function CarteModalite({
     jours faute de ce point de lancement.
   */
   /*
-   * LE SOUS-TYPE `dp` EST ADMIS DEPUIS LE 17/09 (Stef, après ses tests).
-   * L'entrée du catalogue qui convient à 21 mini-DP d'entraînement libre est
-   * « Cas cliniques progressifs », en AUTO-ÉVALUATION — « rien n'est retenu
-   * contre vous ». Elle est de sous-type `dp` ; ne reconnaître que `mini_dp`
-   * et `kfp` obligeait à passer par une modalité FORMATIVE, ce qui change ce
-   * que l'épreuve engage. Le lecteur ne doit pas décider de ça.
+   * TROIS SOUS-TYPES SERVENT DES DOSSIERS, ET C'EST VOULU.
+   *
+   * `mini_dp` est l'entraînement libre — l'entrée unique du catalogue depuis
+   * le 17/09, en auto-évaluation. `dp` reste admis parce que deux autres
+   * entrées l'emploient pour de vrai (« Dossier progressif de validation »,
+   * « EDN blanc ») : ce sont des épreuves, pas des doublons de la première.
+   * `kfp` sert la même mécanique sur une autre banque.
+   *
+   * Ce qui produisait le doublon vu par Stef n'était donc pas cette ligne,
+   * mais deux entrées de catalogue synonymes branchées sur la même banque.
    */
   const estDossier =
     modality.subtype === "dp" || modality.subtype === "mini_dp" || modality.subtype === "kfp";

@@ -114,7 +114,7 @@ export function CasPlayer({ params }: { readonly params: CasPlayerParams }) {
   if (dossier.error || !dossier.data) {
     return (
       <div className="space-y-4">
-        <FieldHeader eyebrow="Cas clinique progressif" title="Dossier indisponible" />
+        <FieldHeader eyebrow="Mini-dossier progressif" title="Dossier indisponible" />
         <Panneau title="Ce dossier ne s'ouvre pas">
           <Vide>
             {dossier.error instanceof Error
@@ -135,7 +135,7 @@ export function CasPlayer({ params }: { readonly params: CasPlayerParams }) {
   return (
     <div className="space-y-5">
       <FieldHeader
-        eyebrow={cas.itemCode ? `Item ${cas.itemCode}` : "Cas clinique progressif"}
+        eyebrow={cas.itemCode ? `Item ${cas.itemCode}` : "Mini-dossier progressif"}
         title={cas.title}
         figures={[
           { value: `${Math.min(index + 1, etapes.length)}/${etapes.length}`, label: "Étape" },

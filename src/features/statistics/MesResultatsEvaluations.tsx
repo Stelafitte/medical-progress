@@ -144,7 +144,7 @@ export function MesResultatsEvaluations({ enrollmentId }: { readonly enrollmentI
 
         {/* Dossiers progressifs */}
         <div className="border-t px-4 pb-3.5 pt-4">
-          <p className={`${EYEBROW} text-muted-foreground`}>Cas cliniques progressifs</p>
+          <p className={`${EYEBROW} text-muted-foreground`}>Mini-dossiers progressifs</p>
           {dossiers.isPending ? null : cas.length === 0 ? (
             <p className="mt-2 text-[13px] text-muted-foreground">
               Aucun dossier commencé. Ils se lancent depuis « Mes évaluations ».
