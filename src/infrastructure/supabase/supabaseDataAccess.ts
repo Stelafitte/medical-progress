@@ -72,6 +72,14 @@ import type {
   ProgramIncident,
 } from "@/domain/pilotDecision";
 import type {
+  AlertSeverity,
+  CaseDiscussion,
+  CompetenceConfirmation,
+  CompetenceConfirmationDecision,
+  SupervisionAlert,
+  SupervisionAlertKind,
+} from "@/domain/supervision";
+import type {
   Cohort,
   CohortId,
   CohortStatus,
@@ -636,6 +644,41 @@ interface PilotDecisionRow {
   readonly incident_id: string | null;
   readonly decided_by: string | null;
   readonly decided_at: string;
+}
+
+interface SupervisionAlertRow {
+  readonly alert_id: string;
+  readonly kind: SupervisionAlertKind;
+  readonly severity: AlertSeverity;
+  readonly program_id: string;
+  readonly enrollment_id: string;
+  readonly message: string;
+  readonly due_on: string | null;
+}
+
+interface CaseDiscussionRow {
+  readonly id: string;
+  readonly program_id: string;
+  readonly enrollment_id: string;
+  readonly kind: "case_to_discuss" | "learner_question";
+  readonly title: string;
+  readonly handled_at: string | null;
+  readonly discussion_messages:
+    | readonly {
+        readonly author_person_id: string;
+        readonly body: string;
+        readonly created_at: string;
+      }[]
+    | null;
+}
+
+interface CompetenceConfirmationRow {
+  readonly id: string;
+  readonly enrollment_id: string;
+  readonly outcome_id: string;
+  readonly declared_level: MasteryLevel;
+  readonly confirmation_decision: CompetenceConfirmationDecision;
+  readonly outcomes: { readonly label: string } | null;
 }
 
 interface CalendarShiftRow {
@@ -1842,14 +1885,114 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
      * des identifiants de maquette. Avec de vrais identifiants, le mock ne
      * trouve rien : l'ecran affichait une affectation sans personne en face.
      *
-     * Les AUTRES lectures de `supervision` (alertes, cas, confirmations,
-     * bilans, messagerie) restent au mock A DESSEIN : elles n'ont aucune table
-     * en base. Elles filtrent toutes sur `programId`, donc avec l'identifiant
-     * reel de DFASM-CARDIO elles rendent VIDE — un ecran vide, jamais du faux
-     * credible.
+     * DEPUIS LE 17/09, TROIS AUTRES LECTURES SONT REELLES : les alertes, les
+     * cas a discuter et les competences a confirmer. La mesure du 17/09 a
+     * montre que j'avais eu tort d'ecrire qu'aucune table n'existait : les
+     * fils de discussion et les auto-declarations etaient deja la, il leur
+     * manquait quelques colonnes (migration 20260917140000).
+     *
+     * RESTENT AU MOCK, ET IL FAUT LE SAVOIR :
+     *   `listPlacementReports`  le type du domaine exige un
+     *                           `placementAssignmentId`, or il n'existe
+     *                           DELIBEREMENT aucune table d'affectation — le
+     *                           rattachement est porte par les groupes. Le
+     *                           type doit changer avant le cablage ; je ne
+     *                           l'invente pas ici.
+     *   `listMessages`          porte `delivery: "mock_no_send"` : c'est une
+     *                           demonstration de ce que Communication interne
+     *                           fait deja pour de vrai. A RETIRER de l'ecran,
+     *                           pas a brancher.
      */
     supervision: {
       ...mockDataAccess.supervision,
+      /**
+       * LES ALERTES NE SE STOCKENT PAS. Une table d'alertes doit etre remplie
+       * par quelqu'un — personne ne le fera — et elle vieillit : l'etudiant
+       * rattrape son retard, la ligne reste. `supervision_alerts` les DEDUIT
+       * de ce que la base sait deja, a chaque lecture. Elle s'eteint donc
+       * toute seule, et une promotion suspendue ou gelee n'alerte plus.
+       */
+      async listAlerts(programId: ProgramId) {
+        const { data, error } = await client.rpc("supervision_alerts", {
+          p_program_id: programId,
+        });
+        assertNoSupabaseError(error);
+        return ((data ?? []) as SupervisionAlertRow[]).map((row) => ({
+          id: row.alert_id as SupervisionAlert["id"],
+          kind: row.kind,
+          severity: row.severity,
+          programId: row.program_id as ProgramId,
+          enrollmentId: row.enrollment_id as EnrollmentId,
+          message: row.message,
+          ...(row.due_on === null ? {} : { dueOn: row.due_on }),
+        }));
+      },
+      /**
+       * `discussion_threads` ne porte pas de corps : LE PREMIER MESSAGE EST LE
+       * CORPS, les suivants sont les commentaires. C'est la lecture fidele du
+       * modele, pas un raccourci — un fil s'ouvre en ecrivant.
+       */
+      async listCaseDiscussions(programId: ProgramId) {
+        const { data, error } = await client
+          .from("discussion_threads")
+          .select(
+            "id,program_id,enrollment_id,kind,title,handled_at," +
+              "discussion_messages(author_person_id,body,created_at)",
+          )
+          .eq("program_id", programId)
+          .order("last_message_at", { ascending: false })
+          .limit(100);
+        assertNoSupabaseError(error);
+        return ((data ?? []) as unknown as CaseDiscussionRow[]).map((row) => {
+          const messages = [...(row.discussion_messages ?? [])].sort((a, b) =>
+            a.created_at.localeCompare(b.created_at),
+          );
+          const [premier, ...suite] = messages;
+          return {
+            id: row.id as CaseDiscussion["id"],
+            programId: row.program_id as ProgramId,
+            enrollmentId: row.enrollment_id as EnrollmentId,
+            kind: row.kind,
+            title:
+              row.title.trim() ||
+              (row.kind === "learner_question" ? "Question de l'apprenant" : "Cas a discuter"),
+            body: premier?.body ?? "",
+            handled: row.handled_at !== null,
+            comments: suite.map((message) => ({
+              authorPersonId: message.author_person_id as PersonId,
+              body: message.body,
+              at: message.created_at,
+            })),
+          };
+        });
+      },
+      /**
+       * La competence a confirmer EST l'auto-declaration : `declared_level`
+       * porte ce que l'apprenant propose, `confirmation_decision` ce que
+       * l'encadrant en a fait. Le titre affiche est l'intitule de l'acquis —
+       * la seule valeur honnete tant qu'aucune preuve n'y est rattachee.
+       */
+      async listCompetenceConfirmations(programId: ProgramId) {
+        const { data, error } = await client
+          .from("outcome_self_reports")
+          .select(
+            "id,enrollment_id,outcome_id,declared_level,confirmation_decision," +
+              "outcomes(label),enrollments!inner(program_id)",
+          )
+          .eq("enrollments.program_id", programId)
+          .order("declared_at", { ascending: false })
+          .limit(200);
+        assertNoSupabaseError(error);
+        return ((data ?? []) as unknown as CompetenceConfirmationRow[]).map((row) => ({
+          id: row.id as CompetenceConfirmation["id"],
+          programId,
+          enrollmentId: row.enrollment_id as EnrollmentId,
+          outcomeId: row.outcome_id as OutcomeId,
+          evidenceTitle: row.outcomes?.label ?? "",
+          proposedAutonomy: row.declared_level,
+          decision: row.confirmation_decision,
+        }));
+      },
       async listEnrollmentsByIds(ids) {
         /* `in` sur une liste vide leve cote PostgREST : on coupe court. */
         if (ids.length === 0) return [];
