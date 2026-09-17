@@ -1692,6 +1692,14 @@ export interface ValidateStageLogBlockInput {
   /** `not_validated` = le stage est refuse ; `needs_revision` = a completer. */
   readonly decision: "validated" | "needs_revision" | "not_validated";
   readonly comment: string;
+  /**
+   * LE BILAN DE FIN DE STAGE (17/09). L'appréciation d'ensemble et les
+   * réserves ne se portent que sur le PRONONCÉ — le bloc qui couvre le stage
+   * entier. Le serveur le vérifie : sur une semaine, elles sont refusées ;
+   * sur un prononcé qui valide, l'appréciation est exigée.
+   */
+  readonly appraisal?: "insuffisant" | "satisfaisant" | "très satisfaisant" | undefined;
+  readonly reservations?: string | undefined;
 }
 
 /**

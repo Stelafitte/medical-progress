@@ -47,6 +47,10 @@ function learnerNameOf(
   return people.find((p) => p.id === personId)?.fullName ?? "Apprenant";
 }
 
+/** Les trois appréciations que la base accepte, dans l'ordre croissant. */
+const APPRECIATIONS = ["insuffisant", "satisfaisant", "très satisfaisant"] as const;
+type Appreciation = (typeof APPRECIATIONS)[number];
+
 /** Dernier jour déjà couvert par une validation acceptée. */
 function lastValidatedDay(log: StageLog): string | null {
   const covered = log.validations
@@ -163,6 +167,21 @@ function StageLogReviewCard({
   );
   const [coversTo, setCoversTo] = useState(log.periodEndsOn ?? "");
   const [comment, setComment] = useState("");
+  const [appraisal, setAppraisal] = useState<Appreciation | "">("");
+  const [reservations, setReservations] = useState("");
+
+  /*
+   * LE PRONONCÉ EST LE BILAN DE FIN DE STAGE (17/09). Le bloc qui couvre le
+   * stage ENTIER n'est pas une validation de plus : c'est le moment où le
+   * stage est prononcé, et il revient au responsable de stage ou à
+   * l'administration. Le serveur le sait depuis le 31/08 ; l'écran l'ignorait.
+   * Il porte donc, et lui seul, l'appréciation d'ensemble et les réserves.
+   */
+  const estPrononce =
+    coversFrom !== "" &&
+    coversTo !== "" &&
+    coversFrom <= (log.periodStartsOn ?? coversFrom) &&
+    coversTo >= (log.periodEndsOn ?? coversTo);
 
   const decide = useMutation({
     mutationFn: (decision: "validated" | "needs_revision") =>
@@ -172,9 +191,16 @@ function StageLogReviewCard({
         coversTo,
         decision,
         comment,
+        /* Hors prononcé, le serveur les refuse : on ne les envoie pas. */
+        ...(estPrononce && appraisal !== "" ? { appraisal } : {}),
+        ...(estPrononce && appraisal !== "" && reservations.trim() !== ""
+          ? { reservations: reservations.trim() }
+          : {}),
       }),
     onSuccess: () => {
       setComment("");
+      setAppraisal("");
+      setReservations("");
       onDone();
     },
   });
@@ -268,6 +294,65 @@ function StageLogReviewCard({
         </div>
 
         {/*
+          LE BILAN NE S OUVRE QUE SUR LE PRONONCE. Le proposer sur une semaine
+          inviterait a qualifier ce qui ne se qualifie pas : « satisfaisant »
+          sur la semaine 3 d un stage de douze ne veut rien dire, et le serveur
+          le refuserait.
+        */}
+        {estPrononce ? (
+          <div className="space-y-3 rounded-lg border border-border p-4">
+            <p className="text-[12.5px] font-medium">
+              Bilan de fin de stage{" "}
+              <span className="font-normal text-muted-foreground">
+                — cette période couvre le stage entier : la valider, c est le prononcer.
+              </span>
+            </p>
+            <div className="space-y-1.5">
+              <Label
+                htmlFor={`appraisal-${log.id}`}
+                className="block text-[12.5px] font-normal text-muted-foreground"
+              >
+                Appréciation d ensemble
+              </Label>
+              <select
+                id={`appraisal-${log.id}`}
+                className="border-input bg-background min-h-11 w-full rounded-md border px-3 text-sm"
+                value={appraisal}
+                onChange={(event) => setAppraisal(event.target.value as Appreciation | "")}
+              >
+                <option value="">— choisir —</option>
+                {APPRECIATIONS.map((valeur) => (
+                  <option key={valeur} value={valeur}>
+                    {valeur}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <Label
+                htmlFor={`reservations-${log.id}`}
+                className="block text-[12.5px] font-normal text-muted-foreground"
+              >
+                Réserves (facultatif)
+              </Label>
+              <Textarea
+                id={`reservations-${log.id}`}
+                rows={2}
+                value={reservations}
+                disabled={appraisal === ""}
+                onChange={(event) => setReservations(event.target.value)}
+              />
+            </div>
+            {appraisal === "" ? (
+              <p className="text-[12.5px] text-muted-foreground">
+                Une appréciation est exigée pour prononcer le stage : c est ce qu on relira dans
+                deux ans.
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+
+        {/*
           UN SEUL BOUTON PRIMAIRE. « Demander une correction » est l autre issue,
           pas l autre moitie : elle reste en contour.
         */}
@@ -275,7 +360,9 @@ function StageLogReviewCard({
           <Button
             type="button"
             className="min-h-11 gap-1.5"
-            disabled={!canValidate || !periodValid || decide.isPending}
+            disabled={
+              !canValidate || !periodValid || decide.isPending || (estPrononce && appraisal === "")
+            }
             onClick={() => decide.mutate("validated")}
           >
             <CheckCircle2 className="size-4" aria-hidden />

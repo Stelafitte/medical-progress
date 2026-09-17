@@ -1886,6 +1886,8 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
           p_covers_to: input.coversTo,
           p_decision: input.decision,
           p_comment: input.comment,
+          p_appraisal: input.appraisal ?? null,
+          p_reservations: input.reservations ?? null,
         });
         assertNoSupabaseError(error);
       },
