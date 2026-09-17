@@ -27,6 +27,26 @@ import {
 import { useSession } from "@/application/session";
 import { setCohortFocus, useCohortFocus } from "@/application/cohortFocusStore";
 import { CERTIFICATE_STATUS_LABELS_FR } from "@/domain/administration";
+import {
+  ASSESSMENT_MODE_LABELS_FR,
+  ASSESSMENT_SUBTYPE_LABELS_FR,
+  ASSESSMENT_USAGE_LABELS_FR,
+  type AssessmentUsage,
+} from "@/domain/assessmentModality";
+
+/**
+ * L'ORDRE DES GENRES N'EST PAS ALPHABÉTIQUE, IL EST CROISSANT EN ENJEU.
+ * Ce qu'une épreuve ENGAGE est la première chose à lire : on s'entraîne sans
+ * conséquence, puis on est commenté, puis on valide, puis on certifie. C'est
+ * l'ordre de l'atelier des évaluations ; le tableau de bord ne doit pas en
+ * inventer un autre.
+ */
+const GENRES_PAR_ENJEU: readonly AssessmentUsage[] = [
+  "self_assessment",
+  "formative",
+  "validation_exam",
+  "certification",
+];
 
 const TASK_PRIORITY_FR: Record<string, string> = {
   high: "prioritaire",
@@ -58,6 +78,23 @@ export function AdminDashboard() {
   const alerts = data.alerts.filter((alert) => enrollmentIds.has(alert.enrollmentId));
   const certificates = data.certificates.filter((c) => enrollmentIds.has(c.enrollmentId));
   const missingDocuments = data.documents.filter((d) => d.status !== "received").length;
+
+  /*
+   * LES ÉVALUATIONS DE LA PROMOTION OBSERVÉE (Stef, 17/09 : « un bloc sur les
+   * évaluations disponibles, genre et type »).
+   *
+   * On part des RATTACHEMENTS, pas du catalogue : une modalité existe pour le
+   * programme, mais seule celle qui est servie à cette promotion la concerne.
+   * C'est la même règle que côté étudiant — « une modalité non cochée pour sa
+   * promotion lui reste invisible ».
+   */
+  const evaluationsServies = data.cohortAssessmentLinks
+    .filter((link) => link.cohortId === selectedId)
+    .flatMap((link) => {
+      const modality = data.assessmentModalities.find((m) => m.id === link.modalityId);
+      /* Un rattachement sans modalité ne se devine pas : on l'omet. */
+      return modality ? [{ link, modality }] : [];
+    });
 
   return (
     <div className="space-y-6">
@@ -228,6 +265,64 @@ export function AdminDashboard() {
               </li>
             ))}
           </ul>
+        )}
+      </PanelCard>
+
+      <PanelCard
+        title={`Évaluations disponibles — ${cohortLabel}`}
+        description="Ce que cette promotion rencontre : le genre de l'épreuve — ce qu'elle engage — et son type."
+        action={
+          <Button asChild size="sm" variant="ghost" className="min-h-11">
+            <Link to="/espace/administration/evaluations">
+              Ouvrir l'atelier
+              <ArrowRight className="ms-1 size-4" aria-hidden />
+            </Link>
+          </Button>
+        }
+      >
+        {evaluationsServies.length === 0 ? (
+          <EmptyState>
+            Aucune évaluation servie à cette promotion. L'atelier des évaluations propose le
+            catalogue : cocher une ligne suffit à la lui servir.
+          </EmptyState>
+        ) : (
+          <div className="space-y-4">
+            {GENRES_PAR_ENJEU.map((genre) => {
+              const lignes = evaluationsServies.filter((l) => l.modality.usage === genre);
+              if (lignes.length === 0) return null;
+              return (
+                <div key={genre} className="space-y-2">
+                  <p className="text-xs font-medium">
+                    {ASSESSMENT_USAGE_LABELS_FR[genre]}{" "}
+                    <span className="text-muted-foreground font-normal">
+                      · {lignes.length} servie(s)
+                    </span>
+                  </p>
+                  <ul className="space-y-2 text-sm">
+                    {lignes.map(({ link, modality }) => (
+                      <li
+                        key={modality.id}
+                        className="border-border flex flex-wrap items-center gap-2 rounded-lg border p-4"
+                      >
+                        <strong className="min-w-0 flex-1 font-medium">{modality.name}</strong>
+                        <Badge variant="secondary" className="font-normal">
+                          {ASSESSMENT_SUBTYPE_LABELS_FR[modality.subtype]}
+                        </Badge>
+                        <Badge variant="outline" className="font-normal">
+                          {ASSESSMENT_MODE_LABELS_FR[modality.mode]}
+                        </Badge>
+                        {link.isOpen ? null : (
+                          <Badge variant="outline" className="text-muted-foreground font-normal">
+                            fermé pour l'instant
+                          </Badge>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              );
+            })}
+          </div>
         )}
       </PanelCard>
 
