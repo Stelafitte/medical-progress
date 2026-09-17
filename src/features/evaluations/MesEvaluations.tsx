@@ -142,7 +142,16 @@ function CarteModalite({
     maintenant. Les 21 mini-DP importés le 16/09 sont restés injouables deux
     jours faute de ce point de lancement.
   */
-  const estDossier = modality.subtype === "mini_dp" || modality.subtype === "kfp";
+  /*
+   * LE SOUS-TYPE `dp` EST ADMIS DEPUIS LE 17/09 (Stef, après ses tests).
+   * L'entrée du catalogue qui convient à 21 mini-DP d'entraînement libre est
+   * « Cas cliniques progressifs », en AUTO-ÉVALUATION — « rien n'est retenu
+   * contre vous ». Elle est de sous-type `dp` ; ne reconnaître que `mini_dp`
+   * et `kfp` obligeait à passer par une modalité FORMATIVE, ce qui change ce
+   * que l'épreuve engage. Le lecteur ne doit pas décider de ça.
+   */
+  const estDossier =
+    modality.subtype === "dp" || modality.subtype === "mini_dp" || modality.subtype === "kfp";
 
   /*
    * UN QCM A SA PROPRE CARTE (15/09). Pas de « date à venir » ni de
@@ -292,7 +301,16 @@ function CarteDossiers({
     return <p className="text-muted-foreground mt-3 text-sm">Lecture des dossiers…</p>;
   }
 
-  const jouables = (dossiers.data ?? []).filter((d) => d.validated);
+  /*
+   * LA SÉLECTION DE L'ÉQUIPE FAIT LOI (17/09). `servedCaseIds` absent veut dire
+   * « tout le lot, personne n'a trié » ; un tableau VIDE veut dire « aucun », et
+   * c'est un choix, pas un oubli. Confondre les deux servirait 21 dossiers à une
+   * promotion qui n'en voulait aucun.
+   */
+  const servis = link?.servedCaseIds;
+  const jouables = (dossiers.data ?? [])
+    .filter((d) => d.validated)
+    .filter((d) => servis === undefined || servis.includes(d.id));
 
   if (jouables.length === 0) {
     return (

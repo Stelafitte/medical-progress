@@ -18,7 +18,6 @@ import type {
   CaseDiscussion,
   CompetenceConfirmation,
   PlacementReport,
-  ProfessionalMessage,
   SupervisionAlert,
 } from "@/domain/supervision";
 
@@ -190,41 +189,6 @@ export const placementReports: readonly PlacementReport[] = [
   },
 ];
 
-export const professionalMessages: readonly ProfessionalMessage[] = [
-  {
-    id: "msg-1",
-    programId: "prog-diu-echo",
-    fromPersonId: "per-supervisor",
-    toPersonId: "per-learner",
-    subject: "Point hebdomadaire de stage",
-    body: "Merci de préparer deux dossiers pour la relecture de vendredi.",
-    sentAt: "2026-09-07T08:00:00Z",
-    kind: "message",
-    delivery: "mock_no_send",
-  },
-  {
-    id: "msg-2",
-    programId: "prog-diu-echo",
-    fromPersonId: "per-supervisor",
-    toPersonId: "per-learner-2",
-    subject: "Relance — carnet de stage",
-    body: "Aucune saisie depuis 12 jours : merci de mettre le carnet à jour.",
-    sentAt: "2026-09-10T09:30:00Z",
-    kind: "reminder",
-    delivery: "mock_no_send",
-  },
-  {
-    id: "msg-3",
-    programId: "prog-diu-echo",
-    fromPersonId: "per-admin",
-    toPersonId: "per-supervisor",
-    subject: "Certificats de complétude",
-    body: "Les bilans de fin de stage sont attendus avant le 30 septembre.",
-    sentAt: "2026-09-09T14:05:00Z",
-    kind: "message",
-    delivery: "mock_no_send",
-  },
-];
 
 export const adminDocuments: readonly AdminDocument[] = [
   {

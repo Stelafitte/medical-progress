@@ -29,7 +29,6 @@ export function useSupervision() {
         outcomes,
         themes,
         enrollments,
-        messages,
         logsToValidate,
         groups,
         weeks,
@@ -48,7 +47,6 @@ export function useSupervision() {
          */
         data.outcomes.listOutcomeThemes(activeProgram.id),
         data.supervision.listEnrollmentsByIds(enrollmentIds),
-        data.supervision.listMessages(activeProgram.id),
         data.stageLogs.listLogsToValidate(activeProgram.id),
         /*
          * LES GROUPES ET LEUR CALENDRIER. Lus par l'encadrant, pas seulement
@@ -114,7 +112,6 @@ export function useSupervision() {
         groups,
         weeks,
         resources,
-        messages,
         roleAssignments,
         staffProfiles,
       };

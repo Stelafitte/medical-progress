@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ClipboardCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { SectionHeading } from "@/components/section-heading";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -41,17 +42,19 @@ export function LearnerAuditsView() {
     },
   });
 
+  /*
+   * OUBLIÉ LORS DE LA PASSE APPRENANTE (Stef, 17/09). Cet écran et
+   * `DpcLearnerView` gardaient un titre plat pendant que les vingt-six autres
+   * portaient le bandeau. Un seul composant tient la mise en page : la
+   * corriger ici, c'est la corriger partout.
+   */
   const header = (
-    <header className="space-y-1">
-      <div className="flex flex-wrap items-center gap-2">
-        <h1 className="text-2xl font-semibold tracking-tight">Mes audits de pratique</h1>
-        <Badge variant="outline">Simulé</Badge>
-      </div>
-      <p className="text-muted-foreground text-sm">
-        Mesure de ma pratique avant puis après la formation, sur mes propres dossiers désignés par
-        une référence anonyme.
-      </p>
-    </header>
+    <SectionHeading
+      level={1}
+      eyebrow={activeProgram.name}
+      title="Mes audits de pratique"
+      description="Mesure de ma pratique avant puis après la formation, sur mes propres dossiers désignés par une référence anonyme."
+    />
   );
 
   if (!enrollmentId)

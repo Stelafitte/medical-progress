@@ -297,6 +297,13 @@ export interface CohortAssessmentLink {
   /** Pour un QCM : « je m'évalue maintenant » autorisé. */
   readonly freeAccess: boolean;
   /**
+   * Pour un lot de dossiers : ceux qui sont SERVIS à cette promotion.
+   * `undefined` = tout le lot (personne n'a encore trié) ; tableau vide =
+   * aucun. La distinction est portée par la base, et elle compte : confondre
+   * les deux ferait disparaître un lot entier au premier « Tout décocher ».
+   */
+  readonly servedCaseIds?: readonly string[] | undefined;
+  /**
    * Pour un ECOS simulé : les clés de stations offertes à cette promotion
    * (`src/domain/ecos.ts`). Absent ou vide = aucune station, l'apprenant ne
    * voit rien. (16/09)

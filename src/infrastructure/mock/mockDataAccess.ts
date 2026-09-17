@@ -498,8 +498,6 @@ export const mockDataAccess: DataAccess = {
       ok(pfx.competenceConfirmations.filter((c) => c.programId === programId)),
     listPlacementReports: (programId) =>
       ok(pfx.placementReports.filter((r) => r.programId === programId)),
-    listMessages: (programId) =>
-      ok(pfx.professionalMessages.filter((m) => m.programId === programId)),
     listEnrollmentsByIds: (ids) => ok(fx.enrollments.filter((e) => ids.includes(e.id))),
     listPeopleByIds: (ids) => ok(fx.people.filter((p) => ids.includes(p.id))),
   },
@@ -696,6 +694,15 @@ export const mockDataAccess: DataAccess = {
         return ok(undefined);
       },
       setStageTracking: () => ok(undefined),
+      setCohortServedCases: (input) => {
+        links = links.map((l) =>
+          l.cohortId === input.cohortId && l.modalityId === input.assessmentModalityId
+            ? /* `null` efface la sélection : retour à tout le lot. */
+              { ...l, servedCaseIds: input.caseIds ?? undefined }
+            : l,
+        );
+        return ok(undefined);
+      },
       setCohortAssessmentEcos: (input) => {
         links = links.map((l) =>
           l.cohortId === input.cohortId && l.modalityId === input.assessmentModalityId

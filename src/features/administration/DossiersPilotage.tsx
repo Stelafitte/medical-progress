@@ -27,37 +27,53 @@ import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDataAccess } from "@/application/session";
 import { CASE_KIND_LABELS_FR } from "@/domain/questionCaseImport";
-import type { AssessmentModality, CohortAssessmentLink } from "@/domain/assessmentModality";
+import type { CohortAssessmentLink } from "@/domain/assessmentModality";
 import type { Cohort, ProgramId } from "@/domain/types";
 import type { QuestionBankRow } from "@/application/ports/repositories";
 import { DossiersResultats } from "@/features/administration/DossiersResultats";
+import { SelectionEnregistrable } from "@/features/administration/SelectionEnregistrable";
 
 const SELECT_CLASS = "border-input bg-background min-h-11 rounded-md border px-3 text-sm";
 
 export function DossiersPilotage({
   programId,
   cohort,
-  modality,
+  cle,
   link,
   banques,
   editable,
+  selection,
+  onSelection,
   onChanged,
 }: {
   readonly programId: ProgramId;
   readonly cohort: Cohort;
-  readonly modality: AssessmentModality;
-  readonly link: CohortAssessmentLink;
+  /** Préfixe stable des champs : survit à la création de la modalité. */
+  readonly cle: string;
+  /** Absent tant que la modalité n'est pas rattachée à la promotion. */
+  readonly link: CohortAssessmentLink | undefined;
   readonly banques: readonly QuestionBankRow[];
   readonly editable: boolean;
+  /** L'intention en cours, calculée depuis la liste complète du lot. */
+  readonly selection: (tous: readonly string[]) => readonly string[];
+  readonly onSelection: (ids: readonly string[]) => void;
   readonly onChanged?: (() => void) | undefined;
 }) {
   const dataAccess = useDataAccess();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /*
+   * LA BANQUE AVANT L'ENREGISTREMENT (Stef, 17/09). Tant que le rattachement
+   * n'existe pas, il n'y a rien à écrire : le choix vit ici, le temps que
+   * « Enregistrer » crée le lien. Une fois le lien là, ce réglage-ci
+   * s'enregistre AUSSITÔT — c'est un réglage unique, et un interrupteur qui
+   * attend un bouton plus bas trompe.
+   */
+  const [sourceVoulue, setSourceVoulue] = useState<string>("");
 
   /* Une banque de QCM n'a pas sa place ici : on ne garde que celles qui portent des dossiers. */
   const banquesDeDossiers = banques.filter((b) => (b.cases ?? 0) > 0);
-  const source = link.questionSource ?? "";
+  const source = link?.questionSource ?? sourceVoulue;
 
   const dossiers = useQuery({
     queryKey: ["dossiers-de-la-banque", programId, source],
@@ -66,12 +82,17 @@ export function DossiersPilotage({
   });
 
   async function regler(patch: { readonly isOpen?: boolean; readonly questionSource?: string }) {
+    if (!link) {
+      /* Rien à écrire encore : on retient le lot voulu, l'enregistrement fera le reste. */
+      if (patch.questionSource !== undefined) setSourceVoulue(patch.questionSource);
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
       await dataAccess.assessments.setCohortAssessmentPilotage({
         cohortId: cohort.id,
-        assessmentModalityId: modality.id,
+        assessmentModalityId: link.modalityId,
         isOpen: patch.isOpen ?? link.isOpen,
         questionSource: patch.questionSource ?? link.questionSource ?? "",
         freeAccess: link.freeAccess,
@@ -92,25 +113,27 @@ export function DossiersPilotage({
 
       <div className="flex flex-wrap items-center gap-3">
         <Switch
-          id={`dossiers-open-${modality.id}`}
-          checked={link.isOpen}
-          disabled={!editable || busy}
+          id={`dossiers-open-${cle}`}
+          checked={link?.isOpen ?? true}
+          disabled={!editable || busy || !link}
           onCheckedChange={(v) => void regler({ isOpen: v })}
         />
-        <Label htmlFor={`dossiers-open-${modality.id}`} className="text-sm font-normal">
-          {link.isOpen ? "Ouvert" : "Fermé"}
+        <Label htmlFor={`dossiers-open-${cle}`} className="text-sm font-normal">
+          {(link?.isOpen ?? true) ? "Ouvert" : "Fermé"}
           <span className="text-muted-foreground">
             {" "}
             —{" "}
-            {link.isOpen
-              ? "l'étudiant peut lancer un dossier"
-              : "l'étudiant voit la modalité mais ne lance rien"}
+            {link
+              ? link.isOpen
+                ? "l'étudiant peut lancer un dossier"
+                : "l'étudiant voit la modalité mais ne lance rien"
+              : "réglable dès que la modalité sera enregistrée"}
           </span>
         </Label>
       </div>
 
       <div className="space-y-1">
-        <Label htmlFor={`dossiers-source-${modality.id}`} className="text-xs">
+        <Label htmlFor={`dossiers-source-${cle}`} className="text-xs">
           Banque de dossiers servie
         </Label>
         {banquesDeDossiers.length === 0 ? (
@@ -120,7 +143,7 @@ export function DossiersPilotage({
           </p>
         ) : (
           <select
-            id={`dossiers-source-${modality.id}`}
+            id={`dossiers-source-${cle}`}
             className={`${SELECT_CLASS} w-full`}
             value={source}
             disabled={!editable || busy}
@@ -139,49 +162,45 @@ export function DossiersPilotage({
 
       {source !== "" ? (
         <div className="space-y-2">
-          <p className="text-xs font-medium">
-            Les dossiers du lot{" "}
-            <span className="text-muted-foreground font-normal">
-              — joués entiers, dans l'ordre, sans retour
-            </span>
-          </p>
           {dossiers.isPending ? <Skeleton className="h-24 w-full" /> : null}
           {dossiers.isError ? (
             <p className="text-destructive text-xs">
               {dossiers.error instanceof Error ? dossiers.error.message : "Lecture impossible."}
             </p>
           ) : null}
-          {dossiers.data && dossiers.data.length === 0 ? (
-            <p className="text-muted-foreground text-xs">Ce lot ne porte aucun dossier publié.</p>
-          ) : null}
-          {dossiers.data && dossiers.data.length > 0 ? (
-            <ul className="divide-border border-border divide-y rounded-md border">
-              {dossiers.data.map((d) => (
-                <li key={d.id} className="flex flex-wrap items-center gap-2 px-3 py-2.5 text-sm">
-                  <span className="min-w-0 flex-1">
-                    <span className="font-medium">{d.title}</span>
-                    {d.itemCode ? (
-                      <span className="text-muted-foreground"> · {d.itemCode}</span>
-                    ) : null}
-                    {d.chapterTitle ? (
-                      <span className="text-muted-foreground block text-xs">{d.chapterTitle}</span>
-                    ) : null}
+          {dossiers.data ? (
+            <SelectionEnregistrable
+              titre="Les dossiers servis"
+              precision="joués entiers, dans l'ordre, sans retour"
+              cle={`dossier-${cle}`}
+              editable={editable && !busy}
+              selection={selection(dossiers.data.map((d) => d.id))}
+              enBase={link?.servedCaseIds}
+              toutSiAbsente
+              onSelection={onSelection}
+              vide="Ce lot ne porte aucun dossier publié."
+              elements={dossiers.data.map((d) => ({
+                id: d.id,
+                label: d.itemCode ? `${d.title} · ${d.itemCode}` : d.title,
+                ...(d.chapterTitle ? { detail: d.chapterTitle } : {}),
+                aDroite: (
+                  <span className="flex flex-wrap items-center gap-2">
+                    <Badge variant="outline" className="font-normal">
+                      {CASE_KIND_LABELS_FR[d.kind]}
+                    </Badge>
+                    <Badge variant="secondary" className="font-normal">
+                      {d.steps} étape(s)
+                    </Badge>
+                    <Badge
+                      variant="outline"
+                      className={d.validated ? "font-normal" : "text-muted-foreground font-normal"}
+                    >
+                      {d.validated ? "relu" : "à relire"}
+                    </Badge>
                   </span>
-                  <Badge variant="outline" className="font-normal">
-                    {CASE_KIND_LABELS_FR[d.kind]}
-                  </Badge>
-                  <Badge variant="secondary" className="font-normal">
-                    {d.steps} étape(s)
-                  </Badge>
-                  <Badge
-                    variant="outline"
-                    className={d.validated ? "font-normal" : "text-muted-foreground font-normal"}
-                  >
-                    {d.validated ? "relu" : "à relire"}
-                  </Badge>
-                </li>
-              ))}
-            </ul>
+                ),
+              }))}
+            />
           ) : null}
         </div>
       ) : null}

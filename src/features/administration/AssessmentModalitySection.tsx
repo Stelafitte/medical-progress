@@ -277,6 +277,8 @@ function LigneModalite({
   onOuvrir,
   stations,
   onStations,
+  dossiers,
+  onDossiers,
   carnets,
   traces,
   traceTemplateId,
@@ -311,6 +313,13 @@ function LigneModalite({
   /** ECOS simulé : les stations voulues (intention), et de quoi les changer. */
   readonly stations: readonly string[];
   readonly onStations: (stationKeys: readonly string[]) => void;
+  /**
+   * Dossiers : la sélection voulue, calculée à partir de la liste complète —
+   * « pas encore trié » veut dire « tout le lot », et seule la ligne connaît
+   * cette liste (elle vient d'une lecture de la banque choisie).
+   */
+  readonly dossiers: (tous: readonly string[]) => readonly string[];
+  readonly onDossiers: (ids: readonly string[]) => void;
   /** Journal de stage : de quoi la trace est faite (intention en cours). */
   readonly carnets: readonly StageLogTemplate[];
   readonly traces: readonly StageTrackingMode[];
@@ -334,9 +343,19 @@ function LigneModalite({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const enAttente = cochee !== utilisee;
-  const estQcm = row.modality?.subtype === "qcm";
+  /*
+   * LE GENRE SE LIT SUR LA MODALITÉ **OU** SUR L'ENTRÉE DE CATALOGUE (17/09).
+   * Une ligne qu'on vient de cocher n'a pas encore de modalité : la lire
+   * seulement sur `row.modality` revenait à ne rien savoir d'elle avant
+   * l'enregistrement — et donc à ne rien pouvoir montrer.
+   */
+  const sousType = row.modality?.subtype ?? row.entry?.subtype;
+  const cleLigne = row.entry?.key ?? row.modality?.id ?? row.id;
+  const estQcm = sousType === "qcm";
   /* Un ECOS SIMULÉ est un ECOS en ligne : il se pilote station par station. */
-  const estEcos = row.modality !== undefined && estEcosSimule(row.modality);
+  const estEcos = row.modality
+    ? estEcosSimule(row.modality)
+    : row.entry?.subtype === "ecos" && row.entry.mode === "online";
   /*
    * LES TROIS FORMATS DE DOSSIER PROGRESSIF (Stef, 16/09 : « quand je clique
    * Cas cliniques progressifs, je devrais avoir la liste des mini-DP »). Ils
@@ -344,10 +363,7 @@ function LigneModalite({
    * qu'elle porte. `dp` est l'intitulé du catalogue (« Cas cliniques
    * progressifs »), `mini_dp` et `kfp` ceux des lots importés.
    */
-  const estDossier =
-    row.modality?.subtype === "dp" ||
-    row.modality?.subtype === "mini_dp" ||
-    row.modality?.subtype === "kfp";
+  const estDossier = sousType === "dp" || sousType === "mini_dp" || sousType === "kfp";
   /*
    * ⚠️ LE CARNET DE STAGE N'EST PAS OUVERT PAR CETTE CASE (Stef, 16/09 : « la
    * case Journal de stage n'est pas cochée côté Admin, mais le suivi de stage
@@ -548,10 +564,38 @@ function LigneModalite({
               <dd>{row.entry.notes}</dd>
             </div>
           </dl>
-          <p className="text-muted-foreground text-xs">
-            Cochée, pas encore enregistrée. <strong>Enregistrer</strong>, en bas du bloc, rattache
-            cette modalité à la promotion : ses réglages s'ouvriront ici même.
-          </p>
+          {/*
+            LA LISTE S'AFFICHE AVANT L'ENREGISTREMENT (Stef, 17/09). Ce qui se
+            choisit ici est une INTENTION, au même titre que la case de la
+            modalité ; « Enregistrer les modifications » crée le rattachement
+            PUIS applique la sélection, dans cet ordre.
+          */}
+          {estEcos ? (
+            <EcosPilotage
+              cle={cleLigne}
+              link={link}
+              editable={editable}
+              selection={stations}
+              onSelection={onStations}
+            />
+          ) : estDossier ? (
+            <DossiersPilotage
+              programId={programId}
+              cohort={cohort}
+              cle={cleLigne}
+              link={link}
+              banques={banques}
+              editable={editable}
+              selection={dossiers}
+              onSelection={onDossiers}
+              onChanged={onChanged}
+            />
+          ) : (
+            <p className="text-muted-foreground text-xs">
+              Cochée, pas encore enregistrée. <strong>Enregistrer</strong>, en bas du bloc,
+              rattache cette modalité à la promotion : ses réglages s'ouvriront ici même.
+            </p>
+          )}
         </div>
       ) : null}
 
@@ -625,19 +669,21 @@ function LigneModalite({
               templateId={traceTemplateId}
               onChange={onTraces}
             />
-          ) : estDossier && link ? (
+          ) : estDossier ? (
             <DossiersPilotage
               programId={programId}
               cohort={cohort}
-              modality={modality}
+              cle={cleLigne}
               link={link}
               banques={banques}
               editable={editable}
+              selection={dossiers}
+              onSelection={onDossiers}
               onChanged={onChanged}
             />
-          ) : estEcos && link ? (
+          ) : estEcos ? (
             <EcosPilotage
-              modality={modality}
+              cle={cleLigne}
               link={link}
               editable={editable}
               selection={stations}
@@ -777,6 +823,14 @@ export function AssessmentModalitySection({
   const [stationsVoulues, setStationsVoulues] = useState<Map<string, readonly string[]>>(new Map());
 
   /*
+   * LES DOSSIERS SERVIS, MÊME PRINCIPE (Stef, 17/09). Et la clé n'est plus
+   * l'identifiant de modalité mais `cleDOuverture` : une modalité qu'on vient
+   * de cocher N'EXISTE PAS ENCORE et n'a donc pas d'identifiant. C'est
+   * exactement ce qui obligeait à enregistrer avant de voir sa liste.
+   */
+  const [dossiersVoulus, setDossiersVoulus] = useState<Map<string, readonly string[]>>(new Map());
+
+  /*
    * JOURNAL DE STAGE : de quoi la trace est faite. Intention, comme le reste ;
    * mais ce réglage-là vaut pour le PROGRAMME, pas pour la promotion — le DIU
    * ne change pas de nature d'une année sur l'autre.
@@ -796,12 +850,23 @@ export function AssessmentModalitySection({
         : {}),
     };
   };
+  const lienDe = (row: CatalogueRow) =>
+    row.modality
+      ? links.find((l) => l.cohortId === cohortId && l.modalityId === row.modality?.id)
+      : undefined;
   const stationsDe = (row: CatalogueRow) => {
-    const modalityId = row.modality?.id;
-    if (!modalityId) return [];
-    const enAttente = stationsVoulues.get(modalityId);
+    const enAttente = stationsVoulues.get(cleDOuverture(row));
     if (enAttente) return enAttente;
-    return links.find((l) => l.cohortId === cohortId && l.modalityId === modalityId)?.ecosStations ?? [];
+    return lienDe(row)?.ecosStations ?? [];
+  };
+  /*
+   * `undefined` en base veut dire TOUT LE LOT : l'écran coche donc tout, sans
+   * quoi « pas encore trié » ressemblerait à « rien n'est servi ».
+   */
+  const dossiersDe = (row: CatalogueRow, tous: readonly string[]) => {
+    const enAttente = dossiersVoulus.get(cleDOuverture(row));
+    if (enAttente) return enAttente;
+    return lienDe(row)?.servedCaseIds ?? tous;
   };
   const ouvrir = (cle: string, ouverte: boolean) =>
     setOuvertes((prev) => {
@@ -815,6 +880,7 @@ export function AssessmentModalitySection({
     setChosen(id);
     setPending(new Map());
     setStationsVoulues(new Map());
+    setDossiersVoulus(new Map());
     setTracesVoulues(new Map());
     setOuvertes(new Set());
     setSaveError(null);
@@ -843,6 +909,11 @@ export function AssessmentModalitySection({
     setSaving(true);
     setSaveError(null);
     const erreurs: string[] = [];
+    /* La modalité créée à l'instant n'a d'identifiant qu'ici : on le retient. */
+    const idParCle = new Map<string, string>();
+    for (const row of rows) {
+      if (row.modality?.id) idParCle.set(cleDOuverture(row), row.modality.id);
+    }
     for (const [rowId, voulue] of pending) {
       const row = rows.find((r) => r.id === rowId);
       if (!row) continue;
@@ -859,6 +930,7 @@ export function AssessmentModalitySection({
           });
           id = created.id;
         }
+        if (id) idParCle.set(cleDOuverture(row), id);
         if (id) await dataAccess.assessments.setCohortAssessmentModality(cohortId, id, voulue);
       } catch (reason) {
         const nom = row.modality?.name ?? row.entry?.name ?? rowId;
@@ -870,7 +942,9 @@ export function AssessmentModalitySection({
      * n'a son lien promotion↔modalité qu'à la ligne précédente, et c'est lui
      * que `set_cohort_assessment_ecos` exige.
      */
-    for (const [modalityId, cles] of stationsVoulues) {
+    for (const [cle, cles] of stationsVoulues) {
+      const modalityId = idParCle.get(cle);
+      if (!modalityId) continue;
       try {
         await dataAccess.assessments.setCohortAssessmentEcos({
           cohortId,
@@ -878,7 +952,23 @@ export function AssessmentModalitySection({
           stationKeys: cles,
         });
       } catch (reason) {
-        const nom = rows.find((r) => r.modality?.id === modalityId)?.modality?.name ?? "Stations";
+        const nom = rows.find((r) => cleDOuverture(r) === cle)?.entry?.name ?? "Stations";
+        erreurs.push(`${nom} : ${reason instanceof Error ? reason.message : "échec"}`);
+      }
+    }
+
+    /* Les dossiers servis, même règle et même moment que les stations. */
+    for (const [cle, ids] of dossiersVoulus) {
+      const modalityId = idParCle.get(cle);
+      if (!modalityId) continue;
+      try {
+        await dataAccess.assessments.setCohortServedCases({
+          cohortId,
+          assessmentModalityId: modalityId,
+          caseIds: ids,
+        });
+      } catch (reason) {
+        const nom = rows.find((r) => cleDOuverture(r) === cle)?.entry?.name ?? "Dossiers";
         erreurs.push(`${nom} : ${reason instanceof Error ? reason.message : "échec"}`);
       }
     }
@@ -899,6 +989,7 @@ export function AssessmentModalitySection({
 
     setPending(new Map());
     setStationsVoulues(new Map());
+    setDossiersVoulus(new Map());
     setTracesVoulues(new Map());
     setSaving(false);
     if (erreurs.length > 0) setSaveError(erreurs.join(" · "));
@@ -906,7 +997,8 @@ export function AssessmentModalitySection({
   }
 
   /* Une modification en attente = une case de modalité, ou une sélection de stations. */
-  const aEnregistrer = pending.size + stationsVoulues.size + tracesVoulues.size;
+  const aEnregistrer =
+    pending.size + stationsVoulues.size + dossiersVoulus.size + tracesVoulues.size;
 
   const datesDeLaPromo = sessions.filter((s) => s.cohortId === cohortId);
   const compter = (usage: AssessmentUsage) =>
@@ -986,9 +1078,11 @@ export function AssessmentModalitySection({
                             }}
                             stations={stationsDe(r)}
                             onStations={(cles) => {
-                              const modalityId = r.modality?.id;
-                              if (!modalityId) return;
-                              setStationsVoulues((prev) => new Map(prev).set(modalityId, cles));
+                              setStationsVoulues((prev) => new Map(prev).set(cleDOuverture(r), cles));
+                            }}
+                            dossiers={(tous: readonly string[]) => dossiersDe(r, tous)}
+                            onDossiers={(ids: readonly string[]) => {
+                              setDossiersVoulus((prev) => new Map(prev).set(cleDOuverture(r), ids));
                             }}
                             sessions={sessions}
                             link={

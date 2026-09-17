@@ -25,7 +25,6 @@ export type SupervisionAlertId = Id<"SupervisionAlert">;
 export type CaseDiscussionId = Id<"CaseDiscussion">;
 export type CompetenceConfirmationId = Id<"CompetenceConfirmation">;
 export type PlacementReportId = Id<"PlacementReport">;
-export type ProfessionalMessageId = Id<"ProfessionalMessage">;
 
 /* ------------------------------------------------------------------ */
 /* Alertes                                                             */
@@ -141,18 +140,15 @@ export interface PlacementReport {
 /* Messagerie / notifications mock                                     */
 /* ------------------------------------------------------------------ */
 
-export interface ProfessionalMessage {
-  readonly id: ProfessionalMessageId;
-  readonly programId: ProgramId;
-  readonly fromPersonId: PersonId;
-  readonly toPersonId: PersonId;
-  readonly subject: string;
-  readonly body: string;
-  readonly sentAt: IsoDateTime;
-  readonly kind: "message" | "reminder";
-  /** Aucun envoi réel : uniquement un affichage de démonstration. */
-  readonly delivery: "mock_no_send";
-}
+/*
+ * IL N'Y A PLUS DE `ProfessionalMessage` ICI (17/09). Il portait
+ * `delivery: "mock_no_send"` — une DÉMONSTRATION de ce que Communication
+ * interne fait déjà pour de vrai, avec de vraies campagnes, de vrais envois et
+ * un vrai statut. Aucun écran ne l'affichait ; il était lu par
+ * `useSupervision` et jeté. Garder un modèle qui annonce lui-même qu'il
+ * n'envoie rien, à côté d'un modèle qui envoie, c'est entretenir le doute sur
+ * celui qui marche.
+ */
 
 /* ------------------------------------------------------------------ */
 /* Règles pures de périmètre                                           */

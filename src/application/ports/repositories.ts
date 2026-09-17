@@ -67,7 +67,6 @@ import type {
   CaseDiscussion,
   CompetenceConfirmation,
   PlacementReport,
-  ProfessionalMessage,
   SupervisionAlert,
 } from "@/domain/supervision";
 import type { CommMessageTemplate, LearnerMessage } from "@/domain/communication";
@@ -535,6 +534,16 @@ export interface SetCohortAssessmentEcosInput {
   readonly stationKeys: readonly string[];
 }
 
+/**
+ * Les dossiers servis à une promotion (17/09). `caseIds` à `null` remet la
+ * modalité en « tout le lot » ; un tableau vide veut dire « aucun ».
+ */
+export interface SetCohortServedCasesInput {
+  readonly cohortId: string;
+  readonly assessmentModalityId: string;
+  readonly caseIds: readonly string[] | null;
+}
+
 /** Une banque telle que l'écran la présente : provenance et comptes. */
 export interface QuestionBankRow {
   readonly source: string;
@@ -802,6 +811,7 @@ export interface AssessmentRepository {
   setCohortAssessmentPilotage(input: SetCohortAssessmentPilotageInput): Promise<void>;
   /* ---- Pilotage de l'ECOS simulé (16/09) ------------------------------- */
   setCohortAssessmentEcos(input: SetCohortAssessmentEcosInput): Promise<void>;
+  setCohortServedCases(input: SetCohortServedCasesInput): Promise<void>;
   /* ---- Journal de stage : de quoi la trace est faite (16/09) ----------- */
   setStageTracking(input: {
     readonly assessmentModalityId: string;
@@ -948,7 +958,6 @@ export interface SupervisionRepository {
   listCaseDiscussions(programId: ProgramId): Promise<readonly CaseDiscussion[]>;
   listCompetenceConfirmations(programId: ProgramId): Promise<readonly CompetenceConfirmation[]>;
   listPlacementReports(programId: ProgramId): Promise<readonly PlacementReport[]>;
-  listMessages(programId: ProgramId): Promise<readonly ProfessionalMessage[]>;
   /** Inscriptions encadrées, résolues depuis les affectations de l'encadrant. */
   listEnrollmentsByIds(ids: readonly EnrollmentId[]): Promise<readonly Enrollment[]>;
   listPeopleByIds(ids: readonly PersonId[]): Promise<readonly Person[]>;

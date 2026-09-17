@@ -7,6 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import { CheckCircle2, CircleDashed, Clock, FileText } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { SectionHeading } from "@/components/section-heading";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -60,14 +61,14 @@ export function DpcLearnerView() {
     },
   });
 
+  /* Oublié lors de la passe apprenante, comme `LearnerAuditsView` (Stef, 17/09). */
   const header = (
-    <header className="space-y-1">
-      <div className="flex flex-wrap items-center gap-2">
-        <h1 className="text-2xl font-semibold tracking-tight">Mon parcours DPC</h1>
-        <Badge variant="outline">Simulé</Badge>
-      </div>
-      <p className="text-muted-foreground text-sm">{activeProgram.name}</p>
-    </header>
+    <SectionHeading
+      level={1}
+      eyebrow={activeProgram.name}
+      title="Mon parcours DPC"
+      description="Les actions de développement professionnel continu qui composent votre parcours."
+    />
   );
 
   if (!enrollmentId)

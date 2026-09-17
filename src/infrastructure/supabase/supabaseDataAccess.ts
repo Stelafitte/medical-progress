@@ -36,6 +36,7 @@ import type {
   QuestionSectionRow,
   QuestionToAnswer,
   SetCohortAssessmentEcosInput,
+  SetCohortServedCasesInput,
   SetCohortAssessmentPilotageInput,
   ThemeQuestionResults,
   CreateLearningResourceInput,
@@ -3088,7 +3089,9 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
       async listCohortAssessmentLinks(programId: ProgramId) {
         const { data, error } = await client
           .from("cohort_assessment_modalities")
-          .select("program_id,cohort_id,modality_id,is_open,question_source,free_access,ecos_stations")
+          .select(
+            "program_id,cohort_id,modality_id,is_open,question_source,free_access,ecos_stations,served_case_ids",
+          )
           .eq("program_id", programId);
         assertNoSupabaseError(error);
         type Row = {
@@ -3099,6 +3102,7 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
           question_source: string | null;
           free_access: boolean;
           ecos_stations: string[] | null;
+          served_case_ids: string[] | null;
         };
         return ((data ?? []) as Row[]).map(
           (row): CohortAssessmentLink => ({
@@ -3111,6 +3115,8 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
             ...(row.ecos_stations && row.ecos_stations.length > 0
               ? { ecosStations: row.ecos_stations }
               : {}),
+            /* `null` et `[]` ne disent PAS la même chose : on garde le tableau vide. */
+            ...(row.served_case_ids === null ? {} : { servedCaseIds: row.served_case_ids }),
           }),
         );
       },
@@ -3185,6 +3191,14 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
         assertNoSupabaseError(error);
       },
       /* ---- Pilotage de l'ECOS simulé : 20260916120000_ecos_simule_pilotage.sql ---- */
+      async setCohortServedCases(input: SetCohortServedCasesInput) {
+        const { error } = await client.rpc("set_cohort_served_cases", {
+          p_cohort_id: input.cohortId,
+          p_modality_id: input.assessmentModalityId,
+          p_case_ids: input.caseIds,
+        });
+        assertNoSupabaseError(error);
+      },
       async setCohortAssessmentEcos(input: SetCohortAssessmentEcosInput) {
         const { error } = await client.rpc("set_cohort_assessment_ecos", {
           p_cohort_id: input.cohortId,
