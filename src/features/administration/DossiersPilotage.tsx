@@ -30,6 +30,7 @@ import { CASE_KIND_LABELS_FR } from "@/domain/questionCaseImport";
 import type { AssessmentModality, CohortAssessmentLink } from "@/domain/assessmentModality";
 import type { Cohort, ProgramId } from "@/domain/types";
 import type { QuestionBankRow } from "@/application/ports/repositories";
+import { DossiersResultats } from "@/features/administration/DossiersResultats";
 
 const SELECT_CLASS = "border-input bg-background min-h-11 rounded-md border px-3 text-sm";
 
@@ -186,6 +187,14 @@ export function DossiersPilotage({
       ) : null}
 
       {error ? <p className="text-destructive text-xs">{error}</p> : null}
+
+      {/*
+        LES RÉSULTATS SOUS LE PILOTAGE, comme pour le QCM : tout ce qui concerne
+        les dossiers de cette promotion est au même endroit. Ils sont vides tant
+        que personne n'a joué — et ils le disent, plutôt que d'afficher des zéros
+        qu'on prendrait pour des scores.
+      */}
+      <DossiersResultats cohort={cohort} />
     </div>
   );
 }

@@ -58,6 +58,7 @@ import { Route as EspaceEncadrementConnaissancesRouteImport } from './routes/esp
 import { Route as EspaceEncadrementEtudiantsRouteImport } from './routes/espace.encadrement.etudiants'
 import { Route as EspaceEncadrementMessagesRouteImport } from './routes/espace.encadrement.messages'
 import { Route as EspaceEncadrementProfilRouteImport } from './routes/espace.encadrement.profil'
+import { Route as EspaceEvaluationsDossierRouteImport } from './routes/espace.evaluations_.dossier'
 import { Route as EspaceEvaluationsQcmRouteImport } from './routes/espace.evaluations_.qcm'
 import { Route as EspacePlateformeIndexRouteImport } from './routes/espace.plateforme.index'
 import { Route as EspacePlateformeCoutsRouteImport } from './routes/espace.plateforme.couts'
@@ -337,6 +338,12 @@ const EspaceEncadrementProfilRoute = EspaceEncadrementProfilRouteImport.update({
   path: '/profil',
   getParentRoute: () => EspaceEncadrementRoute,
 } as any)
+const EspaceEvaluationsDossierRoute =
+  EspaceEvaluationsDossierRouteImport.update({
+    id: '/evaluations_/dossier',
+    path: '/evaluations/dossier',
+    getParentRoute: () => EspaceRoute,
+  } as any)
 const EspaceEvaluationsQcmRoute = EspaceEvaluationsQcmRouteImport.update({
   id: '/evaluations_/qcm',
   path: '/evaluations/qcm',
@@ -430,6 +437,7 @@ export interface FileRoutesByFullPath {
   '/espace/encadrement/etudiants': typeof EspaceEncadrementEtudiantsRoute
   '/espace/encadrement/messages': typeof EspaceEncadrementMessagesRoute
   '/espace/encadrement/profil': typeof EspaceEncadrementProfilRoute
+  '/espace/evaluations/dossier': typeof EspaceEvaluationsDossierRoute
   '/espace/evaluations/qcm': typeof EspaceEvaluationsQcmRoute
   '/espace/plateforme/couts': typeof EspacePlateformeCoutsRoute
   '/espace/plateforme/pilotage': typeof EspacePlateformePilotageRoute
@@ -484,6 +492,7 @@ export interface FileRoutesByTo {
   '/espace/encadrement/etudiants': typeof EspaceEncadrementEtudiantsRoute
   '/espace/encadrement/messages': typeof EspaceEncadrementMessagesRoute
   '/espace/encadrement/profil': typeof EspaceEncadrementProfilRoute
+  '/espace/evaluations/dossier': typeof EspaceEvaluationsDossierRoute
   '/espace/evaluations/qcm': typeof EspaceEvaluationsQcmRoute
   '/espace/plateforme/couts': typeof EspacePlateformeCoutsRoute
   '/espace/plateforme/pilotage': typeof EspacePlateformePilotageRoute
@@ -544,6 +553,7 @@ export interface FileRoutesById {
   '/espace/encadrement/etudiants': typeof EspaceEncadrementEtudiantsRoute
   '/espace/encadrement/messages': typeof EspaceEncadrementMessagesRoute
   '/espace/encadrement/profil': typeof EspaceEncadrementProfilRoute
+  '/espace/evaluations_/dossier': typeof EspaceEvaluationsDossierRoute
   '/espace/evaluations_/qcm': typeof EspaceEvaluationsQcmRoute
   '/espace/plateforme/couts': typeof EspacePlateformeCoutsRoute
   '/espace/plateforme/pilotage': typeof EspacePlateformePilotageRoute
@@ -605,6 +615,7 @@ export interface FileRouteTypes {
     | '/espace/encadrement/etudiants'
     | '/espace/encadrement/messages'
     | '/espace/encadrement/profil'
+    | '/espace/evaluations/dossier'
     | '/espace/evaluations/qcm'
     | '/espace/plateforme/couts'
     | '/espace/plateforme/pilotage'
@@ -659,6 +670,7 @@ export interface FileRouteTypes {
     | '/espace/encadrement/etudiants'
     | '/espace/encadrement/messages'
     | '/espace/encadrement/profil'
+    | '/espace/evaluations/dossier'
     | '/espace/evaluations/qcm'
     | '/espace/plateforme/couts'
     | '/espace/plateforme/pilotage'
@@ -718,6 +730,7 @@ export interface FileRouteTypes {
     | '/espace/encadrement/etudiants'
     | '/espace/encadrement/messages'
     | '/espace/encadrement/profil'
+    | '/espace/evaluations_/dossier'
     | '/espace/evaluations_/qcm'
     | '/espace/plateforme/couts'
     | '/espace/plateforme/pilotage'
@@ -1080,6 +1093,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EspaceEncadrementProfilRouteImport
       parentRoute: typeof EspaceEncadrementRoute
     }
+    '/espace/evaluations_/dossier': {
+      id: '/espace/evaluations_/dossier'
+      path: '/evaluations/dossier'
+      fullPath: '/espace/evaluations/dossier'
+      preLoaderRoute: typeof EspaceEvaluationsDossierRouteImport
+      parentRoute: typeof EspaceRoute
+    }
     '/espace/evaluations_/qcm': {
       id: '/espace/evaluations_/qcm'
       path: '/evaluations/qcm'
@@ -1269,6 +1289,7 @@ interface EspaceRouteChildren {
   EspaceStageRoute: typeof EspaceStageRoute
   EspaceStatistiquesRoute: typeof EspaceStatistiquesRoute
   EspaceIndexRoute: typeof EspaceIndexRoute
+  EspaceEvaluationsDossierRoute: typeof EspaceEvaluationsDossierRoute
   EspaceEvaluationsQcmRoute: typeof EspaceEvaluationsQcmRoute
 }
 
@@ -1291,6 +1312,7 @@ const EspaceRouteChildren: EspaceRouteChildren = {
   EspaceStageRoute: EspaceStageRoute,
   EspaceStatistiquesRoute: EspaceStatistiquesRoute,
   EspaceIndexRoute: EspaceIndexRoute,
+  EspaceEvaluationsDossierRoute: EspaceEvaluationsDossierRoute,
   EspaceEvaluationsQcmRoute: EspaceEvaluationsQcmRoute,
 }
 

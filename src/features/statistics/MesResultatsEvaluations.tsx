@@ -37,10 +37,20 @@ export function MesResultatsEvaluations({ enrollmentId }: { readonly enrollmentI
     queryKey: ["ecos-external-runs", activeProgram.id, enrollmentId],
     queryFn: () => data.ecosExternal.listRunsForEnrollment(enrollmentId),
   });
+  /*
+    LES DOSSIERS PROGRESSIFS (17/09). Ils manquaient ici pour une raison bête :
+    personne ne pouvait encore en jouer un. Le lecteur existe désormais, donc
+    les résultats ont quelque chose à montrer.
+  */
+  const dossiers = useQuery({
+    queryKey: ["mes-resultats-dossiers", enrollmentId],
+    queryFn: () => data.assessments.myCaseResults(enrollmentId),
+  });
 
   const total = qcm.data;
   const items = parItem.data ?? [];
   const passages = ecos.data ?? [];
+  const cas = dossiers.data ?? [];
   const charge = qcm.isPending || parItem.isPending || ecos.isPending;
 
   return (
@@ -125,6 +135,36 @@ export function MesResultatsEvaluations({ enrollmentId }: { readonly enrollmentI
                   <span className={`${EYEBROW} text-muted-foreground`} style={TABULAIRE}>
                     {p.score} / {p.maxScore}
                     {p.maxScore > 0 ? ` · ${Math.round((p.score / p.maxScore) * 100)} %` : ""}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        {/* Dossiers progressifs */}
+        <div className="border-t px-4 pb-3.5 pt-4">
+          <p className={`${EYEBROW} text-muted-foreground`}>Cas cliniques progressifs</p>
+          {dossiers.isPending ? null : cas.length === 0 ? (
+            <p className="mt-2 text-[13px] text-muted-foreground">
+              Aucun dossier commencé. Ils se lancent depuis « Mes évaluations ».
+            </p>
+          ) : (
+            <ul className="mt-2 divide-y divide-border">
+              {cas.map((c) => (
+                <li
+                  key={c.caseId}
+                  className="flex flex-wrap items-baseline justify-between gap-2 py-2"
+                >
+                  <span className="text-[14px]">
+                    {c.title}
+                    <span className="text-muted-foreground">
+                      {c.itemCode ? ` · item ${c.itemCode}` : ""}
+                      {c.lastAnsweredAt ? ` · ${formatFrDate(c.lastAnsweredAt)}` : ""}
+                    </span>
+                  </span>
+                  <span className={`${EYEBROW} text-muted-foreground`} style={TABULAIRE}>
+                    {c.answered}/{c.steps} étape(s) · {pourcent(c.avgScore)}
                   </span>
                 </li>
               ))}

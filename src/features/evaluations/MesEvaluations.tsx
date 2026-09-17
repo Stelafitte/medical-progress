@@ -136,6 +136,13 @@ function CarteModalite({
   const passees = miennes.filter((s) => sessionState(s, new Date()) === "completed");
   const seDate = usageSeDate(modality.usage);
   const estQcm = modality.subtype === "qcm";
+  /*
+    UN DOSSIER PROGRESSIF A SA PROPRE CARTE, pour la même raison que le QCM :
+    ce qui compte n'est pas une date, c'est la LISTE de ce qu'on peut jouer
+    maintenant. Les 21 mini-DP importés le 16/09 sont restés injouables deux
+    jours faute de ce point de lancement.
+  */
+  const estDossier = modality.subtype === "mini_dp" || modality.subtype === "kfp";
 
   /*
    * UN QCM A SA PROPRE CARTE (15/09). Pas de « date à venir » ni de
@@ -158,6 +165,25 @@ function CarteModalite({
         <p className="text-muted-foreground mt-1 text-xs">{CE_QUE_CA_ENGAGE[modality.usage]}</p>
         {modality.notes ? <p className="mt-2 text-sm">{modality.notes}</p> : null}
         <CarteQcm modality={modality} sessions={miennes} link={link} themes={themes} />
+      </li>
+    );
+  }
+
+  if (estDossier) {
+    return (
+      <li className="border-border rounded-lg border p-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <strong className="text-sm">{modality.name}</strong>
+          <Badge variant="secondary">{ASSESSMENT_SUBTYPE_LABELS_FR[modality.subtype]}</Badge>
+          {link && !link.isOpen ? (
+            <Badge variant="outline" className="text-muted-foreground font-normal">
+              fermé pour l'instant
+            </Badge>
+          ) : null}
+        </div>
+        <p className="text-muted-foreground mt-1 text-xs">{CE_QUE_CA_ENGAGE[modality.usage]}</p>
+        {modality.notes ? <p className="mt-2 text-sm">{modality.notes}</p> : null}
+        <CarteDossiers modality={modality} link={link} />
       </li>
     );
   }
@@ -224,6 +250,85 @@ function CarteModalite({
  * Ce qu'un QCM offre à l'étudiant : les fenêtres programmées (ouvertes,
  * à venir, passées) et, si l'équipe l'a permis, le compositeur de série.
  */
+/**
+ * LA LISTE DES DOSSIERS QU'ON PEUT JOUER MAINTENANT.
+ *
+ * Même mécanique que le QCM : la promotion a-t-elle cette modalité ouverte, et
+ * sur quelle banque ? Mais la présentation diffère, parce que l'objet diffère —
+ * un dossier n'est pas un tirage de questions, c'est un PATIENT. On les liste
+ * donc nommément, avec leur item et leur nombre d'étapes : l'étudiant choisit
+ * un cas, pas un paquet.
+ *
+ * ON NE MONTRE QUE LES DOSSIERS VALIDÉS. Un dossier encore en relecture n'a
+ * rien à faire devant un étudiant : il le prendrait pour argent comptant.
+ */
+function CarteDossiers({
+  modality,
+  link,
+}: {
+  readonly modality: AssessmentModality;
+  readonly link: CohortAssessmentLink | undefined;
+}) {
+  const data = useDataAccess();
+  const { activeProgram } = useSession();
+  const source = link?.questionSource ?? "";
+  const ouvert = Boolean(link?.isOpen) && source !== "";
+
+  const dossiers = useQuery({
+    queryKey: ["mes-dossiers", activeProgram.id, source],
+    enabled: ouvert,
+    queryFn: () => data.assessments.listQuestionCases(activeProgram.id, source),
+  });
+
+  if (!ouvert) {
+    return (
+      <p className="text-muted-foreground mt-3 text-sm">
+        Aucun dossier n'est ouvert pour votre promotion pour l'instant.
+      </p>
+    );
+  }
+
+  if (dossiers.isPending) {
+    return <p className="text-muted-foreground mt-3 text-sm">Lecture des dossiers…</p>;
+  }
+
+  const jouables = (dossiers.data ?? []).filter((d) => d.validated);
+
+  if (jouables.length === 0) {
+    return (
+      <p className="text-muted-foreground mt-3 text-sm">
+        Aucun dossier validé dans cette banque pour l'instant.
+      </p>
+    );
+  }
+
+  return (
+    <ul className="mt-3 space-y-2">
+      {jouables.map((dossier) => (
+        <li
+          key={dossier.id}
+          className="border-border flex flex-wrap items-center gap-2 rounded-lg border p-4 text-sm"
+        >
+          <div className="min-w-0 flex-1">
+            <span className="font-medium">{dossier.title}</span>
+            <span className="text-muted-foreground block text-xs">
+              {dossier.itemCode ? `Item ${dossier.itemCode} · ` : ""}
+              {dossier.steps} étape(s)
+              {dossier.chapterTitle ? ` · ${dossier.chapterTitle}` : ""}
+            </span>
+          </div>
+          <Button asChild size="sm" className="min-h-10 gap-1">
+            <Link to="/espace/evaluations/dossier" search={{ caseId: dossier.id }}>
+              <Play className="size-4" aria-hidden />
+              Commencer
+            </Link>
+          </Button>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 function CarteQcm({
   modality,
   sessions,
@@ -502,9 +607,7 @@ export function MesEvaluations() {
           title="Vos évaluations"
           description="Ce que votre promotion rencontrera pendant le stage."
         >
-          <Vide>
-            Pas d'évaluation ou auto-évaluation programmée dans votre parcours.
-          </Vide>
+          <Vide>Pas d'évaluation ou auto-évaluation programmée dans votre parcours.</Vide>
         </Panneau>
       ) : (
         <>
