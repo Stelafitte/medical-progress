@@ -8,6 +8,13 @@
 import type { CohortInterruption, CohortInterruptionMode } from "@/domain/cohortInterruption";
 import type { IncidentScope, PilotDecision, ProgramIncident } from "@/domain/pilotDecision";
 import type {
+  BillingStatement,
+  CostProvider,
+  CostUnitKind,
+  ProgramCostRow,
+  UnitPrice,
+} from "@/domain/operatingCost";
+import type {
   MilestoneShift,
   PlanMilestone,
   PlanMilestoneId,
@@ -1809,7 +1816,50 @@ export interface EncadrementSourceRepository {
   syncSource(sourceId: EncadrementSourceId): Promise<EncadrementSyncReport>;
 }
 
+/**
+ * LES COÛTS D'EXPLOITATION — un dépôt à part, et c'est voulu.
+ *
+ * Son périmètre n'est ni un programme ni une promotion : c'est la PLATEFORME.
+ * Le ranger sous `programs` aurait laissé croire qu'un administrateur de
+ * programme peut le lire. Toutes ses fonctions sont gardées par
+ * `is_platform_admin()` côté base.
+ */
+export interface OperatingCostRepository {
+  /** Les coûts par programme sur une période. Chaque poste rend son degré de certitude. */
+  costReport(periodStart: string, periodEnd: string): Promise<readonly ProgramCostRow[]>;
+  listUnitPrices(): Promise<readonly UnitPrice[]>;
+  listBillingStatements(): Promise<readonly BillingStatement[]>;
+  /** Pose ou corrige un tarif à une date d'effet. Un tarif ne remplace pas le précédent. */
+  setUnitPrice(input: {
+    readonly kind: CostUnitKind;
+    readonly provider: CostProvider;
+    readonly unitPrice: number;
+    readonly model?: string;
+    readonly currency?: string;
+    readonly effectiveFrom?: string | null;
+    readonly note?: string | null;
+  }): Promise<void>;
+  /** Relève un montant facturé. Un même intervalle se corrige au lieu de s'empiler. */
+  recordBillingStatement(input: {
+    readonly provider: CostProvider;
+    readonly periodStart: string;
+    readonly periodEnd: string;
+    readonly amount: number;
+    readonly currency?: string;
+    readonly note?: string | null;
+  }): Promise<void>;
+  /**
+   * Compte une ouverture de cours — la seule assiette d'egress possible, faute
+   * de métrique par programme chez Supabase comme chez Cloudflare.
+   *
+   * NE DOIT JAMAIS FAIRE ÉCHOUER LA LECTURE DU COURS : un compteur qui trébuche
+   * ne prive personne de son support.
+   */
+  recordCourseOpened(resourceId: string): Promise<void>;
+}
+
 export interface DataAccess {
+  readonly operatingCosts: OperatingCostRepository;
   readonly programs: ProgramRepository;
   readonly people: PeopleRepository;
   readonly peopleStaging: PeopleStagingRepository;

@@ -4,17 +4,39 @@
  * (`LearnerNarratedDeck`). Aucun nom de fichier, URL, taille, MP4 de secours
  * ni action relative au PPTX source n'y est disponible. Tout est simulé.
  */
+import { useEffect, useRef } from "react";
 import { ArrowLeft, BookOpen } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useDataAccess } from "@/application/session";
 import { useLearnerPassport } from "@/features/dashboard/useLearnerPassport";
 import { NarratedSlidesPlayer } from "@/features/resources/NarratedSlidesPlayer";
 
 export function NarratedReaderView({ resourceId }: { resourceId: string }) {
   const { data, isPending } = useLearnerPassport();
+  const dataAccess = useDataAccess();
+  const compte = useRef<string | null>(null);
+
+  /*
+   * COMPTER L'OUVERTURE DU COURS — la seule assiette d'egress possible.
+   *
+   * Rien n'enregistrait les consultations, et les métriques Supabase comme
+   * Cloudflare sont GLOBALES au projet : aucune ne sait de quel programme vient
+   * un octet. On compte donc ici, et l'onglet « Coûts d'exploitation »
+   * multiplie par le poids réel du cours (17/09).
+   *
+   * DEUX PRÉCAUTIONS. Une seule fois par ouverture d'écran (le `ref` évite de
+   * recompter à chaque rendu), et la promesse est avalée : un compteur qui
+   * trébuche ne doit jamais priver un étudiant de son cours.
+   */
+  useEffect(() => {
+    if (compte.current === resourceId) return;
+    compte.current = resourceId;
+    void dataAccess.operatingCosts.recordCourseOpened(resourceId).catch(() => undefined);
+  }, [dataAccess, resourceId]);
 
   if (isPending || !data) return <Skeleton className="h-96 w-full" />;
 

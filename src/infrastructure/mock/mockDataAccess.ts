@@ -1280,4 +1280,22 @@ export const mockDataAccess: DataAccess = {
   audit: {
     listRecentEvents: (limit = 20) => ok(fx.auditEvents.slice(0, limit)),
   },
+  /*
+    LES COÛTS NE SE SIMULENT PAS. Un tableau de coûts inventé serait le pire
+    des écrans : plausible, chiffré, et faux. Il ne rendrait service à personne
+    et ferait exactement le tort que ce chantier cherche à éviter — croire un
+    euro qui ne vient d'aucune facture.
+  */
+  operatingCosts: {
+    costReport: () => ok([]),
+    listUnitPrices: () => ok([]),
+    listBillingStatements: () => ok([]),
+    setUnitPrice: () =>
+      Promise.reject(new Error("Les tarifs ne se saisissent pas en mode local.")),
+    recordBillingStatement: () =>
+      Promise.reject(new Error("Les relevés de facture n'existent pas en mode local.")),
+    /* Le compteur d'ouvertures ne doit JAMAIS faire échouer la lecture d'un
+       cours : hors ligne, il ne compte rien, et c'est tout. */
+    recordCourseOpened: () => Promise.resolve(),
+  },
 };

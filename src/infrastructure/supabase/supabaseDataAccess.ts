@@ -61,6 +61,11 @@ import type {
   CohortInterruptionMode,
 } from "@/domain/cohortInterruption";
 import type {
+  CostBasis,
+  CostProvider,
+  CostUnitKind,
+} from "@/domain/operatingCost";
+import type {
   IncidentScope,
   PilotDecision,
   PilotDecisionKind,
@@ -561,6 +566,49 @@ export function mapStageLog(row: StageLogRow): StageLog {
       provenance: nativeProvenance,
     })),
   };
+}
+
+interface ProgramCostRowRaw {
+  readonly program_id: string;
+  readonly program_name: string;
+  readonly learners: number;
+  readonly ai_input_tokens: number | string;
+  readonly ai_output_tokens: number | string;
+  readonly ai_cost: number | string;
+  readonly ai_basis: CostBasis;
+  readonly storage_bytes: number | string;
+  readonly storage_cost: number | string;
+  readonly storage_basis: CostBasis;
+  readonly course_openings: number | string;
+  readonly egress_bytes: number | string;
+  readonly egress_cost: number | string;
+  readonly egress_basis: CostBasis;
+  readonly platform_share: number | string;
+  readonly platform_basis: CostBasis;
+}
+
+interface UnitPriceRow {
+  readonly id: string;
+  readonly kind: CostUnitKind;
+  readonly provider: CostProvider;
+  readonly model: string;
+  readonly unit_price: number | string;
+  readonly currency: string;
+  readonly effective_from: string;
+  readonly source: "invoice_derived" | "manual";
+  readonly note: string | null;
+}
+
+interface BillingStatementRow {
+  readonly id: string;
+  readonly provider: CostProvider;
+  readonly period_start: string;
+  readonly period_end: string;
+  readonly amount: number | string;
+  readonly currency: string;
+  readonly source: "api" | "manual";
+  readonly observed_on: string;
+  readonly note: string | null;
 }
 
 interface ProgramIncidentRow {
@@ -4423,6 +4471,115 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
           loadSourceAssetsByResource(client, [row.id]),
         ]);
         return mapMediaResource(row, outcomeIds.get(row.id) ?? [], assets.get(row.id));
+      },
+    },
+    /*
+     * COUTS D'EXPLOITATION (17/09).
+     *
+     * Tout passe par des fonctions `security definer` gardees par
+     * `is_platform_admin()`. Les deux tables n'ont qu'une policy de LECTURE et
+     * aucun droit d'ecriture : un tarif ou un montant facture pose depuis le
+     * client, sans garde, fausserait tous les chiffres de l'ecran sans laisser
+     * de trace.
+     */
+    operatingCosts: {
+      async costReport(periodStart, periodEnd) {
+        const { data, error } = await client.rpc("platform_cost_report", {
+          p_period_start: periodStart,
+          p_period_end: periodEnd,
+        });
+        assertNoSupabaseError(error);
+        return ((data ?? []) as ProgramCostRowRaw[]).map((row) => ({
+          programId: row.program_id as ProgramId,
+          programName: row.program_name,
+          learners: row.learners,
+          aiInputTokens: Number(row.ai_input_tokens),
+          aiOutputTokens: Number(row.ai_output_tokens),
+          aiCost: Number(row.ai_cost),
+          aiBasis: row.ai_basis,
+          storageBytes: Number(row.storage_bytes),
+          storageCost: Number(row.storage_cost),
+          storageBasis: row.storage_basis,
+          courseOpenings: Number(row.course_openings),
+          egressBytes: Number(row.egress_bytes),
+          egressCost: Number(row.egress_cost),
+          egressBasis: row.egress_basis,
+          platformShare: Number(row.platform_share),
+          platformBasis: row.platform_basis,
+        }));
+      },
+      async listUnitPrices() {
+        const { data, error } = await client
+          .from("platform_unit_prices")
+          .select("id,kind,provider,model,unit_price,currency,effective_from,source,note")
+          .order("effective_from", { ascending: false });
+        assertNoSupabaseError(error);
+        return ((data ?? []) as UnitPriceRow[]).map((row) => ({
+          id: row.id,
+          kind: row.kind,
+          provider: row.provider,
+          model: row.model,
+          unitPrice: Number(row.unit_price),
+          currency: row.currency,
+          effectiveFrom: row.effective_from,
+          source: row.source,
+          note: row.note,
+        }));
+      },
+      async listBillingStatements() {
+        const { data, error } = await client
+          .from("platform_billing_statements")
+          .select("id,provider,period_start,period_end,amount,currency,source,observed_on,note")
+          .order("period_start", { ascending: false });
+        assertNoSupabaseError(error);
+        return ((data ?? []) as BillingStatementRow[]).map((row) => ({
+          id: row.id,
+          provider: row.provider,
+          periodStart: row.period_start,
+          periodEnd: row.period_end,
+          amount: Number(row.amount),
+          currency: row.currency,
+          source: row.source,
+          observedOn: row.observed_on,
+          note: row.note,
+        }));
+      },
+      async setUnitPrice(input) {
+        const { error } = await client.rpc("set_unit_price", {
+          p_kind: input.kind,
+          p_provider: input.provider,
+          p_unit_price: input.unitPrice,
+          p_model: input.model ?? "",
+          p_currency: input.currency ?? "USD",
+          p_effective_from: input.effectiveFrom ?? null,
+          p_source: "manual",
+          p_note: input.note ?? null,
+        });
+        assertNoSupabaseError(error);
+      },
+      async recordBillingStatement(input) {
+        const { error } = await client.rpc("record_billing_statement", {
+          p_provider: input.provider,
+          p_period_start: input.periodStart,
+          p_period_end: input.periodEnd,
+          p_amount: input.amount,
+          p_currency: input.currency ?? "USD",
+          p_source: "manual",
+          p_note: input.note ?? null,
+        });
+        assertNoSupabaseError(error);
+      },
+      /*
+       * LE COMPTEUR NE DOIT JAMAIS PRIVER QUELQU'UN DE SON COURS. On avale
+       * l'erreur volontairement : un etudiant hors ligne, une RPC absente ou
+       * une seconde de reseau ne valent pas un ecran de lecture casse pour une
+       * statistique de cout.
+       */
+      async recordCourseOpened(resourceId) {
+        const { error } = await client.rpc("record_course_opened", {
+          p_resource_id: resourceId,
+        });
+        if (error) return;
       },
     },
   };

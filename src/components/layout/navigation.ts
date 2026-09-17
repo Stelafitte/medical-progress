@@ -16,6 +16,7 @@ import {
   GraduationCap,
   IdCard,
   Layers,
+  Receipt,
   LayoutDashboard,
   Mail,
   MessagesSquare,
@@ -219,6 +220,18 @@ export const PLATFORM_ADMIN_NAV: readonly NavEntry[] = [
     to: "/espace/plateforme/pilotage",
     label: "Pilotage et paramétrage",
     icon: SlidersHorizontal,
+    exact: false,
+  },
+  /*
+    LES COÛTS SONT UNE AFFAIRE DE PLATEFORME, JAMAIS DE PROGRAMME. Un
+    administrateur de programme ne doit pas voir ce que coûtent les autres, ni
+    la quote-part qu'on lui impute : l'entrée vit donc ici, et les fonctions
+    qu'elle appelle sont gardées par `is_platform_admin()` côté base.
+  */
+  {
+    to: "/espace/plateforme/couts",
+    label: "Coûts d'exploitation",
+    icon: Receipt,
     exact: false,
   },
 ];

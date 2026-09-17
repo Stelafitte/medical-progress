@@ -60,6 +60,7 @@ import { Route as EspaceEncadrementMessagesRouteImport } from './routes/espace.e
 import { Route as EspaceEncadrementProfilRouteImport } from './routes/espace.encadrement.profil'
 import { Route as EspaceEvaluationsQcmRouteImport } from './routes/espace.evaluations_.qcm'
 import { Route as EspacePlateformeIndexRouteImport } from './routes/espace.plateforme.index'
+import { Route as EspacePlateformeCoutsRouteImport } from './routes/espace.plateforme.couts'
 import { Route as EspacePlateformePilotageRouteImport } from './routes/espace.plateforme.pilotage'
 import { Route as EspacePlateformeProgrammesRouteImport } from './routes/espace.plateforme.programmes'
 import { Route as EspacePlateformeStatistiquesRouteImport } from './routes/espace.plateforme.statistiques'
@@ -346,6 +347,11 @@ const EspacePlateformeIndexRoute = EspacePlateformeIndexRouteImport.update({
   path: '/',
   getParentRoute: () => EspacePlateformeRoute,
 } as any)
+const EspacePlateformeCoutsRoute = EspacePlateformeCoutsRouteImport.update({
+  id: '/couts',
+  path: '/couts',
+  getParentRoute: () => EspacePlateformeRoute,
+} as any)
 const EspacePlateformePilotageRoute =
   EspacePlateformePilotageRouteImport.update({
     id: '/pilotage',
@@ -425,6 +431,7 @@ export interface FileRoutesByFullPath {
   '/espace/encadrement/messages': typeof EspaceEncadrementMessagesRoute
   '/espace/encadrement/profil': typeof EspaceEncadrementProfilRoute
   '/espace/evaluations/qcm': typeof EspaceEvaluationsQcmRoute
+  '/espace/plateforme/couts': typeof EspacePlateformeCoutsRoute
   '/espace/plateforme/pilotage': typeof EspacePlateformePilotageRoute
   '/espace/plateforme/programmes': typeof EspacePlateformeProgrammesRoute
   '/espace/plateforme/statistiques': typeof EspacePlateformeStatistiquesRoute
@@ -478,6 +485,7 @@ export interface FileRoutesByTo {
   '/espace/encadrement/messages': typeof EspaceEncadrementMessagesRoute
   '/espace/encadrement/profil': typeof EspaceEncadrementProfilRoute
   '/espace/evaluations/qcm': typeof EspaceEvaluationsQcmRoute
+  '/espace/plateforme/couts': typeof EspacePlateformeCoutsRoute
   '/espace/plateforme/pilotage': typeof EspacePlateformePilotageRoute
   '/espace/plateforme/programmes': typeof EspacePlateformeProgrammesRoute
   '/espace/plateforme/statistiques': typeof EspacePlateformeStatistiquesRoute
@@ -537,6 +545,7 @@ export interface FileRoutesById {
   '/espace/encadrement/messages': typeof EspaceEncadrementMessagesRoute
   '/espace/encadrement/profil': typeof EspaceEncadrementProfilRoute
   '/espace/evaluations_/qcm': typeof EspaceEvaluationsQcmRoute
+  '/espace/plateforme/couts': typeof EspacePlateformeCoutsRoute
   '/espace/plateforme/pilotage': typeof EspacePlateformePilotageRoute
   '/espace/plateforme/programmes': typeof EspacePlateformeProgrammesRoute
   '/espace/plateforme/statistiques': typeof EspacePlateformeStatistiquesRoute
@@ -597,6 +606,7 @@ export interface FileRouteTypes {
     | '/espace/encadrement/messages'
     | '/espace/encadrement/profil'
     | '/espace/evaluations/qcm'
+    | '/espace/plateforme/couts'
     | '/espace/plateforme/pilotage'
     | '/espace/plateforme/programmes'
     | '/espace/plateforme/statistiques'
@@ -650,6 +660,7 @@ export interface FileRouteTypes {
     | '/espace/encadrement/messages'
     | '/espace/encadrement/profil'
     | '/espace/evaluations/qcm'
+    | '/espace/plateforme/couts'
     | '/espace/plateforme/pilotage'
     | '/espace/plateforme/programmes'
     | '/espace/plateforme/statistiques'
@@ -708,6 +719,7 @@ export interface FileRouteTypes {
     | '/espace/encadrement/messages'
     | '/espace/encadrement/profil'
     | '/espace/evaluations_/qcm'
+    | '/espace/plateforme/couts'
     | '/espace/plateforme/pilotage'
     | '/espace/plateforme/programmes'
     | '/espace/plateforme/statistiques'
@@ -1082,6 +1094,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EspacePlateformeIndexRouteImport
       parentRoute: typeof EspacePlateformeRoute
     }
+    '/espace/plateforme/couts': {
+      id: '/espace/plateforme/couts'
+      path: '/couts'
+      fullPath: '/espace/plateforme/couts'
+      preLoaderRoute: typeof EspacePlateformeCoutsRouteImport
+      parentRoute: typeof EspacePlateformeRoute
+    }
     '/espace/plateforme/pilotage': {
       id: '/espace/plateforme/pilotage'
       path: '/pilotage'
@@ -1199,6 +1218,7 @@ const EspaceEncadrementRouteWithChildren =
   EspaceEncadrementRoute._addFileChildren(EspaceEncadrementRouteChildren)
 
 interface EspacePlateformeRouteChildren {
+  EspacePlateformeCoutsRoute: typeof EspacePlateformeCoutsRoute
   EspacePlateformePilotageRoute: typeof EspacePlateformePilotageRoute
   EspacePlateformeProgrammesRoute: typeof EspacePlateformeProgrammesRoute
   EspacePlateformeStatistiquesRoute: typeof EspacePlateformeStatistiquesRoute
@@ -1206,6 +1226,7 @@ interface EspacePlateformeRouteChildren {
 }
 
 const EspacePlateformeRouteChildren: EspacePlateformeRouteChildren = {
+  EspacePlateformeCoutsRoute: EspacePlateformeCoutsRoute,
   EspacePlateformePilotageRoute: EspacePlateformePilotageRoute,
   EspacePlateformeProgrammesRoute: EspacePlateformeProgrammesRoute,
   EspacePlateformeStatistiquesRoute: EspacePlateformeStatistiquesRoute,
