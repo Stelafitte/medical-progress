@@ -515,7 +515,22 @@ export const mockDataAccess: DataAccess = {
       listCertificates: (programId) =>
         ok(pfx.completionCertificates.filter((c) => c.programId === programId)),
       listTasks: (programId) => ok(pfx.adminTasks.filter((t) => t.programId === programId)),
-      listMessageTemplates: () => ok(pfx.messageTemplates),
+      listDocumentRequirements: () => ok(pfx.documentRequirements),
+      declareDocumentRequirement: (input) =>
+        ok({
+          id: `req-${input.code}`,
+          programId: input.programId,
+          code: input.code,
+          label: input.label,
+          mandatory: input.mandatory,
+          provider: input.provider,
+          validator: input.validator,
+          due: input.due,
+          notes: input.notes,
+          createdAt: new Date().toISOString(),
+        }),
+      listMessageTemplates: (programId) =>
+        ok(pfx.messageTemplates.filter((t) => t.programId === null || t.programId === programId)),
       listSendHistory: (programId) => ok(pfx.sendHistory.filter((s) => s.programId === programId)),
       listPeople: () => ok(fx.people),
       listAllRoleAssignments: () => ok(roleAssignments),

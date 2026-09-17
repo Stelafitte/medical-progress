@@ -23,7 +23,8 @@ import {
 } from "@/components/ui/table";
 import { EmptyState, PanelCard, ScopeNotice } from "@/features/professional/mock-ui";
 import { useDataAccess, useSession } from "@/application/session";
-import { RETENTION_TBD_FR } from "@/domain/administration";
+import { RETENTION_TBD_FR, aiStateLabel } from "@/domain/administration";
+import { formatGo } from "@/domain/operatingCost";
 import {
   COHORT_PHASE_LABELS_FR,
   cohortPhase,
@@ -275,7 +276,8 @@ export function PlatformProgramsView() {
                 </p>
                 {row ? (
                   <p>
-                    {row.aiQuotaLabel} · {row.storageLabel} · conservation : {RETENTION_TBD_FR}
+                    {aiStateLabel(row.aiEnabled)} · {formatGo(row.storageBytes)} · conservation :{" "}
+                    {RETENTION_TBD_FR}
                   </p>
                 ) : null}
                 <p>Aucun dossier pédagogique n'est ouvrable depuis cette vue agrégée.</p>

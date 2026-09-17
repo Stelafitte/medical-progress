@@ -60,7 +60,6 @@ import type {
   AdminDocument,
   AdminTask,
   CompletionCertificate,
-  MessageTemplate,
   PlatformSupervisionRow,
   SendHistoryItem,
 } from "@/domain/administration";
@@ -71,7 +70,26 @@ import type {
   ProfessionalMessage,
   SupervisionAlert,
 } from "@/domain/supervision";
-import type { LearnerMessage } from "@/domain/communication";
+import type { CommMessageTemplate, LearnerMessage } from "@/domain/communication";
+import type {
+  DocumentDueMoment,
+  DocumentProvider,
+  DocumentRequirement,
+  DocumentValidator,
+} from "@/domain/documentRequirement";
+
+/** Saisie du formulaire unique, telle que la base l'attend. */
+export interface DeclareDocumentRequirementInput {
+  readonly programId: ProgramId;
+  readonly code: string;
+  readonly label: string;
+  readonly mandatory: boolean;
+  readonly provider: DocumentProvider;
+  readonly validator: DocumentValidator;
+  readonly due: DocumentDueMoment;
+  readonly notes: string;
+  readonly position?: number;
+}
 import type { StageLog, StageLogId, StageLogTemplate, StageLogTemplateId } from "@/domain/stageLog";
 import type {
   StageAttestation,
@@ -950,10 +968,17 @@ export interface GrantRoleAssignmentInput {
 
 /** Lecture administrative, cloisonnée par programme. */
 export interface AdministrationRepository {
+  /**
+   * LE CATALOGUE DES PIÈCES EXIGÉES — ce que le programme attend, une fois pour
+   * toutes. L'échéance y est un MOMENT (à l'inscription, avant le stage…), pas
+   * une date : un catalogue ne connaît pas les promotions.
+   */
+  listDocumentRequirements(programId: ProgramId): Promise<readonly DocumentRequirement[]>;
+  declareDocumentRequirement(input: DeclareDocumentRequirementInput): Promise<DocumentRequirement>;
   listDocuments(programId: ProgramId): Promise<readonly AdminDocument[]>;
   listCertificates(programId: ProgramId): Promise<readonly CompletionCertificate[]>;
   listTasks(programId: ProgramId): Promise<readonly AdminTask[]>;
-  listMessageTemplates(): Promise<readonly MessageTemplate[]>;
+  listMessageTemplates(programId: ProgramId): Promise<readonly CommMessageTemplate[]>;
   listSendHistory(programId: ProgramId): Promise<readonly SendHistoryItem[]>;
   listPeople(): Promise<readonly Person[]>;
   listAllRoleAssignments(): Promise<readonly RoleAssignment[]>;

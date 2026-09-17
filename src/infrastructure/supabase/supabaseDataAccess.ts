@@ -72,6 +72,24 @@ import type {
   ProgramIncident,
 } from "@/domain/pilotDecision";
 import type {
+  AdminDocument,
+  AdminDocumentStatus,
+  AdminTask,
+  CertificateStatus,
+  CompletionCertificate,
+} from "@/domain/administration";
+import type {
+  CampaignStatus,
+  CommMessageTemplate,
+  MessageCategory,
+  TemplateStatus,
+} from "@/domain/communication";
+import type {
+  DocumentDueMoment,
+  DocumentProvider,
+  DocumentValidator,
+} from "@/domain/documentRequirement";
+import type {
   AlertSeverity,
   CaseDiscussion,
   CompetenceConfirmation,
@@ -644,6 +662,76 @@ interface PilotDecisionRow {
   readonly incident_id: string | null;
   readonly decided_by: string | null;
   readonly decided_at: string;
+}
+
+interface DocumentRequirementRow {
+  readonly id: string;
+  readonly program_id: string;
+  readonly document_key: string;
+  readonly label: string;
+  readonly mandatory: boolean;
+  readonly provider: DocumentProvider;
+  readonly validator: DocumentValidator;
+  readonly due_moment: DocumentDueMoment;
+  readonly notes: string;
+  readonly created_at: string;
+}
+
+interface AdminDocumentRow {
+  readonly id: string;
+  readonly program_id: string;
+  readonly enrollment_id: string;
+  readonly status: AdminDocumentStatus;
+  readonly requested_on: string | null;
+  readonly received_on: string | null;
+  readonly admin_document_requirements: { readonly label: string } | null;
+}
+
+interface CompletionCertificateRow {
+  readonly id: string;
+  readonly program_id: string;
+  readonly enrollment_id: string;
+  readonly status: CertificateStatus;
+  readonly updated_at: string;
+}
+
+interface AdminTaskRow {
+  readonly id: string;
+  readonly program_id: string;
+  readonly label: string;
+  readonly due_on: string;
+  readonly priority: AdminTask["priority"];
+}
+
+interface MessageTemplateRow {
+  readonly id: string;
+  readonly program_id: string | null;
+  readonly category: MessageCategory;
+  readonly allowed_channels: readonly MessageChannel[] | null;
+  readonly subject: string;
+  readonly body: string;
+  readonly declared_variables: readonly string[] | null;
+  readonly version: number;
+  readonly status: TemplateStatus;
+}
+
+interface SendHistoryRow {
+  readonly id: string;
+  readonly program_id: string;
+  readonly template_id: string | null;
+  readonly subject: string;
+  readonly status: CampaignStatus;
+  readonly created_at: string;
+  readonly communication_deliveries: readonly { readonly count: number }[] | null;
+}
+
+interface PlatformSupervisionRowRaw {
+  readonly program_id: string;
+  readonly program_label: string;
+  readonly authorized_administrators: readonly string[] | null;
+  readonly learners: number | string;
+  readonly ai_enabled: boolean;
+  readonly storage_bytes: number | string;
 }
 
 interface SupervisionAlertRow {
@@ -2634,6 +2722,192 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
     },
     administration: {
       ...mockDataAccess.administration,
+      /**
+       * LE CATALOGUE DES PIECES EXIGEES (17/09). Jusqu'a aujourd'hui il vivait
+       * dans une variable de module : « Rien n'est persiste : l'etat disparait
+       * au rechargement — c'est volontaire », disait le fichier. Ce n'etait
+       * volontaire que faute de table.
+       */
+      async listDocumentRequirements(programId: ProgramId) {
+        const { data, error } = await client
+          .from("admin_document_requirements")
+          .select(
+            "id,program_id,document_key,label,mandatory,provider,validator,due_moment,notes,created_at",
+          )
+          .eq("program_id", programId)
+          .is("archived_at", null)
+          .order("position", { ascending: true });
+        assertNoSupabaseError(error);
+        return ((data ?? []) as DocumentRequirementRow[]).map((row) => ({
+          id: row.id,
+          programId: row.program_id as ProgramId,
+          code: row.document_key,
+          label: row.label,
+          mandatory: row.mandatory,
+          provider: row.provider,
+          validator: row.validator,
+          due: row.due_moment,
+          notes: row.notes,
+          createdAt: row.created_at,
+        }));
+      },
+      async declareDocumentRequirement(input) {
+        const { data, error } = await client.rpc("declare_document_requirement", {
+          p_program_id: input.programId,
+          p_document_key: input.code,
+          p_label: input.label,
+          p_mandatory: input.mandatory,
+          p_provider: input.provider,
+          p_validator: input.validator,
+          p_due_moment: input.due,
+          p_notes: input.notes,
+          p_position: input.position ?? 0,
+        });
+        assertNoSupabaseError(error);
+        const { data: row, error: readError } = await client
+          .from("admin_document_requirements")
+          .select(
+            "id,program_id,document_key,label,mandatory,provider,validator,due_moment,notes,created_at",
+          )
+          .eq("id", data as string)
+          .single();
+        assertNoSupabaseError(readError);
+        const created = row as DocumentRequirementRow;
+        return {
+          id: created.id,
+          programId: created.program_id as ProgramId,
+          code: created.document_key,
+          label: created.label,
+          mandatory: created.mandatory,
+          provider: created.provider,
+          validator: created.validator,
+          due: created.due_moment,
+          notes: created.notes,
+          createdAt: created.created_at,
+        };
+      },
+      /**
+       * Le LIBELLE vit dans l'exigence, une seule fois : c'est ce qui permet de
+       * dire « il manque la convention a onze etudiants ». Un libelle recopie
+       * par inscrit ne se compte pas.
+       */
+      async listDocuments(programId: ProgramId) {
+        const { data, error } = await client
+          .from("admin_documents")
+          .select(
+            "id,program_id,enrollment_id,status,requested_on,received_on," +
+              "admin_document_requirements(label)",
+          )
+          .eq("program_id", programId)
+          .limit(2000);
+        assertNoSupabaseError(error);
+        return ((data ?? []) as unknown as AdminDocumentRow[]).map((row) => ({
+          id: row.id as AdminDocument["id"],
+          programId: row.program_id as ProgramId,
+          enrollmentId: row.enrollment_id as EnrollmentId,
+          label: row.admin_document_requirements?.label ?? "",
+          status: row.status,
+          ...(row.requested_on === null ? {} : { requestedOn: row.requested_on }),
+          ...(row.received_on === null ? {} : { receivedOn: row.received_on }),
+        }));
+      },
+      async listCertificates(programId: ProgramId) {
+        const { data, error } = await client
+          .from("completion_certificates")
+          .select("id,program_id,enrollment_id,status,updated_at")
+          .eq("program_id", programId)
+          .limit(2000);
+        assertNoSupabaseError(error);
+        return ((data ?? []) as CompletionCertificateRow[]).map((row) => ({
+          id: row.id as CompletionCertificate["id"],
+          programId: row.program_id as ProgramId,
+          enrollmentId: row.enrollment_id as EnrollmentId,
+          status: row.status,
+          updatedAt: row.updated_at,
+        }));
+      },
+      /** Ce qui reste A FAIRE : une tache close n'est plus une tache. */
+      async listTasks(programId: ProgramId) {
+        const { data, error } = await client
+          .from("admin_tasks")
+          .select("id,program_id,label,due_on,priority")
+          .eq("program_id", programId)
+          .eq("status", "open")
+          .order("due_on", { ascending: true })
+          .limit(200);
+        assertNoSupabaseError(error);
+        return ((data ?? []) as AdminTaskRow[]).map((row) => ({
+          id: row.id as AdminTask["id"],
+          programId: row.program_id as ProgramId,
+          label: row.label,
+          dueOn: row.due_on,
+          priority: row.priority,
+        }));
+      },
+      /**
+       * `program_id` NUL = modele de plateforme, reutilisable par tous les
+       * programmes : il doit donc remonter avec ceux du programme, pas a la
+       * place. D'ou le `or`.
+       */
+      async listMessageTemplates(programId: ProgramId) {
+        const { data, error } = await client
+          .from("message_templates")
+          .select(
+            "id,program_id,category,allowed_channels,subject,body,declared_variables,version,status",
+          )
+          .or(`program_id.eq.${programId},program_id.is.null`)
+          .neq("status", "archived")
+          .order("label", { ascending: true });
+        assertNoSupabaseError(error);
+        return ((data ?? []) as MessageTemplateRow[]).map((row) => ({
+          id: row.id as CommMessageTemplate["id"],
+          programId: (row.program_id as ProgramId | null) ?? null,
+          category: row.category,
+          allowedChannels: row.allowed_channels ?? [],
+          subject: row.subject,
+          body: row.body,
+          declaredVariables: row.declared_variables ?? [],
+          version: row.version,
+          provenance: nativeProvenance,
+          status: row.status,
+        }));
+      },
+      /**
+       * Le nombre de destinataires se COMPTE dans les envois, il ne se declare
+       * pas : `max_recipients` est un plafond, pas un effectif.
+       */
+      async listSendHistory(programId: ProgramId) {
+        const { data, error } = await client
+          .from("communication_campaigns")
+          .select("id,program_id,template_id,subject,status,created_at,communication_deliveries(count)")
+          .eq("program_id", programId)
+          .order("created_at", { ascending: false })
+          .limit(100);
+        assertNoSupabaseError(error);
+        return ((data ?? []) as unknown as SendHistoryRow[]).map((row) => ({
+          id: row.id,
+          programId: row.program_id as ProgramId,
+          ...(row.template_id === null
+            ? {}
+            : { templateId: row.template_id as CommMessageTemplate["id"] }),
+          subject: row.subject,
+          preparedAt: row.created_at,
+          recipients: row.communication_deliveries?.[0]?.count ?? 0,
+          state: row.status,
+        }));
+      },
+      async listPlatformSupervision() {
+        const { data, error } = await client.rpc("platform_supervision");
+        assertNoSupabaseError(error);
+        return ((data ?? []) as PlatformSupervisionRowRaw[]).map((row) => ({
+          programId: row.program_id as ProgramId,
+          programLabel: row.program_label,
+          authorizedAdministrators: (row.authorized_administrators ?? []) as readonly PersonId[],
+          learners: Number(row.learners),
+          aiEnabled: row.ai_enabled,
+          storageBytes: Number(row.storage_bytes),
+        }));
+      },
       /**
        * `profiles` n'expose pas d'adresse e-mail (colonne absente, RLS ne la
        * donne qu'au titulaire via `auth.getUser()`) : seul le nom est

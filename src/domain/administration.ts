@@ -6,12 +6,12 @@
  * - l'administrateur de PLATEFORME supervise les programmes, les droits et les
  *   paramètres communs, sans accès automatique aux dossiers pédagogiques.
  */
+import type { CampaignStatus, CommTemplateId } from "./communication";
 import type { EnrollmentId, Id, IsoDateTime, PersonId, ProgramId } from "./types";
 
 export type AdminDocumentId = Id<"AdminDocument">;
 export type CompletionCertificateId = Id<"CompletionCertificate">;
 export type AdminTaskId = Id<"AdminTask">;
-export type MessageTemplateId = Id<"MessageTemplate">;
 
 /** Mention imposée partout où une conservation de données est évoquée. */
 export const RETENTION_TBD_FR = "à définir avant backend";
@@ -26,12 +26,14 @@ export const NO_REAL_SEND_FR =
 /* Pièces administratives                                              */
 /* ------------------------------------------------------------------ */
 
-export type AdminDocumentStatus = "requested" | "received" | "missing";
+export type AdminDocumentStatus = "missing" | "requested" | "received" | "validated" | "refused";
 
 export const ADMIN_DOCUMENT_STATUS_LABELS_FR: Record<AdminDocumentStatus, string> = {
+  missing: "manquante",
   requested: "demandée",
   received: "reçue",
-  missing: "manquante",
+  validated: "acceptée",
+  refused: "refusée",
 };
 
 export interface AdminDocument {
@@ -48,7 +50,8 @@ export interface AdminDocument {
 /* Certificat de complétude (workflow DIU)                             */
 /* ------------------------------------------------------------------ */
 
-export type CertificateStatus = "not_requested" | "requested" | "reminded" | "signed" | "validated";
+export type CertificateStatus =
+  "not_requested" | "requested" | "reminded" | "signed" | "validated" | "revoked";
 
 export const CERTIFICATE_STATUS_LABELS_FR: Record<CertificateStatus, string> = {
   not_requested: "non demandé",
@@ -56,6 +59,7 @@ export const CERTIFICATE_STATUS_LABELS_FR: Record<CertificateStatus, string> = {
   reminded: "relancé",
   signed: "signé par le responsable de stage",
   validated: "validé par l'administration du programme",
+  revoked: "révoqué",
 };
 
 export type CertificateAction = "request" | "remind" | "sign" | "validate";
@@ -102,22 +106,29 @@ export interface AdminTask {
   readonly priority: "high" | "medium" | "low";
 }
 
-export interface MessageTemplate {
-  readonly id: MessageTemplateId;
-  readonly label: string;
-  readonly audience: "individuel" | "groupe" | "promotion";
-  readonly body: string;
-}
+/*
+ * IL N'Y A PLUS DE `MessageTemplate` ICI (17/09). Le dépôt en portait deux :
+ * celui-ci, avec une « audience » en trois valeurs, et `CommMessageTemplate`
+ * dans `communication.ts`, qui décrit exactement la table `message_templates`
+ * — catégorie, canaux autorisés, variables déclarées, version, statut. Le
+ * second est le bon, et c'est lui que la base sait rendre. Un modèle de
+ * message ne porte d'ailleurs pas d'audience : l'audience est choisie par la
+ * CAMPAGNE qui s'en sert.
+ */
 
+/**
+ * Une campagne, vue depuis l'administration du programme : de quoi dire ce qui
+ * est parti, à combien de personnes, et où ça en est. `state` porte le vrai
+ * statut de la base — il y en a sept, pas un seul écrit en dur.
+ */
 export interface SendHistoryItem {
   readonly id: string;
   readonly programId: ProgramId;
-  readonly templateId: MessageTemplateId;
-  readonly audienceLabel: string;
+  readonly templateId?: CommTemplateId;
+  readonly subject: string;
   readonly preparedAt: IsoDateTime;
   readonly recipients: number;
-  /** Toujours « préparé » : aucune expédition réelle. */
-  readonly state: "prepared_not_sent";
+  readonly state: CampaignStatus;
 }
 
 /* ------------------------------------------------------------------ */
@@ -140,12 +151,18 @@ export function platformAdminCanOpenLearnerFile(): false {
   return false;
 }
 
+/** L'interrupteur IA, dit en clair. Aucun quota : la base n'en porte pas. */
+export function aiStateLabel(enabled: boolean): string {
+  return enabled ? "IA activée" : "IA éteinte";
+}
+
 export interface PlatformSupervisionRow {
   readonly programId: ProgramId;
   readonly programLabel: string;
   readonly authorizedAdministrators: readonly PersonId[];
   readonly learners: number;
-  /** Quotas et consommation IA : prévus, jamais actifs dans cette maquette. */
-  readonly aiQuotaLabel: string;
-  readonly storageLabel: string;
+  /** L'interrupteur IA du programme, tel que la base le porte. */
+  readonly aiEnabled: boolean;
+  /** Octets réellement stockés par les supports du programme. */
+  readonly storageBytes: number;
 }

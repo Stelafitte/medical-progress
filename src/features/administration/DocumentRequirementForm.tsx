@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { createLocalDocumentRequirement } from "@/application/documentRequirementStore";
+import { createDocumentRequirement } from "@/application/documentRequirementStore";
 import {
   DOCUMENT_DUE_LABELS_FR,
   DOCUMENT_PROVIDER_LABELS_FR,
@@ -51,12 +51,12 @@ export function DocumentRequirementForm({
     setCreated(null);
   };
 
-  const submit = () => {
+  const submit = async () => {
     if (issues.length > 0) {
       setShowIssues(true);
       return;
     }
-    const requirement = createLocalDocumentRequirement({ input, programId });
+    const requirement = await createDocumentRequirement({ input, programId });
     if (!requirement) return;
     setInput(EMPTY_NEW_DOCUMENT_REQUIREMENT_INPUT);
     setShowIssues(false);

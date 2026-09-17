@@ -13,7 +13,12 @@ import {
 } from "@/components/ui/table";
 import { EmptyState, PanelCard, ScopeNotice, StatCard } from "@/features/professional/mock-ui";
 import { useDataAccess } from "@/application/session";
-import { RETENTION_TBD_FR, platformAdminCanOpenLearnerFile } from "@/domain/administration";
+import {
+  RETENTION_TBD_FR,
+  aiStateLabel,
+  platformAdminCanOpenLearnerFile,
+} from "@/domain/administration";
+import { formatGo } from "@/domain/operatingCost";
 import { ROLE_LABELS_FR } from "@/domain/roles";
 import {
   COHORT_PHASE_LABELS_FR,
@@ -239,7 +244,7 @@ export function PlatformAdminView() {
                 </p>
                 {row ? (
                   <p>
-                    {row.aiQuotaLabel} · {row.storageLabel}
+                    {aiStateLabel(row.aiEnabled)} · {formatGo(row.storageBytes)} stockés
                   </p>
                 ) : null}
                 <p>Aucun dossier pédagogique n'est ouvrable depuis cette vue.</p>
@@ -282,14 +287,14 @@ export function PlatformAdminView() {
             <li key={row.programId} className="flex flex-wrap items-center gap-2">
               <span className="font-medium">{row.programLabel}</span>
               <Badge variant="outline" className="font-normal">
-                {row.aiQuotaLabel}
+                {aiStateLabel(row.aiEnabled)}
               </Badge>
-              <span className="text-muted-foreground">{row.storageLabel}</span>
+              <span className="text-muted-foreground">{formatGo(row.storageBytes)}</span>
             </li>
           ))}
           <li className="text-muted-foreground">
-            Sauvegardes et conservation : {RETENTION_TBD_FR}. Aucun appel IA réel, aucun stockage
-            actif.
+            Sauvegardes et conservation : {RETENTION_TBD_FR}. Le stockage affiché est mesuré ; l'IA
+            reste éteinte sur tous les programmes.
           </li>
         </ul>
       </PanelCard>

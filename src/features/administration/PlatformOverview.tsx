@@ -29,6 +29,7 @@ import {
 } from "@/features/professional/mock-ui";
 import { useDataAccess } from "@/application/session";
 import { RETENTION_TBD_FR, platformAdminCanOpenLearnerFile } from "@/domain/administration";
+import { formatGo } from "@/domain/operatingCost";
 import {
   PLATFORM_ROLE_GROUP_LABELS_FR,
   buildPlatformDirectory,
@@ -274,7 +275,7 @@ export function PlatformOverview() {
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <span className="font-medium">{row.programLabel}</span>
                     <span className="text-muted-foreground text-xs">
-                      {consumed} / {allocated || "—"} crédits · {row.storageLabel}
+                      {consumed} / {allocated || "—"} crédits · {formatGo(row.storageBytes)}
                     </span>
                   </div>
                   <Progress value={allocated > 0 ? Math.round((consumed / allocated) * 100) : 0} />

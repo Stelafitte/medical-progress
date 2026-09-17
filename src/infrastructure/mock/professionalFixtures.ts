@@ -9,11 +9,11 @@ import type {
   AdminDocument,
   AdminTask,
   CompletionCertificate,
-  MessageTemplate,
   PlatformSupervisionRow,
   SendHistoryItem,
 } from "@/domain/administration";
-import { RETENTION_TBD_FR } from "@/domain/administration";
+import type { CommMessageTemplate } from "@/domain/communication";
+import type { DocumentRequirement } from "@/domain/documentRequirement";
 import type {
   CaseDiscussion,
   CompetenceConfirmation,
@@ -317,24 +317,42 @@ export const adminTasks: readonly AdminTask[] = [
   },
 ];
 
-export const messageTemplates: readonly MessageTemplate[] = [
+export const messageTemplates: readonly CommMessageTemplate[] = [
   {
     id: "mtp-1",
-    label: "Relance carnet de stage",
-    audience: "individuel",
+    programId: "prog-diu-echo",
+    category: "reminder",
+    allowedChannels: ["email", "in_app"],
+    subject: "Carnet de stage à compléter",
     body: "Votre carnet de stage présente des entrées manquantes. Merci de le compléter.",
+    declaredVariables: [],
+    version: 1,
+    provenance: { sourceSystem: "native" },
+    status: "validated",
   },
   {
     id: "mtp-2",
-    label: "Convocation à une séance de simulation",
-    audience: "groupe",
+    programId: "prog-diu-echo",
+    category: "convocation",
+    allowedChannels: ["email"],
+    subject: "Séance de simulation",
     body: "Une séance de simulation est programmée pour votre groupe.",
+    declaredVariables: [],
+    version: 1,
+    provenance: { sourceSystem: "native" },
+    status: "validated",
   },
   {
     id: "mtp-3",
-    label: "Information de promotion",
-    audience: "promotion",
+    programId: null,
+    category: "announcement",
+    allowedChannels: ["email", "in_app"],
+    subject: "Modalités de validation",
     body: "Les modalités de validation du module sont disponibles dans vos ressources.",
+    declaredVariables: [],
+    version: 1,
+    provenance: { sourceSystem: "native" },
+    status: "validated",
   },
 ];
 
@@ -343,19 +361,19 @@ export const sendHistory: readonly SendHistoryItem[] = [
     id: "snd-1",
     programId: "prog-diu-echo",
     templateId: "mtp-1",
-    audienceLabel: "3 apprenants sans saisie",
+    subject: "Carnet de stage à compléter",
     preparedAt: "2026-09-10T10:00:00Z",
     recipients: 3,
-    state: "prepared_not_sent",
+    state: "draft",
   },
   {
     id: "snd-2",
     programId: "prog-diu-echo",
     templateId: "mtp-3",
-    audienceLabel: "Promotion 2026-2027",
+    subject: "Modalités de validation",
     preparedAt: "2026-09-02T09:00:00Z",
     recipients: 412,
-    state: "prepared_not_sent",
+    state: "completed",
   },
 ];
 
@@ -365,15 +383,22 @@ export const platformSupervision: readonly PlatformSupervisionRow[] = [
     programLabel: "DIU d'Échocardiographie",
     authorizedAdministrators: ["per-admin"],
     learners: 412,
-    aiQuotaLabel: "Quota IA prévu, non actif",
-    storageLabel: `Stockage privé prévu · conservation ${RETENTION_TBD_FR}`,
+    aiEnabled: false,
+    storageBytes: 0,
   },
   {
     programId: "prog-dfasm-cardio",
     programLabel: "DFASM Cardiologie",
     authorizedAdministrators: ["per-admin"],
     learners: 98,
-    aiQuotaLabel: "Quota IA prévu, non actif",
-    storageLabel: `Stockage privé prévu · conservation ${RETENTION_TBD_FR}`,
+    aiEnabled: false,
+    storageBytes: 0,
   },
 ];
+
+/**
+ * Le catalogue des pièces exigées n'a JAMAIS eu de données d'exemple : il
+ * vivait dans une variable de module alimentée à l'écran. Depuis le 17/09 il
+ * est en base ; le mock rend donc une liste vide, ce qui est la vérité.
+ */
+export const documentRequirements: readonly DocumentRequirement[] = [];

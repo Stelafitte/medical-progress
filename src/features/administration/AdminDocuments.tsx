@@ -8,7 +8,7 @@
  * classe — le suivi nominatif des pièces et le certificat de complétude.
  * Tout est simulé de façon déterministe : aucune écriture réelle.
  */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { ArrowRight } from "lucide-react";
 import { SectionHeading } from "@/components/section-heading";
@@ -30,7 +30,8 @@ import { personNameFor, useProgramAdmin } from "@/features/administration/usePro
 import { AdminChargement } from "@/features/administration/AdminChargement";
 import { defaultPilotCohortId } from "@/features/administration/adminProgramViewModel";
 import {
-  createLocalDocumentRequirement,
+  createDocumentRequirement,
+  hydrateDocumentRequirements,
   useLocalDocumentRequirements,
 } from "@/application/documentRequirementStore";
 import {
@@ -73,6 +74,13 @@ export function AdminDocuments() {
 
   const programId = (data?.program?.id ?? "program-unknown") as ProgramId;
   const localRequirements = useLocalDocumentRequirements(data?.program?.id);
+  /*
+   * LA BASE SEME L'INSTANTANE. Sans cela l'ecran repartirait vide a chaque
+   * rechargement, ce qui etait justement le defaut d'hier.
+   */
+  useEffect(() => {
+    if (data?.program?.id) hydrateDocumentRequirements(data.program.id, data.documentRequirements);
+  }, [data?.program?.id, data?.documentRequirements]);
 
   const parsed = useMemo(() => parseDocumentRequirementText(importText), [importText]);
   const diff = useMemo(
@@ -191,22 +199,30 @@ export function AdminDocuments() {
             className="min-h-11"
             disabled={diff.newCount === 0}
             onClick={() => {
-              let added = 0;
-              for (const row of diff.rows) {
-                if (row.kind !== "new") continue;
-                const created = createLocalDocumentRequirement({
-                  input: {
-                    ...EMPTY_NEW_DOCUMENT_REQUIREMENT_INPUT,
-                    code: row.code,
-                    label: row.label,
-                    mandatory: row.mandatory,
-                  },
-                  programId,
-                });
-                if (created) added += 1;
-              }
-              setImported(added);
-              setImportText("");
+              /*
+               * UNE PIECE A LA FOIS, EN SERIE. Un `Promise.all` sur trente
+               * lignes ouvre trente ecritures simultanees pour un geste que
+               * l'utilisateur percoit comme un seul ; la serie garde aussi
+               * l'ordre du fichier importe.
+               */
+              void (async () => {
+                let added = 0;
+                for (const row of diff.rows) {
+                  if (row.kind !== "new") continue;
+                  const created = await createDocumentRequirement({
+                    input: {
+                      ...EMPTY_NEW_DOCUMENT_REQUIREMENT_INPUT,
+                      code: row.code,
+                      label: row.label,
+                      mandatory: row.mandatory,
+                    },
+                    programId,
+                  });
+                  if (created) added += 1;
+                }
+                setImported(added);
+                setImportText("");
+              })();
             }}
           >
             Ajouter les {diff.newCount} nouvelle(s) pièce(s)

@@ -13,15 +13,11 @@
  * - AUCUN secret, AUCUNE tâche planifiée : `ScheduledMessage` décrit une
  *   intention, jamais une exécution.
  *
- * LEGACY : `MessageTemplate` et `SendHistoryItem` de `./administration` sont
+ * LE PONT LEGACY A ETE RETIRE LE 17/09 : `MessageTemplate` n'existe plus dans
+ * `./administration`, `CommMessageTemplate` est desormais le seul modele et il
+ * se lit directement depuis la table `message_templates`.
  * conservés (écrans existants). Ils sont considérés OBSOLÈTES et adaptés ici via
- * `adaptLegacyMessageTemplate` / `adaptLegacySendHistoryItem` afin d'éviter une
- * migration brutale. Aucun nouvel écran ne doit les utiliser.
  */
-import type {
-  MessageTemplate as LegacyMessageTemplate,
-  SendHistoryItem as LegacySendHistoryItem,
-} from "./administration";
 import type { DirectoryFilter, DirectoryRow, EnrollmentStatus } from "./directory";
 import { filterDirectoryRows } from "./directory";
 import { detectPatientDataMarkers } from "./dpcProgramDraft";
@@ -192,38 +188,6 @@ export interface CommunicationPreference {
 /* ------------------------------------------------------------------ */
 /* 3. Adaptateurs LEGACY (transition, à retirer après migration)       */
 /* ------------------------------------------------------------------ */
-
-/** @deprecated Adapte l'ancien `MessageTemplate` administratif vers le socle. */
-export function adaptLegacyMessageTemplate(
-  legacy: LegacyMessageTemplate,
-  options: { readonly programId: ProgramId | null; readonly provenance: Provenance },
-): CommMessageTemplate {
-  return {
-    id: legacy.id as unknown as CommTemplateId,
-    programId: options.programId,
-    category: "free",
-    allowedChannels: ["email"],
-    subject: legacy.label,
-    body: legacy.body,
-    declaredVariables: [],
-    version: 1,
-    provenance: options.provenance,
-    status: "draft",
-  };
-}
-
-/** @deprecated Adapte un historique « préparé, non envoyé » en tentative annulée. */
-export function adaptLegacySendHistoryItem(legacy: LegacySendHistoryItem): DeliveryAttempt {
-  return {
-    campaignId: legacy.id as unknown as CommCampaignId,
-    personId: "" as PersonId,
-    channel: "email",
-    status: "cancelled",
-    attemptNumber: 0,
-    failureReason: "historique legacy : préparé sans expédition",
-    at: legacy.preparedAt,
-  };
-}
 
 /* ------------------------------------------------------------------ */
 /* 4. Instantané de périmètre et périmètre de l'émetteur               */
