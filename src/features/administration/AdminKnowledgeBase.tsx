@@ -32,6 +32,7 @@ import { assessmentFixturesFor } from "@/infrastructure/mock/assessmentFixtures"
 import { NATURE_LABELS_FR } from "@/domain/mastery";
 import { COMPETENCE_MASTERY_LABELS_FR } from "@/domain/competenceDraft";
 import { useDataAccess } from "@/application/session";
+import { setCohortFocus, useCohortFocus } from "@/application/cohortFocusStore";
 import { ProgramAssociationList } from "@/features/administration/ProgramAssociationList";
 import { outcomeAssociationItems } from "@/domain/outcomeAssociation";
 import type { OutcomeId, ProgramId } from "@/domain/types";
@@ -39,7 +40,12 @@ import type { OutcomeId, ProgramId } from "@/domain/types";
 export function AdminKnowledgeBase() {
   const { data, isPending, error, refetch } = useProgramAdmin();
   const dataAccess = useDataAccess();
-  const [cohortId, setCohortId] = useState<string | null>(null);
+  /*
+   * LA PROMOTION EST CHOISIE UNE FOIS, PAS UNE FOIS PAR ONGLET (17/09).
+   * Chaque écran gardait son propre `useState` : on choisissait une promotion
+   * dans Évaluations, et le Pilotage l'ignorait. Sept écrans, sept vérités.
+   */
+  const cohortId = useCohortFocus();
   const [importText, setImportText] = useState("");
   const [imported, setImported] = useState<number | null>(null);
   const [isImporting, setIsImporting] = useState(false);
@@ -346,7 +352,7 @@ export function AdminKnowledgeBase() {
       <CohortSelector
         cohorts={cohorts}
         value={selectedId}
-        onChange={setCohortId}
+        onChange={setCohortFocus}
         label="Classe suivie"
       />
 

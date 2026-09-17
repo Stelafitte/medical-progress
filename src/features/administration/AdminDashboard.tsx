@@ -25,6 +25,7 @@ import {
   nextMilestone,
 } from "@/features/administration/adminProgramViewModel";
 import { useSession } from "@/application/session";
+import { setCohortFocus, useCohortFocus } from "@/application/cohortFocusStore";
 import { CERTIFICATE_STATUS_LABELS_FR } from "@/domain/administration";
 
 const TASK_PRIORITY_FR: Record<string, string> = {
@@ -36,7 +37,12 @@ const TASK_PRIORITY_FR: Record<string, string> = {
 export function AdminDashboard() {
   const { activeProgram } = useSession();
   const { data, isPending, error } = useProgramAdmin();
-  const [cohortId, setCohortId] = useState<string | null>(null);
+  /*
+   * LA PROMOTION EST CHOISIE UNE FOIS, PAS UNE FOIS PAR ONGLET (17/09).
+   * Chaque écran gardait son propre `useState` : on choisissait une promotion
+   * dans Évaluations, et le Pilotage l'ignorait. Sept écrans, sept vérités.
+   */
+  const cohortId = useCohortFocus();
 
   if (isPending || !data) return <AdminChargement error={error} />;
 
@@ -70,7 +76,7 @@ export function AdminDashboard() {
       <CohortSelector
         cohorts={data.cohorts}
         value={selectedId}
-        onChange={setCohortId}
+        onChange={setCohortFocus}
         label="Promotion observée"
       />
 

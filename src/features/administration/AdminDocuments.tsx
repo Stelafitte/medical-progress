@@ -50,6 +50,7 @@ import {
   type CertificateStatus,
 } from "@/domain/administration";
 import type { ProgramId } from "@/domain/types";
+import { setCohortFocus, useCohortFocus } from "@/application/cohortFocusStore";
 
 const ACTIONS: readonly { action: CertificateAction; label: string }[] = [
   { action: "request", label: "Demander" },
@@ -59,7 +60,12 @@ const ACTIONS: readonly { action: CertificateAction; label: string }[] = [
 
 export function AdminDocuments() {
   const { data, isPending, error } = useProgramAdmin();
-  const [cohortId, setCohortId] = useState<string | null>(null);
+  /*
+   * LA PROMOTION EST CHOISIE UNE FOIS, PAS UNE FOIS PAR ONGLET (17/09).
+   * Chaque écran gardait son propre `useState` : on choisissait une promotion
+   * dans Évaluations, et le Pilotage l'ignorait. Sept écrans, sept vérités.
+   */
+  const cohortId = useCohortFocus();
   const [overrides, setOverrides] = useState<Record<string, CertificateStatus>>({});
   const [feedback, setFeedback] = useState<string | null>(null);
   const [importText, setImportText] = useState("");
@@ -237,7 +243,7 @@ export function AdminDocuments() {
         description="L'exploitation ne se lit jamais hors promotion : les dépôts et le certificat se suivent pour une classe donnée."
       />
 
-      <CohortSelector cohorts={cohorts} value={selectedId} onChange={setCohortId} />
+      <CohortSelector cohorts={cohorts} value={selectedId} onChange={setCohortFocus} />
 
       <PanelCard
         title={

@@ -5,7 +5,7 @@
  * successives : le pilotage se fait donc toujours promotion par promotion.
  * Aucun rappel des trois étapes ici (il reste sur le concepteur).
  */
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link, useSearch } from "@tanstack/react-router";
 import {
   Activity,
@@ -47,6 +47,7 @@ import { mergePlacements } from "@/domain/placementDraft";
 import { LearnerTrackingSection } from "@/features/administration/LearnerTrackingSection";
 import { personNameFor, useProgramAdmin } from "@/features/administration/useProgramAdmin";
 import { useDataAccess } from "@/application/session";
+import { setCohortFocus, useCohortFocus } from "@/application/cohortFocusStore";
 import { useQuery } from "@tanstack/react-query";
 import { AdminChargement } from "@/features/administration/AdminChargement";
 import {
@@ -90,12 +91,26 @@ export function AdminProgramPilot() {
   const { data, isPending, error, refetch } = useProgramAdmin();
   const dataAccess = useDataAccess();
   const { promotion } = useSearch({ from: "/espace/administration/pilotage" });
-  const [cohortId, setCohortId] = useState<string | null>(null);
+  /*
+   * LA PROMOTION EST CHOISIE UNE FOIS, PAS UNE FOIS PAR ONGLET (17/09).
+   * Chaque écran gardait son propre `useState` : on choisissait une promotion
+   * dans Évaluations, et le Pilotage l'ignorait. Sept écrans, sept vérités.
+   */
+  const cohortId = useCohortFocus();
   const localPlacements = useLocalPlacements(data?.program?.id);
 
   const cohorts = data?.cohorts ?? [];
   // Priorité : choix explicite de l'utilisateur, puis lien profond venu de « Classes ».
   const selectedId = cohortId ?? promotion ?? defaultPilotCohortId(cohorts);
+
+  /*
+   * UN LIEN PROFOND VENU DE « CLASSES » DÉSIGNE UNE PROMOTION PRÉCISE : il doit
+   * gagner sur le choix courant, ET le remplacer — sinon on piloterait celle du
+   * lien tout en montrant l'autre dans les onglets voisins.
+   */
+  useEffect(() => {
+    if (promotion && promotion !== cohortId) setCohortFocus(promotion);
+  }, [promotion, cohortId]);
   const selected = cohorts.find((c) => c.id === selectedId);
 
   /*
@@ -185,7 +200,7 @@ export function AdminProgramPilot() {
       <CohortSelector
         cohorts={cohorts}
         value={selectedId}
-        onChange={setCohortId}
+        onChange={setCohortFocus}
         label="Promotion pilotée"
       />
 

@@ -55,6 +55,29 @@ const PHASE_ORDER: Record<CohortPhase, number> = { running: 0, planned: 1, close
  * récemment lancée en tête), puis celles à venir par ordre de démarrage,
  * puis les cohortes terminées de la plus récente à la plus ancienne.
  */
+/**
+ * DÉPARTAGER DEUX PROMOTIONS AUX MÊMES DATES — le statut, puis le nom.
+ *
+ * ⚠️ Stef, 16/09 : « je trouve bizarre que seule la promotion 2026-2027
+ * apparaisse alors que celle qui est activée c'est la promotion test SL ».
+ * Les deux promotions du DFASM ont EXACTEMENT les mêmes dates : le tri par
+ * phase puis par date était donc à égalité, et c'est l'ordre de la base qui
+ * tranchait. Arbitraire, et incompréhensible pour qui regarde l'écran.
+ *
+ * On départage désormais par le STATUT — une promotion en cours passe devant
+ * une promotion seulement ouverte, qui passe devant un brouillon — puis, en
+ * dernier recours, par le nom. Le nom n'est pas un critère pertinent, mais il
+ * est STABLE : mieux vaut un ordre arbitraire et constant qu'un ordre qui
+ * change d'un rechargement à l'autre.
+ */
+const STATUS_ORDER: Record<string, number> = {
+  in_progress: 0,
+  open: 1,
+  draft: 2,
+  completed: 3,
+  archived: 4,
+};
+
 export function sortCohortsForPilot(
   cohorts: readonly Cohort[],
   now: Date = new Date(),
@@ -63,8 +86,18 @@ export function sortCohortsForPilot(
     const pa = PHASE_ORDER[cohortPhase(a, now)];
     const pb = PHASE_ORDER[cohortPhase(b, now)];
     if (pa !== pb) return pa - pb;
-    if (cohortPhase(a, now) === "planned") return ms(a.startsOn) - ms(b.startsOn);
-    return ms(b.startsOn) - ms(a.startsOn);
+
+    const parDate =
+      cohortPhase(a, now) === "planned"
+        ? ms(a.startsOn) - ms(b.startsOn)
+        : ms(b.startsOn) - ms(a.startsOn);
+    if (parDate !== 0) return parDate;
+
+    const sa = STATUS_ORDER[a.status] ?? 9;
+    const sb = STATUS_ORDER[b.status] ?? 9;
+    if (sa !== sb) return sa - sb;
+
+    return a.label.localeCompare(b.label, "fr");
   });
 }
 

@@ -30,6 +30,7 @@ import { NATURE_LABELS_FR } from "@/domain/mastery";
 import { CorpusImport } from "@/features/administration/CorpusImport";
 import { CompetenceCreationForm } from "@/features/administration/CompetenceCreationForm";
 import { useDataAccess } from "@/application/session";
+import { setCohortFocus, useCohortFocus } from "@/application/cohortFocusStore";
 import { ProgramAssociationList } from "@/features/administration/ProgramAssociationList";
 import { outcomeAssociationItems } from "@/domain/outcomeAssociation";
 import { COMPETENCE_MASTERY_LABELS_FR, type CompetenceNature } from "@/domain/competenceDraft";
@@ -40,7 +41,12 @@ export function AdminCompetencies() {
   /** Compétences en cours d'archivage : leurs cases sont figées le temps de l'appel. */
   const [archivingIds, setArchivingIds] = useState<ReadonlySet<string>>(new Set());
   const dataAccess = useDataAccess();
-  const [cohortId, setCohortId] = useState<string | null>(null);
+  /*
+   * LA PROMOTION EST CHOISIE UNE FOIS, PAS UNE FOIS PAR ONGLET (17/09).
+   * Chaque écran gardait son propre `useState` : on choisissait une promotion
+   * dans Évaluations, et le Pilotage l'ignorait. Sept écrans, sept vérités.
+   */
+  const cohortId = useCohortFocus();
   const [importText, setImportText] = useState("");
   const [imported, setImported] = useState<number | null>(null);
   const [isImporting, setIsImporting] = useState(false);
@@ -354,7 +360,7 @@ export function AdminCompetencies() {
         description="Le suivi n'appartient pas à la conception : il se lit toujours pour une classe donnée et ses apprenants."
       />
 
-      <CohortSelector cohorts={cohorts} value={selectedId} onChange={setCohortId} />
+      <CohortSelector cohorts={cohorts} value={selectedId} onChange={setCohortFocus} />
 
       <PanelCard
         title={
