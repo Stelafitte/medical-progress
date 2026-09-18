@@ -37,3 +37,18 @@ describe("première connexion à l'épreuve des robots de messagerie (18/09)", (
     }
   });
 });
+
+describe("contenu servi seulement après l'ouverture de la promotion (18/09)", () => {
+  const migration = read("supabase/migrations/20260918150000_contenu_apres_ouverture.sql");
+  const dashboard = read("src/features/dashboard/DashboardView.tsx");
+
+  it("la base exige une promotion ouverte, en cours ou terminée", () => {
+    expect(migration).toContain("c.status in ('open', 'in_progress', 'completed')");
+    expect(migration).toContain("create policy programs_select_scoped");
+  });
+
+  it("l'étudiant d'une promotion en brouillon lit un message, pas des zéros", () => {
+    expect(dashboard).toContain("Votre promotion n'est pas encore ouverte");
+    expect(dashboard).toContain('cohort.status === "draft"');
+  });
+});

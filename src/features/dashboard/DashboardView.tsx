@@ -87,6 +87,28 @@ export function DashboardView() {
 
   const { progress, summary, resources, plan, themes, cohort } = data;
 
+  /*
+   * PROMOTION PAS ENCORE OUVERTE (18/09). La base ne sert aucun contenu tant que
+   * le Concepteur n'a pas ouvert la promotion (`is_enrolled_in_program`). Sans
+   * ce message, l'étudiant verrait des compteurs à zéro et croirait à une panne.
+   */
+  if (cohort && (cohort.status === "draft" || cohort.status === "archived")) {
+    return (
+      <section className="border-border bg-card mx-auto max-w-xl space-y-2 rounded-lg border p-6">
+        <h1 className="text-xl font-semibold">
+          {cohort.status === "draft"
+            ? "Votre promotion n'est pas encore ouverte"
+            : "Cette promotion est archivée"}
+        </h1>
+        <p className="text-muted-foreground text-sm">
+          {cohort.status === "draft"
+            ? `L'équipe pédagogique finalise le programme de « ${cohort.label} ». Vos cours, vos objectifs et votre calendrier apparaîtront ici dès son ouverture.`
+            : `« ${cohort.label} » est close. Rapprochez-vous de l'équipe pédagogique si vous pensez que c'est une erreur.`}
+        </p>
+      </section>
+    );
+  }
+
   const videos = resources.filter((r) => r.format === "video").length;
   const connaissances = progress.filter((p) => p.outcome.nature === "knowledge").length;
   const competences = progress.length - connaissances;
