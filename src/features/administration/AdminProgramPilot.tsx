@@ -246,6 +246,12 @@ export function AdminProgramPilot() {
           <PanelCard
             title="Calendrier daté de la promotion"
             description="Jalons du modèle repositionnés sur les dates réelles de cette promotion."
+            collapsible
+            action={
+              <Badge variant="outline" className="font-normal">
+                {timeline.length} jalon(s)
+              </Badge>
+            }
           >
             <ol className="space-y-2 text-sm">
               {timeline.map((item) => (
@@ -267,10 +273,29 @@ export function AdminProgramPilot() {
             </ol>
           </PanelCard>
 
-          <div className="grid gap-4 lg:grid-cols-2">
+          {/*
+            LES SIGNAUX RESTENT, REPLIÉS (Stef, 18/09 : « revoir l'intérêt »). Ils ne
+            sont pas une liste de plus : `supervision_alerts` les CALCULE à chaque
+            lecture (retard sur un jalon, aucune activité depuis N jours), c'est la
+            seule vue nominative de « qui décroche » — le bandeau n'en donne que le
+            nombre. Replié, le panneau ne coûte qu'une ligne ; son compte et sa
+            teinte disent s'il faut l'ouvrir. Une promotion suspendue ou gelée ne
+            signale rien (17/09).
+          */}
+          <div className="space-y-4">
             <PanelCard
               title="Signaux à traiter"
-              description="Retards et absences d'activité sur cette promotion."
+              description="Qui décroche : retard sur un jalon, aucune activité récente. Calculés à chaque ouverture, jamais saisis."
+              collapsible
+              tone={cohortAlerts.length > 0 ? "attention" : "neutral"}
+              action={
+                <Badge
+                  variant={cohortAlerts.length > 0 ? "default" : "outline"}
+                  className="font-normal"
+                >
+                  {cohortAlerts.length} signal(aux)
+                </Badge>
+              }
             >
               {cohortAlerts.length === 0 ? (
                 <EmptyState>Aucun signal sur cette promotion.</EmptyState>
@@ -293,6 +318,12 @@ export function AdminProgramPilot() {
             <PanelCard
               title="Intervenants et rôles"
               description="Rôles contextualisés au programme : aucun rôle global."
+              collapsible
+              action={
+                <Badge variant="outline" className="font-normal">
+                  {scopedRoles.length} intervenant(s)
+                </Badge>
+              }
             >
               {scopedRoles.length === 0 ? (
                 <EmptyState>Aucun intervenant rattaché.</EmptyState>

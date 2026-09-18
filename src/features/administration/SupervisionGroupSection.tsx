@@ -1,5 +1,13 @@
 /**
- * « Encadrement de la promotion » — ÉCRITURE RÉELLE.
+ * « Groupes d'encadrement : qui encadre qui » (ex-« Encadrement de la promotion »,
+ * renommé le 18/09) — ÉCRITURE RÉELLE.
+ *
+ * GARDÉ DANS « GESTION DES STAGES », ET POURQUOI (Stef, 18/09 : « c'est la même
+ * chose que l'Équipe d'encadrement ? »). Non : l'Équipe dit QUI encadre (le vivier,
+ * la synchronisation, l'invitation) ; cette section dit QUI ENCADRE QUI — elle est
+ * la seule à écrire les groupes (inscrits + terrain + encadrants) et à OUVRIR les
+ * carnets de stage. La supprimer laisserait des encadrants sans étudiants et des
+ * étudiants sans carnet. L'ancien titre prêtait à la confusion : il a changé.
  *
  * Générique par construction : la section travaille sur la cohorte
  * sélectionnée, quelle qu'elle soit, et sur n'importe quel programme. Rien
@@ -414,8 +422,9 @@ export function SupervisionGroupSection({
 
   return (
     <PanelCard
-      title="Encadrement de la promotion"
-      description="Le groupe rassemble les inscrits de la promotion sur un terrain de stage, et porte ses encadrants. Plusieurs encadrants par groupe ; un encadrant peut suivre plusieurs groupes."
+      collapsible
+      title="Groupes d'encadrement : qui encadre qui"
+      description="Rattache les inscrits de la promotion à un terrain et à leurs encadrants, et ouvre leurs carnets de stage. L'équipe elle-même (qui sont les encadrants, leur invitation) se gère dans l'onglet « Équipe d'encadrement »."
       action={group ? <Badge variant="secondary">{group.label}</Badge> : null}
     >
       {!cohort ? (

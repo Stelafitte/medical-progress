@@ -15,7 +15,14 @@
  */
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronDown, ChevronRight, Users } from "lucide-react";
+import {
+  Building2,
+  ChevronDown,
+  ChevronRight,
+  GraduationCap,
+  Stethoscope,
+  type LucideIcon,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -31,12 +38,46 @@ import {
   someSelected,
   toggleMany,
   type DirectoryAccountState,
+  type DirectoryAudience,
   type DirectoryBlock,
   type DirectoryRow,
 } from "@/domain/communicationDirectory";
 import { CommunicationSendDialogs } from "@/features/administration/CommunicationSendDialogs";
 
 const TOUCH = "min-h-11";
+
+/**
+ * UNE COULEUR PAR POPULATION (Stef, 18/09 : « sépare les entités, mets de la
+ * couleur »). Ici la teinte ne décore pas : elle dit À QUI l'on écrit, et elle
+ * reste la même du bandeau de synthèse jusqu'au bloc et à ses groupes — un
+ * envoi aux encadrants ne se confond plus avec un envoi aux étudiants.
+ */
+const AUDIENCE_STYLE: Record<
+  DirectoryAudience,
+  { icon: LucideIcon; rail: string; tint: string; ink: string; hint: string }
+> = {
+  learner: {
+    icon: GraduationCap,
+    rail: "bg-sky-500",
+    tint: "bg-sky-50 dark:bg-sky-950/40",
+    ink: "text-sky-700 dark:text-sky-300",
+    hint: "Les étudiants de chaque promotion.",
+  },
+  placement_supervisor: {
+    icon: Stethoscope,
+    rail: "bg-emerald-500",
+    tint: "bg-emerald-50 dark:bg-emerald-950/40",
+    ink: "text-emerald-700 dark:text-emerald-300",
+    hint: "Les seniors qui encadrent au quotidien, par terrain.",
+  },
+  placement_manager: {
+    icon: Building2,
+    rail: "bg-amber-500",
+    tint: "bg-amber-50 dark:bg-amber-950/40",
+    ink: "text-amber-700 dark:text-amber-300",
+    hint: "Les responsables qui valident le stage, par terrain.",
+  },
+};
 
 /** La couleur dit l'action à poser, pas la sévérité : bleu = un geste possible. */
 const STATE_VARIANT: Record<DirectoryAccountState, "default" | "secondary" | "outline"> = {
@@ -100,6 +141,43 @@ export function CommunicationDirectorySection() {
           la même liste. L'état de chaque ligne indique ce qu'il est possible de lui envoyer. Les
           adresses sont volontairement masquées.
         </p>
+        {/* Le bandeau de synthèse : une tuile par population, qui ouvre son bloc. */}
+        <div className="grid gap-3 sm:grid-cols-3">
+          {blocks.map((bloc) => {
+            const style = AUDIENCE_STYLE[bloc.kind];
+            const Icon = style.icon;
+            const ouvert = openBlocks.includes(bloc.kind);
+            return (
+              <button
+                key={bloc.kind}
+                type="button"
+                aria-pressed={ouvert}
+                onClick={() =>
+                  setOpenBlocks((keys) =>
+                    keys.includes(bloc.kind)
+                      ? keys.filter((k) => k !== bloc.kind)
+                      : [...keys, bloc.kind],
+                  )
+                }
+                className={`flex items-center gap-3 overflow-hidden rounded-xl border text-start transition-shadow hover:shadow-[var(--shadow-card)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${style.tint} ${ouvert ? "ring-2 ring-offset-1 ring-border" : ""}`}
+              >
+                <span className={`w-1.5 self-stretch ${style.rail}`} aria-hidden />
+                <Icon className={`size-6 shrink-0 ${style.ink}`} aria-hidden />
+                <span className="min-w-0 flex-1 py-3 pe-3">
+                  <span
+                    className="block font-display text-[26px] leading-none"
+                    style={{ fontVariantNumeric: "tabular-nums" }}
+                  >
+                    {bloc.total}
+                  </span>
+                  <span className={`mt-1 block text-[13px] font-medium ${style.ink}`}>
+                    {bloc.label}
+                  </span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </PanelCard>
 
       {blocks.map((bloc) => (
@@ -154,10 +232,14 @@ function BlocAnnuaire({
   const toutes = bloc.groups.flatMap((g) => g.rows);
   const tout = allSelected(toutes, selection);
   const partiel = someSelected(toutes, selection);
+  const style = AUDIENCE_STYLE[bloc.kind];
+  const Icon = style.icon;
+  const choisis = toutes.filter((r) => selection.has(r.rowKey)).length;
 
   return (
-    <section className="border-border rounded-lg border">
-      <div className="flex flex-wrap items-center gap-3 p-4">
+    <section className="overflow-hidden rounded-xl border bg-card shadow-[var(--shadow-card)]">
+      <div className={`h-1 ${style.rail}`} aria-hidden />
+      <div className={`flex flex-wrap items-center gap-3 px-4 py-3 ${style.tint}`}>
         <Checkbox
           checked={partiel ? "indeterminate" : tout}
           onCheckedChange={(valeur) => onSelection(toutes, valeur === true)}
@@ -175,11 +257,17 @@ function BlocAnnuaire({
           ) : (
             <ChevronRight className="size-4 shrink-0" aria-hidden />
           )}
-          <Users className="text-muted-foreground size-4 shrink-0" aria-hidden />
-          <span className="font-semibold">{bloc.label}</span>
-          <Badge variant="outline" className="font-normal">
-            {bloc.total}
-          </Badge>
+          <Icon className={`size-5 shrink-0 ${style.ink}`} aria-hidden />
+          <span className="min-w-0">
+            <span className="block font-display text-[19px] leading-tight">{bloc.label}</span>
+            <span className="block text-xs text-muted-foreground">{style.hint}</span>
+          </span>
+          <span className="ms-auto flex shrink-0 items-center gap-2">
+            {choisis > 0 ? <Badge className="font-normal">{choisis} sélectionné(s)</Badge> : null}
+            <Badge variant="outline" className="bg-background font-normal">
+              {bloc.total} personne(s)
+            </Badge>
+          </span>
         </button>
       </div>
 
@@ -199,7 +287,7 @@ function BlocAnnuaire({
           const partielGroupe = someSelected(groupe.rows, selection);
           return (
             <div key={cle} className="border-border border-t">
-              <div className="bg-muted/40 flex flex-wrap items-center gap-3 px-4 py-2">
+              <div className="flex flex-wrap items-center gap-3 px-4 py-2 ps-6">
                 <Checkbox
                   checked={partielGroupe ? "indeterminate" : toutGroupe}
                   onCheckedChange={(valeur) => onSelection(groupe.rows, valeur === true)}
@@ -216,6 +304,7 @@ function BlocAnnuaire({
                   ) : (
                     <ChevronRight className="size-4 shrink-0" aria-hidden />
                   )}
+                  <span className={`size-2 shrink-0 rounded-full ${style.rail}`} aria-hidden />
                   <span className="text-sm font-medium">{groupe.label}</span>
                   <span className="text-muted-foreground text-xs">
                     {groupe.rows.length} personne(s)

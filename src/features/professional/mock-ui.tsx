@@ -42,8 +42,8 @@
  *      domaine `--d-1..--d-8` restent réservées au contenu pédagogique ;
  *   6. un vide se dit, il ne s'encadre pas.
  */
-import type { ReactNode } from "react";
-import { Info } from "lucide-react";
+import { useId, useState, type ReactNode } from "react";
+import { ChevronDown, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /**
@@ -132,6 +132,8 @@ export function PanelCard({
   children,
   tone = "neutral",
   step,
+  collapsible = false,
+  defaultOpen,
 }: {
   /**
    * Ancre de navigation, posee seulement par les ecrans dont le sommaire
@@ -152,47 +154,137 @@ export function PanelCard({
    * sans rien dire.
    */
   step?: number;
+  /**
+   * PANNEAU REPLIABLE (Stef, 18/09 : « c'est illisible actuellement »). L'en-tête
+   * devient le bouton qui ouvre et ferme ; le contenu reste MONTÉ quand il est
+   * replié (`hidden`), pour qu'une saisie en cours ne se perde pas.
+   */
+  collapsible?: boolean;
+  /** Ouvert au premier affichage (replié par défaut quand `collapsible`). */
+  defaultOpen?: boolean;
 }) {
+  const [open, setOpen] = useState(defaultOpen ?? !collapsible);
+  const bodyId = useId();
+  const titre = (
+    <div className="flex min-w-0 items-start gap-3">
+      {step === undefined ? null : (
+        <span
+          className={cn(
+            "mt-1 grid size-7 shrink-0 place-items-center rounded-full text-[13px] font-semibold",
+            PASTILLE[tone === "neutral" ? "action" : tone],
+          )}
+          style={{ fontVariantNumeric: "tabular-nums" }}
+          aria-hidden
+        >
+          {step}
+        </span>
+      )}
+      <div className="min-w-0">
+        <h2 className="font-display text-[23px] font-medium leading-[1.15] tracking-[-0.02em]">
+          {title}
+        </h2>
+        {description ? (
+          <p className="mt-2 max-w-2xl text-[13px] leading-relaxed text-ink-soft">{description}</p>
+        ) : null}
+      </div>
+    </div>
+  );
   return (
     <section
       id={id}
       tabIndex={id === undefined ? undefined : -1}
+      // Un sommaire qui mène à un panneau replié doit l'ouvrir : sinon le lien
+      // amène à un titre, pas à la matière.
+      onFocus={(event) => {
+        if (collapsible && event.target === event.currentTarget) setOpen(true);
+      }}
       className={cn(
         "overflow-hidden rounded-xl border bg-card shadow-[var(--shadow-card)]",
         id === undefined ? undefined : "scroll-mt-20",
       )}
     >
       {tone === "neutral" ? null : <div className={cn("h-[3px]", RAIL[tone])} />}
-      <div className="border-b border-border px-5 pb-4 pt-5 sm:px-6">
+      <div className={cn("px-5 pb-4 pt-5 sm:px-6", open ? "border-b border-border" : undefined)}>
         <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
-          <div className="flex min-w-0 items-start gap-3">
-            {step === undefined ? null : (
-              <span
+          {collapsible ? (
+            <button
+              type="button"
+              aria-expanded={open}
+              aria-controls={bodyId}
+              onClick={() => setOpen((v) => !v)}
+              className="group flex min-w-0 flex-1 items-start gap-2 rounded-md text-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <ChevronDown
                 className={cn(
-                  "mt-1 grid size-7 shrink-0 place-items-center rounded-full text-[13px] font-semibold",
-                  PASTILLE[tone === "neutral" ? "action" : tone],
+                  "mt-1.5 size-5 shrink-0 text-muted-foreground transition-transform group-hover:text-foreground",
+                  open ? undefined : "-rotate-90",
                 )}
-                style={{ fontVariantNumeric: "tabular-nums" }}
                 aria-hidden
-              >
-                {step}
-              </span>
-            )}
-            <div className="min-w-0">
-              <h2 className="font-display text-[23px] font-medium leading-[1.15] tracking-[-0.02em]">
-                {title}
-              </h2>
-              {description ? (
-                <p className="mt-2 max-w-2xl text-[13px] leading-relaxed text-ink-soft">
-                  {description}
-                </p>
-              ) : null}
-            </div>
-          </div>
+              />
+              {titre}
+            </button>
+          ) : (
+            titre
+          )}
           {action ? <div className="shrink-0">{action}</div> : null}
         </div>
       </div>
-      <div className="space-y-4 px-5 py-5 text-sm sm:px-6 sm:py-6">{children}</div>
+      <div id={bodyId} hidden={!open} className="space-y-4 px-5 py-5 text-sm sm:px-6 sm:py-6">
+        {children}
+      </div>
     </section>
+  );
+}
+
+/**
+ * UN SOUS-BLOC REPLIABLE, à l'intérieur d'un panneau (18/09). Même geste que le
+ * panneau, un cran plus bas dans la hiérarchie : titre sans-serif 15 px, résumé
+ * à droite pour savoir ce qu'il y a dedans SANS l'ouvrir, filet de couleur à
+ * gauche quand il porte un état.
+ */
+export function SubBlock({
+  title,
+  summary,
+  children,
+  defaultOpen = false,
+  tone = "neutral",
+}: {
+  title: ReactNode;
+  /** Ce qu'on voit replié : un compte, un état. */
+  summary?: ReactNode;
+  children: ReactNode;
+  defaultOpen?: boolean;
+  tone?: PanelTone;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  const bodyId = useId();
+  return (
+    <div className="flex overflow-hidden rounded-lg border border-border bg-card">
+      <div className={cn("w-[3px] shrink-0", RAIL[tone])} aria-hidden />
+      <div className="min-w-0 flex-1">
+        <button
+          type="button"
+          aria-expanded={open}
+          aria-controls={bodyId}
+          onClick={() => setOpen((v) => !v)}
+          className="flex min-h-11 w-full items-center gap-2 px-4 py-2.5 text-start hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+        >
+          <ChevronDown
+            className={cn(
+              "size-4 shrink-0 text-muted-foreground transition-transform",
+              open ? undefined : "-rotate-90",
+            )}
+            aria-hidden
+          />
+          <span className="min-w-0 flex-1 text-[15px] font-medium">{title}</span>
+          {summary ? (
+            <span className="shrink-0 text-xs text-muted-foreground">{summary}</span>
+          ) : null}
+        </button>
+        <div id={bodyId} hidden={!open} className="space-y-3 border-t border-border px-4 py-4">
+          {children}
+        </div>
+      </div>
+    </div>
   );
 }

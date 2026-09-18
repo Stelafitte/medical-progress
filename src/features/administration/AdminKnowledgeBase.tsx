@@ -118,6 +118,7 @@ export function AdminKnowledgeBase() {
       />
 
       <PanelCard
+        collapsible
         title="Référentiel de connaissances"
         description="Liste unique : connaissances du dépôt et connaissances créées dans cette session."
       >
@@ -166,6 +167,7 @@ export function AdminKnowledgeBase() {
       {realCurriculumVersionId ? (
         <>
           <PanelCard
+            collapsible
             title="Voie rapide — coller un référentiel"
             description="Un tableau CSV/TSV : code, intitulé, nature (connaissance). Seules les lignes nouvelles sont créées, une par une, dans le référentiel réel du programme."
           >
@@ -266,6 +268,7 @@ export function AdminKnowledgeBase() {
           </PanelCard>
 
           <PanelCard
+            collapsible
             title="Voie automatique — importer un corpus de documents"
             description="Un document ou une archive ZIP : chaque fichier lisible est déposé dans la médiathèque ci-dessous, et les connaissances que l'IA en tire restent rattachées au document dont elles viennent. Rien n'est créé sans votre validation."
           >
@@ -279,6 +282,7 @@ export function AdminKnowledgeBase() {
           </PanelCard>
 
           <PanelCard
+            collapsible
             title="Voie manuelle — créer une connaissance"
             description="Le même outil de création est disponible ici et dans le « Concepteur de programme » : la liste est unique."
           >
@@ -323,6 +327,7 @@ export function AdminKnowledgeBase() {
       />
 
       <PanelCard
+        collapsible
         title="Là où ces connaissances se vérifient"
         description="Une connaissance se vérifie par une évaluation ; sa mise en pratique relève des compétences."
       >
@@ -357,6 +362,7 @@ export function AdminKnowledgeBase() {
       />
 
       <PanelCard
+        collapsible
         title={
           selectedCohort
             ? `Apprenants de la classe « ${selectedCohort.label} »`

@@ -191,7 +191,7 @@ export function PlacementSection({
 
       <PanelCard
         title={`Apprenants de la promotion — ${cohortLabel}`}
-        description="Qui est rattaché au groupe d'encadrement, et où en est son carnet. Le rattachement se fait en un geste depuis « Encadrement de la promotion »."
+        description="Qui est rattaché au groupe d'encadrement, et où en est son carnet. Le rattachement se fait en un geste depuis « Groupes d'encadrement : qui encadre qui »."
       >
         <div className="mb-3 flex flex-wrap gap-2">
           <Badge variant="secondary" className="font-normal">

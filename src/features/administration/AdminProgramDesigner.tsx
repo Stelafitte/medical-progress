@@ -22,6 +22,7 @@ import {
   Check,
   Save,
   Loader2,
+  ChevronDown,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -30,7 +31,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { SectionHeading } from "@/components/section-heading";
-import { EmptyState, PanelCard, ScopeNotice } from "@/features/professional/mock-ui";
+import { EmptyState, PanelCard, ScopeNotice, SubBlock } from "@/features/professional/mock-ui";
 import {
   AdminWorkLevelBanner,
   type AdminWorkLevel,
@@ -225,6 +226,9 @@ export function AdminProgramDesigner() {
   });
 
   const [cohortMode, setCohortMode] = useState<"existing" | "new">("existing");
+  // Détail replié d'une ressource retenue (18/09) : la case dit « retenue »,
+  // le détail (mode, ajout, associations) ne s'ouvre qu'à la demande.
+  const [ressourcesOuvertes, setRessourcesOuvertes] = useState<Record<string, boolean>>({});
   const [selectedCohortId, setSelectedCohortId] = useState<string | null>(null);
   const [associated, setAssociated] = useState<string | null>(null);
   const [programStartsOn, setProgramStartsOn] = useState("");
@@ -918,6 +922,7 @@ export function AdminProgramDesigner() {
         id={STEP_ANCHORS.program}
         title="Concevoir le programme"
         step={1}
+        collapsible
         tone={designReady ? "done" : "action"}
         description="Partez d'un modèle existant ou créez-en un, puis laissez l'analyse proposer les ressources."
         action={
@@ -927,8 +932,11 @@ export function AdminProgramDesigner() {
         }
       >
         {/* a) modèle existant */}
-        <fieldset className="space-y-2">
-          <legend className="text-sm font-medium">Sélectionner un modèle existant</legend>
+        <SubBlock
+          title="Sélectionner un modèle existant"
+          summary={`${data.versions.length} modèle(s)`}
+          tone={modelId ? "done" : "neutral"}
+        >
           {data.versions.length === 0 ? (
             <EmptyState>Aucun modèle de programme enregistré.</EmptyState>
           ) : (
@@ -965,15 +973,17 @@ export function AdminProgramDesigner() {
               })}
             </ul>
           )}
-        </fieldset>
+        </SubBlock>
 
         {/* b) création ou édition du modèle en cours */}
-        <fieldset className="border-border space-y-3 rounded-md border p-4">
-          <legend className="px-1 text-sm font-medium">
-            {editingExistingDraft
+        <SubBlock
+          title={
+            editingExistingDraft
               ? "Modèle en cours et ses objectifs pédagogiques"
-              : "Sinon, créer le modèle et ses objectifs pédagogiques"}
-          </legend>
+              : "Sinon, créer le modèle et ses objectifs pédagogiques"
+          }
+          summary={modelName.trim() ? modelName.trim() : "à nommer"}
+        >
           <div className="space-y-1.5">
             <Label htmlFor="model-name">Nom du modèle</Label>
             <Input
@@ -1025,13 +1035,13 @@ export function AdminProgramDesigner() {
               </span>
             ) : null}
           </div>
-        </fieldset>
+        </SubBlock>
 
         {/* c) analyse IA du référentiel, à partir des objectifs ci-dessus */}
-        <fieldset className="border-border space-y-3 rounded-md border p-4">
-          <legend className="px-1 text-sm font-medium">
-            Analyse IA du référentiel (connaissances, compétences, évaluations)
-          </legend>
+        <SubBlock
+          title="Analyse IA du référentiel (connaissances, compétences, évaluations)"
+          summary="à partir des objectifs"
+        >
           <ProgramAiReferentialAnalysis
             programId={activeProgramId}
             curriculumVersionId={realCurriculumVersionId}
@@ -1040,11 +1050,14 @@ export function AdminProgramDesigner() {
             existingAssessmentNames={data.assessmentModalities.map((m) => m.name)}
             onCreated={() => void refetch()}
           />
-        </fieldset>
+        </SubBlock>
 
         {/* d) ressources du programme */}
-        <fieldset className="border-border space-y-3 rounded-md border p-4">
-          <legend className="px-1 text-sm font-medium">Ressources du programme</legend>
+        <SubBlock
+          title="Ressources du programme"
+          summary={`${RESOURCES.filter((r) => resources[r.id].selected).length} / ${RESOURCES.length} retenue(s)`}
+          tone="action"
+        >
           <p className="text-muted-foreground text-sm">
             Cochez directement les ressources nécessaires au programme.
           </p>
@@ -1069,9 +1082,14 @@ export function AdminProgramDesigner() {
                          pas : la case ne ferait que nier le contenu, sans le
                          retirer. On retire par « Retirer du programme ». */
                       disabled={existingCounts[resource.id] > 0}
-                      onCheckedChange={(checked) =>
-                        patch(resource.id, { selected: checked === true })
-                      }
+                      onCheckedChange={(checked) => {
+                        patch(resource.id, { selected: checked === true });
+                        // Cocher, c'est vouloir régler : le détail s'ouvre.
+                        setRessourcesOuvertes((prev) => ({
+                          ...prev,
+                          [resource.id]: checked === true,
+                        }));
+                      }}
                     />
                     <div className="min-w-0 flex-1">
                       <Label htmlFor={`res-${resource.id}`} className="flex items-center gap-2">
@@ -1101,9 +1119,32 @@ export function AdminProgramDesigner() {
                         ) : null}
                       </div>
                     </div>
+                    {state.selected ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="min-h-11 gap-1"
+                        aria-expanded={ressourcesOuvertes[resource.id] === true}
+                        onClick={() =>
+                          setRessourcesOuvertes((prev) => ({
+                            ...prev,
+                            [resource.id]: !prev[resource.id],
+                          }))
+                        }
+                      >
+                        {ressourcesOuvertes[resource.id] ? "Replier" : "Détails"}
+                        <ChevronDown
+                          className={`size-4 transition-transform ${
+                            ressourcesOuvertes[resource.id] ? "" : "-rotate-90"
+                          }`}
+                          aria-hidden
+                        />
+                      </Button>
+                    ) : null}
                   </div>
 
-                  {state.selected ? (
+                  {state.selected && ressourcesOuvertes[resource.id] ? (
                     <div className="mt-3 space-y-3">
                       <div
                         role="group"
@@ -1414,7 +1455,7 @@ export function AdminProgramDesigner() {
               );
             })}
           </div>
-        </fieldset>
+        </SubBlock>
       </PanelCard>
 
       {/* ---------------- Étape 2 : promotion ---------------- */}
@@ -1422,6 +1463,7 @@ export function AdminProgramDesigner() {
         id={STEP_ANCHORS.promotion}
         title="Préparer et associer la promotion"
         step={2}
+        collapsible
         tone={selectedCohort ? "done" : "action"}
         description="Créez la classe ici avec le même outil que l'onglet « Classes d'apprenants », ou réutilisez une classe déjà créée, puis associez-la au programme conçu."
         action={
@@ -1508,8 +1550,10 @@ export function AdminProgramDesigner() {
           porte les deux. On annonce l'écriture AVANT de la faire.
         */}
         {resources.stage.selected && data.placements.length > 0 ? (
-          <fieldset className="border-border space-y-2 rounded-lg border p-4">
-            <legend className="px-1 text-sm font-medium">Stage rattaché à cette promotion</legend>
+          <SubBlock
+            title="Stage rattaché à cette promotion"
+            summary={`${data.placements.length} terrain(s)`}
+          >
             {data.placements.length === 1 ? (
               <p className="text-muted-foreground text-xs">
                 Un seul terrain dans ce programme : {terrainStage?.name} ({terrainStage?.site}).
@@ -1548,7 +1592,7 @@ export function AdminProgramDesigner() {
                 </p>
               )
             ) : null}
-          </fieldset>
+          </SubBlock>
         ) : null}
 
         <div className="flex flex-wrap items-center gap-2">
@@ -1582,6 +1626,7 @@ export function AdminProgramDesigner() {
         id={STEP_ANCHORS.schedule}
         title="Programmer le planning général du programme"
         step={3}
+        collapsible
         tone="action"
         description="Chaque chapitre du programme peut recevoir une semaine, une période, ou rester non daté. Les semaines se comptent depuis le début de la promotion choisie."
         action={
@@ -1590,8 +1635,7 @@ export function AdminProgramDesigner() {
           </Badge>
         }
       >
-        <fieldset className="border-border space-y-3 rounded-md border p-4">
-          <legend className="px-1 text-sm font-medium">Bornes du programme</legend>
+        <SubBlock title="Bornes du programme" summary="début et fin">
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label htmlFor="program-starts-on">Début du programme</Label>
@@ -1617,10 +1661,9 @@ export function AdminProgramDesigner() {
               La fin du programme précède son début : corrigez les bornes.
             </p>
           ) : null}
-        </fieldset>
+        </SubBlock>
 
-        <fieldset className="border-border space-y-3 rounded-md border p-4">
-          <legend className="px-1 text-sm font-medium">Jalons de la promotion</legend>
+        <SubBlock title="Jalons de la promotion" summary="rétroplanning" tone="action">
           {/*
             Le VRAI rétroplanning, écrit dans `plan_milestones`. Il remplace la
             maquette qui listait deux échéances génériques par type de ressource
@@ -1635,7 +1678,7 @@ export function AdminProgramDesigner() {
             outcomes={data.outcomes}
             {...(selectedCohortId ? { defaultCohortId: selectedCohortId as CohortId } : {})}
           />
-        </fieldset>
+        </SubBlock>
       </PanelCard>
 
       {/* ---------------- Étape 4 : bascule dans le pilotage ---------------- */}
@@ -1649,6 +1692,7 @@ export function AdminProgramDesigner() {
         id={STEP_ANCHORS.operations}
         step={4}
         tone={readyForPilot ? "done" : "action"}
+        collapsible
         title="Vérifier, enregistrer, puis piloter"
         description="Tout ce qui a été décidé au-dessus, relu depuis la base. C'est le seul moment où l'on quitte le concepteur : le suivi se fait dans le pilotage."
         action={

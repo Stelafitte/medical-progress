@@ -106,11 +106,12 @@ export function AdminCompetencies() {
 
       {/* 1. Le référentiel en place */}
       <SectionHeading title="Référentiel de compétences" level={2} />
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="space-y-4">
         {(["simulated_competence", "real_competence"] as const).map((nature) => {
           const list = scoped.filter((o) => o.nature === nature);
           return (
             <PanelCard
+              collapsible
               key={nature}
               title={NATURE_LABELS_FR[nature]}
               description={`${list.length} compétence(s) configurée(s)`}
@@ -143,6 +144,7 @@ export function AdminCompetencies() {
         décide.
       */}
       <PanelCard
+        collapsible
         title="Compétences retenues pour le parcours"
         description="Décocher une compétence la sort du passeport de l'étudiant sans la supprimer : elle reste dans le référentiel du programme."
       >
@@ -184,6 +186,7 @@ export function AdminCompetencies() {
       {realCurriculumVersionId ? (
         <>
           <PanelCard
+            collapsible
             title="Voie rapide — coller un référentiel"
             description="Un tableau CSV/TSV : code, intitulé, nature (connaissance, simulation, réelle). Seules les lignes nouvelles sont créées, une par une, dans le référentiel réel du programme."
           >
@@ -300,6 +303,7 @@ export function AdminCompetencies() {
           </PanelCard>
 
           <PanelCard
+            collapsible
             title="Voie automatique — importer un corpus de documents"
             description="Un document ou une archive ZIP : chaque fichier lisible est déposé dans la médiathèque du programme, et les compétences que l'IA en tire restent rattachées au document dont elles viennent. Même outil que dans le « Concepteur de programme » — la liste est unique."
           >
@@ -313,6 +317,7 @@ export function AdminCompetencies() {
           </PanelCard>
 
           <PanelCard
+            collapsible
             title="Voie manuelle — créer une compétence"
             description="Le même outil de création est disponible ici et dans le « Concepteur de programme » : la liste est unique."
           >
@@ -334,6 +339,7 @@ export function AdminCompetencies() {
       )}
 
       <PanelCard
+        collapsible
         title="Là où ces compétences se travaillent et se prouvent"
         description="Une compétence se prouve en stage, en simulation ou lors d'une évaluation : les modalités se règlent dans les onglets dédiés."
       >
@@ -363,6 +369,7 @@ export function AdminCompetencies() {
       <CohortSelector cohorts={cohorts} value={selectedId} onChange={setCohortFocus} />
 
       <PanelCard
+        collapsible
         title={
           selectedCohort
             ? `Apprenants de la classe « ${selectedCohort.label} »`
@@ -413,6 +420,7 @@ export function AdminCompetencies() {
       </PanelCard>
 
       <PanelCard
+        collapsible
         title="Couverture par compétence"
         description="Repérer les savoir-faire que la classe n'acquiert pas."
       >
