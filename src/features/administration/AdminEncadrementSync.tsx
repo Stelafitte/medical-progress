@@ -4,6 +4,7 @@ import { RefreshCw, Send, ShieldCheck, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 
 import { SectionHeading } from "@/components/section-heading";
+import { PanelCard } from "@/features/professional/mock-ui";
 import { EYEBROW, TABULAIRE } from "@/components/milestone-heading";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -306,9 +307,12 @@ export function AdminEncadrementSync() {
       />
 
       {/* ---------- l'équipe actuelle, AVANT toute mise à jour ---------- */}
-      <div className="bg-card space-y-4 rounded-xl border p-4 shadow-[var(--shadow-card)]">
-        <p className="font-display text-[17px] leading-tight">Équipe actuelle</p>
-
+      <PanelCard
+        collapsible
+        defaultOpen
+        title="Équipe actuelle"
+        description="Qui encadre déjà, promotion par promotion, groupe par groupe."
+      >
         {(promotions ?? []).length === 0 ? (
           <p className="text-muted-foreground text-[13px]">
             Ce programme n'a aucune promotion. Une équipe d'encadrement se rattache à un groupe, et
@@ -371,11 +375,14 @@ export function AdminEncadrementSync() {
           attente d'invitation · {vivierEncadrant.filter((p) => p.status === "invited").length}{" "}
           invité(s) · {vivierEncadrant.filter((p) => p.status === "activated").length} activé(s)
         </p>
-      </div>
+      </PanelCard>
 
       {/* ---------- ajouter un encadrant à la main ---------- */}
-      <div className="bg-card space-y-4 rounded-xl border p-4 shadow-[var(--shadow-card)]">
-        <p className="font-display text-[17px] leading-tight">Ajouter un encadrant</p>
+      <PanelCard
+        collapsible
+        title="Ajouter un encadrant"
+        description="À la main, avec invitation : pour un senior que le service ne rend pas."
+      >
         <p className="text-muted-foreground text-[12.5px] leading-relaxed">
           La personne entre au vivier ; aucun compte n'est créé. À l'invitation, elle reçoit un lien
           d'activation, et c'est en activant son compte qu'elle devient encadrante du terrain choisi
@@ -480,14 +487,14 @@ export function AdminEncadrementSync() {
             ))}
           </ul>
         )}
-      </div>
+      </PanelCard>
 
       {/* ---------- la source ---------- */}
-      <div className="bg-card space-y-4 rounded-xl border p-4 shadow-[var(--shadow-card)]">
-        <p className="font-display text-[17px] leading-tight">
-          Source — mise à jour depuis un service
-        </p>
-
+      <PanelCard
+        collapsible
+        title="Mise à jour depuis un service"
+        description="Synchronise l'équipe d'un service vers le vivier du programme, sans rien ajouter ni retirer d'office."
+      >
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1">
             <Label htmlFor="source-terrain" className="text-xs">
@@ -584,12 +591,11 @@ export function AdminEncadrementSync() {
               : "jamais synchronisée"}
           </p>
         ) : null}
-      </div>
+      </PanelCard>
 
       {/* ---------- le test ---------- */}
       {apercu ? (
-        <div className="bg-card space-y-2 rounded-xl border p-4 shadow-[var(--shadow-card)]">
-          <p className="font-display text-[17px] leading-tight">Test de connexion</p>
+        <PanelCard tone="action" title="Test de connexion">
           <p className="text-muted-foreground text-[13px]">
             {apercu.membres_lus} membre(s) lu(s), dont {apercu.encadrants} encadrant(s).{" "}
             <strong className="font-medium">Rien n'a été enregistré.</strong>
@@ -599,15 +605,12 @@ export function AdminEncadrementSync() {
               <Ligne key={`${m.email ?? "x"}-${i}`} m={m} />
             ))}
           </ul>
-        </div>
+        </PanelCard>
       ) : null}
 
       {/* ---------- le compte rendu ---------- */}
       {rapport ? (
-        <div className="bg-card space-y-4 rounded-xl border p-4 shadow-[var(--shadow-card)]">
-          <p className="font-display text-[17px] leading-tight">
-            Synchronisation — {rapport.membres_lus} membre(s) lu(s)
-          </p>
+        <PanelCard tone="done" title={`Synchronisation — ${rapport.membres_lus} membre(s) lu(s)`}>
           <Bloc
             titre="Ajoutés au vivier"
             aide="En attente d'invitation. Aucun compte n'a été créé."
@@ -630,15 +633,12 @@ export function AdminEncadrementSync() {
               Rien à signaler : {rapport.inchanges.length} personne(s) déjà à jour.
             </p>
           ) : null}
-        </div>
+        </PanelCard>
       ) : null}
 
       {/* ---------- le journal ---------- */}
       {source ? (
-        <div className="bg-card overflow-hidden rounded-xl border shadow-[var(--shadow-card)]">
-          <p className="font-display border-b px-4 py-3 text-[17px] leading-tight">
-            Historique des synchronisations
-          </p>
+        <PanelCard collapsible title="Historique des synchronisations">
           {(journal ?? []).length === 0 ? (
             <p className="text-muted-foreground px-4 py-5 text-center text-[13px]">
               Aucune synchronisation pour l'instant.
@@ -664,7 +664,7 @@ export function AdminEncadrementSync() {
               ))}
             </ul>
           )}
-        </div>
+        </PanelCard>
       ) : null}
     </div>
   );
