@@ -62,6 +62,10 @@ export function PasswordRecoveryGate({ children }: { children: ReactNode }) {
     }
     const { data } = client.auth.onAuthStateChange((event) => {
       if (event !== "PASSWORD_RECOVERY") return;
+      // `/premiere-connexion` mène lui-même son parcours (18/09) : sans cette
+      // garde, les deux écrans se relaieraient et l'identité serait demandée
+      // deux fois.
+      if (window.location.pathname.startsWith("/premiere-connexion")) return;
       // Ne jamais ramener en arrière quelqu'un déjà engagé dans le parcours :
       // `updateUser` ré-émet des événements, et l'écran sauterait sur place.
       setPhase((courante) =>
@@ -118,7 +122,7 @@ export function PasswordRecoveryGate({ children }: { children: ReactNode }) {
  * connexion derrière une modification obligatoire ferait taper n'importe quoi.
  * Enregistrer avance aussi — la personne n'a pas à valider deux fois.
  */
-function EtapeIdentite({ onDone }: { onDone: () => void }) {
+export function EtapeIdentite({ onDone }: { onDone: () => void }) {
   const client = getBrowserSupabaseClient();
   const dataAccess = getSelectedDataAccess();
   const [fiche, setFiche] = useState<Person | null>(null);

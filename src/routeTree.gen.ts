@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as EspaceRouteImport } from './routes/espace'
+import { Route as PremiereConnexionRouteImport } from './routes/premiere-connexion'
 import { Route as EspaceIndexRouteImport } from './routes/espace.index'
 import { Route as EspaceAdministrationRouteImport } from './routes/espace.administration'
 import { Route as EspaceArchitectureRouteImport } from './routes/espace.architecture'
@@ -76,6 +77,11 @@ const IndexRoute = IndexRouteImport.update({
 const EspaceRoute = EspaceRouteImport.update({
   id: '/espace',
   path: '/espace',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PremiereConnexionRoute = PremiereConnexionRouteImport.update({
+  id: '/premiere-connexion',
+  path: '/premiere-connexion',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EspaceIndexRoute = EspaceIndexRouteImport.update({
@@ -392,6 +398,7 @@ const EspaceRessourcesResourceIdLectureRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/espace': typeof EspaceRouteWithChildren
+  '/premiere-connexion': typeof PremiereConnexionRoute
   '/espace/administration': typeof EspaceAdministrationRouteWithChildren
   '/espace/architecture': typeof EspaceArchitectureRoute
   '/espace/audits': typeof EspaceAuditsRoute
@@ -451,6 +458,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/premiere-connexion': typeof PremiereConnexionRoute
   '/espace/architecture': typeof EspaceArchitectureRoute
   '/espace/audits': typeof EspaceAuditsRoute
   '/espace/competences': typeof EspaceCompetencesRoute
@@ -508,6 +516,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/espace': typeof EspaceRouteWithChildren
+  '/premiere-connexion': typeof PremiereConnexionRoute
   '/espace/administration': typeof EspaceAdministrationRouteWithChildren
   '/espace/architecture': typeof EspaceArchitectureRoute
   '/espace/audits': typeof EspaceAuditsRoute
@@ -570,6 +579,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/espace'
+    | '/premiere-connexion'
     | '/espace/administration'
     | '/espace/architecture'
     | '/espace/audits'
@@ -629,6 +639,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/premiere-connexion'
     | '/espace/architecture'
     | '/espace/audits'
     | '/espace/competences'
@@ -685,6 +696,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/espace'
+    | '/premiere-connexion'
     | '/espace/administration'
     | '/espace/architecture'
     | '/espace/audits'
@@ -746,6 +758,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   EspaceRoute: typeof EspaceRouteWithChildren
+  PremiereConnexionRoute: typeof PremiereConnexionRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -762,6 +775,13 @@ declare module '@tanstack/react-router' {
       path: '/espace'
       fullPath: '/espace'
       preLoaderRoute: typeof EspaceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/premiere-connexion': {
+      id: '/premiere-connexion'
+      path: '/premiere-connexion'
+      fullPath: '/premiere-connexion'
+      preLoaderRoute: typeof PremiereConnexionRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/espace/': {
@@ -1322,6 +1342,7 @@ const EspaceRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   EspaceRoute: EspaceRouteWithChildren,
+  PremiereConnexionRoute: PremiereConnexionRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

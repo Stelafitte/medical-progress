@@ -47,6 +47,19 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const INVITE_REDIRECT_URL = Deno.env.get("INVITE_REDIRECT_URL") ?? undefined;
+// 18/09 -- LE COURRIEL NE PORTE PLUS LE LIEN SUPABASE DIRECT. Ce lien consomme
+// le jeton des qu'il est ouvert, et les messageries des CHU l'ouvrent avant le
+// destinataire pour l'analyser : l'etudiant arrivait sur `otp_expired`. On
+// envoie vers notre page `/premiere-connexion`, qui n'echange le jeton qu'au
+// clic sur « Activer mon compte ».
+const APP_URL_PAR_DEFAUT = "https://stelafitte-medical-progress.dfasm-connect.workers.dev";
+const APP_URL = (Deno.env.get("PUBLIC_APP_URL") ?? APP_URL_PAR_DEFAUT).replace(/\/+$/, "");
+
+function premiereConnexionUrl(hashedToken: string, type: "invite" | "recovery"): string {
+  const params = new URLSearchParams({ token_hash: hashedToken, type });
+  return `${APP_URL}/premiere-connexion?${params.toString()}`;
+}
+
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -223,7 +236,7 @@ async function sendWithDedicatedSender(
     email: person.email,
     options: { redirectTo: INVITE_REDIRECT_URL },
   });
-  if (linkError || !link?.properties?.action_link) {
+  if (linkError || !link?.properties?.hashed_token) {
     return { ok: false, error: linkError?.message ?? "lien de première connexion non généré" };
   }
 
@@ -249,7 +262,7 @@ async function sendWithDedicatedSender(
     `Votre compte est ouvert sur "${programName}" (Campus Santé Augmenté).`,
     "",
     "Pour définir votre mot de passe et vérifier vos informations, cliquez sur le lien suivant :",
-    link.properties.action_link,
+    premiereConnexionUrl(link.properties.hashed_token, "recovery"),
     "",
     "Ce lien est personnel et à usage unique. Merci de ne pas le transférer.",
     "S'il a expiré, demandez-en un nouveau à l'équipe pédagogique.",
