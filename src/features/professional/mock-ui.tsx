@@ -41,6 +41,13 @@
  *      (`tone`), et un panneau sans état reste gris. Les huit teintes de
  *      domaine `--d-1..--d-8` restent réservées au contenu pédagogique ;
  *   6. un vide se dit, il ne s'encadre pas.
+ *
+ * RÈGLE 5 ASSOUPLIE LE 18/09 (Stef : « mets un peu de couleur partout »). Un
+ * panneau sans état reçoit désormais une TEINTE D'IDENTITÉ — un filet en tête,
+ * un en-tête à peine teinté — tirée de son titre : le même panneau garde la
+ * même couleur d'une visite à l'autre, et deux panneaux voisins se distinguent
+ * au premier coup d'œil. La teinte d'ÉTAT (`tone`) garde la priorité quand
+ * elle est posée : elle dit quelque chose, l'identité ne fait que situer.
  */
 import { useId, useState, type ReactNode } from "react";
 import { ChevronDown, Info } from "lucide-react";
@@ -59,6 +66,23 @@ const RAIL: Record<PanelTone, string> = {
   attention: "bg-live",
   done: "bg-success",
 };
+
+/** Six teintes d'identité, choisies hors des couleurs d'état (orange, vert). */
+const TEINTES = [
+  { rail: "bg-sky-500", tint: "bg-sky-50/70 dark:bg-sky-950/30" },
+  { rail: "bg-violet-500", tint: "bg-violet-50/70 dark:bg-violet-950/30" },
+  { rail: "bg-teal-500", tint: "bg-teal-50/70 dark:bg-teal-950/30" },
+  { rail: "bg-indigo-500", tint: "bg-indigo-50/70 dark:bg-indigo-950/30" },
+  { rail: "bg-rose-400", tint: "bg-rose-50/70 dark:bg-rose-950/30" },
+  { rail: "bg-cyan-500", tint: "bg-cyan-50/70 dark:bg-cyan-950/30" },
+] as const;
+
+/** La teinte d'un panneau, stable : elle dépend de son titre, pas de sa place. */
+function teinteDe(cle: string) {
+  let h = 0;
+  for (let i = 0; i < cle.length; i += 1) h = (h * 31 + cle.charCodeAt(i)) >>> 0;
+  return TEINTES[h % TEINTES.length]!;
+}
 
 const PASTILLE: Record<PanelTone, string> = {
   neutral: "bg-border text-foreground",
@@ -96,7 +120,7 @@ export function StatCard({
 }) {
   return (
     <div className="overflow-hidden rounded-xl border bg-card shadow-[var(--shadow-card)]">
-      {tone === "neutral" ? null : <div className={cn("h-[3px]", RAIL[tone])} />}
+      <div className={cn("h-[3px]", tone === "neutral" ? teinteDe(label).rail : RAIL[tone])} />
       <div className="px-4 py-4">
         <p className="text-[10.5px] font-semibold uppercase leading-tight tracking-[0.11em] text-muted-foreground">
           {label}
@@ -165,6 +189,7 @@ export function PanelCard({
 }) {
   const [open, setOpen] = useState(defaultOpen ?? !collapsible);
   const bodyId = useId();
+  const teinte = teinteDe(title);
   const titre = (
     <div className="flex min-w-0 items-start gap-3">
       {step === undefined ? null : (
@@ -203,8 +228,14 @@ export function PanelCard({
         id === undefined ? undefined : "scroll-mt-20",
       )}
     >
-      {tone === "neutral" ? null : <div className={cn("h-[3px]", RAIL[tone])} />}
-      <div className={cn("px-5 pb-4 pt-5 sm:px-6", open ? "border-b border-border" : undefined)}>
+      <div className={cn("h-[3px]", tone === "neutral" ? teinte.rail : RAIL[tone])} />
+      <div
+        className={cn(
+          "px-5 pb-4 pt-5 sm:px-6",
+          teinte.tint,
+          open ? "border-b border-border" : undefined,
+        )}
+      >
         <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
           {collapsible ? (
             <button
@@ -258,9 +289,13 @@ export function SubBlock({
 }) {
   const [open, setOpen] = useState(defaultOpen);
   const bodyId = useId();
+  const rail =
+    tone === "neutral"
+      ? teinteDe(typeof title === "string" ? title : "sous-bloc").rail
+      : RAIL[tone];
   return (
     <div className="flex overflow-hidden rounded-lg border border-border bg-card">
-      <div className={cn("w-[3px] shrink-0", RAIL[tone])} aria-hidden />
+      <div className={cn("w-1 shrink-0", rail)} aria-hidden />
       <div className="min-w-0 flex-1">
         <button
           type="button"

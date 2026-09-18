@@ -134,6 +134,7 @@ export function MediaLibrarySection({
       </div>
 
       <PanelCard
+        collapsible
         title="Catalogue des supports"
         description={`${visible.length} support(s) affiché(s) sur ${indicators.total}`}
         action={
