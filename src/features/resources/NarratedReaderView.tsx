@@ -19,6 +19,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useDataAccess } from "@/application/session";
 import { useLearnerPassport } from "@/features/dashboard/useLearnerPassport";
 import { NarratedDeckStage } from "@/features/resources/NarratedDeckStage";
+import { TelechargerCours } from "@/features/resources/TelechargerCours";
 import type { LearningResourceId } from "@/domain/types";
 
 /**
@@ -128,6 +129,8 @@ export function NarratedReaderView({ resourceId }: { resourceId: string }) {
 
       <LearnerDeckPlayer resourceId={deck.mediaId} showTranscript={deck.transcriptAvailable} />
 
+      <TelechargerCours resourceId={deck.mediaId} title={deck.title} />
+
       {/*
         « ETUDIER CE COURS AVEC L'IA » EST DEBRANCHE (Stef, 09/09), pour la
         meme raison que sur « Mes ressources » : c'etait le tuteur de
@@ -154,8 +157,8 @@ export function NarratedReaderView({ resourceId }: { resourceId: string }) {
         )}
         <p className="text-sm text-muted-foreground">{deck.description}</p>
         <p className="text-xs text-muted-foreground">
-          Consultation en ligne uniquement : la version web dérivée est la seule diffusée aux
-          apprenants. Ta progression dans le cours n'est pas encore enregistrée.
+          Seule la version web dérivée est diffusée, jamais le PowerPoint source. Ta progression
+          dans le cours n'est pas encore enregistrée.
         </p>
       </section>
     </div>

@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Cours hors ligne — Campus Santé Augmenté</title>
+    <link rel="stylesheet" href="lecteur/styles.css" />
+  </head>
+  <body>
+    <!--
+      LECTEUR AUTONOME (18/09). Il s'ouvre par DOUBLE-CLIC, depuis le dossier
+      décompressé, donc en file:// : pas de module ES, pas de fetch(), qui y sont
+      refusés. Le manifeste est un SCRIPT (manifest.js) qui pose
+      window.COURSE_MANIFEST ; les médias sont de simples src relatifs.
+    -->
+    <p id="filigrane" class="filigrane" role="note"></p>
+    <main class="player" aria-labelledby="course-title">
+      <header>
+        <p class="eyebrow">Campus Santé Augmenté · Cours hors ligne</p>
+        <h1 id="course-title">Chargement du cours…</h1>
+        <p id="position" aria-live="polite"></p>
+      </header>
+
+      <section class="stage" aria-label="Diapositive du cours">
+        <video id="slide-video" controls playsinline hidden></video>
+        <img id="slide-image" alt="" hidden />
+      </section>
+
+      <nav class="controls" aria-label="Commandes de lecture">
+        <button id="previous" type="button">← Précédente</button>
+        <button id="next" type="button">Suivante →</button>
+        <label for="speed">Vitesse</label>
+        <select id="speed">
+          <option value="0.75">0,75×</option>
+          <option value="1" selected>1×</option>
+          <option value="1.25">1,25×</option>
+          <option value="1.5">1,5×</option>
+          <option value="2">2×</option>
+        </select>
+      </nav>
+
+      <details id="sommaire-bloc" open>
+        <summary>Sommaire</summary>
+        <ol id="sommaire"></ol>
+      </details>
+
+      <details id="transcription-bloc" hidden>
+        <summary>Transcription</summary>
+        <p id="transcript"></p>
+      </details>
+    </main>
+    <script src="manifest.js"></script>
+    <script src="lecteur/app.js"></script>
+  </body>
+</html>

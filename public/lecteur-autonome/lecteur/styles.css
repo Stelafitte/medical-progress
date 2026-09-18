@@ -1,0 +1,126 @@
+:root {
+  color-scheme: light;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  color: #123047;
+  background: #eef4f6;
+}
+/* L'attribut hidden doit gagner sur les display: block ci-dessous (constaté au banc : la vidéo restait visible sous l'image). */
+[hidden] {
+  display: none !important;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+}
+.filigrane {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  margin: 0;
+  padding: 8px 16px;
+  background: #0f2a3d;
+  color: #fff;
+  font-size: 0.85rem;
+  text-align: center;
+}
+.player {
+  width: min(1120px, 100%);
+  margin: 0 auto;
+  padding: 24px;
+}
+header {
+  margin-bottom: 16px;
+}
+.eyebrow {
+  margin: 0 0 6px;
+  color: #167a87;
+  font-weight: 700;
+}
+h1 {
+  margin: 0;
+  font-size: clamp(1.35rem, 3vw, 2rem);
+}
+#position {
+  margin: 6px 0 0;
+  color: #526a78;
+}
+.stage {
+  overflow: hidden;
+  border: 1px solid #c9d8df;
+  border-radius: 12px;
+  background: #000;
+}
+.stage video,
+.stage img {
+  display: block;
+  width: 100%;
+  max-height: 75vh;
+  object-fit: contain;
+  background: #000;
+}
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+}
+button,
+select {
+  min-height: 44px;
+  border-radius: 8px;
+  border: 1px solid #a9bec8;
+  background: #fff;
+  padding: 0 16px;
+  font: inherit;
+}
+button:hover:not(:disabled) {
+  background: #e5f2f4;
+}
+button:focus-visible,
+select:focus-visible {
+  outline: 3px solid #ffbf47;
+  outline-offset: 2px;
+}
+button:disabled {
+  opacity: 0.5;
+}
+details {
+  margin-top: 18px;
+  padding: 14px;
+  border: 1px solid #c9d8df;
+  border-radius: 8px;
+  background: #fff;
+}
+summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+#sommaire {
+  margin: 10px 0 0;
+  padding-left: 1.4em;
+}
+#sommaire button {
+  min-height: 36px;
+  border: 0;
+  background: none;
+  padding: 4px 6px;
+  text-align: left;
+}
+#sommaire button[aria-current="true"] {
+  font-weight: 700;
+  background: #e5f2f4;
+}
+#transcript {
+  white-space: pre-wrap;
+}
+@media (max-width: 600px) {
+  .player {
+    padding: 12px;
+  }
+  .controls button {
+    flex: 1 1 42%;
+  }
+}
