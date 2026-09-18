@@ -21,6 +21,11 @@ describe("première connexion à l'épreuve des robots de messagerie (18/09)", (
     expect(page).toContain('{ name: "robots", content: "noindex" }');
   });
 
+  it("n'est pas interceptée par la barrière de récupération de la racine", () => {
+    const gate = read("src/application/password-recovery-gate.tsx");
+    expect(gate).toContain('if (PAGE_PREMIERE_CONNEXION) return "aucun";');
+  });
+
   it("n'envoie plus le lien Supabase direct dans les courriels", () => {
     for (const [source, type] of [
       [invite, '"invite"'],

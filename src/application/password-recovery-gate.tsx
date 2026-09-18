@@ -23,6 +23,14 @@ import type { Person, PersonId } from "@/domain/types";
  * relue ici directement par le port `people`, sans passer par la session.
  */
 const HASH = typeof window !== "undefined" ? window.location.hash + window.location.search : "";
+/**
+ * `/premiere-connexion` porte `type=recovery` dans SA requête, et mène lui-même
+ * son parcours (18/09). Sans cette exception, la barrière lisait ce `type`,
+ * cherchait une session qui n'existe pas encore (le jeton n'est échangé qu'au
+ * clic) et affichait « lien plus valable » avant même que la page s'ouvre.
+ */
+const PAGE_PREMIERE_CONNEXION =
+  typeof window !== "undefined" && window.location.pathname.startsWith("/premiere-connexion");
 const RECOVERY_DANS_URL = HASH.includes("type=recovery");
 const LIEN_REFUSE = HASH.includes("error_code=") || HASH.includes("error=access_denied");
 
@@ -48,6 +56,7 @@ type Phase = "verification" | "identite" | "mot_de_passe" | "lien_perime" | "auc
 export function PasswordRecoveryGate({ children }: { children: ReactNode }) {
   const client = getBrowserSupabaseClient();
   const [phase, setPhase] = useState<Phase>(() => {
+    if (PAGE_PREMIERE_CONNEXION) return "aucun";
     if (LIEN_REFUSE) return "lien_perime";
     return RECOVERY_DANS_URL ? "verification" : "aucun";
   });
