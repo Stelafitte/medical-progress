@@ -81,7 +81,10 @@ describe("écran de lecture dédié", () => {
 
   it("offre une lecture concentrée : retour, lecteur agrandi, objectifs", () => {
     expect(reader).toContain("Retour aux ressources");
-    expect(reader).toContain("<NarratedSlidesPlayer deck={deck} focused />");
+    // Le lecteur REEL depuis le 18/09 : la scene partagee avec l'apercu admin.
+    expect(reader).toContain("<LearnerDeckPlayer resourceId={deck.mediaId}");
+    expect(reader).toContain("getNarratedDeckPlayback");
+    expect(reader).not.toContain("NarratedSlidesPlayer");
     expect(reader).toContain("Objectifs travaillés");
     expect(reader).toContain("Cours indisponible");
   });

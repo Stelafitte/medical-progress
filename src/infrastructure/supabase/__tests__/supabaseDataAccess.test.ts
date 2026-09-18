@@ -3,6 +3,7 @@ import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { selectDataAccess } from "@/application/dataAccess";
 import { mockDataAccess } from "@/infrastructure/mock/mockDataAccess";
 import {
+  mapLearnerNarratedDeck,
   mapPendingPerson,
   mapPerson,
   mapProgram,
@@ -183,5 +184,69 @@ describe("mapping du sas de pré-inscription (D94)", () => {
     expect(person.invitedAt).toBe("2026-01-02T00:00:00Z");
     expect(person.cancelledAt).toBeUndefined();
     expect(person.activatedProfileId).toBeUndefined();
+  });
+});
+
+describe("diaporamas sonorisés côté apprenant (18/09)", () => {
+  it("lit la base au lieu de retomber sur le mock", () => {
+    const selected = selectDataAccess(
+      {
+        configured: true as const,
+        backend: "supabase" as const,
+        value: { url: "https://example.supabase.co", publishableKey: "x".repeat(24) },
+      },
+      {} as SupabaseClient,
+    );
+    expect(selected.media.listLearnerNarratedDecks).not.toBe(
+      mockDataAccess.media.listLearnerNarratedDecks,
+    );
+  });
+
+  it("ne garde que les diapositives et chapitres du diaporama, dans l'ordre, sans transcription", () => {
+    const deck = mapLearnerNarratedDeck(
+      {
+        id: "res-1",
+        program_id: "prog-1",
+        title: "Doppler",
+        description: "Module 6",
+        format: "pptx_narrated",
+        visibility: "program",
+        is_published: true,
+        created_at: "2026-09-01T00:00:00Z",
+        updated_at: "2026-09-02T00:00:00Z",
+      } as never,
+      { id: "deck-2", resource_id: "res-1", version: 2, slide_count: null, duration_ms: 125_400 },
+      [
+        {
+          deck_id: "deck-2",
+          slide_index: 2,
+          title: "B",
+          duration_ms: 60_000,
+          audio_present: false,
+        },
+        {
+          deck_id: "deck-1",
+          slide_index: 1,
+          title: "ancienne",
+          duration_ms: 1,
+          audio_present: true,
+        },
+        { deck_id: "deck-2", slide_index: 1, title: "A", duration_ms: 65_400, audio_present: true },
+      ],
+      [{ deck_id: "deck-2", chapter_index: 0, title: "Intro", starts_at_slide: 1 }],
+      [],
+    );
+    expect(deck.slides.map((slide) => slide.title)).toEqual(["A", "B"]);
+    expect(deck.slides[0]).toEqual({
+      index: 1,
+      title: "A",
+      durationSeconds: 65,
+      hasNarration: true,
+    });
+    expect(deck.slideCount).toBe(2);
+    expect(deck.totalDurationSeconds).toBe(125);
+    expect(deck.chapters).toEqual([{ id: "deck-2:0", title: "Intro", startSlide: 1 }]);
+    expect(deck.transcriptAvailable).toBe(false);
+    expect(JSON.stringify(deck)).not.toMatch(/https?:|\.pptx/);
   });
 });

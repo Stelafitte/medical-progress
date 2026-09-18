@@ -167,6 +167,7 @@ import type {
 } from "@/domain/assessmentModality";
 import type { ImportReport } from "@/domain/questionBankImport";
 import type {
+  LearnerNarratedDeck,
   MediaAsset,
   MediaKind,
   MediaResource,
@@ -1447,6 +1448,76 @@ type ResourceAssetSummary = {
 
 /** Libellé de regroupement par défaut : la base ne porte pas encore de module. */
 const MEDIA_MODULE_UNCLASSIFIED = "Non classé";
+
+/** Les lignes lues pour composer la liste apprenant des diaporamas sonorisés. */
+export type LearnerDeckRow = {
+  id: string;
+  resource_id: string;
+  version: number;
+  slide_count: number | null;
+  duration_ms: number | null;
+};
+export type LearnerDeckSlideRow = {
+  deck_id: string;
+  slide_index: number;
+  title: string;
+  duration_ms: number;
+  audio_present: boolean;
+};
+export type LearnerDeckChapterRow = {
+  deck_id: string;
+  chapter_index: number;
+  title: string;
+  starts_at_slide: number;
+};
+
+/**
+ * Un diaporama sonorisé PUBLIÉ, tel que l'apprenant le voit dans la liste.
+ *
+ * Contrat de `LearnerNarratedDeck` : aucune référence au paquet source et aucun
+ * lien vers un fichier. Les liens signés expirent : ils se demandent à
+ * l'ouverture du cours (`getNarratedDeckPlayback`), jamais dans la liste.
+ *
+ * LA TRANSCRIPTION N'EST PAS EXPOSÉE. Le contrat dit « seulement si l'équipe
+ * l'a autorisée », et la base ne porte encore aucun réglage de ce genre : en
+ * l'absence d'autorisation, c'est non.
+ */
+export function mapLearnerNarratedDeck(
+  resource: LearningResourceRow,
+  deck: LearnerDeckRow,
+  slides: readonly LearnerDeckSlideRow[],
+  chapters: readonly LearnerDeckChapterRow[],
+  outcomeIds: readonly OutcomeId[],
+): LearnerNarratedDeck {
+  const ownSlides = slides
+    .filter((slide) => slide.deck_id === deck.id)
+    .sort((a, b) => a.slide_index - b.slide_index);
+  const ownChapters = chapters
+    .filter((chapter) => chapter.deck_id === deck.id)
+    .sort((a, b) => a.chapter_index - b.chapter_index);
+  return {
+    mediaId: resource.id as MediaResourceId,
+    title: resource.title,
+    module: MEDIA_MODULE_UNCLASSIFIED,
+    description: resource.description,
+    outcomeIds,
+    slideCount: deck.slide_count ?? ownSlides.length,
+    totalDurationSeconds: Math.round((deck.duration_ms ?? 0) / 1000),
+    chapters: ownChapters.map((chapter) => ({
+      id: `${deck.id}:${chapter.chapter_index}`,
+      title: chapter.title,
+      startSlide: chapter.starts_at_slide,
+    })),
+    slides: ownSlides.map((slide) => ({
+      index: slide.slide_index,
+      title: slide.title,
+      durationSeconds: Math.round(slide.duration_ms / 1000),
+      hasNarration: slide.audio_present,
+    })),
+    transcriptAvailable: false,
+    availability: "online_only",
+  };
+}
 
 /**
  * Objectifs rattachés à un lot de supports, en une seule requête.
@@ -4867,12 +4938,70 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
 
     /**
      * Grille médiathèque : lecture réelle, projetée sur le type riche de la
-     * maquette (voir `mapMediaResource`). `listLearnerNarratedDecks` reste
-     * délégué au mock tant que la lecture des diaporamas sonorisés côté
-     * apprenant n'est pas câblée — c'est le prochain morceau du chantier.
+     * maquette (voir `mapMediaResource`). `listLearnerNarratedDecks` lit les
+     * diaporamas sonorisés publiés depuis le 18/09 : il était resté délégué au
+     * mock, et l'apprenant ne voyait aucun cours converti.
      */
     media: {
       ...mockDataAccess.media,
+      /**
+       * Les diaporamas PUBLIÉS du programme, un par support : la version la plus
+       * récente. La RLS fait le tri de ce que l'apprenant a le droit de lire
+       * (`can_read_resource`) ; un support dépublié sort de la liste même si son
+       * diaporama reste publié.
+       */
+      async listLearnerNarratedDecks(programId: ProgramId) {
+        const { data: deckData, error: deckError } = await client
+          .from("narrated_decks")
+          .select("id,resource_id,version,slide_count,duration_ms")
+          .eq("program_id", programId)
+          .eq("status", "published")
+          .order("version", { ascending: false });
+        assertNoSupabaseError(deckError);
+        const latestByResource = new Map<string, LearnerDeckRow>();
+        for (const deck of (deckData ?? []) as LearnerDeckRow[]) {
+          if (!latestByResource.has(deck.resource_id)) latestByResource.set(deck.resource_id, deck);
+        }
+        if (latestByResource.size === 0) return [];
+        const resourceIds = [...latestByResource.keys()];
+        const deckIds = [...latestByResource.values()].map((deck) => deck.id);
+        const [
+          { data: resourceData, error: resourceError },
+          { data: slideData, error: slideError },
+          { data: chapterData, error: chapterError },
+          outcomeIds,
+        ] = await Promise.all([
+          client
+            .from("learning_resources")
+            .select(learningResourceColumns)
+            .in("id", resourceIds)
+            .eq("is_published", true)
+            .order("title", { ascending: true }),
+          client
+            .from("narrated_deck_slides")
+            .select("deck_id,slide_index,title,duration_ms,audio_present")
+            .in("deck_id", deckIds),
+          client
+            .from("narrated_deck_chapters")
+            .select("deck_id,chapter_index,title,starts_at_slide")
+            .in("deck_id", deckIds),
+          loadOutcomeIdsByResource(client, resourceIds),
+        ]);
+        assertNoSupabaseError(resourceError);
+        assertNoSupabaseError(slideError);
+        assertNoSupabaseError(chapterError);
+        const slides = (slideData ?? []) as LearnerDeckSlideRow[];
+        const chapters = (chapterData ?? []) as LearnerDeckChapterRow[];
+        return ((resourceData ?? []) as LearningResourceRow[]).map((resource) =>
+          mapLearnerNarratedDeck(
+            resource,
+            latestByResource.get(resource.id)!,
+            slides,
+            chapters,
+            outcomeIds.get(resource.id) ?? [],
+          ),
+        );
+      },
       async listMedia(programId: ProgramId) {
         const { data, error } = await client
           .from("learning_resources")

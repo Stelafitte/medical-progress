@@ -2,9 +2,14 @@
  * Écran de lecture dédié d'un diaporama commenté (apprenant).
  * Contrat : la vue ne reçoit qu'un DTO d'artefacts dérivés
  * (`LearnerNarratedDeck`). Aucun nom de fichier, URL, taille, MP4 de secours
- * ni action relative au PPTX source n'y est disponible. Tout est simulé.
+ * ni action relative au PPTX source n'y est disponible.
+ *
+ * LA LECTURE EST RÉELLE DEPUIS LE 18/09. Jusque-là, cet écran montrait un
+ * lecteur de démonstration (progression simulée par une minuterie) : aucun étudiant n'avait jamais vu un cours converti. La scène est
+ * celle de l'aperçu de la Médiathèque (`NarratedDeckStage`).
  */
 import { useEffect, useRef } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, BookOpen } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { Badge } from "@/components/ui/badge";
@@ -13,7 +18,43 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDataAccess } from "@/application/session";
 import { useLearnerPassport } from "@/features/dashboard/useLearnerPassport";
-import { NarratedSlidesPlayer } from "@/features/resources/NarratedSlidesPlayer";
+import { NarratedDeckStage } from "@/features/resources/NarratedDeckStage";
+import type { LearningResourceId } from "@/domain/types";
+
+/**
+ * Les liens signés du cours, demandés à l'ouverture et seulement là.
+ *
+ * `staleTime` À 30 MINUTES, ET CE N'EST PAS UN DÉTAIL. Un lien signé vaut une
+ * heure. Tant que la requête est fraîche, revenir sur le cours rend LES MÊMES
+ * liens : le navigateur ressert alors les clips de son cache au lieu de les
+ * retélécharger. Signer à chaque affichage produisait des adresses neuves, donc
+ * un cache toujours froid (constat du 17/09).
+ */
+function LearnerDeckPlayer({
+  resourceId,
+  showTranscript,
+}: {
+  readonly resourceId: string;
+  readonly showTranscript: boolean;
+}) {
+  const dataAccess = useDataAccess();
+  const { data, isPending, isError } = useQuery({
+    queryKey: ["narrated-deck-playback", resourceId],
+    queryFn: () => dataAccess.resources.getNarratedDeckPlayback(resourceId as LearningResourceId),
+    staleTime: 30 * 60 * 1000,
+  });
+
+  if (isPending) return <Skeleton className="aspect-video w-full" />;
+  if (isError) {
+    return <p className="text-sm text-destructive">Cours momentanément illisible.</p>;
+  }
+  if (!data || data.slides.length === 0) {
+    return (
+      <p className="text-sm text-muted-foreground">Aucune diapositive publiée pour ce cours.</p>
+    );
+  }
+  return <NarratedDeckStage playback={data} showTranscript={showTranscript} />;
+}
 
 export function NarratedReaderView({ resourceId }: { resourceId: string }) {
   const { data, isPending } = useLearnerPassport();
@@ -79,16 +120,13 @@ export function NarratedReaderView({ resourceId }: { resourceId: string }) {
         <div className="flex flex-wrap items-center gap-2">
           <BookOpen className="size-4 text-primary" aria-hidden />
           <h1 className="break-words text-lg font-semibold sm:text-xl">{deck.title}</h1>
-          <Badge variant="outline" className="font-normal">
-            {deck.webPlayerUrl ? "Prototype réel" : "Simulé"}
-          </Badge>
         </div>
         <p className="text-sm text-muted-foreground">
           {deck.module} · {deck.slideCount} diapositives
         </p>
       </header>
 
-      <NarratedSlidesPlayer deck={deck} focused />
+      <LearnerDeckPlayer resourceId={deck.mediaId} showTranscript={deck.transcriptAvailable} />
 
       {/*
         « ETUDIER CE COURS AVEC L'IA » EST DEBRANCHE (Stef, 09/09), pour la
@@ -117,7 +155,7 @@ export function NarratedReaderView({ resourceId }: { resourceId: string }) {
         <p className="text-sm text-muted-foreground">{deck.description}</p>
         <p className="text-xs text-muted-foreground">
           Consultation en ligne uniquement : la version web dérivée est la seule diffusée aux
-          apprenants. La progression reste locale tant que le backend n'est pas raccordé.
+          apprenants. Ta progression dans le cours n'est pas encore enregistrée.
         </p>
       </section>
     </div>
