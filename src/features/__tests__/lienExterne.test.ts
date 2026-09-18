@@ -38,7 +38,9 @@ describe("« Télécharger ce cours » (18/09)", () => {
 
   it("le lecteur autonome s'ouvre en file:// : ni module, ni fetch", () => {
     expect(page).not.toContain('type="module"');
-    expect(page).toContain('<script src="manifest.js"></script>');
+    expect(page).toContain('<script src="manifest.js" charset="utf-8"></script>');
+    // ASCII pur : lisible quel que soit l'encodage que le navigateur suppose.
+    expect(lecteur).toMatch(/^[\x00-\x7f]*$/);
     expect(lecteur).not.toMatch(/\bfetch\(/);
     expect(lecteur).not.toMatch(/^import /m);
   });

@@ -33,9 +33,9 @@
       "Copie personnelle de " +
       manifest.learner.name +
       (manifest.learner.email ? " (" + manifest.learner.email + ")" : "") +
-      " — téléchargée le " +
+      " \u2014 t\u00e9l\u00e9charg\u00e9e le " +
       manifest.downloadedOn +
-      " — ne pas diffuser.";
+      " \u2014 ne pas diffuser.";
   } else {
     $("filigrane").hidden = true;
   }
@@ -48,7 +48,7 @@
   }
 
   $("course-title").textContent = manifest.course.title;
-  document.title = manifest.course.title + " — Cours hors ligne";
+  document.title = manifest.course.title + " \u2014 Cours hors ligne";
 
   var sommaire = $("sommaire");
   slides.forEach(function (slide, i) {
@@ -78,7 +78,7 @@
       slide.index +
       " / " +
       slides.length +
-      (slide.title ? " · " + slide.title : "");
+      (slide.title ? " \u00b7 " + slide.title : "");
     audio.pause();
     video.pause();
     if (slide.videoUrl) {
