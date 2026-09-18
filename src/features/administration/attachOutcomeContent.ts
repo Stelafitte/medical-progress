@@ -55,3 +55,51 @@ export async function attachOutcomeContent(
     splitText(content, STORAGE_SEGMENT_CHARS),
   );
 }
+
+/**
+ * Une adresse de cours acceptable : http(s) seulement. Rend l'adresse
+ * normalisée, ou `null` si elle n'en est pas une (18/09).
+ */
+export function normalizeCourseUrl(raw: string): string | null {
+  const value = raw.trim();
+  if (value.length === 0) return null;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || url.protocol === "http:" ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Rattache un COURS EN LIGNE (simple lien) à l'acquis qui vient d'être créé
+ * (18/09, demande de Stef). Même chemin que l'ajout d'un lien dans la
+ * Médiathèque : un support `link` portant `external_url`, lié à l'acquis.
+ *
+ * VISIBLE DES APPRENANTS, à la différence du contenu saisi : un lien vers un
+ * cours est fait pour être ouvert par l'étudiant, et il ne l'est de toute façon
+ * qu'une fois sa promotion ouverte.
+ */
+export async function attachOutcomeLink(
+  dataAccess: DataAccess,
+  input: {
+    readonly programId: ProgramId;
+    readonly curriculumVersionId: CurriculumVersionId;
+    readonly outcome: Outcome;
+    readonly url: string;
+  },
+): Promise<boolean> {
+  const url = normalizeCourseUrl(input.url);
+  if (!url) return false;
+  await dataAccess.resources.createResource({
+    programId: input.programId,
+    curriculumVersionId: input.curriculumVersionId,
+    title: `${input.outcome.code} — ${input.outcome.label} (cours en ligne)`,
+    description: "Lien saisi à la création de l'acquis.",
+    format: "link",
+    visibility: "program",
+    externalUrl: url,
+    outcomeIds: [input.outcome.id],
+  });
+  return true;
+}

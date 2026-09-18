@@ -16,7 +16,11 @@ import {
   type NewKnowledgeInput,
 } from "@/domain/knowledgeDraft";
 import { useDataAccess } from "@/application/session";
-import { attachOutcomeContent } from "@/features/administration/attachOutcomeContent";
+import {
+  attachOutcomeContent,
+  attachOutcomeLink,
+  normalizeCourseUrl,
+} from "@/features/administration/attachOutcomeContent";
 import type { CurriculumVersionId, MasteryLevel, Outcome, ProgramId } from "@/domain/types";
 
 const TARGET_LEVELS: readonly MasteryLevel[] = [
@@ -53,6 +57,9 @@ export function KnowledgeCreationForm({
   /** Contenu pédagogique saisi à la main. Volontairement hors du brouillon du
    * domaine : il ne décrit pas l'acquis, il devient un support rattaché. */
   const [content, setContent] = useState("");
+  /** Lien vers un cours en ligne (18/09) : devient un support `link` rattaché. */
+  const [lien, setLien] = useState("");
+  const lienInvalide = lien.trim().length > 0 && normalizeCourseUrl(lien) === null;
   const [contentWarning, setContentWarning] = useState<string | null>(null);
 
   const issues = validateNewKnowledge(input);
@@ -62,7 +69,7 @@ export function KnowledgeCreationForm({
   };
 
   async function submit() {
-    if (issues.length > 0 || !targetTouched) {
+    if (issues.length > 0 || !targetTouched || lienInvalide) {
       setShowIssues(true);
       return;
     }
@@ -88,6 +95,12 @@ export function KnowledgeCreationForm({
           outcome,
           content,
         });
+        await attachOutcomeLink(dataAccess, {
+          programId,
+          curriculumVersionId,
+          outcome,
+          url: lien,
+        });
         setContentWarning(null);
       } catch (reason) {
         setContentWarning(
@@ -97,6 +110,7 @@ export function KnowledgeCreationForm({
         );
       }
       setContent("");
+      setLien("");
       setInput(EMPTY_NEW_KNOWLEDGE_INPUT);
       setTargetTouched(false);
       setShowIssues(false);
@@ -191,6 +205,26 @@ export function KnowledgeCreationForm({
             Distinct de l'attendu ci-dessus : l'attendu dit ce que l'apprenant doit savoir, le
             contenu est la matière elle-même. Il rejoint la médiathèque du programme, au même
             endroit que les documents importés, et reste modifiable ensuite.
+          </p>
+        </div>
+        <div className="space-y-1.5 sm:col-span-2">
+          <Label htmlFor={`${idPrefix}-link`}>Lien vers un cours en ligne (optionnel)</Label>
+          <Input
+            id={`${idPrefix}-link`}
+            type="url"
+            inputMode="url"
+            value={lien}
+            placeholder="https://…"
+            onChange={(e) => setLien(e.target.value)}
+            aria-invalid={lienInvalide}
+            className="min-h-11"
+          />
+          <p
+            className={lienInvalide ? "text-destructive text-xs" : "text-muted-foreground text-xs"}
+          >
+            {lienInvalide
+              ? "Adresse invalide : elle doit commencer par https:// (ou http://)."
+              : "Une page web, une vidéo hébergée ailleurs, un cours d'une autre plateforme. L'apprenant l'ouvre d'un clic, sous cette connaissance, une fois sa promotion ouverte."}
           </p>
         </div>
       </div>

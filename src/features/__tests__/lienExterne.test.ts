@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { normalizeCourseUrl } from "@/features/administration/attachOutcomeContent";
 
 const read = (path: string) => readFileSync(path, "utf8");
 
@@ -40,7 +41,7 @@ describe("« Télécharger ce cours » (18/09)", () => {
     expect(page).not.toContain('type="module"');
     expect(page).toContain('<script src="manifest.js" charset="utf-8"></script>');
     // ASCII pur : lisible quel que soit l'encodage que le navigateur suppose.
-    expect(lecteur).toMatch(/^[\x00-\x7f]*$/);
+    expect([...lecteur].every((c) => c.charCodeAt(0) < 128)).toBe(true);
     expect(lecteur).not.toMatch(/\bfetch\(/);
     expect(lecteur).not.toMatch(/^import /m);
   });
@@ -54,5 +55,24 @@ describe("« Télécharger ce cours » (18/09)", () => {
     expect(read("src/features/resources/NarratedReaderView.tsx")).toContain(
       "<TelechargerCours resourceId={deck.mediaId} title={deck.title} />",
     );
+  });
+});
+
+describe("création d'une connaissance avec un lien de cours (18/09)", () => {
+  it("n'accepte que des adresses http(s)", () => {
+    expect(normalizeCourseUrl(" https://cours.fr/a ")).toBe("https://cours.fr/a");
+    expect(normalizeCourseUrl("javascript:alert(1)")).toBeNull();
+    expect(normalizeCourseUrl("cours.fr")).toBeNull();
+    expect(normalizeCourseUrl("")).toBeNull();
+  });
+
+  it("rattache le lien comme support `link`, visible des apprenants", () => {
+    const attach = read("src/features/administration/attachOutcomeContent.ts");
+    expect(attach).toContain('format: "link"');
+    expect(attach).toContain('visibility: "program"');
+    expect(attach).toContain("externalUrl: url");
+    const form = read("src/features/administration/KnowledgeCreationForm.tsx");
+    expect(form).toContain("Lien vers un cours en ligne (optionnel)");
+    expect(form).toContain("await attachOutcomeLink(dataAccess");
   });
 });
