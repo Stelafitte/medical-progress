@@ -185,8 +185,13 @@ export function EtapeIdentite({ onDone }: { onDone: () => void }) {
             onSaved={onDone}
           />
         </div>
-        <Button type="button" variant="ghost" className="mt-2 min-h-11" onClick={onDone}>
-          Ces informations sont correctes
+        {/*
+          LE BOUTON QUI FAIT AVANCER EST LE BOUTON PRINCIPAL (18/09). « Enregistrer
+          et continuer » reste grisé tant que rien n'est modifié : Stef, sur une
+          fiche juste, s'est cru bloqué devant lui, l'issue étant un lien discret.
+        */}
+        <Button type="button" className="mt-2 min-h-11 w-full" onClick={onDone}>
+          Mes informations sont correctes : continuer
         </Button>
       </div>
     </main>
