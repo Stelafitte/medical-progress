@@ -1,3 +1,4 @@
+import { ExternalLink } from "lucide-react";
 import { RankBadge } from "@/components/rank-badge";
 import type { LearningResourceId, MasteryLevel, Outcome } from "@/domain/types";
 import { AiCompanionInline } from "@/features/ai/AiCompanionInline";
@@ -9,6 +10,29 @@ export interface CoveringSupport {
   readonly id: LearningResourceId;
   readonly title: string;
   readonly format: string;
+  /** Présent quand le support n'est qu'un lien externe (18/09). */
+  readonly externalUrl?: string | undefined;
+}
+
+/**
+ * UN SUPPORT QUI N'EST QU'UN LIEN s'ouvre dans un nouvel onglet (18/09). Avant,
+ * il était compté parmi les supports textuels et renvoyait au texte du
+ * chapitre : l'étudiant ne pouvait pas l'ouvrir.
+ */
+export function ExternalLinkSupport({ support }: { support: CoveringSupport }) {
+  if (!support.externalUrl) return null;
+  return (
+    <a
+      href={support.externalUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="flex min-h-11 items-center gap-2 rounded-lg border bg-card px-3 py-2.5 text-sm transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      <ExternalLink className="size-4 shrink-0 text-primary" aria-hidden />
+      <span className="min-w-0 flex-1">{support.title}</span>
+      <span className="shrink-0 text-xs text-muted-foreground">Ouvrir le lien</span>
+    </a>
+  );
 }
 
 export interface CoveringDeck {
@@ -91,6 +115,9 @@ export function KnowledgeRow({
             />
           ) : null}
           <OutcomeSectionsPanel outcomeId={outcome.id} />
+          {supports.map((support) => (
+            <ExternalLinkSupport key={support.id} support={support} />
+          ))}
         </div>
       )}
     </OutcomeRow>

@@ -538,6 +538,12 @@ export interface LearningResource extends Entity<LearningResourceId> {
   readonly format: "html" | "pdf" | "video" | "narrated_slides" | "link" | "other";
   readonly outcomeIds: readonly OutcomeId[];
   readonly estimatedMinutes: number;
+  /**
+   * Adresse d'un support qui n'est QU'UN LIEN (18/09). Posée en base depuis le
+   * 29/08 (`external_url`), elle n'arrivait jamais jusqu'à l'étudiant : un cours
+   * créé comme simple lien ne pouvait pas être ouvert.
+   */
+  readonly externalUrl?: string;
 }
 
 export interface AuditEvent extends Entity<AuditEventId> {

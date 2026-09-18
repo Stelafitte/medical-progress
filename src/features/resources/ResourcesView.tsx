@@ -29,6 +29,7 @@ import {
   KnowledgeRow,
   type CoveringDeck,
   type CoveringSupport,
+  ExternalLinkSupport,
 } from "@/features/resources/KnowledgeRow";
 import { searchResources } from "@/domain/learnerLibrary";
 
@@ -135,7 +136,12 @@ export function ResourcesView() {
     for (const id of resource.outcomeIds) {
       supportsParAcquis.set(id, [
         ...(supportsParAcquis.get(id) ?? []),
-        { id: resource.id, title: resource.title, format: resource.format },
+        {
+          id: resource.id,
+          title: resource.title,
+          format: resource.format,
+          externalUrl: resource.externalUrl,
+        },
       ]);
     }
   }
@@ -461,8 +467,13 @@ function ChapitreMedias({
 }) {
   const [texteOuvert, setTexteOuvert] = useState(false);
   const aiOuverte = useProgramAiEnabled();
-  const videos = supports.filter((s) => s.format === "video");
-  const textuels = supports.filter((s) => s.format !== "video");
+  // Un support qui n'est qu'un lien (18/09) ne se lit ni comme texte ni comme
+  // vidéo hébergée : il s'ouvre ailleurs.
+  const liens = supports.filter((s) => s.externalUrl);
+  const videos = supports.filter((s) => s.format === "video" && !s.externalUrl);
+  const textuels = supports.filter(
+    (s) => s.format !== "video" && s.format !== "link" && !s.externalUrl,
+  );
   /*
    * UN SEUL CHAPITRE PORTE LE FIL. Un item du referentiel est presque toujours
    * couvert par un support textuel unique ; dans le cas contraire, ancrer le fil
@@ -470,7 +481,8 @@ function ChapitreMedias({
    * question sur « l'item 221 », pas sur l'un de ses supports.
    */
   const premierTextuel = textuels[0];
-  if (textuels.length === 0 && videos.length === 0 && decks.length === 0) return null;
+  if (textuels.length === 0 && videos.length === 0 && decks.length === 0 && liens.length === 0)
+    return null;
 
   return (
     <div className="space-y-4">
@@ -534,6 +546,10 @@ function ChapitreMedias({
             {deck.slideCount} diapositives
           </span>
         </Link>
+      ))}
+
+      {liens.map((lien) => (
+        <ExternalLinkSupport key={lien.id} support={lien} />
       ))}
 
       {videos.map((video) => (

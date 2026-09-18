@@ -1,0 +1,26 @@
+import { readFileSync } from "node:fs";
+import { describe, expect, it } from "vitest";
+
+const read = (path: string) => readFileSync(path, "utf8");
+
+describe("support réduit à un lien externe, côté étudiant (18/09)", () => {
+  it("l'adresse voyage de la base jusqu'au support", () => {
+    const access = read("src/infrastructure/supabase/supabaseDataAccess.ts");
+    expect(access).toContain("...(row.external_url ? { externalUrl: row.external_url } : {})");
+    expect(read("src/features/resources/ResourcesView.tsx")).toContain(
+      "externalUrl: resource.externalUrl",
+    );
+  });
+
+  it("s'ouvre dans un nouvel onglet, sans exposer la page d'origine", () => {
+    const row = read("src/features/resources/KnowledgeRow.tsx");
+    expect(row).toContain('target="_blank"');
+    expect(row).toContain('rel="noopener noreferrer"');
+  });
+
+  it("n'est plus compté parmi les textes du chapitre", () => {
+    const view = read("src/features/resources/ResourcesView.tsx");
+    expect(view).toContain('s.format !== "link" && !s.externalUrl');
+    expect(view).toContain("<ExternalLinkSupport key={lien.id} support={lien} />");
+  });
+});

@@ -1395,6 +1395,7 @@ function mapLearningResource(
     format: row.format,
     outcomeIds,
     estimatedMinutes: 0,
+    ...(row.external_url ? { externalUrl: row.external_url } : {}),
   };
 }
 
