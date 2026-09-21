@@ -25,6 +25,14 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import nodemailer from "npm:nodemailer@6";
 
+/*
+ * 21/09 : OVH a bloque la boite d'envoi pour SPAM apres 24 courriels partis
+ * en quelques secondes. Un envoi groupe marque desormais une pause entre deux
+ * messages (1,2 s : 100 destinataires tiennent dans la limite de la fonction).
+ */
+const PAUSE_ENTRE_ENVOIS_MS = 1200;
+const pause = () => new Promise((r) => setTimeout(r, PAUSE_ENTRE_ENVOIS_MS));
+
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -343,7 +351,9 @@ Deno.serve(async (req) => {
   let sent = 0;
   let failed = 0;
 
+  let envoisFaits = 0;
   for (const recipient of recipients) {
+    if (envoisFaits++ > 0) await pause();
     const subject = render(campaign.subject as string, recipient, programName);
     const text = render(campaign.body as string, recipient, programName);
 
