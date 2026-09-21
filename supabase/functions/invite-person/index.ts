@@ -61,23 +61,51 @@ async function empreinte(jeton: string): Promise<string> {
   return [...new Uint8Array(h)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-/** Revoque les liens precedents de cette adresse, en cree un de 7 jours. */
+/**
+ * 21/09 (incident de 15 h 34) : ON NE REVOQUE PLUS AVANT D'AVOIR ENVOYE.
+ * L'ancienne version revoquait les liens precedents PUIS envoyait ; quand le
+ * serveur SMTP a refuse l'authentification, 17 etudiants ont perdu le lien
+ * valable deja dans leur boite, sans en recevoir de nouveau. Desormais : on
+ * cree le nouveau lien, on envoie, et `apresEnvoi` revoque les anciens
+ * seulement si l'envoi a reussi — sinon c'est le nouveau, jamais parti, qui
+ * est revoque.
+ */
 async function lienInvitation(
   adminClient: ReturnType<typeof createClient>,
   email: string,
-): Promise<string> {
+): Promise<{ lien: string; id: string }> {
   const adresse = email.trim().toLowerCase();
-  await adminClient
-    .from("invitation_links")
-    .update({ revoked_at: new Date().toISOString() })
-    .eq("email", adresse)
-    .is("revoked_at", null);
   const jeton = jetonAleatoire();
-  const { error } = await adminClient
+  const { data, error } = await adminClient
     .from("invitation_links")
-    .insert({ email: adresse, token_hash: await empreinte(jeton) });
-  if (error) throw new Error(`lien d'invitation non enregistre : ${error.message}`);
-  return `${APP_URL}/premiere-connexion?${new URLSearchParams({ invitation: jeton }).toString()}`;
+    .insert({ email: adresse, token_hash: await empreinte(jeton) })
+    .select("id")
+    .single();
+  if (error || !data)
+    throw new Error(`lien d'invitation non enregistre : ${error?.message ?? "?"}`);
+  return {
+    lien: `${APP_URL}/premiere-connexion?${new URLSearchParams({ invitation: jeton }).toString()}`,
+    id: (data as { id: string }).id,
+  };
+}
+
+async function apresEnvoi(
+  adminClient: ReturnType<typeof createClient>,
+  email: string,
+  id: string,
+  envoye: boolean,
+): Promise<void> {
+  const maintenant = new Date().toISOString();
+  if (envoye) {
+    await adminClient
+      .from("invitation_links")
+      .update({ revoked_at: maintenant })
+      .eq("email", email.trim().toLowerCase())
+      .neq("id", id)
+      .is("revoked_at", null);
+  } else {
+    await adminClient.from("invitation_links").update({ revoked_at: maintenant }).eq("id", id);
+  }
 }
 
 const CORS_HEADERS = {
@@ -269,8 +297,9 @@ async function sendWithDedicatedSender(
   }
   void link;
   let lien: string;
+  let lienId: string;
   try {
-    lien = await lienInvitation(adminClient, person.login_email);
+    ({ lien, id: lienId } = await lienInvitation(adminClient, person.login_email));
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : String(e) };
   }
@@ -311,12 +340,14 @@ async function sendWithDedicatedSender(
       text,
     });
   } catch (e) {
+    await apresEnvoi(adminClient, person.login_email, lienId, false);
     return {
       ok: false,
       error: `envoi SMTP échoué : ${e instanceof Error ? e.message : String(e)}`,
     };
   }
 
+  await apresEnvoi(adminClient, person.login_email, lienId, true);
   return { ok: true };
 }
 

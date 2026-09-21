@@ -36,19 +36,51 @@ async function empreinte(jeton: string): Promise<string> {
   return [...new Uint8Array(h)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-async function lienInvitation(admin: ReturnType<typeof createClient>, email: string) {
+/**
+ * 21/09 (incident de 15 h 34) : ON NE REVOQUE PLUS AVANT D'AVOIR ENVOYE.
+ * L'ancienne version revoquait les liens precedents PUIS envoyait ; quand le
+ * serveur SMTP a refuse l'authentification, 17 etudiants ont perdu le lien
+ * valable deja dans leur boite, sans en recevoir de nouveau. Desormais : on
+ * cree le nouveau lien, on envoie, et `apresEnvoi` revoque les anciens
+ * seulement si l'envoi a reussi — sinon c'est le nouveau, jamais parti, qui
+ * est revoque.
+ */
+async function lienInvitation(
+  adminClient: ReturnType<typeof createClient>,
+  email: string,
+): Promise<{ lien: string; id: string }> {
   const adresse = email.trim().toLowerCase();
-  await admin
-    .from("invitation_links")
-    .update({ revoked_at: new Date().toISOString() })
-    .eq("email", adresse)
-    .is("revoked_at", null);
   const jeton = jetonAleatoire();
-  const { error } = await admin
+  const { data, error } = await adminClient
     .from("invitation_links")
-    .insert({ email: adresse, token_hash: await empreinte(jeton) });
-  if (error) throw new Error(`lien non enregistre : ${error.message}`);
-  return `${APP_URL}/premiere-connexion?${new URLSearchParams({ invitation: jeton }).toString()}`;
+    .insert({ email: adresse, token_hash: await empreinte(jeton) })
+    .select("id")
+    .single();
+  if (error || !data)
+    throw new Error(`lien d'invitation non enregistre : ${error?.message ?? "?"}`);
+  return {
+    lien: `${APP_URL}/premiere-connexion?${new URLSearchParams({ invitation: jeton }).toString()}`,
+    id: (data as { id: string }).id,
+  };
+}
+
+async function apresEnvoi(
+  adminClient: ReturnType<typeof createClient>,
+  email: string,
+  id: string,
+  envoye: boolean,
+): Promise<void> {
+  const maintenant = new Date().toISOString();
+  if (envoye) {
+    await adminClient
+      .from("invitation_links")
+      .update({ revoked_at: maintenant })
+      .eq("email", email.trim().toLowerCase())
+      .neq("id", id)
+      .is("revoked_at", null);
+  } else {
+    await adminClient.from("invitation_links").update({ revoked_at: maintenant }).eq("id", id);
+  }
 }
 
 function json(payload: unknown, status: number): Response {
@@ -72,6 +104,8 @@ Deno.serve(async (req) => {
   }
   const programCode = typeof body.programCode === "string" ? body.programCode : "";
   const dryRun = body.dryRun !== false;
+  // 21/09 : verifie la connexion SMTP du programme sans rien envoyer.
+  const testSmtp = (body as { testSmtp?: unknown }).testSmtp === true;
   const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
     auth: { persistSession: false },
   });
@@ -111,7 +145,7 @@ Deno.serve(async (req) => {
     etudiants: cibles.filter((p) => !estEncadrant(p)).length,
     encadrants: cibles.filter(estEncadrant).length,
   };
-  if (dryRun) return json({ dryRun: true, ...resume }, 200);
+  if (dryRun && !testSmtp) return json({ dryRun: true, ...resume }, 200);
 
   const { data: sender } = await admin
     .from("program_email_senders")
@@ -128,11 +162,30 @@ Deno.serve(async (req) => {
     auth: { user: sender.smtp_user, pass: password },
   });
 
+  if (testSmtp) {
+    try {
+      await transporter.verify();
+      return json({ smtp: "ok", host: sender.smtp_host, user: sender.smtp_user }, 200);
+    } catch (e) {
+      return json(
+        {
+          smtp: "echec",
+          host: sender.smtp_host,
+          port: sender.smtp_port,
+          user: sender.smtp_user,
+          secret: sender.smtp_password_secret,
+          error: e instanceof Error ? e.message : String(e),
+        },
+        200,
+      );
+    }
+  }
+
   let envoyes = 0;
   const echecs: Array<{ email: string; error: string }> = [];
   for (const p of cibles) {
     try {
-      const lien = await lienInvitation(admin, p.login_email);
+      const { lien, id: lienId } = await lienInvitation(admin, p.login_email);
       const prenom = (p.first_name ?? "").trim();
       const encadrant = estEncadrant(p);
       const text = [
@@ -154,12 +207,18 @@ Deno.serve(async (req) => {
         "Merci de votre compréhension et bien cordialement,",
         `— ${sender.from_name}`,
       ].join("\n");
-      await transporter.sendMail({
-        from: `"${sender.from_name}" <${sender.smtp_user}>`,
-        to: p.login_email,
-        subject: `Nouveau lien de connexion — ${program.name}`,
-        text,
-      });
+      try {
+        await transporter.sendMail({
+          from: `"${sender.from_name}" <${sender.smtp_user}>`,
+          to: p.login_email,
+          subject: `Nouveau lien de connexion — ${program.name}`,
+          text,
+        });
+      } catch (e) {
+        await apresEnvoi(admin, p.login_email, lienId, false);
+        throw e;
+      }
+      await apresEnvoi(admin, p.login_email, lienId, true);
       envoyes++;
       await new Promise((r) => setTimeout(r, 700));
     } catch (e) {

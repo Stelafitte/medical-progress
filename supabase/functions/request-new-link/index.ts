@@ -57,23 +57,51 @@ async function empreinte(jeton: string): Promise<string> {
   return [...new Uint8Array(h)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-/** Revoque les liens precedents de cette adresse, en cree un de 7 jours. */
+/**
+ * 21/09 (incident de 15 h 34) : ON NE REVOQUE PLUS AVANT D'AVOIR ENVOYE.
+ * L'ancienne version revoquait les liens precedents PUIS envoyait ; quand le
+ * serveur SMTP a refuse l'authentification, 17 etudiants ont perdu le lien
+ * valable deja dans leur boite, sans en recevoir de nouveau. Desormais : on
+ * cree le nouveau lien, on envoie, et `apresEnvoi` revoque les anciens
+ * seulement si l'envoi a reussi — sinon c'est le nouveau, jamais parti, qui
+ * est revoque.
+ */
 async function lienInvitation(
   adminClient: ReturnType<typeof createClient>,
   email: string,
-): Promise<string> {
+): Promise<{ lien: string; id: string }> {
   const adresse = email.trim().toLowerCase();
-  await adminClient
-    .from("invitation_links")
-    .update({ revoked_at: new Date().toISOString() })
-    .eq("email", adresse)
-    .is("revoked_at", null);
   const jeton = jetonAleatoire();
-  const { error } = await adminClient
+  const { data, error } = await adminClient
     .from("invitation_links")
-    .insert({ email: adresse, token_hash: await empreinte(jeton) });
-  if (error) throw new Error(`lien d'invitation non enregistre : ${error.message}`);
-  return `${APP_URL}/premiere-connexion?${new URLSearchParams({ invitation: jeton }).toString()}`;
+    .insert({ email: adresse, token_hash: await empreinte(jeton) })
+    .select("id")
+    .single();
+  if (error || !data)
+    throw new Error(`lien d'invitation non enregistre : ${error?.message ?? "?"}`);
+  return {
+    lien: `${APP_URL}/premiere-connexion?${new URLSearchParams({ invitation: jeton }).toString()}`,
+    id: (data as { id: string }).id,
+  };
+}
+
+async function apresEnvoi(
+  adminClient: ReturnType<typeof createClient>,
+  email: string,
+  id: string,
+  envoye: boolean,
+): Promise<void> {
+  const maintenant = new Date().toISOString();
+  if (envoye) {
+    await adminClient
+      .from("invitation_links")
+      .update({ revoked_at: maintenant })
+      .eq("email", email.trim().toLowerCase())
+      .neq("id", id)
+      .is("revoked_at", null);
+  } else {
+    await adminClient.from("invitation_links").update({ revoked_at: maintenant }).eq("id", id);
+  }
 }
 
 Deno.serve(async (req) => {
@@ -127,7 +155,7 @@ Deno.serve(async (req) => {
     const password = sender ? Deno.env.get(sender.smtp_password_secret) : undefined;
     if (!sender || !password) return json({ ok: true }, 200);
 
-    const lien = await lienInvitation(adminClient, email);
+    const { lien, id: lienId } = await lienInvitation(adminClient, email);
     const programName = program?.name ?? "Campus Santé Augmenté";
     const transporter = nodemailer.createTransport({
       host: sender.smtp_host,
@@ -135,23 +163,31 @@ Deno.serve(async (req) => {
       secure: sender.smtp_port === 465,
       auth: { user: sender.smtp_user, pass: password },
     });
-    await transporter.sendMail({
-      from: `"${sender.from_name}" <${sender.smtp_user}>`,
-      to: email,
-      subject: `Votre lien de connexion — ${programName}`,
-      text: [
-        fiche.first_name ? `Bonjour ${fiche.first_name},` : "Bonjour,",
-        "",
-        `Voici un nouveau lien pour accéder à "${programName}" (Campus Santé Augmenté).`,
-        "",
-        "Pour définir votre mot de passe et vérifier vos informations, cliquez sur le lien suivant :",
-        lien,
-        "",
-        "Ce lien est personnel et valable 7 jours. Merci de ne pas le transférer.",
-        "",
-        `— ${sender.from_name}`,
-      ].join("\n"),
-    });
+    await transporter
+      .sendMail({
+        from: `"${sender.from_name}" <${sender.smtp_user}>`,
+        to: email,
+        subject: `Votre lien de connexion — ${programName}`,
+        text: [
+          fiche.first_name ? `Bonjour ${fiche.first_name},` : "Bonjour,",
+          "",
+          `Voici un nouveau lien pour accéder à "${programName}" (Campus Santé Augmenté).`,
+          "",
+          "Pour définir votre mot de passe et vérifier vos informations, cliquez sur le lien suivant :",
+          lien,
+          "",
+          "Ce lien est personnel et valable 7 jours. Merci de ne pas le transférer.",
+          "",
+          `— ${sender.from_name}`,
+        ].join("\n"),
+      })
+      .then(
+        () => apresEnvoi(adminClient, email, lienId, true),
+        async (e) => {
+          await apresEnvoi(adminClient, email, lienId, false);
+          throw e;
+        },
+      );
   } catch (e) {
     // Jamais d'echec visible : la page dit la meme chose dans tous les cas.
     console.error("request-new-link", e instanceof Error ? e.message : String(e));
