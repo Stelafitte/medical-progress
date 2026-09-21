@@ -32,6 +32,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { SectionHeading } from "@/components/section-heading";
 import { EmptyState, PanelCard, ScopeNotice, SubBlock } from "@/features/professional/mock-ui";
+import { ZoneProgramme } from "@/features/administration/ZoneProgramme";
 import {
   AdminWorkLevelBanner,
   type AdminWorkLevel,
@@ -917,188 +918,189 @@ export function AdminProgramDesigner() {
         réciproquement.
       </ScopeNotice>
 
-      {/* ---------------- Étape 1 : concevoir ---------------- */}
-      <PanelCard
-        id={STEP_ANCHORS.program}
-        title="Concevoir le programme"
-        step={1}
-        collapsible
-        tone={designReady ? "done" : "action"}
-        description="Partez d'un modèle existant ou créez-en un, puis laissez l'analyse proposer les ressources."
-        action={
-          <Badge variant={designReady ? "secondary" : "outline"} className="font-normal">
-            {designReady ? "conception prête" : "en cours"}
-          </Badge>
-        }
-      >
-        {/* a) modèle existant */}
-        <SubBlock
-          title="Sélectionner un modèle existant"
-          summary={`${data.versions.length} modèle(s)`}
-          tone={modelId ? "done" : "neutral"}
-        >
-          {data.versions.length === 0 ? (
-            <EmptyState>Aucun modèle de programme enregistré.</EmptyState>
-          ) : (
-            <ul className="space-y-2">
-              {data.versions.map((version) => {
-                const active = modelId === version.id;
-                return (
-                  <li key={version.id}>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const next = active ? null : version.id;
-                        setModelId(next);
-                        setModelName(next ? version.label : "");
-                      }}
-                      aria-pressed={active}
-                      className={`flex min-h-11 w-full flex-wrap items-center gap-2 rounded-lg border p-4 text-start text-sm ${
-                        active ? "border-primary bg-primary/5" : "border-border"
-                      }`}
-                    >
-                      <span className="font-medium">{version.label}</span>
-                      <Badge variant="outline" className="font-normal">
-                        {version.status}
-                      </Badge>
-                      <span className="text-muted-foreground text-xs">
-                        depuis {formatFrDate(version.effectiveFrom)}
-                      </span>
-                      {active ? (
-                        <Check className="text-primary ms-auto size-4" aria-hidden />
-                      ) : null}
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </SubBlock>
-
-        {/* b) création ou édition du modèle en cours */}
-        <SubBlock
-          title={
-            editingExistingDraft
-              ? "Modèle en cours et ses objectifs pédagogiques"
-              : "Sinon, créer le modèle et ses objectifs pédagogiques"
+      <ZoneProgramme programName={data.program?.name ?? "ce programme"} cohorts={cohorts}>
+        {/* ---------------- Étape 1 : concevoir ---------------- */}
+        <PanelCard
+          id={STEP_ANCHORS.program}
+          title="Concevoir le programme"
+          step={1}
+          collapsible
+          tone={designReady ? "done" : "action"}
+          description="Partez d'un modèle existant ou créez-en un, puis laissez l'analyse proposer les ressources."
+          action={
+            <Badge variant={designReady ? "secondary" : "outline"} className="font-normal">
+              {designReady ? "conception prête" : "en cours"}
+            </Badge>
           }
-          summary={modelName.trim() ? modelName.trim() : "à nommer"}
         >
-          <div className="space-y-1.5">
-            <Label htmlFor="model-name">Nom du modèle</Label>
-            <Input
-              id="model-name"
-              value={modelName}
-              disabled={modelFieldsLocked}
-              onChange={(event) => setModelName(event.target.value)}
-              placeholder="Référentiel 2026 — échocardiographie"
+          {/* a) modèle existant */}
+          <SubBlock
+            title="Sélectionner un modèle existant"
+            summary={`${data.versions.length} modèle(s)`}
+            tone={modelId ? "done" : "neutral"}
+          >
+            {data.versions.length === 0 ? (
+              <EmptyState>Aucun modèle de programme enregistré.</EmptyState>
+            ) : (
+              <ul className="space-y-2">
+                {data.versions.map((version) => {
+                  const active = modelId === version.id;
+                  return (
+                    <li key={version.id}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const next = active ? null : version.id;
+                          setModelId(next);
+                          setModelName(next ? version.label : "");
+                        }}
+                        aria-pressed={active}
+                        className={`flex min-h-11 w-full flex-wrap items-center gap-2 rounded-lg border p-4 text-start text-sm ${
+                          active ? "border-primary bg-primary/5" : "border-border"
+                        }`}
+                      >
+                        <span className="font-medium">{version.label}</span>
+                        <Badge variant="outline" className="font-normal">
+                          {version.status}
+                        </Badge>
+                        <span className="text-muted-foreground text-xs">
+                          depuis {formatFrDate(version.effectiveFrom)}
+                        </span>
+                        {active ? (
+                          <Check className="text-primary ms-auto size-4" aria-hidden />
+                        ) : null}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </SubBlock>
+
+          {/* b) création ou édition du modèle en cours */}
+          <SubBlock
+            title={
+              editingExistingDraft
+                ? "Modèle en cours et ses objectifs pédagogiques"
+                : "Sinon, créer le modèle et ses objectifs pédagogiques"
+            }
+            summary={modelName.trim() ? modelName.trim() : "à nommer"}
+          >
+            <div className="space-y-1.5">
+              <Label htmlFor="model-name">Nom du modèle</Label>
+              <Input
+                id="model-name"
+                value={modelName}
+                disabled={modelFieldsLocked}
+                onChange={(event) => setModelName(event.target.value)}
+                placeholder="Référentiel 2026 — échocardiographie"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="objectives">Objectifs pédagogiques (texte libre)</Label>
+              <Textarea
+                id="objectives"
+                rows={5}
+                value={objectives}
+                onChange={(event) => setObjectives(event.target.value)}
+                placeholder="Décrivez les objectifs : connaissances, compétences, évaluations, stage…"
+              />
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button asChild variant="outline" className="min-h-11" disabled={importingObjectives}>
+                <label>
+                  {importingObjectives ? (
+                    <Loader2 className="me-1 size-4 animate-spin" aria-hidden />
+                  ) : (
+                    <FileUp className="me-1 size-4" aria-hidden />
+                  )}
+                  Importer un fichier d'objectifs
+                  <input
+                    type="file"
+                    accept=".pdf,application/pdf,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.txt,.md,text/plain,.zip,application/zip,application/x-zip-compressed"
+                    className="sr-only"
+                    disabled={importingObjectives}
+                    onChange={(event) => void handleObjectivesFileChange(event)}
+                  />
+                </label>
+              </Button>
+              {importingObjectives ? (
+                <span className="text-muted-foreground text-xs">Lecture du fichier en cours…</span>
+              ) : importObjectivesError ? (
+                <span className="text-destructive text-xs">{importObjectivesError}</span>
+              ) : importedFile ? (
+                <span className="text-muted-foreground text-xs">
+                  {importedFile}
+                  {/\.(pdf|docx|txt|md|zip)$/i.test(importedFile)
+                    ? " — texte ajouté ci-dessus"
+                    : " — format non lu"}
+                </span>
+              ) : null}
+            </div>
+          </SubBlock>
+
+          {/* c) analyse IA du référentiel, à partir des objectifs ci-dessus */}
+          <SubBlock
+            title="Analyse IA du référentiel (connaissances, compétences, évaluations)"
+            summary="à partir des objectifs"
+          >
+            <ProgramAiReferentialAnalysis
+              programId={activeProgramId}
+              curriculumVersionId={realCurriculumVersionId}
+              objectives={objectives}
+              existingOutcomeCodes={data.outcomes.map((o) => o.code)}
+              existingAssessmentNames={data.assessmentModalities.map((m) => m.name)}
+              onCreated={() => void refetch()}
             />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="objectives">Objectifs pédagogiques (texte libre)</Label>
-            <Textarea
-              id="objectives"
-              rows={5}
-              value={objectives}
-              onChange={(event) => setObjectives(event.target.value)}
-              placeholder="Décrivez les objectifs : connaissances, compétences, évaluations, stage…"
-            />
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Button asChild variant="outline" className="min-h-11" disabled={importingObjectives}>
-              <label>
-                {importingObjectives ? (
-                  <Loader2 className="me-1 size-4 animate-spin" aria-hidden />
-                ) : (
-                  <FileUp className="me-1 size-4" aria-hidden />
-                )}
-                Importer un fichier d'objectifs
-                <input
-                  type="file"
-                  accept=".pdf,application/pdf,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.txt,.md,text/plain,.zip,application/zip,application/x-zip-compressed"
-                  className="sr-only"
-                  disabled={importingObjectives}
-                  onChange={(event) => void handleObjectivesFileChange(event)}
-                />
-              </label>
-            </Button>
-            {importingObjectives ? (
-              <span className="text-muted-foreground text-xs">Lecture du fichier en cours…</span>
-            ) : importObjectivesError ? (
-              <span className="text-destructive text-xs">{importObjectivesError}</span>
-            ) : importedFile ? (
-              <span className="text-muted-foreground text-xs">
-                {importedFile}
-                {/\.(pdf|docx|txt|md|zip)$/i.test(importedFile)
-                  ? " — texte ajouté ci-dessus"
-                  : " — format non lu"}
-              </span>
-            ) : null}
-          </div>
-        </SubBlock>
+          </SubBlock>
 
-        {/* c) analyse IA du référentiel, à partir des objectifs ci-dessus */}
-        <SubBlock
-          title="Analyse IA du référentiel (connaissances, compétences, évaluations)"
-          summary="à partir des objectifs"
-        >
-          <ProgramAiReferentialAnalysis
-            programId={activeProgramId}
-            curriculumVersionId={realCurriculumVersionId}
-            objectives={objectives}
-            existingOutcomeCodes={data.outcomes.map((o) => o.code)}
-            existingAssessmentNames={data.assessmentModalities.map((m) => m.name)}
-            onCreated={() => void refetch()}
-          />
-        </SubBlock>
+          {/* d) ressources du programme */}
+          <SubBlock
+            title="Ressources du programme"
+            summary={`${RESOURCES.filter((r) => resources[r.id].selected).length} / ${RESOURCES.length} retenue(s)`}
+            tone="action"
+          >
+            <p className="text-muted-foreground text-sm">
+              Cochez directement les ressources nécessaires au programme.
+            </p>
+            {archiveError ? <p className="text-destructive text-sm">{archiveError}</p> : null}
 
-        {/* d) ressources du programme */}
-        <SubBlock
-          title="Ressources du programme"
-          summary={`${RESOURCES.filter((r) => resources[r.id].selected).length} / ${RESOURCES.length} retenue(s)`}
-          tone="action"
-        >
-          <p className="text-muted-foreground text-sm">
-            Cochez directement les ressources nécessaires au programme.
-          </p>
-          {archiveError ? <p className="text-destructive text-sm">{archiveError}</p> : null}
-
-          <div className="space-y-3">
-            {RESOURCES.map((resource) => {
-              const state = resources[resource.id];
-              const Icon = resource.icon;
-              return (
-                <article
-                  key={resource.id}
-                  className={`rounded-md border p-4 ${
-                    state.selected ? "border-primary/40 bg-primary/5" : "border-border"
-                  }`}
-                >
-                  <div className="flex flex-wrap items-start gap-3">
-                    <Checkbox
-                      id={`res-${resource.id}`}
-                      checked={state.selected}
-                      /* Une rubrique dont le contenu existe déjà ne se décoche
+            <div className="space-y-3">
+              {RESOURCES.map((resource) => {
+                const state = resources[resource.id];
+                const Icon = resource.icon;
+                return (
+                  <article
+                    key={resource.id}
+                    className={`rounded-md border p-4 ${
+                      state.selected ? "border-primary/40 bg-primary/5" : "border-border"
+                    }`}
+                  >
+                    <div className="flex flex-wrap items-start gap-3">
+                      <Checkbox
+                        id={`res-${resource.id}`}
+                        checked={state.selected}
+                        /* Une rubrique dont le contenu existe déjà ne se décoche
                          pas : la case ne ferait que nier le contenu, sans le
                          retirer. On retire par « Retirer du programme ». */
-                      disabled={existingCounts[resource.id] > 0}
-                      onCheckedChange={(checked) => {
-                        patch(resource.id, { selected: checked === true });
-                        // Cocher, c'est vouloir régler : le détail s'ouvre.
-                        setRessourcesOuvertes((prev) => ({
-                          ...prev,
-                          [resource.id]: checked === true,
-                        }));
-                      }}
-                    />
-                    <div className="min-w-0 flex-1">
-                      <Label htmlFor={`res-${resource.id}`} className="flex items-center gap-2">
-                        <Icon className="text-muted-foreground size-4" aria-hidden />
-                        {resource.label}
-                      </Label>
-                      <p className="text-muted-foreground mt-1 text-xs">{resource.hint}</p>
-                      <div className="mt-1 flex flex-wrap gap-2">
-                        {/*
+                        disabled={existingCounts[resource.id] > 0}
+                        onCheckedChange={(checked) => {
+                          patch(resource.id, { selected: checked === true });
+                          // Cocher, c'est vouloir régler : le détail s'ouvre.
+                          setRessourcesOuvertes((prev) => ({
+                            ...prev,
+                            [resource.id]: checked === true,
+                          }));
+                        }}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <Label htmlFor={`res-${resource.id}`} className="flex items-center gap-2">
+                          <Icon className="text-muted-foreground size-4" aria-hidden />
+                          {resource.label}
+                        </Label>
+                        <p className="text-muted-foreground mt-1 text-xs">{resource.hint}</p>
+                        <div className="mt-1 flex flex-wrap gap-2">
+                          {/*
                           ⚠️ LA CASE ET CE BADGE DISENT DESORMAIS LA MEME CHOSE,
                           et il a fallu le corriger : la case « Stage » était
                           décochée sur DFASM pendant que le badge annonçait
@@ -1109,74 +1111,74 @@ export function AdminProgramDesigner() {
                           Depuis le 11/09 la case DERIVE du badge : plus deux
                           sources, donc plus de divergence à expliquer.
                         */}
-                        <Badge variant="outline" className="font-normal">
-                          {existingCounts[resource.id]} élément(s) déjà dans l'onglet dédié
-                        </Badge>
-                        {existingCounts[resource.id] > 0 ? (
-                          <span className="text-muted-foreground text-xs">
-                            Retenue d'office : ce programme en porte déjà le contenu.
-                          </span>
-                        ) : null}
+                          <Badge variant="outline" className="font-normal">
+                            {existingCounts[resource.id]} élément(s) déjà dans l'onglet dédié
+                          </Badge>
+                          {existingCounts[resource.id] > 0 ? (
+                            <span className="text-muted-foreground text-xs">
+                              Retenue d'office : ce programme en porte déjà le contenu.
+                            </span>
+                          ) : null}
+                        </div>
                       </div>
+                      {state.selected ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          className="min-h-11 gap-1"
+                          aria-expanded={ressourcesOuvertes[resource.id] === true}
+                          onClick={() =>
+                            setRessourcesOuvertes((prev) => ({
+                              ...prev,
+                              [resource.id]: !prev[resource.id],
+                            }))
+                          }
+                        >
+                          {ressourcesOuvertes[resource.id] ? "Replier" : "Détails"}
+                          <ChevronDown
+                            className={`size-4 transition-transform ${
+                              ressourcesOuvertes[resource.id] ? "" : "-rotate-90"
+                            }`}
+                            aria-hidden
+                          />
+                        </Button>
+                      ) : null}
                     </div>
-                    {state.selected ? (
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        className="min-h-11 gap-1"
-                        aria-expanded={ressourcesOuvertes[resource.id] === true}
-                        onClick={() =>
-                          setRessourcesOuvertes((prev) => ({
-                            ...prev,
-                            [resource.id]: !prev[resource.id],
-                          }))
-                        }
-                      >
-                        {ressourcesOuvertes[resource.id] ? "Replier" : "Détails"}
-                        <ChevronDown
-                          className={`size-4 transition-transform ${
-                            ressourcesOuvertes[resource.id] ? "" : "-rotate-90"
-                          }`}
-                          aria-hidden
-                        />
-                      </Button>
-                    ) : null}
-                  </div>
 
-                  {state.selected && ressourcesOuvertes[resource.id] ? (
-                    <div className="mt-3 space-y-3">
-                      <div
-                        role="group"
-                        aria-label={`Mode d'implémentation — ${resource.label}`}
-                        className="flex flex-wrap gap-2"
-                      >
-                        {(Object.keys(MODE_LABELS) as ResourceMode[]).map((mode) => (
-                          <Button
-                            key={mode}
-                            type="button"
-                            size="sm"
-                            variant={state.mode === mode ? "default" : "outline"}
-                            aria-pressed={state.mode === mode}
-                            /* « Réutiliser l'existant » n'a rien à réutiliser
+                    {state.selected && ressourcesOuvertes[resource.id] ? (
+                      <div className="mt-3 space-y-3">
+                        <div
+                          role="group"
+                          aria-label={`Mode d'implémentation — ${resource.label}`}
+                          className="flex flex-wrap gap-2"
+                        >
+                          {(Object.keys(MODE_LABELS) as ResourceMode[]).map((mode) => (
+                            <Button
+                              key={mode}
+                              type="button"
+                              size="sm"
+                              variant={state.mode === mode ? "default" : "outline"}
+                              aria-pressed={state.mode === mode}
+                              /* « Réutiliser l'existant » n'a rien à réutiliser
                                quand le programme ne porte rien ; « Plus tard »
                                dirait « à faire » d'une chose faite. Les deux
                                gardes sont le même principe, pris dans les deux
                                sens (11/09). */
-                            disabled={
-                              mode === "existing"
-                                ? existingCounts[resource.id] === 0
-                                : mode === "later" && existingCounts[resource.id] > 0
-                            }
-                            className="min-h-11"
-                            onClick={() => patch(resource.id, { mode })}
-                          >
-                            {MODE_LABELS[mode]}
-                          </Button>
-                        ))}
-                      </div>
+                              disabled={
+                                mode === "existing"
+                                  ? existingCounts[resource.id] === 0
+                                  : mode === "later" && existingCounts[resource.id] > 0
+                              }
+                              className="min-h-11"
+                              onClick={() => patch(resource.id, { mode })}
+                            >
+                              {MODE_LABELS[mode]}
+                            </Button>
+                          ))}
+                        </div>
 
-                      {/*
+                        {/*
                         ⚠️ LE STAGE EN PLACE S'AFFICHE QUEL QUE SOIT LE MODE.
                         Mesuré le 11/09 sur la capture de Stef : la rubrique était
                         cochée, mais le mode enregistré au brouillon était
@@ -1186,236 +1188,242 @@ export function AdminProgramDesigner() {
                         un mode : ce que le programme porte se dit toujours, et le
                         mode ne règle plus que ce qu'on peut AJOUTER.
                       */}
-                      {resource.id === "stage" && existingCounts.stage > 0 ? (
-                        <StageEnPlace scope={data} />
-                      ) : null}
+                        {resource.id === "stage" && existingCounts.stage > 0 ? (
+                          <StageEnPlace scope={data} />
+                        ) : null}
 
-                      {state.mode === "now" && resource.id === "stage" ? (
-                        <div className="space-y-3">
-                          {localPlacements.length > 0 ? (
-                            <div className="space-y-1.5">
-                              <p className="text-sm font-medium">
-                                Terrains de stage déjà créés dans cette session
-                              </p>
-                              <ul className="text-muted-foreground space-y-1 text-xs">
-                                {localPlacements.map((local) => (
-                                  <li key={local.placement.id}>
-                                    {local.placement.name} — {local.placement.site} ·{" "}
-                                    {local.placement.capacity} place(s)
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
-                          ) : null}
-                          <div className="space-y-1.5">
-                            <p className="text-sm font-medium">
-                              {existingCounts.stage > 0
-                                ? "Ajouter un terrain de stage supplémentaire"
-                                : "Ajouter un terrain de stage"}
-                            </p>
-                            <PlacementCreationForm
-                              programId={activeProgramId}
-                              idPrefix="designer-stage"
-                              submitLabel="Créer le terrain de stage"
-                              hint="Même outil et même liste que l'onglet « Gestion des stages » : le terrain y apparaît aussitôt, rattaché à ce programme."
-                              onCreated={() => patch("stage", { implemented: true })}
-                            />
-                          </div>
-                        </div>
-                      ) : null}
-
-                      {state.mode === "now" && resource.id === "competences" ? (
-                        <div className="space-y-3">
-                          {realCurriculumVersionId ? (
-                            <>
-                              {renderAssociationsFor("competences")}
+                        {state.mode === "now" && resource.id === "stage" ? (
+                          <div className="space-y-3">
+                            {localPlacements.length > 0 ? (
                               <div className="space-y-1.5">
                                 <p className="text-sm font-medium">
-                                  Importer un corpus de compétences
+                                  Terrains de stage déjà créés dans cette session
                                 </p>
-                                <CorpusImport
-                                  target="competences"
-                                  programId={activeProgramId}
-                                  curriculumVersionId={realCurriculumVersionId}
-                                  existingOutcomeCodes={data.outcomes.map((o) => o.code)}
-                                  onCreated={() => {
-                                    patch("competences", { implemented: true });
-                                    void refetch();
-                                  }}
-                                />
+                                <ul className="text-muted-foreground space-y-1 text-xs">
+                                  {localPlacements.map((local) => (
+                                    <li key={local.placement.id}>
+                                      {local.placement.name} — {local.placement.site} ·{" "}
+                                      {local.placement.capacity} place(s)
+                                    </li>
+                                  ))}
+                                </ul>
                               </div>
-                              <div className="space-y-1.5">
-                                <p className="text-sm font-medium">Ajouter une compétence</p>
-                                <CompetenceCreationForm
-                                  programId={activeProgramId}
-                                  curriculumVersionId={realCurriculumVersionId}
-                                  idPrefix="designer-competence"
-                                  submitLabel="Créer la compétence"
-                                  hint="Même outil et même liste que l'onglet « Compétences » : elle y apparaît aussitôt, rattachée à ce programme."
-                                  onCreated={() => {
-                                    patch("competences", { implemented: true });
-                                    void refetch();
-                                  }}
-                                />
-                              </div>
-                            </>
-                          ) : (
-                            <EmptyState>
-                              Aucune version de curriculum pour ce programme : une compétence ne
-                              peut pas encore être créée.
-                            </EmptyState>
-                          )}
-                        </div>
-                      ) : null}
-
-                      {state.mode === "now" && resource.id === "documents" ? (
-                        <div className="space-y-3">
-                          {localRequirements.length > 0 ? (
-                            <div className="space-y-1.5">
-                              <p className="text-sm font-medium">
-                                Pièces déjà exigées dans cette session
-                              </p>
-                              <ul className="text-muted-foreground space-y-1 text-xs">
-                                {localRequirements.map((item) => (
-                                  <li key={item.id}>
-                                    {item.code} — {item.label}
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
-                          ) : null}
-                          <div className="space-y-1.5">
-                            <p className="text-sm font-medium">Ajouter une pièce exigée</p>
-                            <DocumentRequirementForm
-                              programId={activeProgramId}
-                              idPrefix="designer-document"
-                              submitLabel="Créer la pièce exigée"
-                              hint="Même outil et même liste que l'onglet « Documents et certificats » : la pièce y apparaît aussitôt, rattachée à ce programme."
-                              onCreated={() => patch("documents", { implemented: true })}
-                            />
-                          </div>
-                        </div>
-                      ) : null}
-
-                      {state.mode === "now" && resource.id === "knowledge" ? (
-                        <div className="space-y-3">
-                          {realCurriculumVersionId ? (
-                            <>
-                              {renderAssociationsFor("knowledge")}
-                              <div className="space-y-1.5">
-                                <p className="text-sm font-medium">
-                                  Importer un corpus de connaissances
-                                </p>
-                                <CorpusImport
-                                  target="knowledge"
-                                  programId={activeProgramId}
-                                  curriculumVersionId={realCurriculumVersionId}
-                                  existingOutcomeCodes={data.outcomes.map((o) => o.code)}
-                                  onCreated={() => {
-                                    patch("knowledge", { implemented: true });
-                                    void refetch();
-                                  }}
-                                />
-                              </div>
-                              <div className="space-y-1.5">
-                                <p className="text-sm font-medium">Ajouter une connaissance</p>
-                                <KnowledgeCreationForm
-                                  programId={activeProgramId}
-                                  curriculumVersionId={realCurriculumVersionId}
-                                  idPrefix="designer-knowledge"
-                                  submitLabel="Créer la connaissance"
-                                  hint="Même outil et même liste que l'onglet « Connaissances » : elle y apparaît aussitôt, rattachée à ce programme."
-                                  onCreated={() => {
-                                    patch("knowledge", { implemented: true });
-                                    void refetch();
-                                  }}
-                                />
-                              </div>
-                            </>
-                          ) : (
-                            <EmptyState>
-                              Aucune version de curriculum pour ce programme : une connaissance ne
-                              peut pas encore être créée.
-                            </EmptyState>
-                          )}
-                        </div>
-                      ) : null}
-
-                      {state.mode === "now" && resource.id === "assessments" ? (
-                        <div className="space-y-3">
-                          {renderAssociationsFor("assessments")}
-                          <div className="space-y-1.5">
-                            <p className="text-sm font-medium">Importer un corpus d'évaluations</p>
-                            <CorpusImport
-                              target="assessments"
-                              programId={activeProgramId}
-                              curriculumVersionId={realCurriculumVersionId}
-                              existingAssessmentNames={data.assessmentModalities.map((m) => m.name)}
-                              onCreated={() => {
-                                patch("assessments", { implemented: true });
-                                void refetch();
-                              }}
-                            />
-                          </div>
-                          <div className="space-y-1.5">
-                            <p className="text-sm font-medium">Ajouter une modalité d'évaluation</p>
-                            <AssessmentModalityForm
-                              programId={activeProgramId}
-                              idPrefix="designer-assessment"
-                              submitLabel="Créer la modalité d'évaluation"
-                              hint="Même outil et même liste que l'onglet « Évaluations » : la modalité y apparaît aussitôt, rattachée à ce programme."
-                              onCreated={() => {
-                                patch("assessments", { implemented: true });
-                                void refetch();
-                              }}
-                            />
-                          </div>
-                        </div>
-                      ) : null}
-
-                      {state.mode === "now" &&
-                      resource.id !== "stage" &&
-                      resource.id !== "competences" &&
-                      resource.id !== "documents" &&
-                      resource.id !== "knowledge" &&
-                      resource.id !== "assessments" ? (
-                        <div className="space-y-2">
-                          <Label htmlFor={`draft-${resource.id}`}>{resource.draftLabel}</Label>
-                          <Textarea
-                            id={`draft-${resource.id}`}
-                            rows={3}
-                            value={state.draft}
-                            placeholder={resource.draftPlaceholder}
-                            onChange={(event) =>
-                              patch(resource.id, {
-                                draft: event.target.value,
-                                implemented: false,
-                              })
-                            }
-                          />
-                          <div className="flex flex-wrap items-center gap-2">
-                            <Button
-                              type="button"
-                              size="sm"
-                              className="min-h-11"
-                              disabled={state.draft.trim().length === 0}
-                              onClick={() => patch(resource.id, { implemented: true })}
-                            >
-                              Créer dans ce programme
-                            </Button>
-                            {state.implemented ? (
-                              <span className="text-muted-foreground text-xs">
-                                {state.draft.split("\n").filter((line) => line.trim()).length}{" "}
-                                élément(s) créés ici — visibles ensuite dans l'onglet dédié.
-                              </span>
                             ) : null}
+                            <div className="space-y-1.5">
+                              <p className="text-sm font-medium">
+                                {existingCounts.stage > 0
+                                  ? "Ajouter un terrain de stage supplémentaire"
+                                  : "Ajouter un terrain de stage"}
+                              </p>
+                              <PlacementCreationForm
+                                programId={activeProgramId}
+                                idPrefix="designer-stage"
+                                submitLabel="Créer le terrain de stage"
+                                hint="Même outil et même liste que l'onglet « Gestion des stages » : le terrain y apparaît aussitôt, rattaché à ce programme."
+                                onCreated={() => patch("stage", { implemented: true })}
+                              />
+                            </div>
                           </div>
-                        </div>
-                      ) : null}
+                        ) : null}
 
-                      {state.mode === "existing" && resource.id === "stage" ? (
-                        <div className="space-y-3">
-                          {/*
+                        {state.mode === "now" && resource.id === "competences" ? (
+                          <div className="space-y-3">
+                            {realCurriculumVersionId ? (
+                              <>
+                                {renderAssociationsFor("competences")}
+                                <div className="space-y-1.5">
+                                  <p className="text-sm font-medium">
+                                    Importer un corpus de compétences
+                                  </p>
+                                  <CorpusImport
+                                    target="competences"
+                                    programId={activeProgramId}
+                                    curriculumVersionId={realCurriculumVersionId}
+                                    existingOutcomeCodes={data.outcomes.map((o) => o.code)}
+                                    onCreated={() => {
+                                      patch("competences", { implemented: true });
+                                      void refetch();
+                                    }}
+                                  />
+                                </div>
+                                <div className="space-y-1.5">
+                                  <p className="text-sm font-medium">Ajouter une compétence</p>
+                                  <CompetenceCreationForm
+                                    programId={activeProgramId}
+                                    curriculumVersionId={realCurriculumVersionId}
+                                    idPrefix="designer-competence"
+                                    submitLabel="Créer la compétence"
+                                    hint="Même outil et même liste que l'onglet « Compétences » : elle y apparaît aussitôt, rattachée à ce programme."
+                                    onCreated={() => {
+                                      patch("competences", { implemented: true });
+                                      void refetch();
+                                    }}
+                                  />
+                                </div>
+                              </>
+                            ) : (
+                              <EmptyState>
+                                Aucune version de curriculum pour ce programme : une compétence ne
+                                peut pas encore être créée.
+                              </EmptyState>
+                            )}
+                          </div>
+                        ) : null}
+
+                        {state.mode === "now" && resource.id === "documents" ? (
+                          <div className="space-y-3">
+                            {localRequirements.length > 0 ? (
+                              <div className="space-y-1.5">
+                                <p className="text-sm font-medium">
+                                  Pièces déjà exigées dans cette session
+                                </p>
+                                <ul className="text-muted-foreground space-y-1 text-xs">
+                                  {localRequirements.map((item) => (
+                                    <li key={item.id}>
+                                      {item.code} — {item.label}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            ) : null}
+                            <div className="space-y-1.5">
+                              <p className="text-sm font-medium">Ajouter une pièce exigée</p>
+                              <DocumentRequirementForm
+                                programId={activeProgramId}
+                                idPrefix="designer-document"
+                                submitLabel="Créer la pièce exigée"
+                                hint="Même outil et même liste que l'onglet « Documents et certificats » : la pièce y apparaît aussitôt, rattachée à ce programme."
+                                onCreated={() => patch("documents", { implemented: true })}
+                              />
+                            </div>
+                          </div>
+                        ) : null}
+
+                        {state.mode === "now" && resource.id === "knowledge" ? (
+                          <div className="space-y-3">
+                            {realCurriculumVersionId ? (
+                              <>
+                                {renderAssociationsFor("knowledge")}
+                                <div className="space-y-1.5">
+                                  <p className="text-sm font-medium">
+                                    Importer un corpus de connaissances
+                                  </p>
+                                  <CorpusImport
+                                    target="knowledge"
+                                    programId={activeProgramId}
+                                    curriculumVersionId={realCurriculumVersionId}
+                                    existingOutcomeCodes={data.outcomes.map((o) => o.code)}
+                                    onCreated={() => {
+                                      patch("knowledge", { implemented: true });
+                                      void refetch();
+                                    }}
+                                  />
+                                </div>
+                                <div className="space-y-1.5">
+                                  <p className="text-sm font-medium">Ajouter une connaissance</p>
+                                  <KnowledgeCreationForm
+                                    programId={activeProgramId}
+                                    curriculumVersionId={realCurriculumVersionId}
+                                    idPrefix="designer-knowledge"
+                                    submitLabel="Créer la connaissance"
+                                    hint="Même outil et même liste que l'onglet « Connaissances » : elle y apparaît aussitôt, rattachée à ce programme."
+                                    onCreated={() => {
+                                      patch("knowledge", { implemented: true });
+                                      void refetch();
+                                    }}
+                                  />
+                                </div>
+                              </>
+                            ) : (
+                              <EmptyState>
+                                Aucune version de curriculum pour ce programme : une connaissance ne
+                                peut pas encore être créée.
+                              </EmptyState>
+                            )}
+                          </div>
+                        ) : null}
+
+                        {state.mode === "now" && resource.id === "assessments" ? (
+                          <div className="space-y-3">
+                            {renderAssociationsFor("assessments")}
+                            <div className="space-y-1.5">
+                              <p className="text-sm font-medium">
+                                Importer un corpus d'évaluations
+                              </p>
+                              <CorpusImport
+                                target="assessments"
+                                programId={activeProgramId}
+                                curriculumVersionId={realCurriculumVersionId}
+                                existingAssessmentNames={data.assessmentModalities.map(
+                                  (m) => m.name,
+                                )}
+                                onCreated={() => {
+                                  patch("assessments", { implemented: true });
+                                  void refetch();
+                                }}
+                              />
+                            </div>
+                            <div className="space-y-1.5">
+                              <p className="text-sm font-medium">
+                                Ajouter une modalité d'évaluation
+                              </p>
+                              <AssessmentModalityForm
+                                programId={activeProgramId}
+                                idPrefix="designer-assessment"
+                                submitLabel="Créer la modalité d'évaluation"
+                                hint="Même outil et même liste que l'onglet « Évaluations » : la modalité y apparaît aussitôt, rattachée à ce programme."
+                                onCreated={() => {
+                                  patch("assessments", { implemented: true });
+                                  void refetch();
+                                }}
+                              />
+                            </div>
+                          </div>
+                        ) : null}
+
+                        {state.mode === "now" &&
+                        resource.id !== "stage" &&
+                        resource.id !== "competences" &&
+                        resource.id !== "documents" &&
+                        resource.id !== "knowledge" &&
+                        resource.id !== "assessments" ? (
+                          <div className="space-y-2">
+                            <Label htmlFor={`draft-${resource.id}`}>{resource.draftLabel}</Label>
+                            <Textarea
+                              id={`draft-${resource.id}`}
+                              rows={3}
+                              value={state.draft}
+                              placeholder={resource.draftPlaceholder}
+                              onChange={(event) =>
+                                patch(resource.id, {
+                                  draft: event.target.value,
+                                  implemented: false,
+                                })
+                              }
+                            />
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Button
+                                type="button"
+                                size="sm"
+                                className="min-h-11"
+                                disabled={state.draft.trim().length === 0}
+                                onClick={() => patch(resource.id, { implemented: true })}
+                              >
+                                Créer dans ce programme
+                              </Button>
+                              {state.implemented ? (
+                                <span className="text-muted-foreground text-xs">
+                                  {state.draft.split("\n").filter((line) => line.trim()).length}{" "}
+                                  élément(s) créés ici — visibles ensuite dans l'onglet dédié.
+                                </span>
+                              ) : null}
+                            </div>
+                          </div>
+                        ) : null}
+
+                        {state.mode === "existing" && resource.id === "stage" ? (
+                          <div className="space-y-3">
+                            {/*
                             AUCUN CHAMP ICI, ET C'EST LE POINT : la rubrique ne
                             décrit plus le stage avec un texte tapé le jour de la
                             conception, elle LIT le stage tel qu'il est (la carte
@@ -1423,40 +1431,41 @@ export function AdminProgramDesigner() {
                             ici sans qu'on y touche, et les deux ne peuvent plus se
                             contredire.
                           */}
-                          {existingCounts.stage === 0 ? (
-                            <StageEnPlace scope={data} />
-                          ) : (
+                            {existingCounts.stage === 0 ? (
+                              <StageEnPlace scope={data} />
+                            ) : (
+                              <p className="text-muted-foreground text-sm">
+                                Ce parcours reprend le stage déjà en place, décrit ci-dessus. Il n'y
+                                a rien à ressaisir : le détail est lu en direct.
+                              </p>
+                            )}
+                          </div>
+                        ) : state.mode === "existing" ? (
+                          <div className="space-y-3">
                             <p className="text-muted-foreground text-sm">
-                              Ce parcours reprend le stage déjà en place, décrit ci-dessus. Il n'y a
-                              rien à ressaisir : le détail est lu en direct.
+                              Les {existingCounts[resource.id]} élément(s) déjà saisis dans l'onglet
+                              dédié appartiennent déjà à ce programme. Cochez ceux que ce parcours
+                              retient.
                             </p>
-                          )}
-                        </div>
-                      ) : state.mode === "existing" ? (
-                        <div className="space-y-3">
-                          <p className="text-muted-foreground text-sm">
-                            Les {existingCounts[resource.id]} élément(s) déjà saisis dans l'onglet
-                            dédié appartiennent déjà à ce programme. Cochez ceux que ce parcours
-                            retient.
-                          </p>
-                          {renderAssociationsFor(resource.id)}
-                        </div>
-                      ) : null}
+                            {renderAssociationsFor(resource.id)}
+                          </div>
+                        ) : null}
 
-                      {state.mode === "later" ? (
-                        <p className="text-muted-foreground text-sm">
-                          Ressource retenue mais non implémentée : elle restera à compléter plus
-                          tard.
-                        </p>
-                      ) : null}
-                    </div>
-                  ) : null}
-                </article>
-              );
-            })}
-          </div>
-        </SubBlock>
-      </PanelCard>
+                        {state.mode === "later" ? (
+                          <p className="text-muted-foreground text-sm">
+                            Ressource retenue mais non implémentée : elle restera à compléter plus
+                            tard.
+                          </p>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </article>
+                );
+              })}
+            </div>
+          </SubBlock>
+        </PanelCard>
+      </ZoneProgramme>
 
       {/* ---------------- Étape 2 : promotion ---------------- */}
       <PanelCard

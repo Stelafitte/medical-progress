@@ -9,7 +9,6 @@
  * membres, encadrants et ouverture des carnets passent tous par les fonctions
  * serveur de la migration 20260831093000.
  */
-import { useState } from "react";
 import { SectionHeading } from "@/components/section-heading";
 import { ScopeNotice, StatCard } from "@/features/professional/mock-ui";
 import { PlacementSection } from "@/features/administration/PlacementSection";
@@ -20,10 +19,12 @@ import type { ProgramId } from "@/domain/types";
 import { useProgramAdmin } from "@/features/administration/useProgramAdmin";
 import { AdminChargement } from "@/features/administration/AdminChargement";
 import { defaultPilotCohortId } from "@/features/administration/adminProgramViewModel";
+import { setCohortFocus, useCohortFocus } from "@/application/cohortFocusStore";
 
 export function AdminStages() {
   const { data, isPending, error, refetch } = useProgramAdmin();
-  const [cohortId, setCohortId] = useState<string | null>(null);
+  // 21/09 : la promotion est celle du menu d'en-tête, partagée par tous les onglets.
+  const cohortId = useCohortFocus();
 
   if (isPending || !data) return <AdminChargement error={error} />;
 
@@ -70,7 +71,7 @@ export function AdminStages() {
         stageLogs={data.stageLogs}
         templates={data.templates}
         cohortId={selectedId}
-        onCohortChange={setCohortId}
+        onCohortChange={setCohortFocus}
         onChanged={() => void refetch()}
         supervisionSlot={
           <SupervisionGroupSection

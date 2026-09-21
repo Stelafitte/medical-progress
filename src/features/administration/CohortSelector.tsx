@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { Cohort } from "@/domain/types";
+import { useCohortFocus } from "@/application/cohortFocusStore";
 import {
   COHORT_PHASE_LABELS_FR,
   cohortPhase,
@@ -35,6 +36,11 @@ export function CohortSelector({
 }) {
   const ordered = sortCohortsForPilot(cohorts);
   const selected = ordered.find((c) => c.id === value);
+  /* 21/09 : une promotion choisie dans l'en-tête s'impose ; le menu interne
+     ne revient qu'avec « Toutes les promotions ». Deux sélecteurs qui se
+     contredisent seraient pires qu'un seul. */
+  const focus = useCohortFocus();
+  const imposee = focus !== null && focus === value && selected !== undefined;
 
   return (
     <section aria-label={label} className="border-border bg-card space-y-4 rounded-lg border p-4">
@@ -43,18 +49,29 @@ export function CohortSelector({
           <label htmlFor="cohort-selector" className="text-sm font-medium">
             {label}
           </label>
-          <Select value={value ?? ""} onValueChange={onChange}>
-            <SelectTrigger id="cohort-selector" className="min-h-11 w-full sm:max-w-md">
-              <SelectValue placeholder="Choisir une cohorte" />
-            </SelectTrigger>
-            <SelectContent>
-              {ordered.map((cohort) => (
-                <SelectItem key={cohort.id} value={cohort.id}>
-                  {cohort.label} · {COHORT_PHASE_LABELS_FR[cohortPhase(cohort)]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {imposee ? (
+            <p className="text-sm">
+              <span className="inline-flex items-center rounded-full bg-sky-100 px-2.5 py-0.5 font-semibold text-sky-900 dark:bg-sky-950/50 dark:text-sky-100">
+                {selected.label}
+              </span>{" "}
+              <span className="text-muted-foreground">
+                choisie dans le menu « Promotion » en haut à droite.
+              </span>
+            </p>
+          ) : (
+            <Select value={value ?? ""} onValueChange={onChange}>
+              <SelectTrigger id="cohort-selector" className="min-h-11 w-full sm:max-w-md">
+                <SelectValue placeholder="Choisir une cohorte" />
+              </SelectTrigger>
+              <SelectContent>
+                {ordered.map((cohort) => (
+                  <SelectItem key={cohort.id} value={cohort.id}>
+                    {cohort.label} · {COHORT_PHASE_LABELS_FR[cohortPhase(cohort)]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
         <p className="text-muted-foreground text-xs sm:max-w-xs">
           {ordered.length} cohorte(s) rattachée(s) à ce programme. Le pilotage se fait cohorte par

@@ -19,6 +19,7 @@ import { CorpusImport } from "@/features/administration/CorpusImport";
 import { MediaLibrarySection } from "@/features/administration/MediaLibrarySection";
 import { ContentAiSection } from "@/features/administration/ContentAiSection";
 import { CohortSelector } from "@/features/administration/CohortSelector";
+import { ZoneProgramme } from "@/features/administration/ZoneProgramme";
 import { KnowledgeCreationForm } from "@/features/administration/KnowledgeCreationForm";
 import { useProgramAdmin } from "@/features/administration/useProgramAdmin";
 import { AdminChargement } from "@/features/administration/AdminChargement";
@@ -97,8 +98,8 @@ export function AdminKnowledgeBase() {
 
       <ScopeNotice>
         Les connaissances et les supports appartiennent au programme, jamais à une cohorte : une
-        promotion ultérieure réutilise la même base. Les états d'acquisition affichés en bas de page
-        sont simulés de façon déterministe.
+        promotion ultérieure réutilise la même base. Le suivi d'acquisition en bas de page repose
+        sur les déclarations réelles des apprenants.
       </ScopeNotice>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -108,242 +109,247 @@ export function AdminKnowledgeBase() {
         <StatCard label="Diaporamas sonorisés" value={narrated} />
       </div>
 
-      {/* 1. Le référentiel en place */}
-      <SectionHeading
-        title="Connaissances visées par le programme"
-        level={2}
-        description="Chaque support peut être rattaché à une ou plusieurs connaissances."
-      />
+      <ZoneProgramme programName={data.program?.name ?? "ce programme"} cohorts={cohorts}>
+        {/* 1. Le référentiel en place */}
+        <SectionHeading
+          title="Connaissances visées par le programme"
+          level={2}
+          description="Chaque support peut être rattaché à une ou plusieurs connaissances."
+        />
 
-      <PanelCard
-        collapsible
-        title="Référentiel de connaissances"
-        description="Liste unique : connaissances du dépôt et connaissances créées dans cette session."
-      >
-        {knowledge.length === 0 ? (
-          <EmptyState>Aucune connaissance définie.</EmptyState>
-        ) : (
-          /*
+        <PanelCard
+          collapsible
+          title="Référentiel de connaissances"
+          description="Liste unique : connaissances du dépôt et connaissances créées dans cette session."
+        >
+          {knowledge.length === 0 ? (
+            <EmptyState>Aucune connaissance définie.</EmptyState>
+          ) : (
+            /*
             Même composant que dans le Concepteur : cocher ici décide de ce que
             le programme EXIGE, donc de ce que l'étudiant verra dans son
             passeport. Deux écrans, un seul mécanisme — sans quoi on pourrait
             cocher dans l'un ce qu'on ne peut pas décocher dans l'autre.
           */
-          <ProgramAssociationList
-            title="Connaissances de ce programme"
-            items={outcomeAssociationItems(knowledge, data.outcomeThemes)}
-            busyIds={archivingIds}
-            removeLabel="Retirer du programme"
-            onRemove={(ids) => {
-              setArchivingIds(new Set(ids));
-              void (async () => {
-                try {
-                  for (const id of ids) {
-                    await dataAccess.outcomes.archiveOutcome(id as OutcomeId);
-                  }
-                  await refetch();
-                } finally {
-                  setArchivingIds(new Set());
-                }
-              })();
-            }}
-            onSetRetained={async (ids, retained) => {
-              await dataAccess.outcomes.setOutcomesRetained(ids as readonly OutcomeId[], retained);
-              await refetch();
-            }}
-          />
-        )}
-      </PanelCard>
-
-      {/* 2. Ajout : import rapide avant la saisie manuelle, comme pour les compétences. */}
-      <SectionHeading
-        title="Ajouter des connaissances"
-        level={2}
-        description="Deux voies pour alimenter la même liste : coller un plan de cours existant, ou saisir une connaissance à la main."
-      />
-
-      {realCurriculumVersionId ? (
-        <>
-          <PanelCard
-            collapsible
-            title="Voie rapide — coller un référentiel"
-            description="Un tableau CSV/TSV : code, intitulé, nature (connaissance). Seules les lignes nouvelles sont créées, une par une, dans le référentiel réel du programme."
-          >
-            <Textarea
-              value={importText}
-              onChange={(event) => setImportText(event.target.value)}
-              rows={6}
-              placeholder={
-                "K-08;Physique des ultrasons;connaissance\nK-09;Hémodynamique valvulaire;connaissance"
-              }
-              aria-label="Connaissances à importer"
-            />
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <Badge variant="secondary">{candidates.length} ligne(s) reconnue(s)</Badge>
-              <Badge variant="outline">{newCount} nouvelle(s)</Badge>
-              <Badge variant="outline">{candidates.length - newCount} déjà présente(s)</Badge>
-            </div>
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <Button
-                size="sm"
-                className="min-h-11"
-                disabled={newCount === 0 || isImporting}
-                onClick={() => {
-                  const curriculumVersionId = realCurriculumVersionId;
-                  void (async () => {
-                    setImportError(null);
-                    setIsImporting(true);
-                    let added = 0;
-                    try {
-                      for (const row of candidates) {
-                        if (!row.isNew) continue;
-                        await dataAccess.outcomes.createOutcome({
-                          programId,
-                          curriculumVersionId,
-                          code: row.code,
-                          label: row.label,
-                          description: "",
-                          nature: "knowledge",
-                          domain: "Non classé",
-                          targetMastery: "proficient",
-                        });
-                        added += 1;
-                      }
-                      setImported(added);
-                      setImportText("");
-                      await refetch();
-                    } catch (reason) {
-                      setImportError(
-                        reason instanceof Error
-                          ? reason.message
-                          : "Import du référentiel impossible.",
-                      );
-                    } finally {
-                      setIsImporting(false);
+            <ProgramAssociationList
+              title="Connaissances de ce programme"
+              items={outcomeAssociationItems(knowledge, data.outcomeThemes)}
+              busyIds={archivingIds}
+              removeLabel="Retirer du programme"
+              onRemove={(ids) => {
+                setArchivingIds(new Set(ids));
+                void (async () => {
+                  try {
+                    for (const id of ids) {
+                      await dataAccess.outcomes.archiveOutcome(id as OutcomeId);
                     }
-                  })();
-                }}
-              >
-                {isImporting
-                  ? "Import en cours…"
-                  : `Ajouter les ${newCount} nouvelle(s) connaissance(s)`}
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="min-h-11"
-                onClick={() => setImportText("")}
-              >
-                Effacer
-              </Button>
-              {imported !== null ? (
-                <span className="text-muted-foreground text-sm">
-                  {imported} connaissance(s) ajoutée(s) au référentiel.
-                </span>
+                    await refetch();
+                  } finally {
+                    setArchivingIds(new Set());
+                  }
+                })();
+              }}
+              onSetRetained={async (ids, retained) => {
+                await dataAccess.outcomes.setOutcomesRetained(
+                  ids as readonly OutcomeId[],
+                  retained,
+                );
+                await refetch();
+              }}
+            />
+          )}
+        </PanelCard>
+
+        {/* 2. Ajout : import rapide avant la saisie manuelle, comme pour les compétences. */}
+        <SectionHeading
+          title="Ajouter des connaissances"
+          level={2}
+          description="Deux voies pour alimenter la même liste : coller un plan de cours existant, ou saisir une connaissance à la main."
+        />
+
+        {realCurriculumVersionId ? (
+          <>
+            <PanelCard
+              collapsible
+              title="Voie rapide — coller un référentiel"
+              description="Un tableau CSV/TSV : code, intitulé, nature (connaissance). Seules les lignes nouvelles sont créées, une par une, dans le référentiel réel du programme."
+            >
+              <Textarea
+                value={importText}
+                onChange={(event) => setImportText(event.target.value)}
+                rows={6}
+                placeholder={
+                  "K-08;Physique des ultrasons;connaissance\nK-09;Hémodynamique valvulaire;connaissance"
+                }
+                aria-label="Connaissances à importer"
+              />
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <Badge variant="secondary">{candidates.length} ligne(s) reconnue(s)</Badge>
+                <Badge variant="outline">{newCount} nouvelle(s)</Badge>
+                <Badge variant="outline">{candidates.length - newCount} déjà présente(s)</Badge>
+              </div>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <Button
+                  size="sm"
+                  className="min-h-11"
+                  disabled={newCount === 0 || isImporting}
+                  onClick={() => {
+                    const curriculumVersionId = realCurriculumVersionId;
+                    void (async () => {
+                      setImportError(null);
+                      setIsImporting(true);
+                      let added = 0;
+                      try {
+                        for (const row of candidates) {
+                          if (!row.isNew) continue;
+                          await dataAccess.outcomes.createOutcome({
+                            programId,
+                            curriculumVersionId,
+                            code: row.code,
+                            label: row.label,
+                            description: "",
+                            nature: "knowledge",
+                            domain: "Non classé",
+                            targetMastery: "proficient",
+                          });
+                          added += 1;
+                        }
+                        setImported(added);
+                        setImportText("");
+                        await refetch();
+                      } catch (reason) {
+                        setImportError(
+                          reason instanceof Error
+                            ? reason.message
+                            : "Import du référentiel impossible.",
+                        );
+                      } finally {
+                        setIsImporting(false);
+                      }
+                    })();
+                  }}
+                >
+                  {isImporting
+                    ? "Import en cours…"
+                    : `Ajouter les ${newCount} nouvelle(s) connaissance(s)`}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="min-h-11"
+                  onClick={() => setImportText("")}
+                >
+                  Effacer
+                </Button>
+                {imported !== null ? (
+                  <span className="text-muted-foreground text-sm">
+                    {imported} connaissance(s) ajoutée(s) au référentiel.
+                  </span>
+                ) : null}
+              </div>
+              {importError ? <p className="text-destructive mt-2 text-sm">{importError}</p> : null}
+              <p className="text-muted-foreground mt-2 text-xs">
+                Un code déjà présent n'écrase jamais le référentiel en place. Les lignes de nature «
+                simulation » ou « réelle » relèvent de l'onglet « Compétences ». Rattachement à la
+                version active ({realCurriculumVersionId}).
+              </p>
+              {candidates.length > 0 ? (
+                <ul className="mt-4 space-y-1 text-sm">
+                  {candidates.slice(0, 20).map((row, index) => (
+                    <li key={`${row.code}-${index}`} className="flex flex-wrap items-center gap-2">
+                      <Badge variant="outline" className="font-mono text-[10px]">
+                        {row.code}
+                      </Badge>
+                      <span>{row.label}</span>
+                      <Badge variant={row.isNew ? "secondary" : "outline"} className="font-normal">
+                        {row.isNew ? "nouvelle" : "code déjà présent"}
+                      </Badge>
+                    </li>
+                  ))}
+                </ul>
               ) : null}
-            </div>
-            {importError ? <p className="text-destructive mt-2 text-sm">{importError}</p> : null}
-            <p className="text-muted-foreground mt-2 text-xs">
-              Un code déjà présent n'écrase jamais le référentiel en place. Les lignes de nature «
-              simulation » ou « réelle » relèvent de l'onglet « Compétences ». Rattachement à la
-              version active ({realCurriculumVersionId}).
-            </p>
-            {candidates.length > 0 ? (
-              <ul className="mt-4 space-y-1 text-sm">
-                {candidates.slice(0, 20).map((row, index) => (
-                  <li key={`${row.code}-${index}`} className="flex flex-wrap items-center gap-2">
-                    <Badge variant="outline" className="font-mono text-[10px]">
-                      {row.code}
-                    </Badge>
-                    <span>{row.label}</span>
-                    <Badge variant={row.isNew ? "secondary" : "outline"} className="font-normal">
-                      {row.isNew ? "nouvelle" : "code déjà présent"}
-                    </Badge>
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-          </PanelCard>
+            </PanelCard>
 
-          <PanelCard
-            collapsible
-            title="Voie automatique — importer un corpus de documents"
-            description="Un document ou une archive ZIP : chaque fichier lisible est déposé dans la médiathèque ci-dessous, et les connaissances que l'IA en tire restent rattachées au document dont elles viennent. Rien n'est créé sans votre validation."
-          >
-            <CorpusImport
-              target="knowledge"
-              programId={programId}
-              curriculumVersionId={realCurriculumVersionId}
-              existingOutcomeCodes={outcomes.map((o) => o.code)}
-              onCreated={() => void refetch()}
-            />
-          </PanelCard>
+            <PanelCard
+              collapsible
+              title="Voie automatique — importer un corpus de documents"
+              description="Un document ou une archive ZIP : chaque fichier lisible est déposé dans la médiathèque ci-dessous, et les connaissances que l'IA en tire restent rattachées au document dont elles viennent. Rien n'est créé sans votre validation."
+            >
+              <CorpusImport
+                target="knowledge"
+                programId={programId}
+                curriculumVersionId={realCurriculumVersionId}
+                existingOutcomeCodes={outcomes.map((o) => o.code)}
+                onCreated={() => void refetch()}
+              />
+            </PanelCard>
 
-          <PanelCard
-            collapsible
-            title="Voie manuelle — créer une connaissance"
-            description="Le même outil de création est disponible ici et dans le « Concepteur de programme » : la liste est unique."
-          >
-            <KnowledgeCreationForm
-              programId={programId}
-              curriculumVersionId={realCurriculumVersionId}
-              idPrefix="connaissances-tab"
-              submitLabel="Créer la connaissance"
-              hint="La connaissance rejoint la liste unique des objectifs : elle est aussitôt disponible pour rattacher un support."
-              onCreated={() => void refetch()}
-            />
-          </PanelCard>
-        </>
-      ) : (
-        <EmptyState>
-          Aucune version de curriculum pour ce programme : le référentiel de connaissances ne peut
-          pas encore être alimenté.
-        </EmptyState>
-      )}
+            <PanelCard
+              collapsible
+              title="Voie manuelle — créer une connaissance"
+              description="Le même outil de création est disponible ici et dans le « Concepteur de programme » : la liste est unique."
+            >
+              <KnowledgeCreationForm
+                programId={programId}
+                curriculumVersionId={realCurriculumVersionId}
+                idPrefix="connaissances-tab"
+                submitLabel="Créer la connaissance"
+                hint="La connaissance rejoint la liste unique des objectifs : elle est aussitôt disponible pour rattacher un support."
+                onCreated={() => void refetch()}
+              />
+            </PanelCard>
+          </>
+        ) : (
+          <EmptyState>
+            Aucune version de curriculum pour ce programme : le référentiel de connaissances ne peut
+            pas encore être alimenté.
+          </EmptyState>
+        )}
 
-      {/* 3. Les supports qui portent ces connaissances */}
-      <SectionHeading
-        title="Supports pédagogiques — Dépôt et catalogue"
-        level={2}
-        description="Dépôt et catalogue des supports, conversion HTML5 des diaporamas sonorisés, puis Exploitation IA des contenus publiés."
-      />
+        {/* 3. Les supports qui portent ces connaissances */}
+        <SectionHeading
+          title="Supports pédagogiques — Dépôt et catalogue"
+          level={2}
+          description="Dépôt et catalogue des supports, conversion HTML5 des diaporamas sonorisés, puis Exploitation IA des contenus publiés."
+        />
 
-      <MediaLibrarySection
-        programName={data.program?.name ?? "ce programme"}
-        programId={programId}
-        curriculumVersionId={realCurriculumVersionId}
-        media={data.media}
-        outcomes={outcomes}
-        people={data.people}
-      />
+        <MediaLibrarySection
+          programName={data.program?.name ?? "ce programme"}
+          programId={programId}
+          curriculumVersionId={realCurriculumVersionId}
+          media={data.media}
+          outcomes={outcomes}
+          people={data.people}
+        />
 
-      <ContentAiSection
-        programName={data.program?.name ?? "Programme"}
-        media={data.media}
-        profiles={data.aiProfiles}
-        policy={data.aiPolicy}
-      />
+        <ContentAiSection
+          programName={data.program?.name ?? "Programme"}
+          media={data.media}
+          profiles={data.aiProfiles}
+          policy={data.aiPolicy}
+        />
 
-      <PanelCard
-        collapsible
-        title="Là où ces connaissances se vérifient"
-        description="Une connaissance se vérifie par une évaluation ; sa mise en pratique relève des compétences."
-      >
-        <div className="flex flex-wrap gap-2">
-          <Button asChild variant="outline" className="min-h-11">
-            <Link to="/espace/administration/evaluations">
-              Évaluations et ECOS
-              <ArrowRight className="ms-1 size-4" aria-hidden />
-            </Link>
-          </Button>
-          <Button asChild variant="outline" className="min-h-11">
-            <Link to="/espace/administration/competences">
-              Référentiel de compétences
-              <ArrowRight className="ms-1 size-4" aria-hidden />
-            </Link>
-          </Button>
-        </div>
-      </PanelCard>
+        <PanelCard
+          collapsible
+          title="Là où ces connaissances se vérifient"
+          description="Une connaissance se vérifie par une évaluation ; sa mise en pratique relève des compétences."
+        >
+          <div className="flex flex-wrap gap-2">
+            <Button asChild variant="outline" className="min-h-11">
+              <Link to="/espace/administration/evaluations">
+                Évaluations et ECOS
+                <ArrowRight className="ms-1 size-4" aria-hidden />
+              </Link>
+            </Button>
+            <Button asChild variant="outline" className="min-h-11">
+              <Link to="/espace/administration/competences">
+                Référentiel de compétences
+                <ArrowRight className="ms-1 size-4" aria-hidden />
+              </Link>
+            </Button>
+          </div>
+        </PanelCard>
+      </ZoneProgramme>
 
       {/* 4. Tout en bas : le suivi, rattaché à une classe et à ses apprenants. */}
       <SectionHeading

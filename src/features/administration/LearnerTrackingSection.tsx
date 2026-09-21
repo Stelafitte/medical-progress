@@ -22,6 +22,7 @@ import { AlertTriangle, ArrowDownWideNarrow } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EmptyState, PanelCard, StatCard } from "@/features/professional/mock-ui";
 import { CohortSelector } from "@/features/administration/CohortSelector";
+import { setCohortFocus, useCohortFocus } from "@/application/cohortFocusStore";
 import type { ProgramAdminScope } from "@/features/administration/useProgramAdmin";
 import { defaultPilotCohortId } from "@/features/administration/adminProgramViewModel";
 import {
@@ -96,9 +97,10 @@ export function LearnerTrackingSection({
   description?: string;
 }) {
   const cohorts = data.cohorts;
-  const [localCohortId, setLocalCohortId] = useState<string | null>(null);
+  // 21/09 : sans promotion imposée par l'appelant, on suit celle de l'en-tête.
+  const focus = useCohortFocus();
   const [tri, setTri] = useState<"retard" | "nom">("retard");
-  const selectedId = cohortId ?? localCohortId ?? defaultPilotCohortId(cohorts);
+  const selectedId = cohortId ?? focus ?? defaultPilotCohortId(cohorts);
   const selected = cohorts.find((c) => c.id === selectedId);
 
   const rows = useMemo<readonly LearnerTrackingRow[]>(() => {
@@ -144,7 +146,7 @@ export function LearnerTrackingSection({
         <CohortSelector
           cohorts={cohorts}
           value={selectedId}
-          onChange={onCohortChange ?? setLocalCohortId}
+          onChange={onCohortChange ?? setCohortFocus}
           label="Classe suivie"
         />
       ) : null}

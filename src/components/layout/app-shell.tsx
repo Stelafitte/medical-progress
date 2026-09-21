@@ -16,6 +16,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { useUnreadMessages } from "@/features/messages/useUnreadMessages";
 import { HeaderSearch } from "@/components/layout/header-search";
 import { ProgramSwitcher } from "@/components/program-switcher";
+import { CohortSwitcher } from "@/components/cohort-switcher";
+import { RappelPromotion } from "@/components/rappel-promotion";
 import { isRouteWithinSpaces, landingRouteFor, navSpacesFor } from "@/components/layout/navigation";
 import { useSession } from "@/application/session";
 import { initials } from "@/lib/initials";
@@ -224,6 +226,7 @@ export function AppShell() {
                   Programme actif
                 </p>
                 <ProgramSwitcher variant="full" />
+                <CohortSwitcher variant="full" />
               </div>
               {canReturnToPlatform ? (
                 <div className="mt-4">
@@ -304,8 +307,9 @@ export function AppShell() {
             */}
             <HeaderSearch />
             {/* Sur smartphone, le programme actif se choisit dans le menu latéral. */}
-            <div className="hidden sm:block">
+            <div className="hidden items-center gap-2 sm:flex">
               <ProgramSwitcher />
+              <CohortSwitcher />
             </div>
             {/*
               LA PASTILLE DE NON-LUS, A COTE DU PROFIL (Stef, 10/09).
@@ -550,5 +554,10 @@ function ContenuOuSuspension() {
   if (enCours && parcoursCache(enCours, estPersonnel, pathname)) {
     return <ParcoursSuspendu motif={enCours.reason} jusquA={enCours.expectedUntil} />;
   }
-  return <Outlet />;
+  return (
+    <>
+      <RappelPromotion />
+      <Outlet />
+    </>
+  );
 }
