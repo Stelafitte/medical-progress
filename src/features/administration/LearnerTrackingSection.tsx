@@ -17,7 +17,7 @@
  * mesurée s'affiche « non mesuré » : jamais de chiffre inventé.
  */
 import { useMemo, useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
 import { AlertTriangle, ArrowDownWideNarrow } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EmptyState, PanelCard, StatCard } from "@/features/professional/mock-ui";
@@ -137,6 +137,9 @@ export function LearnerTrackingSection({
   const cohorts = data.cohorts;
   // 21/09 : sans promotion imposée par l'appelant, on suit celle de l'en-tête.
   const focus = useCohortFocus();
+  const dansLePilotage = useRouterState({
+    select: (state) => state.location.pathname.startsWith("/espace/administration/pilotage"),
+  });
   const [tri, setTri] = useState<"retard" | "nom">("retard");
   const selectedId = cohortId ?? focus ?? defaultPilotCohortId(cohorts);
   const selected = cohorts.find((c) => c.id === selectedId);
@@ -340,14 +343,17 @@ export function LearnerTrackingSection({
         )}
 
         <div className="flex flex-wrap gap-2">
-          <Button asChild size="sm" variant="outline" className="min-h-11">
-            <Link
-              to="/espace/administration/pilotage"
-              search={selectedId ? { promotion: selectedId } : {}}
-            >
-              Ouvrir le pilotage de cette classe
-            </Link>
-          </Button>
+          {/* Pas de lien vers le Pilotage… depuis le Pilotage (audit du 21/09). */}
+          {dansLePilotage ? null : (
+            <Button asChild size="sm" variant="outline" className="min-h-11">
+              <Link
+                to="/espace/administration/pilotage"
+                search={selectedId ? { promotion: selectedId } : {}}
+              >
+                Ouvrir le pilotage de cette classe
+              </Link>
+            </Button>
+          )}
           <Button asChild size="sm" variant="outline" className="min-h-11">
             <Link to="/espace/administration/competences">Référentiel de compétences</Link>
           </Button>

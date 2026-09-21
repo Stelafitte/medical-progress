@@ -9,7 +9,7 @@
  */
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { ArrowRight, BarChart3, CalendarClock } from "lucide-react";
+import { ArrowRight, CalendarClock } from "lucide-react";
 import { SectionHeading } from "@/components/section-heading";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -77,7 +77,13 @@ export function AdminDashboard() {
   const enrollmentsOfCohort = data.enrollments.filter((e) => e.cohortId === selectedId);
   const enrollmentIds = new Set(enrollmentsOfCohort.map((e) => e.id));
   const certificates = data.certificates.filter((c) => enrollmentIds.has(c.enrollmentId));
-  const missingDocuments = data.documents.filter((d) => d.status !== "received").length;
+  /* 21/09 : chaque compteur est borné à la promotion observée, comme le
+     bandeau l'annonce (l'audit les a trouvés calculés sur tout le programme). */
+  const missingDocuments = data.documents.filter(
+    (d) => enrollmentIds.has(d.enrollmentId) && d.status !== "received",
+  ).length;
+  const stagesDeLaPromotion = data.assignments.filter((a) => enrollmentIds.has(a.enrollmentId));
+  const carnetsDeLaPromotion = data.logsReceived.filter((l) => enrollmentIds.has(l.enrollmentId));
 
   /*
    * LES ÉVALUATIONS DE LA PROMOTION OBSERVÉE (Stef, 17/09 : « un bloc sur les
@@ -154,12 +160,12 @@ export function AdminDashboard() {
         />
         <StatCard
           label="Stages"
-          value={data.assignments.length}
+          value={stagesDeLaPromotion.length}
           hint={`${data.placements.length} terrain(s) configuré(s)`}
         />
         <StatCard
           label="Carnets reçus"
-          value={data.logsReceived.length}
+          value={carnetsDeLaPromotion.length}
           hint="validés puis transmis en interne"
         />
         <StatCard
@@ -172,7 +178,7 @@ export function AdminDashboard() {
       <div className="space-y-4">
         <PanelCard
           title="Tâches prioritaires et échéances"
-          description="Chaque tâche ouvre l'écran qui permet d'agir."
+          description="Tâches enregistrées pour ce programme, par échéance."
         >
           {data.tasks.length === 0 ? (
             <EmptyState>Aucune tâche.</EmptyState>
@@ -194,12 +200,6 @@ export function AdminDashboard() {
                     <span className="text-muted-foreground text-xs">
                       {formatFrDate(task.dueOn)}
                     </span>
-                    <Button asChild size="sm" variant="ghost" className="min-h-11">
-                      <Link to="/espace/administration/pilotage" search={pilotSearch}>
-                        Traiter
-                        <ArrowRight className="ms-1 size-4" aria-hidden />
-                      </Link>
-                    </Button>
                   </span>
                 </li>
               ))}
@@ -304,18 +304,7 @@ export function AdminDashboard() {
         )}
       </PanelCard>
 
-      <PanelCard
-        title="Statistiques pluriannuelles"
-        description="Comparaison des promotions successives du programme : réussite, assiduité, carnets reçus."
-        action={<BarChart3 className="text-primary size-5" aria-hidden />}
-      >
-        <Button asChild variant="outline" className="min-h-11">
-          <Link to="/espace/statistiques">
-            Ouvrir les statistiques du programme
-            <ArrowRight className="ms-1 size-4" aria-hidden />
-          </Link>
-        </Button>
-      </PanelCard>
+      {/* « Statistiques pluriannuelles » retiré le 21/09 : il ouvrait une page de démonstration. */}
 
       {/*
         LE SEUL COMPTEUR IA DE CET ECRAN, ET IL EST REEL

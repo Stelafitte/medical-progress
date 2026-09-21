@@ -2,7 +2,7 @@
  * « Concepteur de programme » — atelier complet, en un seul onglet.
  *
  * Tout se fait ICI : choix ou création du modèle, objectifs pédagogiques,
- * analyse IA (maquette) proposant les ressources nécessaires, implémentation
+ * analyse IA (réelle) proposant les ressources nécessaires, implémentation
  * immédiate ou différée de chaque ressource, puis préparation et association
  * de la promotion. Le seul lien sortant est le passage au pilotage, une fois
  * le programme conçu et la promotion associée.
@@ -799,7 +799,12 @@ export function AdminProgramDesigner() {
 
       const terrain = terrainStage;
       if (!resources.stage.selected || !terrain) {
-        setAssociationFaite(null);
+        /* 21/09 (audit) : rien n'est écrit ici, et il faut le dire. Une
+           promotion appartient déjà à son programme dès sa création ; sans
+           stage retenu, il n'y a aucun groupe d'encadrement à créer. */
+        setAssociationFaite(
+          `${cohort.label} fait déjà partie de ${data.program?.name ?? "ce programme"}. Aucun stage n'est retenu : aucun groupe d'encadrement n'a été créé.`,
+        );
         return;
       }
 
@@ -1703,7 +1708,7 @@ export function AdminProgramDesigner() {
         tone={readyForPilot ? "done" : "action"}
         collapsible
         title="Vérifier, enregistrer, puis piloter"
-        description="Tout ce qui a été décidé au-dessus, relu depuis la base. C'est le seul moment où l'on quitte le concepteur : le suivi se fait dans le pilotage."
+        description="Récapitulatif de ce qui a été décidé au-dessus. C'est le seul moment où l'on quitte le concepteur : le suivi se fait dans le pilotage."
         action={
           <Button asChild={readyForPilot} className="min-h-11" disabled={!readyForPilot}>
             {readyForPilot ? (

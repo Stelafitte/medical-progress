@@ -6,6 +6,7 @@
  * (import rapide avant saisie manuelle), puis les supports et leur exploitation
  * IA, et tout en bas le suivi d'acquisition rattaché à une classe.
  */
+import { toast } from "sonner";
 import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { ArrowRight } from "lucide-react";
@@ -17,7 +18,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { EmptyState, PanelCard, ScopeNotice, StatCard } from "@/features/professional/mock-ui";
 import { CorpusImport } from "@/features/administration/CorpusImport";
 import { MediaLibrarySection } from "@/features/administration/MediaLibrarySection";
-import { ContentAiSection } from "@/features/administration/ContentAiSection";
 import { CohortSelector } from "@/features/administration/CohortSelector";
 import { ZoneProgramme } from "@/features/administration/ZoneProgramme";
 import { KnowledgeCreationForm } from "@/features/administration/KnowledgeCreationForm";
@@ -120,7 +120,7 @@ export function AdminKnowledgeBase() {
         <PanelCard
           collapsible
           title="Référentiel de connaissances"
-          description="Liste unique : connaissances du dépôt et connaissances créées dans cette session."
+          description="Liste unique des connaissances du programme, telles qu'enregistrées en base."
         >
           {knowledge.length === 0 ? (
             <EmptyState>Aucune connaissance définie.</EmptyState>
@@ -144,6 +144,11 @@ export function AdminKnowledgeBase() {
                       await dataAccess.outcomes.archiveOutcome(id as OutcomeId);
                     }
                     await refetch();
+                  } catch (e) {
+                    /* 21/09 (audit) : un échec d'archivage ne passe plus sous silence. */
+                    toast.error("Archivage impossible", {
+                      description: e instanceof Error ? e.message : String(e),
+                    });
                   } finally {
                     setArchivingIds(new Set());
                   }
@@ -322,12 +327,11 @@ export function AdminKnowledgeBase() {
           people={data.people}
         />
 
-        <ContentAiSection
-          programName={data.program?.name ?? "Programme"}
-          media={data.media}
-          profiles={data.aiProfiles}
-          policy={data.aiPolicy}
-        />
+        {/*
+          « Exploitation IA des contenus » DÉBRANCHÉE le 21/09 (audit) : elle
+          lisait des profils de démonstration et ses boutons ne faisaient
+          qu'afficher « Action simulée ». Le composant reste dans le dépôt.
+        */}
 
         <PanelCard
           collapsible

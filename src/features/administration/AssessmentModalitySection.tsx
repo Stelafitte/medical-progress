@@ -101,8 +101,8 @@ function PromotionsEnTete({
     >
       {cohorts.length === 0 ? (
         <EmptyState>
-          Aucune promotion ouverte sur ce programme. Créez-en une (Concepteur, étape 2) : c'est
-          elle qui portera les évaluations.
+          Aucune promotion ouverte sur ce programme. Créez-en une (Concepteur, étape 2) : c'est elle
+          qui portera les évaluations.
         </EmptyState>
       ) : (
         <ul className="grid gap-2 lg:grid-cols-2">
@@ -181,13 +181,24 @@ function SessionRow({
     <li className="flex flex-wrap items-center gap-2 text-sm">
       <CalendarDays className="text-muted-foreground size-4 shrink-0" aria-hidden />
       <span className="font-mono text-xs">{formatFrDate(session.scheduledOn)}</span>
-      {session.location ? <span className="text-muted-foreground text-xs">{session.location}</span> : null}
-      {session.notes ? <span className="text-muted-foreground text-xs">· {session.notes}</span> : null}
+      {session.location ? (
+        <span className="text-muted-foreground text-xs">{session.location}</span>
+      ) : null}
+      {session.notes ? (
+        <span className="text-muted-foreground text-xs">· {session.notes}</span>
+      ) : null}
       <Badge variant={passee ? "secondary" : "outline"} className="font-normal">
         {passee ? "passée" : "à venir"}
       </Badge>
       {editable ? (
-        <Button type="button" size="sm" variant="ghost" className="min-h-9" disabled={busy} onClick={() => void supprimer()}>
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          className="min-h-9"
+          disabled={busy}
+          onClick={() => void supprimer()}
+        >
           Supprimer
         </Button>
       ) : null}
@@ -239,7 +250,13 @@ function AjouterUneDate({
           <Label htmlFor={`d-${modality.id}`} className="text-xs">
             Date
           </Label>
-          <Input id={`d-${modality.id}`} type="date" value={date} onChange={(e) => setDate(e.target.value)} className="min-h-11" />
+          <Input
+            id={`d-${modality.id}`}
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            className="min-h-11"
+          />
         </div>
         <div className="space-y-1">
           <Label htmlFor={`l-${modality.id}`} className="text-xs">
@@ -253,7 +270,13 @@ function AjouterUneDate({
             className="min-h-11"
           />
         </div>
-        <Button type="button" size="sm" className="min-h-11" disabled={busy || !date} onClick={() => void ajouter()}>
+        <Button
+          type="button"
+          size="sm"
+          className="min-h-11"
+          disabled={busy || !date}
+          onClick={() => void ajouter()}
+        >
           {busy ? "Ajout…" : "Ajouter cette date"}
         </Button>
       </div>
@@ -324,10 +347,7 @@ function LigneModalite({
   readonly carnets: readonly StageLogTemplate[];
   readonly traces: readonly StageTrackingMode[];
   readonly traceTemplateId: string | undefined;
-  readonly onTraces: (
-    modes: readonly StageTrackingMode[],
-    templateId: string | undefined,
-  ) => void;
+  readonly onTraces: (modes: readonly StageTrackingMode[], templateId: string | undefined) => void;
   readonly sessions: readonly AssessmentSession[];
   /** Le lien promotion ↔ modalité, quand il existe : il porte le pilotage. */
   readonly link: CohortAssessmentLink | undefined;
@@ -383,7 +403,8 @@ function LigneModalite({
    * fermé. Il le dit.
    */
   const estCarnetDeStage =
-    row.entry?.key === "journal-de-stage" || (row.modality?.subtype ?? row.entry?.subtype) === "portfolio";
+    row.entry?.key === "journal-de-stage" ||
+    (row.modality?.subtype ?? row.entry?.subtype) === "portfolio";
   const carnetServiParLeModule = estCarnetDeStage && activeProgram.config.placementsEnabled;
 
   /*
@@ -446,7 +467,9 @@ function LigneModalite({
             {nom}
           </button>
         ) : (
-          <span className={`text-sm ${cochee ? "font-medium" : "text-muted-foreground"}`}>{nom}</span>
+          <span className={`text-sm ${cochee ? "font-medium" : "text-muted-foreground"}`}>
+            {nom}
+          </span>
         )}
         {enAttente ? (
           <Badge variant="outline" className="text-muted-foreground font-normal">
@@ -500,10 +523,7 @@ function LigneModalite({
           </Badge>
         ) : null}
         {utilisee && estDossier && link ? (
-          <Badge
-            variant={link.questionSource ? "secondary" : "outline"}
-            className="font-normal"
-          >
+          <Badge variant={link.questionSource ? "secondary" : "outline"} className="font-normal">
             {link.questionSource ? `lot ${link.questionSource}` : "sans lot de dossiers"}
           </Badge>
         ) : null}
@@ -592,8 +612,8 @@ function LigneModalite({
             />
           ) : (
             <p className="text-muted-foreground text-xs">
-              Cochée, pas encore enregistrée. <strong>Enregistrer</strong>, en bas du bloc,
-              rattache cette modalité à la promotion : ses réglages s'ouvriront ici même.
+              Cochée, pas encore enregistrée. <strong>Enregistrer</strong>, en bas du bloc, rattache
+              cette modalité à la promotion : ses réglages s'ouvriront ici même.
             </p>
           )}
         </div>
@@ -619,7 +639,13 @@ function LigneModalite({
                 </span>
               </p>
               {editable ? (
-                <Button type="button" size="sm" variant="outline" className="min-h-9 gap-1" onClick={() => setEditing((v) => !v)}>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="min-h-9 gap-1"
+                  onClick={() => setEditing((v) => !v)}
+                >
                   <Pencil className="size-3.5" aria-hidden />
                   {editing ? "Fermer" : "Modifier"}
                 </Button>
@@ -702,29 +728,39 @@ function LigneModalite({
               onChanged={onChanged}
             />
           ) : (
-          <div className="space-y-2">
-            <p className="text-xs font-medium">
-              Temporalité <span className="text-muted-foreground font-normal">— pour cette promotion</span>
-            </p>
-            {!usageSeDate(modality.usage) ? (
-              <p className="text-muted-foreground text-xs">
-                En continu, du début à la fin du stage : une auto-évaluation ne se date pas.
+            <div className="space-y-2">
+              <p className="text-xs font-medium">
+                Temporalité{" "}
+                <span className="text-muted-foreground font-normal">— pour cette promotion</span>
               </p>
-            ) : (
-              <>
-                {dates.length === 0 ? (
-                  <p className="text-muted-foreground text-xs">Aucune date posée pour cette promotion.</p>
-                ) : (
-                  <ul className="space-y-1.5">
-                    {dates.map((s) => (
-                      <SessionRow key={s.id} session={s} editable={editable} onChanged={onChanged} />
-                    ))}
-                  </ul>
-                )}
-                {editable ? <AjouterUneDate modality={modality} cohortId={cohortId} onChanged={onChanged} /> : null}
-              </>
-            )}
-          </div>
+              {!usageSeDate(modality.usage) ? (
+                <p className="text-muted-foreground text-xs">
+                  En continu, du début à la fin du stage : une auto-évaluation ne se date pas.
+                </p>
+              ) : (
+                <>
+                  {dates.length === 0 ? (
+                    <p className="text-muted-foreground text-xs">
+                      Aucune date posée pour cette promotion.
+                    </p>
+                  ) : (
+                    <ul className="space-y-1.5">
+                      {dates.map((s) => (
+                        <SessionRow
+                          key={s.id}
+                          session={s}
+                          editable={editable}
+                          onChanged={onChanged}
+                        />
+                      ))}
+                    </ul>
+                  )}
+                  {editable ? (
+                    <AjouterUneDate modality={modality} cohortId={cohortId} onChanged={onChanged} />
+                  ) : null}
+                </>
+              )}
+            </div>
           )}
 
           {editable ? (
@@ -732,7 +768,14 @@ function LigneModalite({
               <span className="text-muted-foreground text-xs">
                 Décocher la case retire la modalité de cette promotion seulement.
               </span>
-              <Button type="button" size="sm" variant="outline" className="min-h-9" disabled={busy} onClick={() => void retirerDuProgramme()}>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="min-h-9"
+                disabled={busy}
+                onClick={() => void retirerDuProgramme()}
+              >
                 Retirer du programme entier
               </Button>
             </div>
@@ -792,7 +835,8 @@ export function AssessmentModalitySection({
     () => new Set(links.filter((l) => l.cohortId === cohortId).map((l) => l.modalityId)),
     [links, cohortId],
   );
-  const estUtilisee = (row: CatalogueRow) => row.modality !== undefined && utilisees.has(row.modality.id);
+  const estUtilisee = (row: CatalogueRow) =>
+    row.modality !== undefined && utilisees.has(row.modality.id);
 
   /*
    * LA SÉLECTION EN ATTENTE. Clé = identifiant de ligne, valeur = ce que la
@@ -845,9 +889,7 @@ export function AssessmentModalitySection({
     if (enAttente) return enAttente;
     return {
       modes: row.modality?.stageTracking ?? ([] as readonly StageTrackingMode[]),
-      ...(row.modality?.stageLogTemplateId
-        ? { templateId: row.modality.stageLogTemplateId }
-        : {}),
+      ...(row.modality?.stageLogTemplateId ? { templateId: row.modality.stageLogTemplateId } : {}),
     };
   };
   const lienDe = (row: CatalogueRow) =>
@@ -982,7 +1024,8 @@ export function AssessmentModalitySection({
           ...(choix.templateId ? { stageLogTemplateId: choix.templateId } : {}),
         });
       } catch (reason) {
-        const nom = rows.find((r) => r.modality?.id === modalityId)?.modality?.name ?? "Journal de stage";
+        const nom =
+          rows.find((r) => r.modality?.id === modalityId)?.modality?.name ?? "Journal de stage";
         erreurs.push(`${nom} : ${reason instanceof Error ? reason.message : "échec"}`);
       }
     }
@@ -1042,8 +1085,8 @@ export function AssessmentModalitySection({
                     <div className="flex flex-wrap items-baseline gap-2">
                       <h3 className="text-sm font-medium">{ASSESSMENT_USAGE_LABELS_FR[usage]}</h3>
                       <span className="text-muted-foreground text-xs">
-                        {compter(usage) === 0 ? "aucune utilisée" : `${compter(usage)} utilisée(s)`} ·{" "}
-                        {CE_QUE_L_USAGE_ENGAGE[usage]}
+                        {compter(usage) === 0 ? "aucune utilisée" : `${compter(usage)} utilisée(s)`}{" "}
+                        · {CE_QUE_L_USAGE_ENGAGE[usage]}
                       </span>
                     </div>
                     {lignes.length === 0 ? (
@@ -1078,7 +1121,9 @@ export function AssessmentModalitySection({
                             }}
                             stations={stationsDe(r)}
                             onStations={(cles) => {
-                              setStationsVoulues((prev) => new Map(prev).set(cleDOuverture(r), cles));
+                              setStationsVoulues((prev) =>
+                                new Map(prev).set(cleDOuverture(r), cles),
+                              );
                             }}
                             dossiers={(tous: readonly string[]) => dossiersDe(r, tous)}
                             onDossiers={(ids: readonly string[]) => {
@@ -1087,7 +1132,10 @@ export function AssessmentModalitySection({
                             sessions={sessions}
                             link={
                               r.modality
-                                ? links.find((l) => l.cohortId === cohort.id && l.modalityId === r.modality?.id)
+                                ? links.find(
+                                    (l) =>
+                                      l.cohortId === cohort.id && l.modalityId === r.modality?.id,
+                                  )
                                 : undefined
                             }
                             banques={banques}
@@ -1129,6 +1177,7 @@ export function AssessmentModalitySection({
                         setPending(new Map());
                         setStationsVoulues(new Map());
                         setTracesVoulues(new Map());
+                        setDossiersVoulus(new Map());
                       }}
                     >
                       Annuler
@@ -1137,10 +1186,10 @@ export function AssessmentModalitySection({
                 </div>
                 <p className="text-muted-foreground text-xs">
                   Cocher ne change rien tant que vous n'avez pas enregistré — les modalités comme
-                  les stations d'ECOS simulé. À l'enregistrement,
-                  une modalité cochée est créée si besoin, puis servie à cette promotion ; une
-                  modalité décochée lui est retirée, avec ses dates. Les caractéristiques et les
-                  dates, elles, se règlent dans le détail d'une ligne enregistrée.
+                  les stations d'ECOS simulé. À l'enregistrement, une modalité cochée est créée si
+                  besoin, puis servie à cette promotion ; une modalité décochée lui est retirée,
+                  avec ses dates. Les caractéristiques et les dates, elles, se règlent dans le
+                  détail d'une ligne enregistrée.
                 </p>
               </div>
             ) : null}

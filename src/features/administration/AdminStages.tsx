@@ -10,9 +10,10 @@
  * serveur de la migration 20260831093000.
  */
 import { SectionHeading } from "@/components/section-heading";
-import { ScopeNotice, StatCard } from "@/features/professional/mock-ui";
+import { PanelCard, ScopeNotice, StatCard } from "@/features/professional/mock-ui";
 import { PlacementSection } from "@/features/administration/PlacementSection";
-import { StageLogTemplatesSection } from "@/features/administration/StageLogTemplatesSection";
+import { Link } from "@tanstack/react-router";
+import { Button } from "@/components/ui/button";
 import { SupervisionGroupSection } from "@/features/administration/SupervisionGroupSection";
 import { SupervisionWeeksSection } from "@/features/administration/SupervisionWeeksSection";
 import type { ProgramId } from "@/domain/types";
@@ -49,8 +50,8 @@ export function AdminStages() {
 
       <ScopeNotice>
         Un programme peut compter plusieurs promotions : l'encadrement et le suivi se lisent
-        promotion par promotion. Les mêmes éléments sont disponibles dans la partie Stages du
-        pilotage de programme.
+        promotion par promotion. Le suivi individuel des carnets (journées, périodes validées) est
+        aussi une colonne du tableau de suivi, dans le Pilotage.
       </ScopeNotice>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -97,7 +98,20 @@ export function AdminStages() {
         groups={data.groups}
       />
 
-      <StageLogTemplatesSection />
+      {/*
+        « Modèles de carnets de stage » (StageLogTemplatesSection) RETIRÉ le
+        21/09 : c'était une maquette (interrupteur inerte, badge « Simulé »,
+        lecture de tous les programmes). Les vrais modèles, qui écrivent en
+        base, se règlent dans Évaluations > Carnets de stage.
+      */}
+      <PanelCard
+        title="Modèles de carnets de stage"
+        description="Ils se règlent dans l'onglet Évaluations, rubrique « Carnets de stage » (enregistrement réel)."
+      >
+        <Button asChild variant="outline" className="min-h-11">
+          <Link to="/espace/administration/evaluations">Ouvrir les modèles de carnets</Link>
+        </Button>
+      </PanelCard>
     </div>
   );
 }

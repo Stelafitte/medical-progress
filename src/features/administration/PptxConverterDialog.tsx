@@ -11,7 +11,7 @@
  * stockage privé et le contrôle pédagogique humain (invariant du projet).
  */
 import { useRef, useState } from "react";
-import { Download, FileUp, Loader2, Wand2 } from "lucide-react";
+import { Download, Loader2, Wand2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -257,19 +257,8 @@ export function PptxConverterDialog({ onConverted }: { onConverted?: (label: str
                   <Download className="size-4" aria-hidden />
                   Télécharger le paquet HTML5
                 </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="min-h-11 gap-2"
-                  onClick={() =>
-                    onConverted?.(
-                      "Mise en ligne simulée : la publication exigera le stockage privé et la validation pédagogique humaine.",
-                    )
-                  }
-                >
-                  <FileUp className="size-4" aria-hidden />
-                  Mettre en ligne (simulé)
-                </Button>
+                {/* Le bouton de mise en ligne factice est retiré (21/09) : la vraie mise en
+                    ligne est « Publier un cours commenté », dans le catalogue. */}
               </div>
               {downloaded ? (
                 <p role="status" className="text-xs text-muted-foreground">

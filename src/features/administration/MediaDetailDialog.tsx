@@ -16,15 +16,12 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
-  MEDIA_ACTION_LABELS_FR,
   MEDIA_KIND_LABELS_FR,
   MEDIA_STATUS_LABELS_FR,
   MEDIA_STORAGE_NOTICE_FR,
   MEDIA_VISIBILITY_LABELS_FR,
-  availableMediaActions,
   type MediaResource,
 } from "@/domain/mediaLibrary";
-import { NarratedConversionPanel } from "@/features/administration/NarratedConversionPanel";
 import type { Outcome } from "@/domain/types";
 import { NarratedDeckPreviewDialog } from "@/features/administration/NarratedDeckPreviewDialog";
 import { useDataAccess } from "@/application/session";
@@ -230,9 +227,9 @@ export function MediaDetailDialog({
           </p>
         </div>
 
-        {resource.narrated ? (
-          <NarratedConversionPanel deck={resource.narrated} onAction={onAction} />
-        ) : null}
+        {/* La fiche de conversion simulée (NarratedConversionPanel) n'est plus
+            montée depuis le 21/09 : la conversion réelle passe par convert.ps1
+            puis « Publier un cours commenté ». */}
 
         <div className="space-y-2 text-sm">
           <p className="font-medium">Historique des versions</p>
@@ -255,28 +252,11 @@ export function MediaDetailDialog({
 
         <DialogFooter className="flex-wrap gap-2">
           {/*
-            « Prévisualiser » est la seule action réelle de cette liste : elle
-            joue le diaporama publié. Les autres restent simulées, et le disent.
+            « Prévisualiser » est la seule action réelle de cette fiche : elle
+            joue le diaporama publié. Les autres (archiver, remplacer…) ne
+            n'affichaient qu'un message factice : retirées le 21/09.
           */}
           <NarratedDeckPreviewDialog resourceId={resource.id} title={resource.title} />
-          {availableMediaActions(resource)
-            .filter((action) => action !== "preview")
-            .map((action) => (
-              <Button
-                key={action}
-                type="button"
-                variant="outline"
-                size="sm"
-                className="min-h-11 w-full sm:w-auto"
-                onClick={() =>
-                  onAction(
-                    `Action simulée : ${MEDIA_ACTION_LABELS_FR[action]} — « ${resource.title} ». Aucune donnée modifiée.`,
-                  )
-                }
-              >
-                {MEDIA_ACTION_LABELS_FR[action]}
-              </Button>
-            ))}
         </DialogFooter>
       </DialogContent>
     </Dialog>

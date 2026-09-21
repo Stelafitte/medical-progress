@@ -21,14 +21,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  EmptyState,
-  PanelCard,
-  ScopeNotice,
-  StatCard,
-} from "@/features/professional/mock-ui";
+import { EmptyState, PanelCard, ScopeNotice, StatCard } from "@/features/professional/mock-ui";
 import { useDataAccess } from "@/application/session";
-import { RETENTION_TBD_FR, platformAdminCanOpenLearnerFile } from "@/domain/administration";
+import { RETENTION_TBD_FR } from "@/domain/administration";
 import { formatGo } from "@/domain/operatingCost";
 import {
   PLATFORM_ROLE_GROUP_LABELS_FR,
@@ -48,11 +43,13 @@ export function PlatformOverview() {
   const { data: result, isPending } = useQuery({
     queryKey: ["platform-overview"],
     queryFn: async () => {
-      const [rows, people, roles, audit, programs, cohorts] = await Promise.all([
+      /* 21/09 : ni journal d'audit ni crédits IA ici — les deux n'étaient servis
+         que par des données de démonstration. La consommation IA réelle et son
+         coût sont dans « Coûts d'exploitation ». */
+      const [rows, people, roles, programs, cohorts] = await Promise.all([
         data.administration.listPlatformSupervision(),
         data.administration.listPeople(),
         data.administration.listAllRoleAssignments(),
-        data.audit.listRecentEvents(200),
         data.programs.listPrograms(),
         data.programs.listCohorts(),
       ]);
@@ -62,14 +59,7 @@ export function PlatformOverview() {
           items: await data.media.listMedia(p.id),
         })),
       );
-      const credits = await Promise.all(
-        programs.map(async (p) => ({
-          programId: p.id,
-          entries: await data.aiCredits.listEntries(p.id),
-          budget: await data.aiCredits.getBudget(p.id),
-        })),
-      );
-      return { rows, people, roles, audit, programs, cohorts, media, credits };
+      return { rows, people, roles, programs, cohorts, media };
     },
   });
 
@@ -85,27 +75,9 @@ export function PlatformOverview() {
     (n, m) => n + m.items.filter((i) => i.status === "published").length,
     0,
   );
-  const totalCredits = result.credits.reduce(
-    (n, c) => n + c.entries.reduce((s, e) => s + e.credits, 0),
-    0,
-  );
-  const allocatedCredits = result.credits.reduce(
-    (n, c) => n + (c.budget?.allocatedCredits ?? 0),
-    0,
-  );
   const learners = result.rows.reduce((n, r) => n + r.learners, 0);
 
-  // « Interventions » = traces d'audit rattachées à un intervenant non apprenant.
-  const staffIds = new Set(staff.map((s) => s.personId));
-  const interventions = new Map<string, number>();
-  for (const event of result.audit) {
-    if (event.actorPersonId === "system") continue;
-    if (!staffIds.has(event.actorPersonId)) continue;
-    interventions.set(event.actorPersonId, (interventions.get(event.actorPersonId) ?? 0) + 1);
-  }
-  const staffRows = [...staff]
-    .map((s) => ({ ...s, count: interventions.get(s.personId) ?? 0 }))
-    .sort((a, b) => b.count - a.count);
+  const staffRows = [...staff];
 
   return (
     <div className="space-y-6">
@@ -113,13 +85,12 @@ export function PlatformOverview() {
         eyebrow="Campus Santé Augmenté"
         title="Vue d'ensemble de la plateforme"
         level={1}
-        description="Programmes, classes, usage, supports, intervenants, stockage et crédits IA — tous programmes confondus."
+        description="Programmes, promotions, supports, intervenants et stockage — tous programmes confondus."
       />
 
       <ScopeNotice>
-        Supervision uniquement : {platformAdminCanOpenLearnerFile() ? "accès" : "aucun accès"} aux
-        dossiers pédagogiques depuis cet espace. Pour entrer dans un programme, ouvrez l'onglet «
-        Programmes agrégés » ou utilisez le menu déroulant en haut à droite.
+        Vue de supervision, tous programmes confondus. Pour travailler dans un programme, ouvrez
+        l'onglet « Programmes agrégés » ou choisissez-le dans le menu en haut à droite.
       </ScopeNotice>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -136,16 +107,6 @@ export function PlatformOverview() {
           hint={`${publishedMedia} publié(s)`}
         />
         <StatCard label="Intervenants" value={staff.length} hint="hors apprenants" />
-        <StatCard
-          label="Crédits IA écrits"
-          value={totalCredits}
-          hint={`enveloppe simulée ${allocatedCredits} cr.`}
-        />
-        <StatCard
-          label="Événements d'audit"
-          value={result.audit.length}
-          hint="traces simulées récentes"
-        />
         <StatCard label="Conservation" value="à définir" hint={RETENTION_TBD_FR} />
       </div>
 
@@ -234,8 +195,8 @@ export function PlatformOverview() {
 
       <div className="grid gap-4 lg:grid-cols-2">
         <PanelCard
-          title="Intervenants et interventions"
-          description="Nombre de traces d'audit par intervenant (hors apprenants)."
+          title="Intervenants"
+          description="Personnes ayant un rôle hors apprenant, avec leurs rôles."
         >
           {staffRows.length === 0 ? (
             <EmptyState>Aucun intervenant enregistré.</EmptyState>
@@ -252,9 +213,6 @@ export function PlatformOverview() {
                       {row.groups.map((g) => PLATFORM_ROLE_GROUP_LABELS_FR[g]).join(" · ")}
                     </span>
                   </span>
-                  <Badge variant="outline" className="font-normal">
-                    {row.count} intervention(s)
-                  </Badge>
                 </li>
               ))}
             </ul>
@@ -262,26 +220,16 @@ export function PlatformOverview() {
         </PanelCard>
 
         <PanelCard
-          title="Consommation stockage et IA"
-          description="Enveloppes déclarées par programme. Aucun appel IA réel, aucun stockage actif."
+          title="Stockage par programme"
+          description="Volume stocké par programme. La consommation IA réelle et son coût se lisent dans « Coûts d'exploitation »."
         >
           <ul className="space-y-2">
-            {result.rows.map((row) => {
-              const credit = result.credits.find((c) => c.programId === row.programId);
-              const consumed = credit?.entries.reduce((s, e) => s + e.credits, 0) ?? 0;
-              const allocated = credit?.budget?.allocatedCredits ?? 0;
-              return (
-                <li key={row.programId} className="space-y-1">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="font-medium">{row.programLabel}</span>
-                    <span className="text-muted-foreground text-xs">
-                      {consumed} / {allocated || "—"} crédits · {formatGo(row.storageBytes)}
-                    </span>
-                  </div>
-                  <Progress value={allocated > 0 ? Math.round((consumed / allocated) * 100) : 0} />
-                </li>
-              );
-            })}
+            {result.rows.map((row) => (
+              <li key={row.programId} className="flex flex-wrap items-center justify-between gap-2">
+                <span className="font-medium">{row.programLabel}</span>
+                <span className="text-muted-foreground text-xs">{formatGo(row.storageBytes)}</span>
+              </li>
+            ))}
           </ul>
           <p className="text-muted-foreground text-xs">
             Sauvegardes et conservation : {RETENTION_TBD_FR}.
@@ -301,14 +249,14 @@ export function PlatformOverview() {
             </Link>
           </Button>
           <Button asChild variant="outline" className="min-h-11">
-            <Link to="/espace/plateforme/statistiques">
-              Statistiques
+            <Link to="/espace/plateforme/couts">
+              Coûts d'exploitation
               <ArrowRight className="ms-1 size-4" aria-hidden />
             </Link>
           </Button>
           <Button asChild variant="outline" className="min-h-11">
             <Link to="/espace/plateforme/pilotage">
-              Pilotage et paramétrage
+              Utilisateurs et réglages
               <ArrowRight className="ms-1 size-4" aria-hidden />
             </Link>
           </Button>

@@ -15,8 +15,7 @@ export const Route = createFileRoute("/espace/administration/personnes")({
       { property: "og:title", content: "Personnes et inscriptions — Campus Santé Augmenté" },
       {
         property: "og:description",
-        content:
-          "Gestion générique et simulée des personnes, comptes, cohortes et inscriptions du programme sélectionné.",
+        content: "Personnes, comptes, cohortes et inscriptions du programme sélectionné.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },

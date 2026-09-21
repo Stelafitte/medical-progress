@@ -208,7 +208,10 @@ export function AdminLearnerClasses() {
                         lockCohort
                         title={`Importer une liste dans « ${cohort.label} »`}
                         existingEmails={data.people.map((p) => p.email)}
-                        onImported={() => void refetch()}
+                        onImported={() => {
+                          void refetch();
+                          void pendingQuery.refetch();
+                        }}
                       />
                     </div>
                   ) : null}
@@ -378,7 +381,10 @@ export function AdminLearnerClasses() {
                 programId={data.program.id}
                 cohorts={cohorts}
                 existingEmails={data.people.map((p) => p.email)}
-                onImported={() => void refetch()}
+                onImported={() => {
+                  void refetch();
+                  void pendingQuery.refetch();
+                }}
               />
             </div>
           </div>

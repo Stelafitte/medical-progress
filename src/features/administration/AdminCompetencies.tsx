@@ -3,7 +3,7 @@
  * Une seule page déroulante, sans onglets : le référentiel, puis la création
  * (import en masse d'abord, saisie manuelle ensuite), puis — tout en bas — le
  * suivi d'acquisition rattaché à une classe et à ses apprenants.
- * Les états affichés sont une maquette déterministe (aucune donnée réelle).
+ * Les états affichés viennent des déclarations et validations réelles (21/09).
  */
 import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";

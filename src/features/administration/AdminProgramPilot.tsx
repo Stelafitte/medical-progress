@@ -298,7 +298,7 @@ export function AdminProgramPilot() {
 }
 
 /* ------------------------------------------------------------------ */
-/* Programmation (simulée)                                             */
+/* Programmation                                                      */
 /* ------------------------------------------------------------------ */
 
 /*
@@ -475,9 +475,15 @@ function PilotTools({
                               ? "parcours"
                               : "programmation";
                         setOpen((keys) => (keys.includes(cible) ? keys : [...keys, cible]));
-                        document
-                          .getElementById(`pilot-tool-${cible}`)
-                          ?.scrollIntoView({ behavior: "smooth", block: "center" });
+                        /* Le panneau n'existe qu'après le rendu qui suit
+                           `setOpen` : on attend deux images (audit 21/09). */
+                        requestAnimationFrame(() =>
+                          requestAnimationFrame(() =>
+                            document
+                              .getElementById(`pilot-tool-${cible}`)
+                              ?.scrollIntoView({ behavior: "smooth", block: "center" }),
+                          ),
+                        );
                       }}
                     />
                   ) : null}
@@ -512,8 +518,8 @@ function PilotTools({
                         dire « pas celle-ci », « decalee », « rattrapage ouvert ».
                       */}
                       <p className="text-muted-foreground text-[13px] leading-relaxed">
-                        Cochez, décochez, datez pour cette promotion seulement. Créer une modalité
-                        qui n'existe pas encore reste l'affaire du Concepteur.
+                        Cochez, décochez, datez pour cette promotion seulement. Une modalité créée
+                        ici rejoint le catalogue du programme.
                       </p>
                       {atelier}
                     </div>

@@ -17,9 +17,8 @@
  * compétences « contresignées » qui n'avaient jamais existé.
  */
 import type { ReactNode } from "react";
-import { Check, MapPin, Notebook, Send, Users } from "lucide-react";
+import { Check, MapPin, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { EmptyState, PanelCard } from "@/features/professional/mock-ui";
 import { PlacementCreationForm } from "@/features/administration/PlacementCreationForm";
 import { formatFrDate } from "@/features/administration/adminProgramViewModel";
@@ -71,10 +70,6 @@ export function PlacementSection({
   const cohortLabel = cohort?.label ?? "promotion";
   const group = groups.find((g) => g.cohortId === cohortId);
   const inscrits = enrollments.filter((e) => e.cohortId === cohortId);
-
-  const logbookTemplates = templates.filter(
-    (template) => template.programId === programId && template.enabled,
-  );
 
   const nameOf = (enrollment: Enrollment) =>
     people.find((p) => p.id === enrollment.personId)?.fullName ?? "Apprenant";
@@ -133,7 +128,7 @@ export function PlacementSection({
             programId={programId}
             idPrefix="stage-section"
             submitLabel="Créer le terrain de stage"
-            hint="Le terrain rejoint la liste unique : il est aussitôt proposé dans le « Concepteur de programme » et dans le pilotage."
+            hint="Le terrain rejoint la liste unique : il est aussitôt proposé dans le « Concepteur de programme » et dans les groupes d'encadrement."
             onCreated={() => onChanged?.()}
           />
         </PanelCard>
@@ -292,39 +287,8 @@ export function PlacementSection({
         )}
       </PanelCard>
 
-      <PanelCard
-        title="Éléments de validation du stage"
-        description="Ce qui est envoyé au responsable de stage et ce qui doit revenir. Cette partie n'est pas encore branchée."
-      >
-        <ul className="grid gap-3 md:grid-cols-2">
-          <li className="border-border rounded-md border p-4">
-            <Send className="text-muted-foreground size-4" aria-hidden />
-            <p className="mt-2 text-sm font-medium">Certificat à envoyer au responsable de stage</p>
-            <p className="text-muted-foreground mt-1 text-xs">
-              Attestation d'accueil et grille de validation adressées au responsable pour
-              contresignature, programme {programName}.
-            </p>
-            <Button size="sm" variant="outline" className="mt-3 min-h-11" disabled>
-              Préparer l'envoi (non branché)
-            </Button>
-          </li>
-          <li className="border-border rounded-md border p-4">
-            <Notebook className="text-muted-foreground size-4" aria-hidden />
-            <p className="mt-2 text-sm font-medium">Modèle de carnet de stage</p>
-            {logbookTemplates.length > 0 ? (
-              <p className="text-muted-foreground mt-1 text-xs">
-                Modèle prévu par le Concepteur de programme :{" "}
-                {logbookTemplates.map((template) => template.label).join(" · ")}.
-              </p>
-            ) : (
-              <p className="text-muted-foreground mt-1 text-xs">
-                Aucun modèle de carnet configuré. Le carnet fonctionne sans : présence, récit libre
-                et validation par période sont le socle commun.
-              </p>
-            )}
-          </li>
-        </ul>
-      </PanelCard>
+      {/* « Éléments de validation du stage » retiré le 21/09 : bouton « non
+          branché » et renvoi vers un Concepteur qui ne gère pas les carnets. */}
     </div>
   );
 }

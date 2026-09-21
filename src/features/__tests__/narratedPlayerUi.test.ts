@@ -147,7 +147,8 @@ describe("parcours administrateur", () => {
   it("affiche le statut de conversion dans la liste et la fiche détail", () => {
     expect(librarySection).toContain("CONVERSION_STATUS_LABELS_FR");
     expect(librarySection).toContain("conversionStatusOf");
-    expect(detail).toContain("NarratedConversionPanel");
+    // 21/09 : la fiche de conversion simulée n'est plus montée dans le détail.
+    expect(detail).not.toContain("<NarratedConversionPanel");
   });
 
   it("rappelle que la conversion est simulée", () => {

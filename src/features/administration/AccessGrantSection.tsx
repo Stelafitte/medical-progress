@@ -140,10 +140,13 @@ export function AccessGrantSection({
 
       <PanelCard
         title="Journal d'audit"
-        description="Traçabilité de chaque décision : attribution de droit, validation, export. Chaque attribution de droit est désormais tracée en base (table audit_events), mais sa lecture est réservée au backend — aucun aperçu client par design."
+        description="Traçabilité de chaque décision : attribution de droit, validation, export."
       >
         {auditEvents.length === 0 ? (
-          <EmptyState>Aucun événement.</EmptyState>
+          <EmptyState>
+            Chaque attribution de droit est bien tracée en base, mais sa consultation à l'écran
+            n'est pas encore disponible.
+          </EmptyState>
         ) : (
           <ul className="space-y-1 text-sm text-muted-foreground">
             {auditEvents.map((event) => (

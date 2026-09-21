@@ -6,11 +6,10 @@
  * Stages et Évaluations : le référentiel des pièces exigées, puis la création
  * (import en masse d'abord, saisie manuelle ensuite), puis — rattaché à une
  * classe — le suivi nominatif des pièces et le certificat de complétude.
- * Tout est simulé de façon déterministe : aucune écriture réelle.
+ * Le référentiel des pièces et le suivi sont réels (21/09). Le certificat est
+ * affiché en lecture : ses changements d'état ne sont pas encore branchés.
  */
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "@tanstack/react-router";
-import { ArrowRight } from "lucide-react";
 import { SectionHeading } from "@/components/section-heading";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -46,18 +45,9 @@ import {
   ADMIN_DOCUMENT_STATUS_LABELS_FR,
   CERTIFICATE_STATUS_LABELS_FR,
   EXPORT_NO_PATIENT_DATA_FR,
-  nextCertificateStatus,
-  type CertificateAction,
-  type CertificateStatus,
 } from "@/domain/administration";
 import type { ProgramId } from "@/domain/types";
 import { setCohortFocus, useCohortFocus } from "@/application/cohortFocusStore";
-
-const ACTIONS: readonly { action: CertificateAction; label: string }[] = [
-  { action: "request", label: "Demander" },
-  { action: "remind", label: "Relancer" },
-  { action: "validate", label: "Valider" },
-];
 
 export function AdminDocuments() {
   const { data, isPending, error } = useProgramAdmin();
@@ -67,8 +57,6 @@ export function AdminDocuments() {
    * dans Évaluations, et le Pilotage l'ignorait. Sept écrans, sept vérités.
    */
   const cohortId = useCohortFocus();
-  const [overrides, setOverrides] = useState<Record<string, CertificateStatus>>({});
-  const [feedback, setFeedback] = useState<string | null>(null);
   const [importText, setImportText] = useState("");
   const [imported, setImported] = useState<number | null>(null);
 
@@ -232,7 +220,7 @@ export function AdminDocuments() {
           </Button>
           {imported !== null ? (
             <span className="text-muted-foreground text-sm">
-              {imported} pièce(s) ajoutée(s) au référentiel de cette session.
+              {imported} pièce(s) ajoutée(s) au référentiel du programme.
             </span>
           ) : null}
         </div>
@@ -315,77 +303,29 @@ export function AdminDocuments() {
 
       <PanelCard
         title="Certificat de complétude"
-        description="non demandé → demandé → relancé → signé (responsable de stage) → validé (administration)."
+        description="État de chaque certificat : non demandé → demandé → relancé → signé (responsable de stage) → validé (administration). Lecture seule : les changements d'état ne sont pas encore branchés."
       >
         {certificates.length === 0 ? (
           <EmptyState>Aucun certificat suivi pour cette classe.</EmptyState>
         ) : (
           <ul className="space-y-3">
             {certificates.map((c) => {
-              const status = overrides[c.id] ?? c.status;
+              const status = c.status;
               return (
                 <li key={c.id} className="flex flex-wrap items-center gap-3">
                   <span className="font-medium">{personNameFor(data, c.enrollmentId)}</span>
                   <Badge variant="outline" className="font-normal">
                     {CERTIFICATE_STATUS_LABELS_FR[status]}
                   </Badge>
-                  <span className="flex flex-wrap gap-2">
-                    {ACTIONS.map(({ action, label }) => {
-                      const next = nextCertificateStatus(status, action);
-                      return (
-                        <Button
-                          key={action}
-                          size="sm"
-                          variant="outline"
-                          disabled={next === null}
-                          onClick={() => {
-                            if (!next) return;
-                            setOverrides((prev) => ({ ...prev, [c.id]: next }));
-                            setFeedback(
-                              `Démonstration : certificat « ${CERTIFICATE_STATUS_LABELS_FR[next]} » — aucune écriture réelle.`,
-                            );
-                          }}
-                        >
-                          {label}
-                        </Button>
-                      );
-                    })}
-                  </span>
                 </li>
               );
             })}
           </ul>
         )}
-        {feedback ? <p className="mt-3 text-sm text-muted-foreground">{feedback}</p> : null}
       </PanelCard>
 
-      <PanelCard
-        title="Attestations et exports"
-        description="Exports simulés, sans donnée patient."
-      >
-        <div className="flex flex-wrap gap-2">
-          <Button size="sm" variant="outline" disabled>
-            Exporter les attestations (prévu)
-          </Button>
-          <Button size="sm" variant="outline" disabled>
-            Exporter le suivi de promotion (prévu)
-          </Button>
-        </div>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <Button asChild variant="outline" className="min-h-11">
-            <Link to="/espace/administration/pilotage">
-              Agir sur cette promotion dans Pilotage
-              <ArrowRight className="ms-1 size-4" aria-hidden />
-            </Link>
-          </Button>
-          <Button asChild variant="outline" className="min-h-11">
-            <Link to="/espace/administration/securite">
-              Conservation et audit
-              <ArrowRight className="ms-1 size-4" aria-hidden />
-            </Link>
-          </Button>
-        </div>
-      </PanelCard>
+      {/* « Attestations et exports » retiré le 21/09 : deux boutons désactivés
+          « (prévu) » et un lien vers le Pilotage, qui renvoyait ici. */}
     </div>
   );
 }

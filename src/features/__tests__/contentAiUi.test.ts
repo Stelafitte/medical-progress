@@ -15,9 +15,8 @@ const ADD_MEDIA = read("src/features/administration/AddMediaDialog.tsx");
 const KNOWLEDGE = read("src/features/administration/AdminKnowledgeBase.tsx");
 
 describe("administration — exploitation IA", () => {
-  it("est accessible depuis l'onglet Base de connaissances", () => {
-    expect(KNOWLEDGE).toContain("ContentAiSection");
-    expect(KNOWLEDGE).toContain("Exploitation IA");
+  it("n'est plus montée dans la Base de connaissances (audit du 21/09 : factice)", () => {
+    expect(KNOWLEDGE).not.toContain("<ContentAiSection");
   });
 
   it("affiche la couverture, les files et les actions simulées", () => {

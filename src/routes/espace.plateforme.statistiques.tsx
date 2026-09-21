@@ -15,7 +15,7 @@ export const Route = createFileRoute("/espace/plateforme/statistiques")({
       { property: "og:title", content: "Statistiques plateforme — Campus Santé Augmenté" },
       {
         property: "og:description",
-        content: "Agrégats pluriannuels tous programmes confondus, sans donnée nominative.",
+        content: "Statistiques du programme actif (pas encore alimentées par des données réelles).",
       },
       { name: "robots", content: "noindex" },
     ],

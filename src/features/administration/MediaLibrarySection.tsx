@@ -4,8 +4,8 @@
  * sur le type riche `MediaResource` de la maquette (module, historique de
  * versions et marquage "à réviser" restent donc neutres tant que la base ne
  * les porte pas). La création d'un support (AddMediaDialog) est réelle.
- * Reste à câbler : la publication d'un PPTX sonorisé depuis
- * PptxConverterDialog (la conversion est réelle, la mise en ligne non).
+ * La publication d'un cours commenté est réelle (NarratedPackagePublishDialog) ;
+ * PptxConverterDialog ne sert plus qu'à convertir et télécharger localement.
  */
 import { useMemo, useState } from "react";
 import {
@@ -141,12 +141,8 @@ export function MediaLibrarySection({
           <div className="flex flex-wrap items-center gap-2">
             {curriculumVersionId ? (
               <>
-                {/*
-                 * La conversion PPTX -> lecteur web est réelle et locale, mais
-                 * sa publication (RPC `publish_narrated_deck`) n'est pas encore
-                 * branchée : ce dialogue ne reçoit donc pas encore le contexte
-                 * programme/version/objectifs.
-                 */}
+                {/* Conversion locale (téléchargement). La publication réelle est
+                    le dialogue voisin, « Publier un cours commenté ». */}
                 <PptxConverterDialog onConverted={setLastAction} />
                 <NarratedPackagePublishDialog
                   programName={programName}

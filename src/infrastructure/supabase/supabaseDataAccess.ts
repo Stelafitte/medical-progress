@@ -57,15 +57,8 @@ import type {
   UpdateAssessmentSessionInput,
   UploadUrlResult,
 } from "@/application/ports/repositories";
-import type {
-  CohortInterruption,
-  CohortInterruptionMode,
-} from "@/domain/cohortInterruption";
-import type {
-  CostBasis,
-  CostProvider,
-  CostUnitKind,
-} from "@/domain/operatingCost";
+import type { CohortInterruption, CohortInterruptionMode } from "@/domain/cohortInterruption";
+import type { CostBasis, CostProvider, CostUnitKind } from "@/domain/operatingCost";
 import type {
   IncidentScope,
   PilotDecision,
@@ -1156,7 +1149,9 @@ type AssessmentSessionRow = {
 /** Le jsonb `config` en clés serveur → l'objet du domaine. Tolérant : un champ absent = pas de filtre. */
 function mapQcmConfig(raw: AssessmentSessionRow["config"]): QcmWindowConfig | undefined {
   if (!raw) return undefined;
-  const ranks = (raw.ranks ?? []).filter((r): r is "A" | "B" | "C" => r === "A" || r === "B" || r === "C");
+  const ranks = (raw.ranks ?? []).filter(
+    (r): r is "A" | "B" | "C" => r === "A" || r === "B" || r === "C",
+  );
   return {
     themeIds: raw.theme_ids ?? [],
     ranks,
@@ -1663,6 +1658,50 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
   return {
     ...mockDataAccess,
     isMock: false,
+    /*
+     * AUCUNE DONNÉE DE DÉMONSTRATION EN PRODUCTION (audit du 21/09).
+     *
+     * `...mockDataAccess` ci-dessus fournit tout ce que ce fichier ne
+     * réimplémente pas. Pour les espaces ci-dessous, cela servait les
+     * FIXTURES aux vrais utilisateurs : faux journal d'audit (d'un programme
+     * fictif, sans filtre), fausses statistiques, faux crédits IA, faux DPC.
+     * Une liste vide dit la vérité — rien n'est encore branché — là où une
+     * fixture ment de façon plausible. Chaque espace qui sera branché
+     * remplacera son entrée ici.
+     */
+    audit: { listRecentEvents: async () => [] },
+    aiCredits: { listEntries: async () => [], getBudget: async () => undefined },
+    statistics: { listCohortStatistics: async () => [] },
+    contentAi: {
+      listProfiles: async () => [],
+      getProfile: async () => undefined,
+      getPolicy: async () => undefined,
+      listLearnerAiResources: async () => [],
+    },
+    ecos: { listInventory: async () => [], listScenarios: async () => [] },
+    evidence: { listEvidenceForEnrollment: async () => [] },
+    clinicalAudits: {
+      listTemplates: async () => [],
+      listCampaigns: async () => [],
+      listSubmissions: async () => [],
+      listSubmissionsForEnrollment: async () => [],
+      listTests: async () => [],
+      listTestResults: async () => [],
+      listSessions: async () => [],
+    },
+    dpc: {
+      listGrids: async () => [],
+      getSetup: async () => undefined,
+      listRounds: async () => [],
+      listEntries: async () => [],
+      listEntriesForEnrollment: async () => [],
+      listSequences: async () => [],
+      listQuestions: async () => [],
+      listTests: async () => [],
+      listTestAttempts: async () => [],
+      listAttendance: async () => [],
+      listSessions: async () => [],
+    },
     /**
      * Carnets de stage — LECTURE ET ECRITURE REELLES (07/09).
      *
@@ -1762,41 +1801,50 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
         const { data, error } = await requete;
         assertNoSupabaseError(error);
         type Row = {
-          id: string; program_id: string; version: number; label: string; description: string;
-          module_label: string; cohort_ids: string[]; enabled: boolean; fields: unknown;
-          objectives: unknown; entry_frequency: string; validator_role: string;
-          completeness_rules: string[]; photo_policy: unknown;
-          created_at: string; updated_at: string;
+          id: string;
+          program_id: string;
+          version: number;
+          label: string;
+          description: string;
+          module_label: string;
+          cohort_ids: string[];
+          enabled: boolean;
+          fields: unknown;
+          objectives: unknown;
+          entry_frequency: string;
+          validator_role: string;
+          completeness_rules: string[];
+          photo_policy: unknown;
+          created_at: string;
+          updated_at: string;
         };
-        return ((data ?? []) as Row[]).map(
-          (row): StageLogTemplate => ({
-            id: row.id as StageLogTemplate["id"],
-            programId: row.program_id,
-            version: row.version,
-            label: row.label,
-            description: row.description,
-            moduleLabel: row.module_label,
-            cohortIds: (row.cohort_ids ?? []) as StageLogTemplate["cohortIds"],
-            enabled: row.enabled,
-            fields: (row.fields ?? []) as StageLogTemplate["fields"],
-            objectives: (row.objectives ?? []) as StageLogTemplate["objectives"],
-            entryFrequency: row.entry_frequency as StageLogTemplate["entryFrequency"],
-            validatorRole: row.validator_role as StageLogTemplate["validatorRole"],
-            completenessRules: row.completeness_rules ?? [],
-            photoPolicy: (row.photo_policy ?? {
-              enabled: false,
-              allowedObjects: [],
-              allowCustomObject: false,
-              maxPhotosPerEntry: 0,
-              supervisorValidationRequired: false,
-              retentionPolicyLabel: "à définir avant backend",
-              automaticCheck: "not_active",
-            }) as StageLogTemplate["photoPolicy"],
-            createdAt: row.created_at,
-            updatedAt: row.updated_at,
-            provenance: { sourceSystem: "native" },
-          }),
-        );
+        return ((data ?? []) as Row[]).map((row): StageLogTemplate => ({
+          id: row.id as StageLogTemplate["id"],
+          programId: row.program_id,
+          version: row.version,
+          label: row.label,
+          description: row.description,
+          moduleLabel: row.module_label,
+          cohortIds: (row.cohort_ids ?? []) as StageLogTemplate["cohortIds"],
+          enabled: row.enabled,
+          fields: (row.fields ?? []) as StageLogTemplate["fields"],
+          objectives: (row.objectives ?? []) as StageLogTemplate["objectives"],
+          entryFrequency: row.entry_frequency as StageLogTemplate["entryFrequency"],
+          validatorRole: row.validator_role as StageLogTemplate["validatorRole"],
+          completenessRules: row.completeness_rules ?? [],
+          photoPolicy: (row.photo_policy ?? {
+            enabled: false,
+            allowedObjects: [],
+            allowCustomObject: false,
+            maxPhotosPerEntry: 0,
+            supervisorValidationRequired: false,
+            retentionPolicyLabel: "à définir avant backend",
+            automaticCheck: "not_active",
+          }) as StageLogTemplate["photoPolicy"],
+          createdAt: row.created_at,
+          updatedAt: row.updated_at,
+          provenance: { sourceSystem: "native" },
+        }));
       },
       async upsertStageLogTemplate(input) {
         const { data, error } = await client.rpc("upsert_stage_log_template", {
@@ -1821,27 +1869,33 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
       async listLogbookReports(enrollmentId) {
         const { data, error } = await client
           .from("stage_logbook_reports")
-          .select("id,enrollment_id,template_id,objective_key,declared_count,note,updated_at,validated_at,validated_by")
+          .select(
+            "id,enrollment_id,template_id,objective_key,declared_count,note,updated_at,validated_at,validated_by",
+          )
           .eq("enrollment_id", enrollmentId);
         assertNoSupabaseError(error);
         type Row = {
-          id: string; enrollment_id: string; template_id: string; objective_key: string;
-          declared_count: number; note: string; updated_at: string;
-          validated_at: string | null; validated_by: string | null;
+          id: string;
+          enrollment_id: string;
+          template_id: string;
+          objective_key: string;
+          declared_count: number;
+          note: string;
+          updated_at: string;
+          validated_at: string | null;
+          validated_by: string | null;
         };
-        return ((data ?? []) as Row[]).map(
-          (row): StageLogbookReport => ({
-            id: row.id,
-            enrollmentId: row.enrollment_id,
-            templateId: row.template_id,
-            objectiveKey: row.objective_key,
-            declaredCount: row.declared_count,
-            note: row.note,
-            updatedAt: row.updated_at,
-            ...(row.validated_at ? { validatedAt: row.validated_at } : {}),
-            ...(row.validated_by ? { validatedBy: row.validated_by } : {}),
-          }),
-        );
+        return ((data ?? []) as Row[]).map((row): StageLogbookReport => ({
+          id: row.id,
+          enrollmentId: row.enrollment_id,
+          templateId: row.template_id,
+          objectiveKey: row.objective_key,
+          declaredCount: row.declared_count,
+          note: row.note,
+          updatedAt: row.updated_at,
+          ...(row.validated_at ? { validatedAt: row.validated_at } : {}),
+          ...(row.validated_by ? { validatedBy: row.validated_by } : {}),
+        }));
       },
       async declareLogbookCount(input) {
         const { data, error } = await client.rpc("declare_stage_logbook_count", {
@@ -1853,8 +1907,13 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
         });
         assertNoSupabaseError(error);
         const row = data as {
-          id: string; enrollment_id: string; template_id: string; objective_key: string;
-          declared_count: number; note: string; updated_at: string;
+          id: string;
+          enrollment_id: string;
+          template_id: string;
+          objective_key: string;
+          declared_count: number;
+          note: string;
+          updated_at: string;
         };
         return {
           id: row.id,
@@ -1880,19 +1939,21 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
           .eq("enrollment_id", enrollmentId);
         assertNoSupabaseError(error);
         type Row = {
-          id: string; enrollment_id: string; kind: StageAttestation["kind"];
-          note: string; granted_by: string; granted_at: string;
+          id: string;
+          enrollment_id: string;
+          kind: StageAttestation["kind"];
+          note: string;
+          granted_by: string;
+          granted_at: string;
         };
-        return ((data ?? []) as Row[]).map(
-          (row): StageAttestation => ({
-            id: row.id,
-            enrollmentId: row.enrollment_id,
-            kind: row.kind,
-            note: row.note,
-            grantedBy: row.granted_by,
-            grantedAt: row.granted_at,
-          }),
-        );
+        return ((data ?? []) as Row[]).map((row): StageAttestation => ({
+          id: row.id,
+          enrollmentId: row.enrollment_id,
+          kind: row.kind,
+          note: row.note,
+          grantedBy: row.granted_by,
+          grantedAt: row.granted_at,
+        }));
       },
       async grantStageAttestation(input) {
         const { error } = await client.rpc("grant_stage_attestation", {
@@ -2010,13 +2071,11 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
             max_points: number | string;
             points: number | string;
           }[]
-        ).map(
-          (row): EcosGridItem => ({
-            label: row.label,
-            maxPoints: Number(row.max_points),
-            points: Number(row.points),
-          }),
-        );
+        ).map((row): EcosGridItem => ({
+          label: row.label,
+          maxPoints: Number(row.max_points),
+          points: Number(row.points),
+        }));
       },
       async recordRun(input) {
         const { data, error } = await client.rpc("record_ecos_external_run", {
@@ -2954,7 +3013,9 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
       async listSendHistory(programId: ProgramId) {
         const { data, error } = await client
           .from("communication_campaigns")
-          .select("id,program_id,template_id,subject,status,created_at,communication_deliveries(count)")
+          .select(
+            "id,program_id,template_id,subject,status,created_at,communication_deliveries(count)",
+          )
           .eq("program_id", programId)
           .order("created_at", { ascending: false })
           .limit(100);
@@ -3178,23 +3239,25 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
           ecos_stations: string[] | null;
           served_case_ids: string[] | null;
         };
-        return ((data ?? []) as Row[]).map(
-          (row): CohortAssessmentLink => ({
-            programId: row.program_id,
-            cohortId: row.cohort_id,
-            modalityId: row.modality_id,
-            isOpen: row.is_open,
-            freeAccess: row.free_access,
-            ...(row.question_source ? { questionSource: row.question_source } : {}),
-            ...(row.ecos_stations && row.ecos_stations.length > 0
-              ? { ecosStations: row.ecos_stations }
-              : {}),
-            /* `null` et `[]` ne disent PAS la même chose : on garde le tableau vide. */
-            ...(row.served_case_ids === null ? {} : { servedCaseIds: row.served_case_ids }),
-          }),
-        );
+        return ((data ?? []) as Row[]).map((row): CohortAssessmentLink => ({
+          programId: row.program_id,
+          cohortId: row.cohort_id,
+          modalityId: row.modality_id,
+          isOpen: row.is_open,
+          freeAccess: row.free_access,
+          ...(row.question_source ? { questionSource: row.question_source } : {}),
+          ...(row.ecos_stations && row.ecos_stations.length > 0
+            ? { ecosStations: row.ecos_stations }
+            : {}),
+          /* `null` et `[]` ne disent PAS la même chose : on garde le tableau vide. */
+          ...(row.served_case_ids === null ? {} : { servedCaseIds: row.served_case_ids }),
+        }));
       },
-      async setCohortAssessmentModality(cohortId: string, assessmentModalityId: string, enabled: boolean) {
+      async setCohortAssessmentModality(
+        cohortId: string,
+        assessmentModalityId: string,
+        enabled: boolean,
+      ) {
         const { error } = await client.rpc("set_cohort_assessment_modality", {
           p_cohort_id: cohortId,
           p_modality_id: assessmentModalityId,
@@ -3203,7 +3266,9 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
         assertNoSupabaseError(error);
       },
       async questionBankSummary(programId: ProgramId) {
-        const { data, error } = await client.rpc("question_bank_summary", { p_program_id: programId });
+        const { data, error } = await client.rpc("question_bank_summary", {
+          p_program_id: programId,
+        });
         assertNoSupabaseError(error);
         type Row = {
           source: string;
@@ -3217,19 +3282,17 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
           cases?: number | string | null;
         };
         // Les count(*) sont des bigint : PostgREST les sérialise en chaîne.
-        return ((data ?? []) as Row[]).map(
-          (r): QuestionBankRow => ({
-            source: r.source,
-            lastImportedAt: r.last_imported_at,
-            published: Number(r.published),
-            drafts: Number(r.drafts),
-            flagged: Number(r.flagged),
-            retired: Number(r.retired),
-            cases: Number(r.cases ?? 0),
-            ...(r.file_name ? { fileName: r.file_name } : {}),
-            ...(r.file_modified_at ? { fileModifiedAt: r.file_modified_at } : {}),
-          }),
-        );
+        return ((data ?? []) as Row[]).map((r): QuestionBankRow => ({
+          source: r.source,
+          lastImportedAt: r.last_imported_at,
+          published: Number(r.published),
+          drafts: Number(r.drafts),
+          flagged: Number(r.flagged),
+          retired: Number(r.retired),
+          cases: Number(r.cases ?? 0),
+          ...(r.file_name ? { fileName: r.file_name } : {}),
+          ...(r.file_modified_at ? { fileModifiedAt: r.file_modified_at } : {}),
+        }));
       },
       async importQuestionItems(input: ImportQuestionItemsInput) {
         const { data, error } = await client.rpc("import_question_items", {
@@ -3295,16 +3358,14 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
           section_label: string;
           published: number | string;
         };
-        return ((data ?? []) as Row[]).map(
-          (r): QuestionSectionRow => ({
-            chapter: r.chapter,
-            chapterTitle: r.chapter_title,
-            itemCode: r.item_code,
-            sectionKey: r.section_key,
-            sectionLabel: r.section_label,
-            published: Number(r.published),
-          }),
-        );
+        return ((data ?? []) as Row[]).map((r): QuestionSectionRow => ({
+          chapter: r.chapter,
+          chapterTitle: r.chapter_title,
+          itemCode: r.item_code,
+          sectionKey: r.section_key,
+          sectionLabel: r.section_label,
+          published: Number(r.published),
+        }));
       },
       async countQuestions(filter: QuestionFilter) {
         const { data, error } = await client.rpc("count_questions", {
@@ -3367,7 +3428,12 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
           score: number | string;
           discordances: number;
           eliminatory: boolean;
-          options: { letter: string; correct: boolean; explanation: string | null; flag: string | null }[];
+          options: {
+            letter: string;
+            correct: boolean;
+            explanation: string | null;
+            flag: string | null;
+          }[];
         };
         return {
           score: Number(raw.score),
@@ -3391,7 +3457,9 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
       },
       /* ---- Résultats et signalements : 20260915160000_qcm_resultats_et_signalements.sql */
       async listQuestionReports(programId: ProgramId) {
-        const { data, error } = await client.rpc("list_question_reports", { p_program_id: programId });
+        const { data, error } = await client.rpc("list_question_reports", {
+          p_program_id: programId,
+        });
         assertNoSupabaseError(error);
         type Row = {
           id: string;
@@ -3408,25 +3476,27 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
           handled_at: string | null;
           resolution: string | null;
         };
-        return ((data ?? []) as Row[]).map(
-          (r): QuestionReportRow => ({
-            id: r.id,
-            questionId: r.question_id,
-            externalRef: r.external_ref,
-            stem: r.stem,
-            questionStatus: r.question_status,
-            reason: r.reason,
-            message: r.message ?? "",
-            status: r.status,
-            createdAt: r.created_at,
-            ...(r.reported_by_name ? { reportedByName: r.reported_by_name } : {}),
-            ...(r.handled_by_name ? { handledByName: r.handled_by_name } : {}),
-            ...(r.handled_at ? { handledAt: r.handled_at } : {}),
-            ...(r.resolution ? { resolution: r.resolution } : {}),
-          }),
-        );
+        return ((data ?? []) as Row[]).map((r): QuestionReportRow => ({
+          id: r.id,
+          questionId: r.question_id,
+          externalRef: r.external_ref,
+          stem: r.stem,
+          questionStatus: r.question_status,
+          reason: r.reason,
+          message: r.message ?? "",
+          status: r.status,
+          createdAt: r.created_at,
+          ...(r.reported_by_name ? { reportedByName: r.reported_by_name } : {}),
+          ...(r.handled_by_name ? { handledByName: r.handled_by_name } : {}),
+          ...(r.handled_at ? { handledAt: r.handled_at } : {}),
+          ...(r.resolution ? { resolution: r.resolution } : {}),
+        }));
       },
-      async resolveQuestionReport(reportId: string, decision: QuestionReportDecision, resolution: string) {
+      async resolveQuestionReport(
+        reportId: string,
+        decision: QuestionReportDecision,
+        resolution: string,
+      ) {
         const { error } = await client.rpc("resolve_question_report", {
           p_report_id: reportId,
           p_status: decision,
@@ -3435,7 +3505,9 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
         assertNoSupabaseError(error);
       },
       async questionResultsByLearner(cohortId: string) {
-        const { data, error } = await client.rpc("question_results_by_learner", { p_cohort_id: cohortId });
+        const { data, error } = await client.rpc("question_results_by_learner", {
+          p_cohort_id: cohortId,
+        });
         assertNoSupabaseError(error);
         type Row = {
           enrollment_id: string;
@@ -3446,20 +3518,20 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
           avg_score: number | string | null;
           last_answered_at: string | null;
         };
-        return ((data ?? []) as Row[]).map(
-          (r): LearnerQuestionResults => ({
-            enrollmentId: r.enrollment_id,
-            personId: r.person_id,
-            fullName: r.full_name,
-            attempts: Number(r.attempts),
-            distinctQuestions: Number(r.distinct_questions),
-            ...(r.avg_score !== null ? { avgScore: Number(r.avg_score) } : {}),
-            ...(r.last_answered_at ? { lastAnsweredAt: r.last_answered_at } : {}),
-          }),
-        );
+        return ((data ?? []) as Row[]).map((r): LearnerQuestionResults => ({
+          enrollmentId: r.enrollment_id,
+          personId: r.person_id,
+          fullName: r.full_name,
+          attempts: Number(r.attempts),
+          distinctQuestions: Number(r.distinct_questions),
+          ...(r.avg_score !== null ? { avgScore: Number(r.avg_score) } : {}),
+          ...(r.last_answered_at ? { lastAnsweredAt: r.last_answered_at } : {}),
+        }));
       },
       async questionResultsByTheme(cohortId: string) {
-        const { data, error } = await client.rpc("question_results_by_theme", { p_cohort_id: cohortId });
+        const { data, error } = await client.rpc("question_results_by_theme", {
+          p_cohort_id: cohortId,
+        });
         assertNoSupabaseError(error);
         type Row = {
           theme_id: string | null;
@@ -3468,18 +3540,18 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
           avg_score: number | string | null;
           learners: number | string;
         };
-        return ((data ?? []) as Row[]).map(
-          (r): ThemeQuestionResults => ({
-            themeLabel: r.theme_label,
-            attempts: Number(r.attempts),
-            learners: Number(r.learners),
-            ...(r.theme_id ? { themeId: r.theme_id } : {}),
-            ...(r.avg_score !== null ? { avgScore: Number(r.avg_score) } : {}),
-          }),
-        );
+        return ((data ?? []) as Row[]).map((r): ThemeQuestionResults => ({
+          themeLabel: r.theme_label,
+          attempts: Number(r.attempts),
+          learners: Number(r.learners),
+          ...(r.theme_id ? { themeId: r.theme_id } : {}),
+          ...(r.avg_score !== null ? { avgScore: Number(r.avg_score) } : {}),
+        }));
       },
       async myQuestionResults(enrollmentId: string) {
-        const { data, error } = await client.rpc("my_question_results", { p_enrollment_id: enrollmentId });
+        const { data, error } = await client.rpc("my_question_results", {
+          p_enrollment_id: enrollmentId,
+        });
         assertNoSupabaseError(error);
         type Row = {
           attempts: number | string;
@@ -3519,24 +3591,29 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
         });
         assertNoSupabaseError(error);
         type Row = {
-          id: string; external_ref: string; kind: "mini_dp" | "kfp"; title: string;
-          chapter: number | null; chapter_title: string | null; item_code: string | null;
-          status: string; validated: boolean; steps: number | string;
+          id: string;
+          external_ref: string;
+          kind: "mini_dp" | "kfp";
+          title: string;
+          chapter: number | null;
+          chapter_title: string | null;
+          item_code: string | null;
+          status: string;
+          validated: boolean;
+          steps: number | string;
         };
-        return ((data ?? []) as Row[]).map(
-          (r): QuestionCaseRow => ({
-            id: r.id,
-            externalRef: r.external_ref,
-            kind: r.kind,
-            title: r.title,
-            status: r.status,
-            validated: r.validated,
-            steps: Number(r.steps),
-            ...(r.chapter !== null ? { chapter: r.chapter } : {}),
-            ...(r.chapter_title ? { chapterTitle: r.chapter_title } : {}),
-            ...(r.item_code ? { itemCode: r.item_code } : {}),
-          }),
-        );
+        return ((data ?? []) as Row[]).map((r): QuestionCaseRow => ({
+          id: r.id,
+          externalRef: r.external_ref,
+          kind: r.kind,
+          title: r.title,
+          status: r.status,
+          validated: r.validated,
+          steps: Number(r.steps),
+          ...(r.chapter !== null ? { chapter: r.chapter } : {}),
+          ...(r.chapter_title ? { chapterTitle: r.chapter_title } : {}),
+          ...(r.item_code ? { itemCode: r.item_code } : {}),
+        }));
       },
       async readCase(caseId: string, enrollmentId?: string) {
         const { data, error } = await client.rpc("read_case", {
@@ -3546,11 +3623,22 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
         assertNoSupabaseError(error);
         if (!data) throw new Error("Ce dossier n'est pas ouvert.");
         const raw = data as {
-          id: string; external_ref: string; kind: "mini_dp" | "kfp"; title: string; vignette: string;
-          chapter: number | null; chapter_title: string | null; item_code: string | null;
+          id: string;
+          external_ref: string;
+          kind: "mini_dp" | "kfp";
+          title: string;
+          vignette: string;
+          chapter: number | null;
+          chapter_title: string | null;
+          item_code: string | null;
           steps: {
-            id: string; position: number; format: string; reveal: string | null; stem: string;
-            expected: number | null; options: { letter: string; body: string }[];
+            id: string;
+            position: number;
+            format: string;
+            reveal: string | null;
+            stem: string;
+            expected: number | null;
+            options: { letter: string; body: string }[];
           }[];
         };
         return {
@@ -3585,7 +3673,12 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
           discordances: number;
           eliminatory: boolean;
           note: string | null;
-          options: { letter: string; correct: boolean; explanation: string | null; flag: string | null }[];
+          options: {
+            letter: string;
+            correct: boolean;
+            explanation: string | null;
+            flag: string | null;
+          }[];
         };
         return {
           score: Number(raw.score),
@@ -3601,49 +3694,62 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
         } satisfies CaseStepCorrection;
       },
       async myCaseResults(enrollmentId: string) {
-        const { data, error } = await client.rpc("my_case_results", { p_enrollment_id: enrollmentId });
+        const { data, error } = await client.rpc("my_case_results", {
+          p_enrollment_id: enrollmentId,
+        });
         assertNoSupabaseError(error);
         type Row = {
-          case_id: string; external_ref: string; title: string; kind: string; chapter: number | null;
-          item_code: string | null; steps: number | string; answered: number | string;
-          avg_score: number | string | null; last_answered_at: string | null;
+          case_id: string;
+          external_ref: string;
+          title: string;
+          kind: string;
+          chapter: number | null;
+          item_code: string | null;
+          steps: number | string;
+          answered: number | string;
+          avg_score: number | string | null;
+          last_answered_at: string | null;
         };
-        return ((data ?? []) as Row[]).map(
-          (r): MyCaseResults => ({
-            caseId: r.case_id,
-            externalRef: r.external_ref,
-            title: r.title,
-            kind: r.kind,
-            steps: Number(r.steps),
-            answered: Number(r.answered),
-            ...(r.chapter !== null ? { chapter: r.chapter } : {}),
-            ...(r.item_code ? { itemCode: r.item_code } : {}),
-            ...(r.avg_score !== null ? { avgScore: Number(r.avg_score) } : {}),
-            ...(r.last_answered_at ? { lastAnsweredAt: r.last_answered_at } : {}),
-          }),
-        );
+        return ((data ?? []) as Row[]).map((r): MyCaseResults => ({
+          caseId: r.case_id,
+          externalRef: r.external_ref,
+          title: r.title,
+          kind: r.kind,
+          steps: Number(r.steps),
+          answered: Number(r.answered),
+          ...(r.chapter !== null ? { chapter: r.chapter } : {}),
+          ...(r.item_code ? { itemCode: r.item_code } : {}),
+          ...(r.avg_score !== null ? { avgScore: Number(r.avg_score) } : {}),
+          ...(r.last_answered_at ? { lastAnsweredAt: r.last_answered_at } : {}),
+        }));
       },
       async caseResultsByCohort(cohortId: string) {
-        const { data, error } = await client.rpc("case_results_by_cohort", { p_cohort_id: cohortId });
+        const { data, error } = await client.rpc("case_results_by_cohort", {
+          p_cohort_id: cohortId,
+        });
         assertNoSupabaseError(error);
         type Row = {
-          case_id: string; external_ref: string; title: string; kind: string; chapter: number | null;
-          item_code: string | null; learners: number | string; attempts: number | string;
+          case_id: string;
+          external_ref: string;
+          title: string;
+          kind: string;
+          chapter: number | null;
+          item_code: string | null;
+          learners: number | string;
+          attempts: number | string;
           avg_score: number | string | null;
         };
-        return ((data ?? []) as Row[]).map(
-          (r): CohortCaseResults => ({
-            caseId: r.case_id,
-            externalRef: r.external_ref,
-            title: r.title,
-            kind: r.kind,
-            learners: Number(r.learners),
-            attempts: Number(r.attempts),
-            ...(r.chapter !== null ? { chapter: r.chapter } : {}),
-            ...(r.item_code ? { itemCode: r.item_code } : {}),
-            ...(r.avg_score !== null ? { avgScore: Number(r.avg_score) } : {}),
-          }),
-        );
+        return ((data ?? []) as Row[]).map((r): CohortCaseResults => ({
+          caseId: r.case_id,
+          externalRef: r.external_ref,
+          title: r.title,
+          kind: r.kind,
+          learners: Number(r.learners),
+          attempts: Number(r.attempts),
+          ...(r.chapter !== null ? { chapter: r.chapter } : {}),
+          ...(r.item_code ? { itemCode: r.item_code } : {}),
+          ...(r.avg_score !== null ? { avgScore: Number(r.avg_score) } : {}),
+        }));
       },
       async myQuestionResultsByTheme(enrollmentId: string) {
         const { data, error } = await client.rpc("my_question_results_by_theme", {
@@ -3658,16 +3764,14 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
           avg_score: number | string | null;
           last_answered_at: string | null;
         };
-        return ((data ?? []) as Row[]).map(
-          (r): MyThemeQuestionResults => ({
-            themeLabel: r.theme_label,
-            attempts: Number(r.attempts),
-            distinctQuestions: Number(r.distinct_questions),
-            ...(r.theme_id ? { themeId: r.theme_id } : {}),
-            ...(r.avg_score !== null ? { avgScore: Number(r.avg_score) } : {}),
-            ...(r.last_answered_at ? { lastAnsweredAt: r.last_answered_at } : {}),
-          }),
-        );
+        return ((data ?? []) as Row[]).map((r): MyThemeQuestionResults => ({
+          themeLabel: r.theme_label,
+          attempts: Number(r.attempts),
+          distinctQuestions: Number(r.distinct_questions),
+          ...(r.theme_id ? { themeId: r.theme_id } : {}),
+          ...(r.avg_score !== null ? { avgScore: Number(r.avg_score) } : {}),
+          ...(r.last_answered_at ? { lastAnsweredAt: r.last_answered_at } : {}),
+        }));
       },
     },
     outcomes: {
