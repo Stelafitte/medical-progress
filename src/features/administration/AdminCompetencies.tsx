@@ -60,12 +60,12 @@ export function AdminCompetencies() {
   const realCurriculumVersionId = data?.versions[0]?.id;
 
   const learnerRows = useMemo(
-    () => buildLearnerCompetenceRows(enrollments, outcomes),
-    [enrollments, outcomes],
+    () => buildLearnerCompetenceRows(enrollments, outcomes, data?.declarations),
+    [enrollments, outcomes, data?.declarations],
   );
   const coverage = useMemo(
-    () => buildCompetenceCoverage(enrollments, outcomes),
-    [enrollments, outcomes],
+    () => buildCompetenceCoverage(enrollments, outcomes, data?.declarations),
+    [enrollments, outcomes, data?.declarations],
   );
   const parsed = useMemo(() => parseReferentialText(importText), [importText]);
   /** Prévisualisation des conflits : nouvelles, déjà présentes, inchangées, ignorées. */

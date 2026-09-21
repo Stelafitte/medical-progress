@@ -49,7 +49,8 @@ describe("suivi croisé des apprenants", () => {
     expect(rows.map((r) => r.personName)).toEqual(["Alice Durand", "Zoé Martin"]);
     expect(rows[0]?.theory.total).toBe(1);
     expect(rows[0]?.competence.total).toBe(2);
-    expect(rows[0]?.assessment.total).toBe(2);
+    // Evaluations : pas encore mesurees par etudiant (plus de score simule).
+    expect(rows[0]?.assessment.total).toBe(0);
   });
 
   it("est déterministe entre deux dérivations (Classes, Pilotage, Connaissances)", () => {

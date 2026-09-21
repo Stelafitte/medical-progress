@@ -27,14 +27,41 @@ describe("première connexion à l'épreuve des robots de messagerie (18/09)", (
   });
 
   it("n'envoie plus le lien Supabase direct dans les courriels", () => {
-    for (const [source, type] of [
-      [invite, '"invite"'],
-      [resend, '"recovery"'],
-    ] as const) {
+    for (const source of [invite, resend]) {
       expect(source).not.toContain("link.properties.action_link,");
-      expect(source).toContain(`premiereConnexionUrl(link.properties.hashed_token, ${type})`);
+      expect(source).not.toContain("premiereConnexionUrl(");
       expect(source).toContain("/premiere-connexion?");
     }
+  });
+});
+
+describe("liens d'invitation valables 7 jours (21/09)", () => {
+  const migration = read("supabase/migrations/20260921090000_liens_invitation_7_jours.sql");
+  const claim = read("supabase/functions/claim-invitation/index.ts");
+  const redemande = read("supabase/functions/request-new-link/index.ts");
+
+  it("le courriel porte notre jeton, dont seule l'empreinte est en base", () => {
+    expect(migration).toContain("interval '7 days'");
+    expect(migration).toContain("token_hash text not null unique");
+    expect(migration).toContain(
+      "revoke all on public.invitation_links from public, anon, authenticated",
+    );
+    for (const source of [invite, resend, redemande]) {
+      expect(source).toContain("await lienInvitation(adminClient");
+      expect(source).toContain('crypto.subtle.digest("SHA-256"');
+    }
+  });
+
+  it("le lien Supabase n'est fabriqué qu'au clic, puis échangé aussitôt", () => {
+    expect(claim).toContain("generateLink");
+    expect(page).toContain("client.functions.invoke<");
+    expect(page).toContain('"claim-invitation"');
+  });
+
+  it("un lien expiré n'est plus une impasse, et ne dit pas qui est inscrit", () => {
+    expect(page).toContain("Recevoir un nouveau lien");
+    expect(redemande).toContain("return json({ ok: true }, 200);");
+    expect(redemande).toContain("120_000");
   });
 });
 

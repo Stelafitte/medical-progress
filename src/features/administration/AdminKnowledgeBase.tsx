@@ -28,7 +28,6 @@ import {
   buildLearnerTrackingRows,
   summarizeLearnerTracking,
 } from "@/features/administration/learnerTrackingViewModel";
-import { assessmentFixturesFor } from "@/infrastructure/mock/assessmentFixtures";
 import { NATURE_LABELS_FR } from "@/domain/mastery";
 import { COMPETENCE_MASTERY_LABELS_FR } from "@/domain/competenceDraft";
 import { useDataAccess } from "@/application/session";
@@ -80,10 +79,9 @@ export function AdminKnowledgeBase() {
     people: data.people,
     outcomes,
     logs: data.logsReceived,
-    assessments: data.program
-      ? assessmentFixturesFor(programId, data.program.code.toUpperCase().startsWith("DFASM"))
-      : [],
     expectedLogsPerLearner: data.templates.length,
+    declarations: data.declarations,
+    lastSignInByPerson: data.lastSignInByPerson,
   });
   const summary = summarizeLearnerTracking(trackingRows);
   const selectedCohort = cohorts.find((cohort) => cohort.id === selectedId) ?? null;

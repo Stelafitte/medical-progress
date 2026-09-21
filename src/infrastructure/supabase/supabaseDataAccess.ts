@@ -4309,6 +4309,23 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
         assertNoSupabaseError(error);
         return ((data ?? []) as SelfReportRow[]).map(mapSelfReport);
       },
+      async listSelfReportsForEnrollments(enrollmentIds) {
+        // Par paquets de 150 : une liste `in` trop longue depasse la taille
+        // d'URL admise par PostgREST.
+        const resultats: OutcomeSelfReport[] = [];
+        for (let i = 0; i < enrollmentIds.length; i += 150) {
+          const paquet = enrollmentIds.slice(i, i + 150);
+          const { data, error } = await client
+            .from("outcome_self_reports")
+            .select(
+              "enrollment_id, outcome_id, declared_level, declared_at, note, validated_by, validated_at",
+            )
+            .in("enrollment_id", [...paquet]);
+          assertNoSupabaseError(error);
+          resultats.push(...((data ?? []) as SelfReportRow[]).map(mapSelfReport));
+        }
+        return resultats;
+      },
       /**
        * LA NOTE D'EXPERIENCE, ENFIN ECRITE QUELQUE PART (10/09).
        *

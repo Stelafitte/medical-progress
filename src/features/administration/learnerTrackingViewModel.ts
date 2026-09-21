@@ -1,5 +1,18 @@
 /**
- * Table de suivi CROISÉE des apprenants (MAQUETTE DÉTERMINISTE).
+ * Table de suivi CROISÉE des apprenants — DONNÉES RÉELLES depuis le 21/09.
+ *
+ * ⚠️ CE QUI A CHANGÉ, ET POURQUOI. Jusqu'au 21/09 les axes théorie, compétences
+ * et évaluations étaient INVENTÉS par un hachage stable. Stef a vu des
+ * statistiques d'avancement pour une promotion entière dont personne ne s'était
+ * encore connecté. Désormais :
+ *  - théorie      : connaissances que l'étudiant a DÉCLARÉES travaillées ;
+ *  - compétences  : compétences VALIDÉES par un tiers (déclarations confirmées) ;
+ *  - stage        : carnets validés sur carnets attendus (inchangé, déjà réel) ;
+ *  - évaluations  : NON MESURÉ ici — aucune source par étudiant n'est branchée,
+ *    l'axe s'affiche « non mesuré » au lieu d'un chiffre inventé.
+ * S'y ajoute la DERNIÈRE CONNEXION, lue dans l'annuaire du programme.
+ *
+ * (Ancien en-tête conservé ci-dessous pour l'historique.)
  *
  * Une seule dérivation, partagée par « Classes d'apprenants », « Pilotage de
  * programme » et « Base de connaissances », afin que tous les onglets montrent
@@ -20,7 +33,7 @@ import type { StageLog } from "@/domain/stageLog";
 import type { Enrollment, Outcome, Person } from "@/domain/types";
 import {
   buildLearnerCompetenceRows,
-  simulatedCompetenceState,
+  type DeclarationsParInscription,
 } from "@/features/administration/competenceTrackingViewModel";
 
 export type TrackingAxis = "theory" | "competence" | "placement" | "assessment";
@@ -33,21 +46,11 @@ export const TRACKING_AXIS_LABELS_FR: Record<TrackingAxis, string> = {
 };
 
 export const TRACKING_AXIS_HINTS_FR: Record<TrackingAxis, string> = {
-  theory: "Objectifs de connaissance acquis (simulé).",
-  competence: "Compétences validées par un tiers (simulé).",
+  theory: "Connaissances que l'étudiant a déclarées travaillées.",
+  competence: "Compétences validées par un tiers.",
   placement: "Carnets de stage validés sur carnets attendus.",
-  assessment: "Épreuves réussies sur épreuves configurées (simulé).",
+  assessment: "Pas encore mesuré par étudiant.",
 };
-
-/** Hachage stable, identique à celui du suivi des compétences. */
-function stableHash(seed: string): number {
-  let hash = 2_166_136_261;
-  for (let i = 0; i < seed.length; i += 1) {
-    hash ^= seed.charCodeAt(i);
-    hash = Math.imul(hash, 16_777_619);
-  }
-  return Math.abs(hash);
-}
 
 export interface AxisScore {
   readonly done: number;
@@ -72,24 +75,21 @@ export interface LearnerTrackingRow {
   readonly globalPercent: number;
   /** Compétences déclarées par l'apprenant, en attente de validation humaine. */
   readonly awaitingValidation: number;
+  /** Dernière connexion à la plateforme ; absente = jamais connecté. */
+  readonly lastSignInAt?: string | undefined;
 }
 
-function theoryScore(enrollmentId: string, outcomes: readonly Outcome[]): AxisScore {
-  const knowledge = outcomes.filter((o) => o.nature === "knowledge");
-  const done = knowledge.filter(
-    (o) => stableHash(`theory::${enrollmentId}::${o.id}`) % 10 < 6,
-  ).length;
-  return score(done, knowledge.length);
-}
-
-function assessmentScore(
+function theoryScore(
   enrollmentId: string,
-  assessments: readonly AssessmentDefinition[],
+  outcomes: readonly Outcome[],
+  declarations: DeclarationsParInscription,
 ): AxisScore {
-  const done = assessments.filter(
-    (a) => stableHash(`assessment::${enrollmentId}::${a.id}`) % 10 < 7,
-  ).length;
-  return score(done, assessments.length);
+  const knowledge = outcomes.filter((o) => o.nature === "knowledge");
+  const declarees = new Set(
+    (declarations.get(enrollmentId) ?? []).map((r) => r.outcomeId as string),
+  );
+  const done = knowledge.filter((o) => declarees.has(o.id as string)).length;
+  return score(done, knowledge.length);
 }
 
 function placementScore(
@@ -112,20 +112,29 @@ export function buildLearnerTrackingRows(input: {
   readonly people: readonly Person[];
   readonly outcomes: readonly Outcome[];
   readonly logs: readonly StageLog[];
-  readonly assessments: readonly AssessmentDefinition[];
+  /** Conservé pour la signature ; l'axe n'est plus inventé à partir d'eux. */
+  readonly assessments?: readonly AssessmentDefinition[];
   readonly expectedLogsPerLearner: number;
+  readonly declarations?: DeclarationsParInscription;
+  readonly lastSignInByPerson?: ReadonlyMap<string, string>;
 }): readonly LearnerTrackingRow[] {
+  const declarations = input.declarations ?? new Map();
   const competenceRows = new Map(
-    buildLearnerCompetenceRows(input.enrollments, input.outcomes).map((r) => [r.enrollmentId, r]),
+    buildLearnerCompetenceRows(input.enrollments, input.outcomes, declarations).map((r) => [
+      r.enrollmentId,
+      r,
+    ]),
   );
 
   return input.enrollments
     .map((enrollment) => {
       const competenceRow = competenceRows.get(enrollment.id);
-      const theory = theoryScore(enrollment.id, input.outcomes);
+      const theory = theoryScore(enrollment.id, input.outcomes, declarations);
       const competence = score(competenceRow?.validated ?? 0, competenceRow?.total ?? 0);
       const placement = placementScore(enrollment.id, input.logs, input.expectedLogsPerLearner);
-      const assessment = assessmentScore(enrollment.id, input.assessments);
+      // Non mesuré : un axe à 0/0 s'affiche « non mesuré » et ne compte pas
+      // dans la moyenne. Mieux vaut un vide qu'un chiffre inventé.
+      const assessment = score(0, 0);
       const active = [theory, competence, placement, assessment].filter((a) => a.total > 0);
       return {
         enrollmentId: enrollment.id,
@@ -141,6 +150,7 @@ export function buildLearnerTrackingRows(input: {
             ? 0
             : Math.round(active.reduce((sum, a) => sum + a.percent, 0) / active.length),
         awaitingValidation: competenceRow?.declared ?? 0,
+        lastSignInAt: input.lastSignInByPerson?.get(enrollment.personId as string),
       };
     })
     .sort((a, b) => a.personName.localeCompare(b.personName, "fr"));
@@ -177,6 +187,3 @@ export function summarizeLearnerTracking(rows: readonly LearnerTrackingRow[]): T
     ).length,
   };
 }
-
-/** Réexport pratique : l'état nominatif d'une compétence reste la même règle. */
-export { simulatedCompetenceState };

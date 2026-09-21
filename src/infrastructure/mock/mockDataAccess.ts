@@ -1035,6 +1035,7 @@ export const mockDataAccess: DataAccess = {
         note: input.note ?? "",
       }),
     listSelfReports: () => ok([]),
+    listSelfReportsForEnrollments: () => ok([]),
     /* En session simulee, confirmer ne fait que rendre la declaration confirmee :
        aucune persistance, comme le reste du mock. */
     validateOutcomeDeclaration: (input) =>

@@ -55,9 +55,41 @@ const INVITE_REDIRECT_URL = Deno.env.get("INVITE_REDIRECT_URL") ?? undefined;
 const APP_URL_PAR_DEFAUT = "https://stelafitte-medical-progress.dfasm-connect.workers.dev";
 const APP_URL = (Deno.env.get("PUBLIC_APP_URL") ?? APP_URL_PAR_DEFAUT).replace(/\/+$/, "");
 
-function premiereConnexionUrl(hashedToken: string, type: "invite" | "recovery"): string {
-  const params = new URLSearchParams({ token_hash: hashedToken, type });
-  return `${APP_URL}/premiere-connexion?${params.toString()}`;
+// 21/09 -- NOTRE JETON, VALABLE 7 JOURS (migration 20260921090000). Le jeton
+// Supabase ne vit qu'une heure (24 h au plus) : les etudiants qui ouvraient
+// leur courriel le lendemain arrivaient sur « lien expire ». Le courriel porte
+// desormais un jeton a nous, dont seule l'empreinte est gardee ; le lien
+// Supabase n'est fabrique qu'au clic, par `claim-invitation`.
+function jetonAleatoire(): string {
+  const octets = crypto.getRandomValues(new Uint8Array(32));
+  return btoa(String.fromCharCode(...octets))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+}
+
+async function empreinte(jeton: string): Promise<string> {
+  const h = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(jeton));
+  return [...new Uint8Array(h)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/** Revoque les liens precedents de cette adresse, en cree un de 7 jours. */
+async function lienInvitation(
+  adminClient: ReturnType<typeof createClient>,
+  email: string,
+): Promise<string> {
+  const adresse = email.trim().toLowerCase();
+  await adminClient
+    .from("invitation_links")
+    .update({ revoked_at: new Date().toISOString() })
+    .eq("email", adresse)
+    .is("revoked_at", null);
+  const jeton = jetonAleatoire();
+  const { error } = await adminClient
+    .from("invitation_links")
+    .insert({ email: adresse, token_hash: await empreinte(jeton) });
+  if (error) throw new Error(`lien d'invitation non enregistre : ${error.message}`);
+  return `${APP_URL}/premiere-connexion?${new URLSearchParams({ invitation: jeton }).toString()}`;
 }
 
 
@@ -231,13 +263,11 @@ async function sendWithDedicatedSender(
     };
   }
 
-  const { data: link, error: linkError } = await adminClient.auth.admin.generateLink({
-    type: "recovery",
-    email: person.email,
-    options: { redirectTo: INVITE_REDIRECT_URL },
-  });
-  if (linkError || !link?.properties?.hashed_token) {
-    return { ok: false, error: linkError?.message ?? "lien de première connexion non généré" };
+  let lien: string;
+  try {
+    lien = await lienInvitation(adminClient, person.email);
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
   }
 
   const { data: program } = await adminClient
@@ -262,10 +292,10 @@ async function sendWithDedicatedSender(
     `Votre compte est ouvert sur "${programName}" (Campus Santé Augmenté).`,
     "",
     "Pour définir votre mot de passe et vérifier vos informations, cliquez sur le lien suivant :",
-    premiereConnexionUrl(link.properties.hashed_token, "recovery"),
+    lien,
     "",
-    "Ce lien est personnel et à usage unique. Merci de ne pas le transférer.",
-    "S'il a expiré, demandez-en un nouveau à l'équipe pédagogique.",
+    "Ce lien est personnel et valable 7 jours. Merci de ne pas le transférer.",
+    "S'il a expiré, la page vous permettra d'en recevoir un nouveau.",
     "",
     `— ${sender.from_name}`,
   ].join("\n");

@@ -174,12 +174,14 @@ export function AdminProgramPilot() {
   });
   const groupSummary = summarizeGroupActivity(learnerRows);
   /** Suivi NOMINATIF des compétences : il appartient au pilotage, pas au référentiel. */
-  const competenceRows = buildLearnerCompetenceRows(cohortEnrollments, data.outcomes).map(
-    (row) => ({
-      ...row,
-      personName: personNameFor(data, row.enrollmentId),
-    }),
-  );
+  const competenceRows = buildLearnerCompetenceRows(
+    cohortEnrollments,
+    data.outcomes,
+    data.declarations,
+  ).map((row) => ({
+    ...row,
+    personName: personNameFor(data, row.enrollmentId),
+  }));
 
   return (
     <div className="space-y-6">
@@ -283,37 +285,8 @@ export function AdminProgramPilot() {
             signale rien (17/09).
           */}
           <div className="space-y-4">
-            <PanelCard
-              title="Signaux à traiter"
-              description="Qui décroche : retard sur un jalon, aucune activité récente. Calculés à chaque ouverture, jamais saisis."
-              collapsible
-              tone={cohortAlerts.length > 0 ? "attention" : "neutral"}
-              action={
-                <Badge
-                  variant={cohortAlerts.length > 0 ? "default" : "outline"}
-                  className="font-normal"
-                >
-                  {cohortAlerts.length} signal(aux)
-                </Badge>
-              }
-            >
-              {cohortAlerts.length === 0 ? (
-                <EmptyState>Aucun signal sur cette promotion.</EmptyState>
-              ) : (
-                <ul className="space-y-2 text-sm">
-                  {cohortAlerts.map((alert) => (
-                    <li
-                      key={alert.id}
-                      className="border-border flex flex-wrap items-center gap-2 rounded-lg border p-4"
-                    >
-                      <AlertTriangle className="text-muted-foreground size-4" aria-hidden />
-                      <span className="font-medium">{personNameFor(data, alert.enrollmentId)}</span>
-                      <span className="text-muted-foreground">{alert.message}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </PanelCard>
+            {/* Les signaux vivent désormais dans la matrice de la promotion,
+                une colonne par apprenant (21/09) : voir plus bas. */}
 
             <PanelCard
               title="Intervenants et rôles"

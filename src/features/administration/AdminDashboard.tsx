@@ -18,6 +18,7 @@ import { CohortSelector } from "@/features/administration/CohortSelector";
 import { ProgramAiSettingsSection } from "@/features/administration/ProgramAiSettingsSection";
 import { useProgramAdmin, personNameFor } from "@/features/administration/useProgramAdmin";
 import { AdminChargement } from "@/features/administration/AdminChargement";
+import { LearnerTrackingSection } from "@/features/administration/LearnerTrackingSection";
 import {
   buildPilotTimeline,
   defaultPilotCohortId,
@@ -75,7 +76,6 @@ export function AdminDashboard() {
 
   const enrollmentsOfCohort = data.enrollments.filter((e) => e.cohortId === selectedId);
   const enrollmentIds = new Set(enrollmentsOfCohort.map((e) => e.id));
-  const alerts = data.alerts.filter((alert) => enrollmentIds.has(alert.enrollmentId));
   const certificates = data.certificates.filter((c) => enrollmentIds.has(c.enrollmentId));
   const missingDocuments = data.documents.filter((d) => d.status !== "received").length;
 
@@ -169,7 +169,7 @@ export function AdminDashboard() {
         />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="space-y-4">
         <PanelCard
           title="Tâches prioritaires et échéances"
           description="Chaque tâche ouvre l'écran qui permet d'agir."
@@ -206,36 +206,14 @@ export function AdminDashboard() {
             </ul>
           )}
         </PanelCard>
-
-        <PanelCard
-          title={`Alertes — ${cohortLabel}`}
-          description="Signaux de la promotion observée : chaque ligne mène au suivi de l'apprenant."
-        >
-          {alerts.length === 0 ? (
-            <EmptyState>Aucune alerte pour cette promotion.</EmptyState>
-          ) : (
-            <ul className="space-y-2 text-sm">
-              {alerts.map((alert) => (
-                <li
-                  key={alert.id}
-                  className="border-border flex flex-wrap items-center justify-between gap-2 rounded-lg border p-4"
-                >
-                  <span>
-                    <span className="font-medium">{personNameFor(data, alert.enrollmentId)}</span> —{" "}
-                    <span className="text-muted-foreground">{alert.message}</span>
-                  </span>
-                  <Button asChild size="sm" variant="ghost" className="min-h-11">
-                    <Link to="/espace/encadrement/etudiants">
-                      Voir l'apprenant
-                      <ArrowRight className="ms-1 size-4" aria-hidden />
-                    </Link>
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </PanelCard>
       </div>
+
+      {/*
+        LES ALERTES NE SONT PLUS UNE LISTE (Stef, 21/09 : « illisible »). Elles
+        deviennent une colonne de la matrice de la promotion : une ligne par
+        apprenant, ses axes en couleur, sa dernière connexion, ses signaux.
+      */}
+      <LearnerTrackingSection data={data} cohortId={selectedId} showCohortSelector={false} />
 
       <PanelCard
         title={`Validations et certificats — ${cohortLabel}`}

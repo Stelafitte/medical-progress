@@ -1,13 +1,21 @@
 /**
- * Suivi nominatif d'acquisition des compétences (MAQUETTE DÉTERMINISTE).
+ * Suivi nominatif d'acquisition des compétences — DONNÉES RÉELLES depuis le
+ * 21/09 (`outcome_self_reports`).
  *
- * Aucune donnée réelle : les états sont dérivés d'un hachage stable
- * (inscription × compétence) afin que la démonstration soit reproductible.
- * La règle métier est respectée dans l'affichage : une compétence réelle
- * déclarée par l'apprenant n'est jamais comptée comme acquise sans validation
- * humaine.
+ * CE QUI A CHANGÉ. Ce fichier était une « maquette déterministe » : les états
+ * sortaient d'un hachage (inscription × compétence). Stef a vu, pour une
+ * promotion dont aucun étudiant ne s'était encore connecté, des taux de
+ * compétences validées : des chiffres inventés dans un écran de pilotage. Ils
+ * viennent désormais des déclarations réelles ; sans déclaration, c'est zéro.
+ *
+ * La règle métier reste : une compétence déclarée n'est jamais comptée comme
+ * acquise sans validation humaine (`validatedAt`).
  */
+import type { OutcomeSelfReport } from "@/domain/passport";
 import type { Enrollment, Outcome, OutcomeNature } from "@/domain/types";
+
+/** Les déclarations d'une promotion, par inscription. */
+export type DeclarationsParInscription = ReadonlyMap<string, readonly OutcomeSelfReport[]>;
 
 export type CompetenceState = "not_started" | "declared" | "validated";
 
@@ -17,21 +25,17 @@ export const COMPETENCE_STATE_LABELS_FR: Record<CompetenceState, string> = {
   validated: "validée par un tiers",
 };
 
-/** Hachage stable, sans dépendance externe. */
-function stableHash(seed: string): number {
-  let hash = 2_166_136_261;
-  for (let i = 0; i < seed.length; i += 1) {
-    hash ^= seed.charCodeAt(i);
-    hash = Math.imul(hash, 16_777_619);
-  }
-  return Math.abs(hash);
-}
-
-export function simulatedCompetenceState(enrollmentId: string, outcomeId: string): CompetenceState {
-  const bucket = stableHash(`${enrollmentId}::${outcomeId}`) % 10;
-  if (bucket < 5) return "validated";
-  if (bucket < 8) return "declared";
-  return "not_started";
+/** L'état RÉEL d'un acquis pour une inscription. */
+export function competenceStateFrom(
+  declarations: DeclarationsParInscription,
+  enrollmentId: string,
+  outcomeId: string,
+): CompetenceState {
+  const report = (declarations.get(enrollmentId) ?? []).find(
+    (r) => (r.outcomeId as string) === outcomeId,
+  );
+  if (!report) return "not_started";
+  return report.validatedAt ? "validated" : "declared";
 }
 
 export interface LearnerCompetenceRow {
@@ -57,13 +61,14 @@ export function competenceOutcomes(outcomes: readonly Outcome[]): readonly Outco
 export function buildLearnerCompetenceRows(
   enrollments: readonly Enrollment[],
   outcomes: readonly Outcome[],
+  declarations: DeclarationsParInscription = new Map(),
 ): readonly LearnerCompetenceRow[] {
   const scoped = competenceOutcomes(outcomes);
   return enrollments.map((enrollment) => {
     let validated = 0;
     let declared = 0;
     for (const outcome of scoped) {
-      const state = simulatedCompetenceState(enrollment.id, outcome.id);
+      const state = competenceStateFrom(declarations, enrollment.id, outcome.id);
       if (state === "validated") validated += 1;
       else if (state === "declared") declared += 1;
     }
@@ -94,12 +99,13 @@ export interface CompetenceCoverageRow {
 export function buildCompetenceCoverage(
   enrollments: readonly Enrollment[],
   outcomes: readonly Outcome[],
+  declarations: DeclarationsParInscription = new Map(),
 ): readonly CompetenceCoverageRow[] {
   return competenceOutcomes(outcomes).map((outcome) => {
     let validatedLearners = 0;
     let declaredLearners = 0;
     for (const enrollment of enrollments) {
-      const state = simulatedCompetenceState(enrollment.id, outcome.id);
+      const state = competenceStateFrom(declarations, enrollment.id, outcome.id);
       if (state === "validated") validatedLearners += 1;
       else if (state === "declared") declaredLearners += 1;
     }

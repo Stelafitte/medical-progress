@@ -1,13 +1,25 @@
 /**
- * Table de suivi croisée des apprenants — composant PARTAGÉ.
- * Rendu identique dans « Classes d'apprenants » (lecture par classe) et dans
- * « Pilotage de programme » (suivi de la promotion pilotée).
+ * LA MATRICE DE LA PROMOTION — composant PARTAGÉ par « Vue d'ensemble »,
+ * « Classes d'apprenants » et « Pilotage de programme ».
+ *
+ * REFONTE DU 21/09 (Stef : « une liste énorme d'alertes… illisible ; il
+ * faudrait un tableau avec tous les apprenants et une matrice de visualisation
+ * de leurs montées en compétence »).
+ *   - UNE LIGNE PAR APPRENANT, une case COLORÉE par axe : l'œil voit la
+ *     promotion d'un coup, et qui décroche, sans lire un seul chiffre ;
+ *   - LES SIGNAUX NE SONT PLUS UNE LISTE : ils deviennent une colonne, le
+ *     nombre par apprenant, leur texte au survol. Vingt alertes sur trois
+ *     étudiants se lisent comme trois lignes, pas comme vingt ;
+ *   - LA DERNIÈRE CONNEXION est une colonne : « jamais connecté » se voit ;
+ *   - TRI PAR RETARD par défaut (ce qu'on vient chercher), alphabétique à un clic.
+ *
+ * LES CHIFFRES SONT RÉELS (voir `learnerTrackingViewModel`). Un axe sans source
+ * mesurée s'affiche « non mesuré » : jamais de chiffre inventé.
  */
 import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { Badge } from "@/components/ui/badge";
+import { AlertTriangle, ArrowDownWideNarrow } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
 import { EmptyState, PanelCard, StatCard } from "@/features/professional/mock-ui";
 import { CohortSelector } from "@/features/administration/CohortSelector";
 import type { ProgramAdminScope } from "@/features/administration/useProgramAdmin";
@@ -19,18 +31,52 @@ import {
   summarizeLearnerTracking,
   type AxisScore,
   type LearnerTrackingRow,
+  type TrackingAxis,
 } from "@/features/administration/learnerTrackingViewModel";
-import { assessmentFixturesFor } from "@/infrastructure/mock/assessmentFixtures";
 
-function AxisCell({ axis }: { axis: AxisScore }) {
-  if (axis.total === 0) return <span className="text-muted-foreground text-xs">non attendu</span>;
+const AXES: readonly TrackingAxis[] = ["theory", "competence", "placement", "assessment"];
+
+/** Une couleur par palier : rouge à zéro, ambre au début, bleu en route, vert acquis. */
+function teinte(percent: number): string {
+  if (percent === 0) return "bg-rose-100 text-rose-900 dark:bg-rose-950/50 dark:text-rose-200";
+  if (percent < 34) return "bg-amber-100 text-amber-900 dark:bg-amber-950/50 dark:text-amber-200";
+  if (percent < 67) return "bg-sky-100 text-sky-900 dark:bg-sky-950/50 dark:text-sky-200";
+  return "bg-emerald-100 text-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-200";
+}
+
+function AxisCell({ axis, label }: { axis: AxisScore; label: string }) {
+  if (axis.total === 0) {
+    return <span className="text-xs text-muted-foreground">non mesuré</span>;
+  }
   return (
-    <div className="min-w-24 space-y-1">
-      <Progress value={axis.percent} className="h-1.5" />
-      <span className="text-muted-foreground text-xs tabular-nums">
-        {axis.done}/{axis.total} · {axis.percent} %
+    <span
+      title={`${label} : ${axis.done} sur ${axis.total}`}
+      className={`inline-flex min-w-16 justify-center rounded-md px-2 py-1 text-xs font-medium tabular-nums ${teinte(axis.percent)}`}
+    >
+      {axis.percent} %
+    </span>
+  );
+}
+
+const JOUR = 24 * 60 * 60 * 1000;
+
+function Connexion({ iso }: { iso: string | undefined }) {
+  if (!iso) {
+    return (
+      <span className="rounded-md bg-rose-100 px-2 py-1 text-xs text-rose-900 dark:bg-rose-950/50 dark:text-rose-200">
+        jamais connecté
       </span>
-    </div>
+    );
+  }
+  const jours = Math.floor((Date.now() - new Date(iso).getTime()) / JOUR);
+  const texte = jours <= 0 ? "aujourd'hui" : jours === 1 ? "hier" : `il y a ${jours} j`;
+  return (
+    <span
+      title={new Date(iso).toLocaleString("fr-FR")}
+      className={`rounded-md px-2 py-1 text-xs ${jours > 14 ? "bg-amber-100 text-amber-900 dark:bg-amber-950/50 dark:text-amber-200" : "text-muted-foreground"}`}
+    >
+      {texte}
+    </span>
   );
 }
 
@@ -39,38 +85,61 @@ export function LearnerTrackingSection({
   cohortId,
   onCohortChange,
   showCohortSelector = true,
-  description = "Croisement des quatre axes de progression pour chaque apprenant de la classe.",
+  title = "Suivi de la promotion",
+  description = "Une ligne par apprenant : où il en est sur chaque axe, sa dernière connexion et ses signaux.",
 }: {
   data: ProgramAdminScope;
   cohortId?: string | undefined;
   onCohortChange?: (cohortId: string) => void;
   showCohortSelector?: boolean;
+  title?: string;
   description?: string;
 }) {
   const cohorts = data.cohorts;
   const [localCohortId, setLocalCohortId] = useState<string | null>(null);
+  const [tri, setTri] = useState<"retard" | "nom">("retard");
   const selectedId = cohortId ?? localCohortId ?? defaultPilotCohortId(cohorts);
   const selected = cohorts.find((c) => c.id === selectedId);
 
   const rows = useMemo<readonly LearnerTrackingRow[]>(() => {
-    const assessments = data.program
-      ? assessmentFixturesFor(data.program.id, data.program.code.toUpperCase().startsWith("DFASM"))
-      : [];
     const enrollments = data.enrollments.filter((e) => e.cohortId === selectedId);
     return buildLearnerTrackingRows({
       enrollments,
       people: data.people,
       outcomes: data.outcomes,
       logs: data.logsReceived,
-      assessments,
       expectedLogsPerLearner: data.templates.length,
+      declarations: data.declarations,
+      lastSignInByPerson: data.lastSignInByPerson,
     });
   }, [data, selectedId]);
 
+  const signaux = useMemo(() => {
+    const parInscription = new Map<string, string[]>();
+    for (const alert of data.alerts) {
+      const key = alert.enrollmentId as string;
+      parInscription.set(key, [...(parInscription.get(key) ?? []), alert.message]);
+    }
+    return parInscription;
+  }, [data.alerts]);
+
+  const tries = useMemo(
+    () =>
+      [...rows].sort((a, b) =>
+        tri === "nom"
+          ? a.personName.localeCompare(b.personName, "fr")
+          : a.globalPercent - b.globalPercent ||
+            (signaux.get(b.enrollmentId)?.length ?? 0) - (signaux.get(a.enrollmentId)?.length ?? 0),
+      ),
+    [rows, tri, signaux],
+  );
+
   const summary = summarizeLearnerTracking(rows);
+  const jamaisConnectes = rows.filter((r) => !r.lastSignInAt).length;
+  const avecSignal = rows.filter((r) => (signaux.get(r.enrollmentId)?.length ?? 0) > 0).length;
 
   return (
-    <section className="space-y-4" aria-label="Suivi croisé des apprenants">
+    <section className="space-y-4" aria-label="Suivi de la promotion">
       {showCohortSelector ? (
         <CohortSelector
           cohorts={cohorts}
@@ -80,20 +149,56 @@ export function LearnerTrackingSection({
         />
       ) : null}
 
-      <PanelCard title="Table de suivi croisée des apprenants" description={description}>
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-          <StatCard label="Apprenants suivis" value={summary.learners} />
-          <StatCard label="Théorie (moy.)" value={`${summary.theoryPercent} %`} />
-          <StatCard label="Compétences (moy.)" value={`${summary.competencePercent} %`} />
-          <StatCard label="Stage (moy.)" value={`${summary.placementPercent} %`} />
-          <StatCard label="Évaluations (moy.)" value={`${summary.assessmentPercent} %`} />
+      <PanelCard
+        collapsible
+        defaultOpen
+        title={title}
+        description={description}
+        tone={avecSignal > 0 || jamaisConnectes > 0 ? "attention" : "neutral"}
+      >
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <StatCard label="Apprenants" value={summary.learners} />
+          <StatCard
+            label="Jamais connectés"
+            value={jamaisConnectes}
+            tone={jamaisConnectes > 0 ? "attention" : "done"}
+          />
+          <StatCard
+            label="Avec un signal"
+            value={avecSignal}
+            tone={avecSignal > 0 ? "attention" : "done"}
+          />
+          <StatCard
+            label="Compétences à valider"
+            value={summary.awaitingValidation}
+            tone={summary.awaitingValidation > 0 ? "action" : "neutral"}
+          />
         </div>
 
-        <p className="text-muted-foreground mt-3 text-xs">
-          Avancement global moyen {summary.globalPercent} % · {summary.awaitingValidation}{" "}
-          compétence(s) déclarée(s) en attente de validation humaine · {summary.blockedLearners}{" "}
-          apprenant(s) avec un axe encore à 0 %.
-        </p>
+        <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+          <span className="inline-flex items-center gap-1.5">
+            <span className="size-3 rounded-sm bg-rose-200" aria-hidden /> 0 %
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="size-3 rounded-sm bg-amber-200" aria-hidden /> moins d'un tiers
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="size-3 rounded-sm bg-sky-200" aria-hidden /> en route
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="size-3 rounded-sm bg-emerald-200" aria-hidden /> plus des deux tiers
+          </span>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="ms-auto min-h-11 gap-1"
+            onClick={() => setTri((t) => (t === "retard" ? "nom" : "retard"))}
+          >
+            <ArrowDownWideNarrow className="size-4" aria-hidden />
+            {tri === "retard" ? "Trié par retard" : "Trié par nom"}
+          </Button>
+        </div>
 
         {rows.length === 0 ? (
           <EmptyState>
@@ -102,61 +207,77 @@ export function LearnerTrackingSection({
               : "Sélectionnez une classe pour afficher le suivi."}
           </EmptyState>
         ) : (
-          <div className="mt-4 overflow-x-auto">
+          <div className="overflow-x-auto">
             <table className="w-full min-w-[46rem] text-sm">
-              <caption className="text-muted-foreground mb-2 text-left text-xs">
-                {selected ? `Classe ${selected.label} · ` : ""}
-                {(["theory", "competence", "placement", "assessment"] as const)
-                  .map(
-                    (axis) => `${TRACKING_AXIS_LABELS_FR[axis]} : ${TRACKING_AXIS_HINTS_FR[axis]}`,
-                  )
-                  .join(" ")}
+              <caption className="sr-only">
+                {AXES.map(
+                  (axis) => `${TRACKING_AXIS_LABELS_FR[axis]} : ${TRACKING_AXIS_HINTS_FR[axis]}`,
+                ).join(" ")}
               </caption>
               <thead>
-                <tr className="text-muted-foreground border-border border-b text-left text-xs">
-                  <th scope="col" className="py-2 pr-3 font-medium">
+                <tr className="border-b border-border text-left text-xs text-muted-foreground">
+                  <th scope="col" className="sticky left-0 bg-card py-2 pr-3 font-medium">
                     Apprenant
                   </th>
-                  {(["theory", "competence", "placement", "assessment"] as const).map((axis) => (
-                    <th key={axis} scope="col" className="py-2 pr-3 font-medium">
+                  <th scope="col" className="py-2 pr-3 font-medium">
+                    Connexion
+                  </th>
+                  {AXES.map((axis) => (
+                    <th
+                      key={axis}
+                      scope="col"
+                      title={TRACKING_AXIS_HINTS_FR[axis]}
+                      className="py-2 pr-3 font-medium"
+                    >
                       {TRACKING_AXIS_LABELS_FR[axis]}
                     </th>
                   ))}
-                  <th scope="col" className="py-2 font-medium">
-                    Global
+                  <th scope="col" className="py-2 pr-3 font-medium">
+                    Signaux
                   </th>
                 </tr>
               </thead>
               <tbody>
-                {rows.map((row) => (
-                  <tr key={row.enrollmentId} className="border-border border-b last:border-0">
-                    <th scope="row" className="py-3 pr-3 text-left font-medium">
-                      {row.personName}
-                      <Badge variant="outline" className="ml-2 font-normal">
-                        {row.status}
-                      </Badge>
-                    </th>
-                    <td className="py-3 pr-3">
-                      <AxisCell axis={row.theory} />
-                    </td>
-                    <td className="py-3 pr-3">
-                      <AxisCell axis={row.competence} />
-                    </td>
-                    <td className="py-3 pr-3">
-                      <AxisCell axis={row.placement} />
-                    </td>
-                    <td className="py-3 pr-3">
-                      <AxisCell axis={row.assessment} />
-                    </td>
-                    <td className="py-3 font-semibold tabular-nums">{row.globalPercent} %</td>
-                  </tr>
-                ))}
+                {tries.map((row) => {
+                  const messages = signaux.get(row.enrollmentId) ?? [];
+                  return (
+                    <tr key={row.enrollmentId} className="border-b border-border last:border-0">
+                      <th
+                        scope="row"
+                        className="sticky left-0 bg-card py-2.5 pr-3 text-left font-medium"
+                      >
+                        {row.personName}
+                      </th>
+                      <td className="py-2.5 pr-3">
+                        <Connexion iso={row.lastSignInAt} />
+                      </td>
+                      {AXES.map((axis) => (
+                        <td key={axis} className="py-2.5 pr-3">
+                          <AxisCell axis={row[axis]} label={TRACKING_AXIS_LABELS_FR[axis]} />
+                        </td>
+                      ))}
+                      <td className="py-2.5 pr-3">
+                        {messages.length === 0 ? (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        ) : (
+                          <span
+                            title={messages.join("\n")}
+                            className="inline-flex items-center gap-1 rounded-md bg-amber-100 px-2 py-1 text-xs font-medium text-amber-900 dark:bg-amber-950/50 dark:text-amber-200"
+                          >
+                            <AlertTriangle className="size-3.5" aria-hidden />
+                            {messages.length}
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         )}
 
-        <div className="mt-4 flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button asChild size="sm" variant="outline" className="min-h-11">
             <Link
               to="/espace/administration/pilotage"
@@ -167,9 +288,6 @@ export function LearnerTrackingSection({
           </Button>
           <Button asChild size="sm" variant="outline" className="min-h-11">
             <Link to="/espace/administration/competences">Référentiel de compétences</Link>
-          </Button>
-          <Button asChild size="sm" variant="outline" className="min-h-11">
-            <Link to="/espace/administration/evaluations">Évaluations</Link>
           </Button>
         </div>
       </PanelCard>

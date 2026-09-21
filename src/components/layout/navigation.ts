@@ -193,6 +193,8 @@ export const PROGRAM_ADMIN_NAV: readonly NavEntry[] = [
     icon: MessagesSquare,
     exact: false,
   },
+  // La messagerie du programme, vue de l'administration (Stef, 21/09).
+  { to: "/espace/administration/messagerie", label: "Messagerie", icon: Mail, exact: false },
   {
     to: "/espace/administration/documents",
     label: "Documents et certificats",

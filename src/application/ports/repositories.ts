@@ -1771,6 +1771,14 @@ export interface PassportRepository {
   /** Les declarations d'une inscription. */
   listSelfReports(enrollmentId: EnrollmentId): Promise<readonly OutcomeSelfReport[]>;
   /**
+   * Les declarations de TOUTE une promotion, en une lecture (21/09). Le suivi
+   * croise de l'administration inventait ses chiffres (hachage) faute de cette
+   * lecture ; la RLS la borne au staff du programme.
+   */
+  listSelfReportsForEnrollments(
+    enrollmentIds: readonly EnrollmentId[],
+  ): Promise<readonly OutcomeSelfReport[]>;
+  /**
    * L'ENCADRANT CONFIRME une declaration. `validate_outcome_declaration`
    * existe en base depuis le 31/08 et n'etait appelee par AUCUNE ligne de
    * code : c'est le geste central de l'encadrement, et il n'avait pas de

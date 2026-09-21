@@ -4,6 +4,8 @@
  */
 import { useQuery } from "@tanstack/react-query";
 import { useDataAccess, useSession } from "@/application/session";
+import { fetchProgramDirectory } from "@/infrastructure/supabase/communicationDirectory";
+import type { OutcomeSelfReport } from "@/domain/passport";
 
 export function useProgramAdmin() {
   const data = useDataAccess();
@@ -86,7 +88,34 @@ export function useProgramAdmin() {
         data.audit.listRecentEvents(8),
       ]);
 
+      /*
+       * LES VRAIS CHIFFRES DU SUIVI (21/09). Le tableau croise du Pilotage et
+       * les vues Competences / Connaissances INVENTAIENT leurs valeurs (hachage
+       * stable, « maquette deterministe ») : Stef a vu des statistiques
+       * d'activite pour des etudiants jamais connectes. Deux lectures reelles
+       * les remplacent : les declarations de la promotion, et la derniere
+       * connexion de chacun. Un echec de lecture rend du VIDE, jamais du faux.
+       */
+      const [declarationsList, directory] = await Promise.all([
+        data.passport
+          .listSelfReportsForEnrollments(enrollments.map((e) => e.id))
+          .catch(() => [] as readonly OutcomeSelfReport[]),
+        data.isMock ? Promise.resolve([]) : fetchProgramDirectory(activeProgram.id).catch(() => []),
+      ]);
+      const declarations = new Map<string, OutcomeSelfReport[]>();
+      for (const report of declarationsList) {
+        const key = report.enrollmentId as string;
+        declarations.set(key, [...(declarations.get(key) ?? []), report]);
+      }
+      const lastSignInByPerson = new Map<string, string>();
+      for (const row of directory) {
+        if (row.personId && row.lastSignInAt)
+          lastSignInByPerson.set(row.personId, row.lastSignInAt);
+      }
+
       return {
+        declarations,
+        lastSignInByPerson,
         program,
         versions,
         cohorts,

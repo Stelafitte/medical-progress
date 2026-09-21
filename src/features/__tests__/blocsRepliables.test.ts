@@ -29,10 +29,13 @@ describe("écrans professionnels repliables (Stef, 18/09)", () => {
     expect(read(`${dir}AdminCompetencies.tsx`)).not.toContain("md:grid-cols-2");
   });
 
-  it("les signaux du pilotage restent, repliés, avec leur compte", () => {
+  it("les signaux deviennent une colonne de la matrice de la promotion (21/09)", () => {
     const pilote = read(`${dir}AdminProgramPilot.tsx`);
-    expect(pilote).toContain('title="Signaux à traiter"');
-    expect(pilote).toContain("{cohortAlerts.length} signal(aux)");
+    expect(pilote).not.toContain('title="Signaux à traiter"');
+    const matrice = read(`${dir}LearnerTrackingSection.tsx`);
+    expect(matrice).toContain("Signaux");
+    expect(matrice).toContain("jamais connecté");
+    expect(read(`${dir}AdminDashboard.tsx`)).toContain("<LearnerTrackingSection");
   });
 
   it("la communication sépare et colore les trois populations", () => {

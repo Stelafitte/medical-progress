@@ -42,6 +42,7 @@ import { Route as EspaceAdministrationDpcRouteImport } from './routes/espace.adm
 import { Route as EspaceAdministrationEncadrementRouteImport } from './routes/espace.administration.encadrement'
 import { Route as EspaceAdministrationEvaluationsRouteImport } from './routes/espace.administration.evaluations'
 import { Route as EspaceAdministrationGouvernanceRouteImport } from './routes/espace.administration.gouvernance'
+import { Route as EspaceAdministrationMessagerieRouteImport } from './routes/espace.administration.messagerie'
 import { Route as EspaceAdministrationOrganisationRouteImport } from './routes/espace.administration.organisation'
 import { Route as EspaceAdministrationPedagogieRouteImport } from './routes/espace.administration.pedagogie'
 import { Route as EspaceAdministrationPersonnesRouteImport } from './routes/espace.administration.personnes'
@@ -245,6 +246,12 @@ const EspaceAdministrationGouvernanceRoute =
     path: '/gouvernance',
     getParentRoute: () => EspaceAdministrationRoute,
   } as any)
+const EspaceAdministrationMessagerieRoute =
+  EspaceAdministrationMessagerieRouteImport.update({
+    id: '/messagerie',
+    path: '/messagerie',
+    getParentRoute: () => EspaceAdministrationRoute,
+  } as any)
 const EspaceAdministrationOrganisationRoute =
   EspaceAdministrationOrganisationRouteImport.update({
     id: '/organisation',
@@ -428,6 +435,7 @@ export interface FileRoutesByFullPath {
   '/espace/administration/encadrement': typeof EspaceAdministrationEncadrementRoute
   '/espace/administration/evaluations': typeof EspaceAdministrationEvaluationsRoute
   '/espace/administration/gouvernance': typeof EspaceAdministrationGouvernanceRoute
+  '/espace/administration/messagerie': typeof EspaceAdministrationMessagerieRoute
   '/espace/administration/organisation': typeof EspaceAdministrationOrganisationRoute
   '/espace/administration/pedagogie': typeof EspaceAdministrationPedagogieRoute
   '/espace/administration/personnes': typeof EspaceAdministrationPersonnesRoute
@@ -484,6 +492,7 @@ export interface FileRoutesByTo {
   '/espace/administration/encadrement': typeof EspaceAdministrationEncadrementRoute
   '/espace/administration/evaluations': typeof EspaceAdministrationEvaluationsRoute
   '/espace/administration/gouvernance': typeof EspaceAdministrationGouvernanceRoute
+  '/espace/administration/messagerie': typeof EspaceAdministrationMessagerieRoute
   '/espace/administration/organisation': typeof EspaceAdministrationOrganisationRoute
   '/espace/administration/pedagogie': typeof EspaceAdministrationPedagogieRoute
   '/espace/administration/personnes': typeof EspaceAdministrationPersonnesRoute
@@ -546,6 +555,7 @@ export interface FileRoutesById {
   '/espace/administration/encadrement': typeof EspaceAdministrationEncadrementRoute
   '/espace/administration/evaluations': typeof EspaceAdministrationEvaluationsRoute
   '/espace/administration/gouvernance': typeof EspaceAdministrationGouvernanceRoute
+  '/espace/administration/messagerie': typeof EspaceAdministrationMessagerieRoute
   '/espace/administration/organisation': typeof EspaceAdministrationOrganisationRoute
   '/espace/administration/pedagogie': typeof EspaceAdministrationPedagogieRoute
   '/espace/administration/personnes': typeof EspaceAdministrationPersonnesRoute
@@ -609,6 +619,7 @@ export interface FileRouteTypes {
     | '/espace/administration/encadrement'
     | '/espace/administration/evaluations'
     | '/espace/administration/gouvernance'
+    | '/espace/administration/messagerie'
     | '/espace/administration/organisation'
     | '/espace/administration/pedagogie'
     | '/espace/administration/personnes'
@@ -665,6 +676,7 @@ export interface FileRouteTypes {
     | '/espace/administration/encadrement'
     | '/espace/administration/evaluations'
     | '/espace/administration/gouvernance'
+    | '/espace/administration/messagerie'
     | '/espace/administration/organisation'
     | '/espace/administration/pedagogie'
     | '/espace/administration/personnes'
@@ -726,6 +738,7 @@ export interface FileRouteTypes {
     | '/espace/administration/encadrement'
     | '/espace/administration/evaluations'
     | '/espace/administration/gouvernance'
+    | '/espace/administration/messagerie'
     | '/espace/administration/organisation'
     | '/espace/administration/pedagogie'
     | '/espace/administration/personnes'
@@ -994,6 +1007,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EspaceAdministrationGouvernanceRouteImport
       parentRoute: typeof EspaceAdministrationRoute
     }
+    '/espace/administration/messagerie': {
+      id: '/espace/administration/messagerie'
+      path: '/messagerie'
+      fullPath: '/espace/administration/messagerie'
+      preLoaderRoute: typeof EspaceAdministrationMessagerieRouteImport
+      parentRoute: typeof EspaceAdministrationRoute
+    }
     '/espace/administration/organisation': {
       id: '/espace/administration/organisation'
       path: '/organisation'
@@ -1191,6 +1211,7 @@ interface EspaceAdministrationRouteChildren {
   EspaceAdministrationEncadrementRoute: typeof EspaceAdministrationEncadrementRoute
   EspaceAdministrationEvaluationsRoute: typeof EspaceAdministrationEvaluationsRoute
   EspaceAdministrationGouvernanceRoute: typeof EspaceAdministrationGouvernanceRoute
+  EspaceAdministrationMessagerieRoute: typeof EspaceAdministrationMessagerieRoute
   EspaceAdministrationOrganisationRoute: typeof EspaceAdministrationOrganisationRoute
   EspaceAdministrationPedagogieRoute: typeof EspaceAdministrationPedagogieRoute
   EspaceAdministrationPersonnesRoute: typeof EspaceAdministrationPersonnesRoute
@@ -1216,6 +1237,7 @@ const EspaceAdministrationRouteChildren: EspaceAdministrationRouteChildren = {
   EspaceAdministrationEncadrementRoute: EspaceAdministrationEncadrementRoute,
   EspaceAdministrationEvaluationsRoute: EspaceAdministrationEvaluationsRoute,
   EspaceAdministrationGouvernanceRoute: EspaceAdministrationGouvernanceRoute,
+  EspaceAdministrationMessagerieRoute: EspaceAdministrationMessagerieRoute,
   EspaceAdministrationOrganisationRoute: EspaceAdministrationOrganisationRoute,
   EspaceAdministrationPedagogieRoute: EspaceAdministrationPedagogieRoute,
   EspaceAdministrationPersonnesRoute: EspaceAdministrationPersonnesRoute,
