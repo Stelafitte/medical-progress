@@ -106,6 +106,7 @@ export const mockDataAccess: DataAccess = {
     let counter = 0;
     const designDrafts = new Map<string, Record<string, unknown>>();
     const planShifts = new Map<string, boolean>();
+    const placementsModule = new Map<string, boolean>();
     /*
      * LES DEUX REGLAGES EN MEMOIRE S'APPLIQUENT A LA LECTURE, EN UN SEUL
      * ENDROIT. Sans cela l'interrupteur du plan repondrait « enregistre » et
@@ -115,10 +116,15 @@ export const mockDataAccess: DataAccess = {
     const relu = (programme: Program): Program => {
       const draft = designDrafts.get(programme.id);
       const shifts = planShifts.get(programme.id);
+      const stages = placementsModule.get(programme.id);
       const avecDraft = draft ? { ...programme, designDraft: draft } : programme;
+      const avecStages =
+        stages === undefined
+          ? avecDraft
+          : { ...avecDraft, config: { ...avecDraft.config, placementsEnabled: stages } };
       return shifts === undefined
-        ? avecDraft
-        : { ...avecDraft, config: { ...avecDraft.config, learnerPlanShiftsEnabled: shifts } };
+        ? avecStages
+        : { ...avecStages, config: { ...avecStages.config, learnerPlanShiftsEnabled: shifts } };
     };
     return {
       listPrograms: () => ok(fx.programs.map(relu)),
@@ -136,6 +142,12 @@ export const mockDataAccess: DataAccess = {
        * doit pouvoir montrer l'interrupteur et l'effet qu'il produit cote
        * apprenant ; elle n'a pas de base pour s'en souvenir.
        */
+      setPlacementsEnabled: (programId, enabled) => {
+        const programme = fx.programs.find((p) => p.id === programId);
+        if (!programme) return Promise.reject(new Error("Programme introuvable."));
+        placementsModule.set(programId, enabled);
+        return ok(relu(programme));
+      },
       setLearnerPlanShifts: (programId, enabled) => {
         const programme = fx.programs.find((p) => p.id === programId);
         if (!programme) return Promise.reject(new Error("Programme introuvable."));
@@ -1301,7 +1313,8 @@ export const mockDataAccess: DataAccess = {
     listSessions: (programId) => ok(hvg.dpcHvgSessions.filter((s) => s.programId === programId)),
   },
   audit: {
-    listRecentEvents: (limit = 20) => ok(fx.auditEvents.slice(0, limit)),
+    listRecentEvents: (limit = 20, programId) =>
+      ok(fx.auditEvents.filter((e) => !programId || e.programId === programId).slice(0, limit)),
   },
   /*
     LES COÛTS NE SE SIMULENT PAS. Un tableau de coûts inventé serait le pire
@@ -1313,8 +1326,7 @@ export const mockDataAccess: DataAccess = {
     costReport: () => ok([]),
     listUnitPrices: () => ok([]),
     listBillingStatements: () => ok([]),
-    setUnitPrice: () =>
-      Promise.reject(new Error("Les tarifs ne se saisissent pas en mode local.")),
+    setUnitPrice: () => Promise.reject(new Error("Les tarifs ne se saisissent pas en mode local.")),
     recordBillingStatement: () =>
       Promise.reject(new Error("Les relevés de facture n'existent pas en mode local.")),
     /* Le compteur d'ouvertures ne doit JAMAIS faire échouer la lecture d'un

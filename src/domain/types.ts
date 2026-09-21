@@ -553,4 +553,6 @@ export interface AuditEvent extends Entity<AuditEventId> {
   readonly targetId: string;
   readonly programId?: ProgramId;
   readonly detail?: string;
+  /** Nom de l'auteur, joint par la base (21/09). */
+  readonly actorName?: string;
 }

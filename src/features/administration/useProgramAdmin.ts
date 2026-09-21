@@ -85,7 +85,7 @@ export function useProgramAdmin() {
         data.administration.listPeople(),
         data.peopleStaging.listPendingPeople(activeProgram.id),
         data.administration.listAllRoleAssignments(),
-        data.audit.listRecentEvents(8),
+        data.audit.listRecentEvents(50, activeProgram.id),
       ]);
 
       /*

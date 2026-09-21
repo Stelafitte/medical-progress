@@ -307,6 +307,11 @@ export interface ProgramRepository {
    */
   setLearnerPlanShifts(programId: ProgramId, enabled: boolean): Promise<Program>;
   /**
+   * Module « Stages » du programme (`placements_enabled`) : ouvre ou ferme
+   * l'onglet « Mon carnet de stage » des étudiants. Rend le programme relu.
+   */
+  setPlacementsEnabled(programId: ProgramId, enabled: boolean): Promise<Program>;
+  /**
    * Analyse IA (Edge Function `analyze-program-objectives`) d'un texte
    * d'objectifs pédagogiques : propose un référentiel candidat (connaissances
    * & compétences + modalités d'évaluation). Ne crée RIEN — la validation et
@@ -1749,7 +1754,12 @@ export interface DpcRepository {
 }
 
 export interface AuditRepository {
-  listRecentEvents(limit?: number): Promise<readonly AuditEvent[]>;
+  /**
+   * Journal des décisions, le plus récent d'abord. Avec `programId` : ce
+   * programme (réservé à ses administrateurs) ; sans : toute la plateforme
+   * (réservé à son administrateur). Lecture par `list_audit_events` (21/09).
+   */
+  listRecentEvents(limit?: number, programId?: ProgramId): Promise<readonly AuditEvent[]>;
 }
 
 /** Façade unique injectée dans l'application. */

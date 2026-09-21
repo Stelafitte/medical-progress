@@ -12,12 +12,13 @@ describe("aucune fixture en production", () => {
   const supa = read("src/infrastructure/supabase/supabaseDataAccess.ts");
   it("neutralise les espaces que Supabase ne réimplémente pas", () => {
     for (const ligne of [
-      "audit: { listRecentEvents: async () => [] }",
       "statistics: { listCohortStatistics: async () => [] }",
       "aiCredits: { listEntries: async () => [], getBudget: async () => undefined }",
     ]) {
       expect(supa).toContain(ligne);
     }
+    // Le journal d'audit est désormais lu en base (list_audit_events), jamais par fixture.
+    expect(supa).toContain('client.rpc("list_audit_events"');
     expect(supa).toContain("dpc: {");
     expect(supa).toContain("clinicalAudits: {");
     expect(supa).toContain("contentAi: {");

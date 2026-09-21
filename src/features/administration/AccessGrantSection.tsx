@@ -10,6 +10,7 @@ import { Link } from "@tanstack/react-router";
 import { EmptyState, PanelCard, ScopeNotice } from "@/features/professional/mock-ui";
 import { AccessGrantCreationForm } from "@/features/administration/AccessGrantCreationForm";
 import { formatFrDate } from "@/features/administration/adminProgramViewModel";
+import { horodatageFr, libelleEvenement } from "@/domain/auditJournal";
 import { grantsForProgram } from "@/domain/accessGrant";
 import { ROLE_LABELS_FR } from "@/domain/roles";
 import { EXPORT_NO_PATIENT_DATA_FR, RETENTION_TBD_FR } from "@/domain/administration";
@@ -140,18 +141,24 @@ export function AccessGrantSection({
 
       <PanelCard
         title="Journal d'audit"
-        description="Traçabilité de chaque décision : attribution de droit, validation, export."
+        description="Les 50 dernières décisions tracées en base pour ce programme : droits accordés, promotions, versions du référentiel, acquis modifiés."
       >
         {auditEvents.length === 0 ? (
-          <EmptyState>
-            Chaque attribution de droit est bien tracée en base, mais sa consultation à l'écran
-            n'est pas encore disponible.
-          </EmptyState>
+          <EmptyState>Aucune décision tracée pour ce programme.</EmptyState>
         ) : (
-          <ul className="space-y-1 text-sm text-muted-foreground">
+          <ul className="divide-y divide-border rounded-lg border border-border text-sm">
             {auditEvents.map((event) => (
-              <li key={event.id}>
-                {formatFrDate(event.createdAt)} — {event.action}
+              <li
+                key={event.id}
+                className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-3 py-2"
+              >
+                <span className="font-mono text-xs text-muted-foreground tabular-nums">
+                  {horodatageFr(event.createdAt)}
+                </span>
+                <span className="font-medium">{libelleEvenement(event.action)}</span>
+                <span className="text-muted-foreground text-xs">
+                  par {event.actorName ?? (event.actorPersonId === "system" ? "le système" : "—")}
+                </span>
               </li>
             ))}
           </ul>

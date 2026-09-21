@@ -12,6 +12,7 @@
 import { SectionHeading } from "@/components/section-heading";
 import { PanelCard, ScopeNotice, StatCard } from "@/features/professional/mock-ui";
 import { PlacementSection } from "@/features/administration/PlacementSection";
+import { PlacementsModuleToggle } from "@/features/administration/PlacementsModuleToggle";
 import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { SupervisionGroupSection } from "@/features/administration/SupervisionGroupSection";
@@ -53,6 +54,8 @@ export function AdminStages() {
         promotion par promotion. Le suivi individuel des carnets (journées, périodes validées) est
         aussi une colonne du tableau de suivi, dans le Pilotage.
       </ScopeNotice>
+
+      {data.program ? <PlacementsModuleToggle programId={data.program.id} /> : null}
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard label="Terrains de stage" value={placements.length} />

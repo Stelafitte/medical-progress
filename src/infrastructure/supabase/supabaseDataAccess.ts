@@ -136,7 +136,7 @@ import type {
  * l'assignation. Le compilateur l'a attrape ; a l'oeil, c'etait invisible.
  */
 import type { MessageChannel } from "@/domain/communication";
-import type { MessageDeliveryId } from "@/domain/types";
+import type { AuditEvent, MessageDeliveryId } from "@/domain/types";
 import type {
   StageLog,
   StageLogEntryId,
@@ -1669,7 +1669,46 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
      * fixture ment de façon plausible. Chaque espace qui sera branché
      * remplacera son entrée ici.
      */
-    audit: { listRecentEvents: async () => [] },
+    /*
+     * LE JOURNAL D'AUDIT, LU EN BASE (21/09) par `list_audit_events`, qui borne
+     * le périmètre et joint le nom de l'auteur. Un refus (pas administrateur)
+     * rend une liste vide : l'onglet Sécurité ne doit pas tomber pour autant.
+     */
+    audit: {
+      listRecentEvents: async (limit = 100, programId) => {
+        const { data, error } = await client.rpc("list_audit_events", {
+          p_program_id: programId ?? null,
+          p_limit: limit,
+        });
+        if (error || !Array.isArray(data)) return [];
+        return (
+          data as Array<{
+            id: string;
+            program_id: string | null;
+            actor_person_id: string | null;
+            actor_name: string | null;
+            event_type: string;
+            entity_type: string;
+            entity_id: string | null;
+            detail: Record<string, unknown> | null;
+            occurred_at: string;
+          }>
+        ).map((row) => ({
+          id: row.id as AuditEvent["id"],
+          createdAt: row.occurred_at,
+          provenance: nativeProvenance,
+          actorPersonId: (row.actor_person_id ?? "system") as AuditEvent["actorPersonId"],
+          action: row.event_type,
+          targetType: row.entity_type,
+          targetId: row.entity_id ?? "",
+          ...(row.program_id ? { programId: row.program_id as ProgramId } : {}),
+          ...(row.detail && Object.keys(row.detail).length > 0
+            ? { detail: JSON.stringify(row.detail) }
+            : {}),
+          ...(row.actor_name ? { actorName: row.actor_name } : {}),
+        }));
+      },
+    },
     aiCredits: { listEntries: async () => [], getBudget: async () => undefined },
     statistics: { listCohortStatistics: async () => [] },
     contentAi: {
@@ -2417,6 +2456,15 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
        */
       async setLearnerPlanShifts(programId: ProgramId, enabled: boolean) {
         const { data, error } = await client.rpc("set_learner_plan_shifts", {
+          p_program_id: programId,
+          p_enabled: enabled,
+        });
+        assertNoSupabaseError(error);
+        if (!data) throw new Error("Réglage non enregistré.");
+        return mapProgram(data as ProgramRow);
+      },
+      async setPlacementsEnabled(programId: ProgramId, enabled: boolean) {
+        const { data, error } = await client.rpc("set_program_placements_enabled", {
           p_program_id: programId,
           p_enabled: enabled,
         });
