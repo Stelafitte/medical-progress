@@ -6,20 +6,15 @@
  * Aucun rappel des trois étapes ici (il reste sur le concepteur).
  */
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { Link, useSearch } from "@tanstack/react-router";
+import { useSearch } from "@tanstack/react-router";
 import {
-  Activity,
   AlertTriangle,
-  ArrowRight,
-  Bell,
   CalendarClock,
+  ClipboardCheck,
+  Send,
   ChevronDown,
   ChevronUp,
-  FileCheck,
   History,
-  Notebook,
-  UserRound,
-  Users,
 } from "lucide-react";
 import { SectionHeading } from "@/components/section-heading";
 import { CohortInterruptionPanel } from "@/features/administration/CohortInterruptionPanel";
@@ -27,7 +22,7 @@ import { IncidentsPanel } from "@/features/administration/IncidentsPanel";
 import { CalendarShiftPanel } from "@/features/administration/CalendarShiftPanel";
 import { PilotJournalPanel } from "@/features/administration/PilotJournalPanel";
 import { RelancePanel } from "@/features/administration/RelancePanel";
-import { cleIncidents, cleJournal } from "@/features/administration/cohortInterruptionQuery";
+import { cleIncidents } from "@/features/administration/cohortInterruptionQuery";
 import { incidentsOuverts as ouverts, type ProgramIncident } from "@/domain/pilotDecision";
 import { cleInterruptions } from "@/features/administration/cohortInterruptionQuery";
 import {
@@ -41,11 +36,8 @@ import { Progress } from "@/components/ui/progress";
 import { EmptyState, PanelCard, ScopeNotice } from "@/features/professional/mock-ui";
 import { CohortSelector } from "@/features/administration/CohortSelector";
 import { AssessmentModalitySection } from "@/features/administration/AssessmentModalitySection";
-import { PlacementSection } from "@/features/administration/PlacementSection";
-import { useLocalPlacements } from "@/application/placementDraftStore";
-import { mergePlacements } from "@/domain/placementDraft";
 import { LearnerTrackingSection } from "@/features/administration/LearnerTrackingSection";
-import { personNameFor, useProgramAdmin } from "@/features/administration/useProgramAdmin";
+import { useProgramAdmin } from "@/features/administration/useProgramAdmin";
 import { useDataAccess } from "@/application/session";
 import { setCohortFocus, useCohortFocus } from "@/application/cohortFocusStore";
 import { useQuery } from "@tanstack/react-query";
@@ -60,25 +52,12 @@ import {
   nextMilestone,
 } from "@/features/administration/adminProgramViewModel";
 import {
-  LEARNER_MARKER_LABELS_FR,
-  PROGRAMMING_ACTION_LABELS_FR,
-  PROGRAMMING_STATE_LABELS_FR,
-  allowedProgrammingActions,
   buildLearnerActivityRows,
-  buildSuggestedNotifications,
-  nextProgrammingState,
   summarizeGroupActivity,
   type GroupActivitySummary,
   type LearnerActivityRow,
-  type ProgrammingState,
 } from "@/features/administration/pilotSectionsViewModel";
-import { ROLE_LABELS_FR } from "@/domain/roles";
-import { buildLearnerCompetenceRows } from "@/features/administration/competenceTrackingViewModel";
-import type { LearnerCompetenceRow } from "@/features/administration/competenceTrackingViewModel";
-import type {
-  CohortPhase,
-  PilotTimelineItem,
-} from "@/features/administration/adminProgramViewModel";
+import type { PilotTimelineItem } from "@/features/administration/adminProgramViewModel";
 import type { CohortId, Placement } from "@/domain/types";
 
 const STATE_STYLES = {
@@ -97,7 +76,6 @@ export function AdminProgramPilot() {
    * dans Évaluations, et le Pilotage l'ignorait. Sept écrans, sept vérités.
    */
   const cohortId = useCohortFocus();
-  const localPlacements = useLocalPlacements(data?.program?.id);
 
   const cohorts = data?.cohorts ?? [];
   // Priorité : choix explicite de l'utilisateur, puis lien profond venu de « Classes ».
@@ -144,12 +122,6 @@ export function AdminProgramPilot() {
   const cohortAlerts = data.alerts.filter((alert) =>
     cohortEnrollments.some((e) => e.id === alert.enrollmentId),
   );
-  const scopedRoles = data.roleAssignments.filter(
-    (r) =>
-      r.scope.kind !== "platform" &&
-      "programId" in r.scope &&
-      r.scope.programId === data.program?.id,
-  );
   const progress = selected ? Math.round(cohortProgressRatio(selected) * 100) : 0;
   /*
    * LA SEMAINE OU EN EST LA PROMOTION — meme calcul que partout ailleurs dans
@@ -173,30 +145,31 @@ export function AdminProgramPilot() {
     expectedLogsPerLearner: data.templates.length,
   });
   const groupSummary = summarizeGroupActivity(learnerRows);
-  /** Suivi NOMINATIF des compétences : il appartient au pilotage, pas au référentiel. */
-  const competenceRows = buildLearnerCompetenceRows(
-    cohortEnrollments,
-    data.outcomes,
-    data.declarations,
-  ).map((row) => ({
-    ...row,
-    personName: personNameFor(data, row.enrollmentId),
-  }));
-
   return (
     <div className="space-y-6">
       <SectionHeading
         eyebrow={data.program?.name ?? "Programme"}
         title="Pilotage de programme"
         level={1}
-        description="Suivez une promotion en cours : calendrier daté, inscriptions, carnets, alertes et intervenants."
+        description="Où en est la promotion, qui décroche, et les gestes pour agir."
       />
 
+      {/*
+        LE MÉNAGE DU 21/09 (Stef : « trois listes des mêmes étudiants »).
+        La page montrait les mêmes étudiants dans « Apprenants de la promotion »,
+        « Suivi des stages », « Suivi de la promotion », puis encore trois fois
+        dans « Gestion des apprenants » (activité, marqueurs, compétences). Il
+        n'en reste qu'UNE : la matrice, qui porte désormais aussi le carnet de
+        stage réel et le rattachement au groupe. Sont partis, parce qu'ils ont
+        leur onglet : terrains et groupes (Gestion des stages), intervenants
+        (Équipe d'encadrement), consultation des évaluations (l'atelier en
+        écriture reste dans les outils), chiffres du programme (Vue d'ensemble),
+        lien vers les documents (barre de navigation), notifications simulées.
+      */}
       <ScopeNotice>
-        Cet onglet est celui du <strong>suivi</strong> : avancement, retards, relances sur la
-        promotion sélectionnée. La composition des classes (inscriptions, imports, archivage) se
-        traite dans « Classes d'apprenants », et le modèle pédagogique dans « Concepteur de
-        programme ».
+        On suit et on agit sur la promotion choisie. Les inscriptions se gèrent dans « Classes
+        d'apprenants », les terrains et groupes d'encadrement dans « Gestion des stages », le
+        référentiel dans « Concepteur de programme ».
       </ScopeNotice>
 
       <CohortSelector
@@ -204,19 +177,21 @@ export function AdminProgramPilot() {
         value={selectedId}
         onChange={setCohortFocus}
         label="Promotion pilotée"
+        details={false}
       />
 
       {!selected ? (
         <EmptyState>Aucune promotion rattachée à ce programme.</EmptyState>
       ) : (
         <>
-          {/* Bandeau d'état de la promotion */}
+          {/* 1. Où en est la promotion */}
           <section className="border-border bg-card space-y-3 rounded-lg border p-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h2 className="text-lg font-semibold">{selected.label}</h2>
                 <p className="text-muted-foreground text-sm">
-                  {formatFrDate(selected.startsOn)} → {formatFrDate(selected.endsOn)}
+                  {formatFrDate(selected.startsOn)} → {formatFrDate(selected.endsOn)} ·{" "}
+                  {cohortEnrollments.length} inscrit(s)
                 </p>
               </div>
               <Badge variant="secondary" className="font-normal">
@@ -230,21 +205,63 @@ export function AdminProgramPilot() {
                 ? ` · prochaine échéance : ${upcoming.label} le ${formatFrDate(upcoming.date)}`
                 : " · tous les jalons connus sont passés"}
             </p>
-            <dl className="grid grid-cols-2 gap-3 lg:grid-cols-3">
-              {[
-                { icon: Users, label: "Inscriptions", value: cohortEnrollments.length },
-                { icon: Notebook, label: "Carnets reçus", value: cohortLogs.length },
-                { icon: AlertTriangle, label: "Alertes ouvertes", value: cohortAlerts.length },
-              ].map(({ icon: Icon, label, value }) => (
-                <div key={label} className="border-border rounded-lg border p-4">
-                  <Icon className="text-muted-foreground size-4" aria-hidden />
-                  <dd className="mt-1 text-2xl font-semibold tabular-nums">{value}</dd>
-                  <dt className="text-muted-foreground text-xs">{label}</dt>
-                </div>
-              ))}
-            </dl>
           </section>
 
+          {/* 2. Qui décroche : LA liste des étudiants, une seule. */}
+          <LearnerTrackingSection
+            data={data}
+            cohortId={selectedId}
+            showCohortSelector={false}
+            description="Une ligne par étudiant : connexion, bases théoriques, compétences, stage, évaluations, carnet de stage réel et signaux. Triez par retard pour voir d'abord qui décroche."
+          />
+
+          {/* 3. Agir */}
+          <PilotTools
+            cohortId={selected.id}
+            cohortLabel={selected.label}
+            interruption={interruptionEnCours(interruptions.data ?? [])}
+            incidentsOuverts={ouverts(incidents.data ?? [])}
+            placements={data.placements}
+            jalons={timeline}
+            finActuelle={selected.endsOn}
+            semainesEcoulees={semainesEcoulees}
+            onChanged={() => {
+              void refetch();
+              void incidents.refetch();
+            }}
+            rows={learnerRows}
+            summary={groupSummary}
+            atelier={
+              !data.program ? null : (
+                <AssessmentModalitySection
+                  programId={data.program.id}
+                  modalities={data.assessmentModalities}
+                  sessions={data.assessmentSessions}
+                  links={data.cohortAssessmentLinks}
+                  cohorts={data.cohorts}
+                  banques={data.questionBanks}
+                  themes={data.outcomeThemes}
+                  cohortFilter={selectedId}
+                  editable
+                  onChanged={() => void refetch()}
+                />
+              )
+            }
+            relance={
+              !data.program ? null : (
+                <RelancePanel
+                  programId={data.program.id}
+                  cohortLabel={selected.label}
+                  rows={learnerRows}
+                  personIdPour={(enrollmentId) =>
+                    data.enrollments.find((e) => e.id === enrollmentId)?.personId
+                  }
+                />
+              )
+            }
+          />
+
+          {/* 4. Le calendrier, replié : on l'ouvre quand on en a besoin. */}
           <PanelCard
             title="Calendrier daté de la promotion"
             description="Jalons du modèle repositionnés sur les dates réelles de cette promotion."
@@ -274,169 +291,6 @@ export function AdminProgramPilot() {
               ))}
             </ol>
           </PanelCard>
-
-          {/*
-            LES SIGNAUX RESTENT, REPLIÉS (Stef, 18/09 : « revoir l'intérêt »). Ils ne
-            sont pas une liste de plus : `supervision_alerts` les CALCULE à chaque
-            lecture (retard sur un jalon, aucune activité depuis N jours), c'est la
-            seule vue nominative de « qui décroche » — le bandeau n'en donne que le
-            nombre. Replié, le panneau ne coûte qu'une ligne ; son compte et sa
-            teinte disent s'il faut l'ouvrir. Une promotion suspendue ou gelée ne
-            signale rien (17/09).
-          */}
-          <div className="space-y-4">
-            {/* Les signaux vivent désormais dans la matrice de la promotion,
-                une colonne par apprenant (21/09) : voir plus bas. */}
-
-            <PanelCard
-              title="Intervenants et rôles"
-              description="Rôles contextualisés au programme : aucun rôle global."
-              collapsible
-              action={
-                <Badge variant="outline" className="font-normal">
-                  {scopedRoles.length} intervenant(s)
-                </Badge>
-              }
-            >
-              {scopedRoles.length === 0 ? (
-                <EmptyState>Aucun intervenant rattaché.</EmptyState>
-              ) : (
-                <ul className="space-y-2 text-sm">
-                  {scopedRoles.map((role, index) => (
-                    <li
-                      key={`${role.personId}-${role.role}-${index}`}
-                      className="flex flex-wrap items-center gap-2"
-                    >
-                      <UserRound className="text-muted-foreground size-4" aria-hidden />
-                      <span className="font-medium">
-                        {data.people.find((p) => p.id === role.personId)?.fullName ?? role.personId}
-                      </span>
-                      <Badge variant="outline" className="font-normal">
-                        {ROLE_LABELS_FR[role.role]}
-                      </Badge>
-                      <span className="text-muted-foreground text-xs">
-                        portée : {role.scope.kind}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </PanelCard>
-          </div>
-
-          {/* Stages : MÊME bloc que l'onglet « Gestion des stages », en mode suivi
-              (aucune création de terrain ici, le modèle reste dans l'onglet dédié). */}
-          {data.program ? (
-            <PlacementSection
-              programId={data.program.id}
-              programName={data.program.name}
-              placements={data.placements}
-              enrollments={data.enrollments}
-              people={data.people}
-              cohorts={data.cohorts}
-              groups={data.groups}
-              stageLogs={data.stageLogs}
-              templates={data.templates}
-              cohortId={selectedId}
-              showCreation={false}
-            />
-          ) : null}
-
-          {/* Table de suivi croisée : même composant que dans « Classes d'apprenants ». */}
-          <LearnerTrackingSection
-            data={data}
-            cohortId={selectedId}
-            showCohortSelector={false}
-            description="Bases théoriques, compétences, stage et évaluations pour chaque apprenant de la promotion pilotée. Vue identique à celle de l'onglet « Classes d'apprenants »."
-          />
-
-          {/*
-            Évaluation : même bloc que l'onglet « Évaluations ».
-            Les props de cohorte ont disparu le 14/09 avec les panneaux de
-            sessions simulées qu'elles servaient : le référentiel des
-            modalités ne dépend d'aucune promotion.
-          */}
-          {data.program ? (
-            <AssessmentModalitySection
-              programId={data.program.id}
-              modalities={data.assessmentModalities}
-              sessions={data.assessmentSessions}
-              links={data.cohortAssessmentLinks}
-              cohorts={data.cohorts}
-              banques={data.questionBanks}
-              themes={data.outcomeThemes}
-              cohortFilter={selectedId}
-              editable={false}
-            />
-          ) : null}
-
-          <PilotTools
-            cohortId={selected.id}
-            cohortLabel={selected.label}
-            interruption={interruptionEnCours(interruptions.data ?? [])}
-            incidentsOuverts={ouverts(incidents.data ?? [])}
-            placements={data.placements}
-            jalons={timeline}
-            finActuelle={selected.endsOn}
-            semainesEcoulees={semainesEcoulees}
-            onChanged={() => {
-              void refetch();
-              void incidents.refetch();
-            }}
-            rows={learnerRows}
-            summary={groupSummary}
-            competenceRows={competenceRows}
-            atelier={
-              !data.program ? null : (
-                <AssessmentModalitySection
-                  programId={data.program.id}
-                  modalities={data.assessmentModalities}
-                  sessions={data.assessmentSessions}
-                  links={data.cohortAssessmentLinks}
-                  cohorts={data.cohorts}
-                  banques={data.questionBanks}
-                  themes={data.outcomeThemes}
-                  cohortFilter={selectedId}
-                  editable
-                  onChanged={() => void refetch()}
-                />
-              )
-            }
-            relance={
-              !data.program ? null : (
-                <RelancePanel
-                  programId={data.program.id}
-                  cohortLabel={selected.label}
-                  rows={learnerRows}
-                  personIdPour={(enrollmentId) =>
-                    data.enrollments.find((e) => e.id === enrollmentId)?.personId
-                  }
-                />
-              )
-            }
-            activity={{
-              milestonesTotal: timeline.length,
-              milestonesPassed: timeline.filter((i) => i.state === "done").length,
-              progressPercent: progress,
-              outcomes: data.outcomes.length,
-              resources: data.resources.length,
-              /*
-               * Comptait `data.ecosScenarios.length` — les scénarios ECOS du
-               * MOCK (`ecosFixtures.ts`), jamais la base. Le chiffre affiché sous
-               * « Évaluations configurées » ne mesurait pas ce que Stef croyait.
-               * Depuis le 14/09 : les modalités retenues au parcours.
-               */
-              evaluations: data.cohortAssessmentLinks.filter((l) => l.cohortId === selectedId)
-                .length,
-              stagePlacements: data.placements.length,
-              logbookTemplates: data.templates.length,
-              mediaItems: data.media.length,
-              versions: data.versions.length,
-              nextMilestoneLabel: upcoming
-                ? `${upcoming.label} le ${formatFrDate(upcoming.date)}`
-                : "tous les jalons connus sont passés",
-            }}
-          />
         </>
       )}
     </div>
@@ -463,316 +317,10 @@ export function AdminProgramPilot() {
 */
 
 /* ------------------------------------------------------------------ */
-/* Activité DU PROGRAMME (jamais des apprenants)                       */
-/* ------------------------------------------------------------------ */
-
-function MarkerBadge({ row }: { row: LearnerActivityRow }) {
-  return (
-    <Badge variant="outline" className="font-normal">
-      {LEARNER_MARKER_LABELS_FR[row.marker]}
-    </Badge>
-  );
-}
-
-function GroupStats({ summary }: { summary: GroupActivitySummary }) {
-  const stats = [
-    { label: "Apprenants", value: summary.learners },
-    { label: "Avancement moyen", value: `${summary.averageProgressPercent} %` },
-    { label: "Carnets moyens", value: summary.averageLogs },
-    { label: "Observations moyennes", value: summary.averageEntries },
-    { label: "Sans activité", value: summary.idleLearners },
-    { label: "En retard", value: summary.lateLearners },
-  ];
-  return (
-    <dl className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-      {stats.map((stat) => (
-        <div key={stat.label} className="border-border rounded-lg border p-4">
-          <dd className="text-xl font-semibold tabular-nums">{stat.value}</dd>
-          <dt className="text-muted-foreground text-xs">{stat.label}</dt>
-        </div>
-      ))}
-    </dl>
-  );
-}
-
-export interface ProgramActivity {
-  readonly milestonesTotal: number;
-  readonly milestonesPassed: number;
-  readonly progressPercent: number;
-  readonly outcomes: number;
-  readonly resources: number;
-  readonly evaluations: number;
-  readonly stagePlacements: number;
-  readonly logbookTemplates: number;
-  readonly mediaItems: number;
-  readonly versions: number;
-  readonly nextMilestoneLabel: string;
-}
-
-/** Actions portant sur le PROGRAMME : aucune action apprenant ici. */
-const PROGRAM_ACTIONS: readonly { readonly label: string; readonly to: string }[] = [
-  { label: "Calendrier et jalons", to: "/espace/administration/concepteur" },
-  { label: "Contenus et connaissances", to: "/espace/administration/connaissances" },
-  { label: "Compétences visées", to: "/espace/administration/competences" },
-  { label: "Évaluations du programme", to: "/espace/administration/evaluations" },
-  { label: "Gestion des stages", to: "/espace/administration/stages" },
-  { label: "Documents et certificats", to: "/espace/administration/documents" },
-  { label: "Administration et sécurité", to: "/espace/administration/securite" },
-  { label: "Vue d'ensemble du programme", to: "/espace/administration" },
-];
-
-function ActivityPanel({ activity }: { activity: ProgramActivity }) {
-  const stats = [
-    { label: "Avancement calendaire", value: `${activity.progressPercent} %` },
-    {
-      label: "Jalons franchis",
-      value: `${activity.milestonesPassed}/${activity.milestonesTotal}`,
-    },
-    { label: "Versions du programme", value: activity.versions },
-    { label: "Compétences et connaissances visées", value: activity.outcomes },
-    { label: "Ressources publiées", value: activity.resources },
-    { label: "Évaluations configurées", value: activity.evaluations },
-    { label: "Terrains de stage ouverts", value: activity.stagePlacements },
-    { label: "Modèles de carnet actifs", value: activity.logbookTemplates },
-    { label: "Médias de la médiathèque", value: activity.mediaItems },
-  ];
-
-  return (
-    <div className="space-y-4">
-      <p className="text-muted-foreground text-xs">
-        Cet outil ne porte que sur le programme lui-même : dispositif, contenus, jalons et
-        ouvertures. L'activité des apprenants est dans « Gestion des apprenants ».
-      </p>
-
-      <dl className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-        {stats.map((stat) => (
-          <div key={stat.label} className="border-border rounded-lg border p-4">
-            <dd className="text-xl font-semibold tabular-nums">{stat.value}</dd>
-            <dt className="text-muted-foreground text-xs">{stat.label}</dt>
-          </div>
-        ))}
-      </dl>
-
-      <p className="text-muted-foreground text-sm">
-        Prochaine étape du programme : {activity.nextMilestoneLabel}
-      </p>
-
-      <div className="space-y-2">
-        <h4 className="text-sm font-semibold">Actions sur le programme</h4>
-        <div className="flex flex-wrap gap-2">
-          {PROGRAM_ACTIONS.map((action) => (
-            <Button key={action.to} asChild variant="outline" size="sm" className="min-h-11">
-              <Link to={action.to}>
-                {action.label}
-                <ArrowRight className="ms-1 size-4" aria-hidden />
-              </Link>
-            </Button>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/* Gestion des apprenants et notifications                             */
-/* ------------------------------------------------------------------ */
-
-function LearnerManagementPanel({
-  rows,
-  summary,
-  competenceRows,
-}: {
-  rows: readonly LearnerActivityRow[];
-  summary: GroupActivitySummary;
-  competenceRows: readonly (LearnerCompetenceRow & { readonly personName: string })[];
-}) {
-  const notifications = buildSuggestedNotifications(rows);
-  if (rows.length === 0) return <EmptyState>Aucune inscription sur cette promotion.</EmptyState>;
-  return (
-    <div className="space-y-5">
-      {/* Frontière b : ici on suit, on ne compose pas. Toute action d'inscription part vers Classes. */}
-      <div className="border-border bg-muted/40 flex flex-wrap items-center justify-between gap-2 rounded-lg border p-4">
-        <p className="text-muted-foreground text-xs">
-          Liste en lecture seule : inscrire, retirer, importer ou archiver un apprenant se fait dans
-          « Classes d'apprenants ».
-        </p>
-        <Button asChild variant="outline" size="sm" className="min-h-11">
-          <Link to="/espace/administration/classes">
-            Modifier les inscriptions
-            <ArrowRight className="ms-1 size-4" aria-hidden />
-          </Link>
-        </Button>
-      </div>
-
-      <div className="space-y-2">
-        <h3 className="text-sm font-semibold">Activité des apprenants</h3>
-        <GroupStats summary={summary} />
-        <ul className="space-y-2 text-sm">
-          {rows.map((row) => (
-            <li
-              key={`activity-${row.enrollmentId}`}
-              className="border-border flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border p-4"
-            >
-              <span className="font-medium">{row.personName}</span>
-              <MarkerBadge row={row} />
-              <span className="text-muted-foreground text-xs">
-                {row.logCount} carnet(s) · {row.entryCount} observation(s) · {row.validatedCount}{" "}
-                validé(s)
-              </span>
-              {row.lastActivityAt ? (
-                <span className="text-muted-foreground font-mono text-xs">
-                  dernier dépôt {formatFrDate(row.lastActivityAt)}
-                </span>
-              ) : (
-                <span className="text-muted-foreground text-xs">aucun dépôt</span>
-              )}
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      <div className="space-y-2">
-        <h3 className="text-sm font-semibold">Marqueurs d'avancement</h3>
-
-        <ul className="space-y-2 text-sm">
-          {rows.map((row) => (
-            <li key={row.enrollmentId} className="border-border space-y-2 rounded-lg border p-4">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="font-medium">{row.personName}</span>
-                <MarkerBadge row={row} />
-                <span className="text-muted-foreground text-xs">inscription : {row.status}</span>
-                {row.alertCount > 0 ? (
-                  <span className="text-muted-foreground text-xs">
-                    {row.alertCount} signal(s) ouvert(s)
-                  </span>
-                ) : null}
-              </div>
-              <Progress value={row.progressPercent} />
-              <p className="text-muted-foreground text-xs">
-                Avancement {row.progressPercent} % · {row.awaitingCount} en attente de validation
-              </p>
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      {/* Suivi NOMINATIF des compétences : déplacé ici depuis l'onglet Compétences,
-          qui ne porte plus que le référentiel et sa couverture. */}
-      <div className="space-y-2">
-        <h3 className="text-sm font-semibold">
-          Acquisition des compétences, apprenant par apprenant
-        </h3>
-        <p className="text-muted-foreground text-xs">
-          Une compétence en situation réelle n'est comptée acquise qu'après validation par un tiers
-          habilité. Le référentiel lui-même se règle dans l'onglet « Compétences ».
-        </p>
-        {competenceRows.length === 0 ? (
-          <EmptyState>Aucune compétence à suivre sur cette promotion.</EmptyState>
-        ) : (
-          <ul className="space-y-2 text-sm">
-            {competenceRows.map((row) => (
-              <li
-                key={`competence-${row.enrollmentId}`}
-                className="border-border space-y-2 rounded-lg border p-4"
-              >
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-medium">{row.personName}</span>
-                  <Badge variant="secondary" className="font-normal">
-                    {row.validated} validée(s)
-                  </Badge>
-                  <Badge variant="outline" className="font-normal">
-                    {row.declared} en attente de validation
-                  </Badge>
-                  <Badge variant="outline" className="font-normal">
-                    {row.notStarted} non commencée(s)
-                  </Badge>
-                </div>
-                <Progress value={row.percent} />
-                <p className="text-muted-foreground text-xs">
-                  {row.percent} % des {row.total} compétence(s) du référentiel
-                </p>
-              </li>
-            ))}
-          </ul>
-        )}
-        <Button asChild variant="outline" size="sm" className="min-h-11">
-          <Link to="/espace/administration/competences">
-            Référentiel et couverture des compétences
-            <ArrowRight className="ms-1 size-4" aria-hidden />
-          </Link>
-        </Button>
-      </div>
-
-      <div className="space-y-2">
-        <h3 className="text-sm font-semibold">Synthèse de groupe</h3>
-        <div className="flex flex-wrap gap-2 text-sm">
-          {Object.entries(summary.markerCounts).map(([marker, count]) => (
-            <Badge key={marker} variant="secondary" className="font-normal">
-              {LEARNER_MARKER_LABELS_FR[marker as LearnerActivityRow["marker"]]} : {count}
-            </Badge>
-          ))}
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        <h3 className="text-sm font-semibold">Notifications</h3>
-        <p className="text-muted-foreground text-xs">
-          Actions qui découlent des marqueurs d'avancement. L'envoi n'est pas encore branché.
-        </p>
-        {notifications.length === 0 ? (
-          <EmptyState>Aucune notification déclenchée par les marqueurs actuels.</EmptyState>
-        ) : (
-          <ul className="space-y-2 text-sm">
-            {notifications.map((notification) => (
-              <li key={notification.id} className="border-border space-y-2 rounded-lg border p-4">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Bell className="text-muted-foreground size-4" aria-hidden />
-                  <span className="font-medium">{notification.label}</span>
-                  <Badge variant="outline" className="font-normal">
-                    {notification.recipients.length} destinataire(s)
-                  </Badge>
-                </div>
-                <p className="text-muted-foreground text-xs">{notification.rationale}</p>
-                <p className="text-muted-foreground text-xs">
-                  {notification.recipients.join(", ")}
-                </p>
-                <Button variant="outline" className="min-h-11" disabled>
-                  Préparer la notification (simulé)
-                </Button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-
-      <div className="border-border space-y-2 rounded-lg border p-4">
-        <h3 className="text-sm font-semibold">Communication interne</h3>
-        {/* L'OUTIL COMPLET N'EST PLUS INCRUSTE ICI (10/09). Depuis qu'il porte
-            un onglet a lui dans la barre d'administration, l'incruster une
-            seconde fois afficherait deux fois le meme annuaire, avec deux
-            selections independantes et deux barres d'action superposees --
-            et l'une des deux enverrait pour de vrai. Un lien, pas un double. */}
-        <p className="text-muted-foreground text-xs">
-          L'annuaire des destinataires et les envois ont leur propre onglet, dans la barre
-          d'administration du programme.
-        </p>
-        <Button asChild variant="outline" size="sm" className="min-h-11">
-          <Link to="/espace/administration/communications">
-            Ouvrir la communication interne
-            <ArrowRight className="ms-1 size-4" aria-hidden />
-          </Link>
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-/* ------------------------------------------------------------------ */
 /* Outils de pilotage : boutons en tête, contenu déplié en dessous      */
 /* ------------------------------------------------------------------ */
 
-type ToolKey = "incidents" | "programmation" | "activite" | "apprenants" | "documents" | "journal";
+type ToolKey = "incidents" | "programmation" | "relance" | "parcours" | "journal";
 
 const TOOLS: readonly {
   readonly key: ToolKey;
@@ -793,29 +341,22 @@ const TOOLS: readonly {
     hint: "Déclarer ce qui s'est passé, puis prendre les gestes que cela appelle.",
   },
   {
+    key: "relance",
+    label: "Relancer des étudiants",
+    icon: Send,
+    hint: "Écrire aux étudiants en retard ou sans activité, repérés dans le tableau ci-dessus.",
+  },
+  {
     key: "programmation",
-    label: "Programmation et calendrier",
+    label: "Interrompre ou décaler",
     icon: CalendarClock,
-    hint: "Interrompre ou reprendre le parcours, décaler la fin et les jalons.",
+    hint: "Suspendre ou reprendre le parcours, décaler la fin et les jalons.",
   },
   {
-    key: "activite",
-    label: "Activité du programme",
-    icon: Activity,
-    hint: "Dispositif, contenus, jalons et ouvertures du programme — hors apprenants.",
-  },
-  {
-    key: "apprenants",
-    label: "Gestion des apprenants",
-    icon: Users,
-    hint: "Activité des apprenants, marqueurs, notifications et outil de communication complet.",
-  },
-
-  {
-    key: "documents",
-    label: "Documents et certificats",
-    icon: FileCheck,
-    hint: "Pièces administratives et certificats de complétude.",
+    key: "parcours",
+    label: "Évaluations de cette promotion",
+    icon: ClipboardCheck,
+    hint: "Retenir, retirer ou dater les évaluations pour cette promotion seulement.",
   },
   {
     key: "journal",
@@ -836,8 +377,6 @@ function PilotTools({
   semainesEcoulees,
   rows,
   summary,
-  activity,
-  competenceRows,
   atelier,
   relance,
   onChanged,
@@ -852,8 +391,6 @@ function PilotTools({
   semainesEcoulees: number;
   rows: readonly LearnerActivityRow[];
   summary: GroupActivitySummary;
-  activity: ProgramActivity;
-  competenceRows: readonly (LearnerCompetenceRow & { readonly personName: string })[];
   /** L'atelier des évaluations, borné à cette promotion et en ÉCRITURE. */
   atelier: ReactNode;
   /** La relance nominative, qui écrit un vrai brouillon de campagne. */
@@ -865,9 +402,10 @@ function PilotTools({
     setOpen((keys) => (keys.includes(key) ? keys.filter((k) => k !== key) : [...keys, key]));
 
   const badgeFor = (key: ToolKey): string | null => {
-    if (key === "activite")
-      return `${activity.milestonesPassed}/${activity.milestonesTotal} jalons`;
-    if (key === "apprenants") return `${summary.lateLearners + summary.idleLearners} à traiter`;
+    if (key === "relance") {
+      const n = summary.lateLearners + summary.idleLearners;
+      return n > 0 ? `${n} à relancer` : null;
+    }
     if (key === "programmation")
       return interruption ? INTERRUPTION_STATE_LABELS_FR[interruption.mode] : "en cours";
     if (key === "incidents")
@@ -932,9 +470,9 @@ function PilotTools({
                            remède. */
                         const cible: ToolKey =
                           geste === "relancer"
-                            ? "apprenants"
+                            ? "relance"
                             : geste === "parcours"
-                              ? "activite"
+                              ? "parcours"
                               : "programmation";
                         setOpen((keys) => (keys.includes(cible) ? keys : [...keys, cible]));
                         document
@@ -964,46 +502,23 @@ function PilotTools({
                     </div>
                   ) : null}
                   {tool.key === "journal" ? <PilotJournalPanel cohortId={cohortId} /> : null}
-                  {tool.key === "activite" ? (
-                    <div className="space-y-6">
-                      <ActivityPanel activity={activity} />
-                      <div className="border-t pt-5">
-                        <p className="font-display mb-1 text-[17px] font-medium">
-                          Retoucher le parcours de cette promotion
-                        </p>
-                        {/*
-                          PROCHE DE LA CONCEPTION, MAIS EN SIMPLIFIE (Stef,
-                          16/09). Le Pilotage n'INVENTE aucun objet : il ne cree
-                          ni modalite, ni terrain, ni carnet -- ca, c'est le
-                          Concepteur. Mais pour CETTE promotion il peut toujours
-                          dire « pas celle-ci », « decalee », « rattrapage
-                          ouvert ». Le meme atelier est donc servi ici, en
-                          ecriture, borne a la promotion pilotee.
-                        */}
-                        <p className="text-muted-foreground mb-3 text-[13px] leading-relaxed">
-                          Cochez, décochez, datez pour cette promotion seulement. Créer une modalité
-                          qui n'existe pas encore reste l'affaire du Concepteur.
-                        </p>
-                        {atelier}
-                      </div>
+                  {tool.key === "parcours" ? (
+                    <div className="space-y-3">
+                      {/*
+                        PROCHE DE LA CONCEPTION, MAIS EN SIMPLIFIE (Stef, 16/09).
+                        Le Pilotage n'INVENTE aucun objet : il ne cree ni
+                        modalite, ni terrain, ni carnet -- ca, c'est le
+                        Concepteur. Mais pour CETTE promotion il peut toujours
+                        dire « pas celle-ci », « decalee », « rattrapage ouvert ».
+                      */}
+                      <p className="text-muted-foreground text-[13px] leading-relaxed">
+                        Cochez, décochez, datez pour cette promotion seulement. Créer une modalité
+                        qui n'existe pas encore reste l'affaire du Concepteur.
+                      </p>
+                      {atelier}
                     </div>
                   ) : null}
-                  {tool.key === "apprenants" ? (
-                    <div className="space-y-6">
-                      <LearnerManagementPanel
-                        rows={rows}
-                        summary={summary}
-                        competenceRows={competenceRows}
-                      />
-                      <div className="border-t pt-5">
-                        <p className="font-display mb-3 text-[17px] font-medium">
-                          Relancer les personnes concernées
-                        </p>
-                        {relance}
-                      </div>
-                    </div>
-                  ) : null}
-                  {tool.key === "documents" ? <DocumentsPanel /> : null}
+                  {tool.key === "relance" ? relance : null}
                 </div>
               ) : null}
             </section>
@@ -1011,21 +526,5 @@ function PilotTools({
         })}
       </div>
     </PanelCard>
-  );
-}
-
-function DocumentsPanel() {
-  return (
-    <div className="space-y-3">
-      <p className="text-muted-foreground text-sm">
-        Pièces administratives et certificats de complétude de ce programme.
-      </p>
-      <Button asChild variant="outline" className="min-h-11">
-        <Link to="/espace/administration/documents">
-          Ouvrir documents et certificats
-          <ArrowRight className="ms-1 size-4" aria-hidden />
-        </Link>
-      </Button>
-    </div>
   );
 }

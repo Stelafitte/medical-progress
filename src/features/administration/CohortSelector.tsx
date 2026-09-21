@@ -28,11 +28,14 @@ export function CohortSelector({
   value,
   onChange,
   label = "Cohorte pilotée",
+  details = true,
 }: {
   cohorts: readonly Cohort[];
   value: string | undefined;
   onChange: (cohortId: string) => void;
   label?: string;
+  /** Dates et avancement sous le menu ; inutile quand l'écran les affiche déjà. */
+  details?: boolean;
 }) {
   const ordered = sortCohortsForPilot(cohorts);
   const selected = ordered.find((c) => c.id === value);
@@ -79,7 +82,7 @@ export function CohortSelector({
         </p>
       </div>
 
-      {selected ? (
+      {selected && details ? (
         <div className="space-y-3">
           <div className="flex flex-wrap items-center gap-2 text-sm">
             <Badge variant="outline" className="bg-background font-normal">

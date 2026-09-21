@@ -61,6 +61,44 @@ function AxisCell({ axis, label }: { axis: AxisScore; label: string }) {
 
 const JOUR = 24 * 60 * 60 * 1000;
 
+/**
+ * LE CARNET DE STAGE RÉEL, DANS LA MÊME LIGNE (21/09). Le Pilotage montrait
+ * trois listes des mêmes étudiants (apprenants du groupe, suivi des stages,
+ * suivi de la promotion) ; ce qui était propre aux deux premières tient ici :
+ * rattachement au groupe d'encadrement, journées déclarées, périodes validées,
+ * corrections demandées.
+ */
+function Carnet({
+  log,
+  rattache,
+}: {
+  log: ProgramAdminScope["stageLogs"][number] | undefined;
+  rattache: boolean;
+}) {
+  const validees = log?.validations.filter((v) => v.decision === "validated").length ?? 0;
+  const corrections = log?.validations.filter((v) => v.decision === "needs_revision").length ?? 0;
+  return (
+    <span className="flex flex-wrap items-center gap-1 text-xs">
+      {!rattache ? (
+        <span className="rounded-md bg-rose-100 px-2 py-1 text-rose-900 dark:bg-rose-950/50 dark:text-rose-200">
+          sans groupe
+        </span>
+      ) : null}
+      {!log ? (
+        <span className="text-muted-foreground">non ouvert</span>
+      ) : (
+        <span
+          title={`${log.entries.length} journée(s) déclarée(s), ${validees} période(s) validée(s), ${corrections} correction(s) demandée(s)`}
+          className="rounded-md bg-muted px-2 py-1 tabular-nums"
+        >
+          {log.entries.length} j · {validees} validée(s)
+          {corrections > 0 ? ` · ${corrections} à corriger` : ""}
+        </span>
+      )}
+    </span>
+  );
+}
+
 function Connexion({ iso }: { iso: string | undefined }) {
   if (!iso) {
     return (
@@ -115,6 +153,15 @@ export function LearnerTrackingSection({
       lastSignInByPerson: data.lastSignInByPerson,
     });
   }, [data, selectedId]);
+
+  const carnets = useMemo(
+    () => new Map(data.stageLogs.map((log) => [log.enrollmentId as string, log])),
+    [data.stageLogs],
+  );
+  const rattaches = useMemo(
+    () => new Set(data.groups.flatMap((g) => g.memberEnrollmentIds.map((id) => id as string))),
+    [data.groups],
+  );
 
   const signaux = useMemo(() => {
     const parInscription = new Map<string, string[]>();
@@ -210,7 +257,7 @@ export function LearnerTrackingSection({
           </EmptyState>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[46rem] text-sm">
+            <table className="w-full min-w-[56rem] text-sm">
               <caption className="sr-only">
                 {AXES.map(
                   (axis) => `${TRACKING_AXIS_LABELS_FR[axis]} : ${TRACKING_AXIS_HINTS_FR[axis]}`,
@@ -234,6 +281,13 @@ export function LearnerTrackingSection({
                       {TRACKING_AXIS_LABELS_FR[axis]}
                     </th>
                   ))}
+                  <th
+                    scope="col"
+                    title="Carnet de stage réel : journées déclarées, périodes validées par l'encadrant"
+                    className="py-2 pr-3 font-medium"
+                  >
+                    Carnet de stage
+                  </th>
                   <th scope="col" className="py-2 pr-3 font-medium">
                     Signaux
                   </th>
@@ -258,6 +312,12 @@ export function LearnerTrackingSection({
                           <AxisCell axis={row[axis]} label={TRACKING_AXIS_LABELS_FR[axis]} />
                         </td>
                       ))}
+                      <td className="py-2.5 pr-3">
+                        <Carnet
+                          log={carnets.get(row.enrollmentId)}
+                          rattache={rattaches.has(row.enrollmentId)}
+                        />
+                      </td>
                       <td className="py-2.5 pr-3">
                         {messages.length === 0 ? (
                           <span className="text-xs text-muted-foreground">—</span>

@@ -11,16 +11,28 @@ const read = (path: string) => readFileSync(path, "utf8");
 describe("blocs partagés du pilotage", () => {
   const pilot = read("src/features/administration/AdminProgramPilot.tsx");
 
-  it("réutilise PlacementSection et AssessmentModalitySection", () => {
-    expect(pilot).toContain("<PlacementSection");
-    expect(pilot).toContain("<AssessmentModalitySection");
+  /*
+   * LE MÉNAGE DU 21/09 (Stef : « trois listes des mêmes étudiants »). Le
+   * pilotage n'incruste plus le bloc des stages (il a son onglet) ni la
+   * consultation des évaluations : il garde UNE liste d'étudiants, la matrice,
+   * et l'atelier des évaluations en écriture, borné à la promotion.
+   */
+  it("n'affiche qu'une seule liste des étudiants", () => {
+    expect(pilot).not.toContain("<PlacementSection");
+    expect(pilot).not.toContain("LearnerManagementPanel");
+    expect(pilot).not.toContain("Intervenants et rôles");
+    expect(pilot.match(/<LearnerTrackingSection/g)?.length).toBe(1);
   });
 
-  it("n'ouvre aucune création de modèle dans le pilotage", () => {
-    // PlacementSection garde `showCreation` ; AssessmentModalitySection dit
-    // `editable` depuis le 14/09, car la même prop coupe aussi le retrait.
-    expect(pilot.match(/showCreation=\{false\}/g)?.length).toBe(1);
-    expect(pilot.match(/editable=\{false\}/g)?.length).toBe(1);
+  it("garde l'atelier des évaluations en écriture, sans doublon en lecture", () => {
+    expect(pilot.match(/<AssessmentModalitySection/g)?.length).toBe(1);
+    expect(pilot).not.toContain("editable={false}");
+  });
+
+  it("la matrice porte le carnet de stage réel", () => {
+    const matrice = read("src/features/administration/LearnerTrackingSection.tsx");
+    expect(matrice).toContain("Carnet de stage");
+    expect(matrice).toContain("sans groupe");
   });
 
   it("ne recrée plus de liste de stages ad hoc", () => {
