@@ -80,7 +80,10 @@ async function lienInvitation(
   if (error || !data)
     throw new Error(`lien d'invitation non enregistre : ${error?.message ?? "?"}`);
   return {
-    lien: `${APP_URL}/premiere-connexion?${new URLSearchParams({ invitation: jeton }).toString()}`,
+    // 22/09 : jamais « workers.dev » dans un courriel (filtre en sortie par OVH,
+    // voir supabase/functions/lien). Le lien passe par supabase.co, qui renvoie
+    // vers la page de premiere connexion.
+    lien: `${SUPABASE_URL}/functions/v1/lien?${new URLSearchParams({ i: jeton }).toString()}`,
     id: (data as { id: string }).id,
   };
 }

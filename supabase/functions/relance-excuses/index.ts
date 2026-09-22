@@ -59,7 +59,10 @@ async function lienInvitation(
   if (error || !data)
     throw new Error(`lien d'invitation non enregistre : ${error?.message ?? "?"}`);
   return {
-    lien: `${APP_URL}/premiere-connexion?${new URLSearchParams({ invitation: jeton }).toString()}`,
+    // 22/09 : jamais « workers.dev » dans un courriel (filtre en sortie par OVH,
+    // voir supabase/functions/lien). Le lien passe par supabase.co, qui renvoie
+    // vers la page de premiere connexion.
+    lien: `${SUPABASE_URL}/functions/v1/lien?${new URLSearchParams({ i: jeton }).toString()}`,
     id: (data as { id: string }).id,
   };
 }
@@ -145,7 +148,8 @@ Deno.serve(async (req) => {
     etudiants: cibles.filter((p) => !estEncadrant(p)).length,
     encadrants: cibles.filter(estEncadrant).length,
   };
-  if (dryRun && !testSmtp) return json({ dryRun: true, ...resume }, 200);
+  const veutTestEnvoi = typeof (body as { testEnvoi?: unknown }).testEnvoi === "string";
+  if (dryRun && !testSmtp && !veutTestEnvoi) return json({ dryRun: true, ...resume }, 200);
 
   const { data: sender } = await admin
     .from("program_email_senders")
@@ -161,6 +165,65 @@ Deno.serve(async (req) => {
     secure: sender.smtp_port === 465,
     auth: { user: sender.smtp_user, pass: password },
   });
+
+  /*
+   * 21/09 (nuit) : DIAGNOSTIC D'ACHEMINEMENT. Un courriel de test vers une
+   * adresse donnee, avec la transcription SMTP complete : ce que le serveur
+   * d'OVH repond vraiment (250 + identifiant de file, ou refus), et par quel
+   * port. Sert a distinguer « OVH n'accepte pas » de « OVH accepte puis ne
+   * livre pas ».
+   */
+  const testEnvoi = (body as { testEnvoi?: unknown }).testEnvoi;
+  if (typeof testEnvoi === "string" && testEnvoi.includes("@")) {
+    const port = (body as { port?: unknown }).port === 587 ? 587 : sender.smtp_port;
+    const journal: string[] = [];
+    const note =
+      (niveau: string) =>
+      (_o: unknown, ...m: unknown[]) =>
+        journal.push(`${niveau} ${m.map((x) => String(x)).join(" ")}`.slice(0, 400));
+    const t = nodemailer.createTransport({
+      host: sender.smtp_host,
+      port,
+      secure: port === 465,
+      auth: { user: sender.smtp_user, pass: password },
+      logger: {
+        info: note("I"),
+        debug: note("D"),
+        warn: note("W"),
+        error: note("E"),
+        trace: note("T"),
+        fatal: note("F"),
+        level: () => undefined,
+        child: () => undefined,
+      } as unknown as boolean,
+      debug: true,
+    });
+    try {
+      const info = await t.sendMail({
+        from: `"${sender.from_name}" <${sender.smtp_user}>`,
+        to: testEnvoi,
+        subject: `Test d'acheminement ${String((body as { etiquette?: unknown }).etiquette ?? "")} ${new Date().toISOString().slice(0, 16)}`,
+        text:
+          typeof (body as { corps?: unknown }).corps === "string"
+            ? String((body as { corps?: unknown }).corps)
+            : "Courriel de test envoye par la plateforme pour verifier l'acheminement. Aucune action requise.",
+      });
+      return json(
+        { envoi: "accepte", port, info, from_name: sender.from_name, journal: journal.slice(-40) },
+        200,
+      );
+    } catch (e) {
+      return json(
+        {
+          envoi: "echec",
+          port,
+          error: e instanceof Error ? e.message : String(e),
+          journal: journal.slice(-40),
+        },
+        200,
+      );
+    }
+  }
 
   if (testSmtp) {
     try {
