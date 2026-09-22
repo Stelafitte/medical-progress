@@ -17,33 +17,113 @@
  *   - un vide qui se lit centré, en 13 px gris, jamais un encadré pointillé ;
  *   - des chiffres en grande serif tabulaire, étiquette en petites capitales.
  */
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
+import { ChevronDown } from "lucide-react";
+
+/*
+ * 22/09 (Stef : « des titres de bloc et des plier/déplier comme partout dans le
+ * site, avec des couleurs »). Le panneau peut se replier, et porter une teinte :
+ * un liseré à gauche et une pastille de compte, dans la même famille de couleurs
+ * que les écrans professionnels.
+ */
+export type TeintePanneau = "sky" | "violet" | "amber" | "emerald" | "rose" | "slate";
+
+const TEINTES: Record<TeintePanneau, { lisere: string; pastille: string }> = {
+  sky: {
+    lisere: "border-l-sky-500",
+    pastille: "bg-sky-100 text-sky-900 dark:bg-sky-950/60 dark:text-sky-100",
+  },
+  violet: {
+    lisere: "border-l-violet-500",
+    pastille: "bg-violet-100 text-violet-900 dark:bg-violet-950/60 dark:text-violet-100",
+  },
+  amber: {
+    lisere: "border-l-amber-500",
+    pastille: "bg-amber-100 text-amber-900 dark:bg-amber-950/60 dark:text-amber-100",
+  },
+  emerald: {
+    lisere: "border-l-emerald-500",
+    pastille: "bg-emerald-100 text-emerald-900 dark:bg-emerald-950/60 dark:text-emerald-100",
+  },
+  rose: {
+    lisere: "border-l-rose-500",
+    pastille: "bg-rose-100 text-rose-900 dark:bg-rose-950/60 dark:text-rose-100",
+  },
+  slate: {
+    lisere: "border-l-slate-400",
+    pastille: "bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100",
+  },
+};
 
 export function Panneau({
   title,
   description,
   action,
   children,
+  repliable = false,
+  ouvertParDefaut = true,
+  teinte,
+  compte,
 }: {
   readonly title: string;
   readonly description?: string;
   readonly action?: ReactNode;
   readonly children: ReactNode;
+  readonly repliable?: boolean;
+  readonly ouvertParDefaut?: boolean;
+  readonly teinte?: TeintePanneau;
+  readonly compte?: number;
 }) {
+  const [ouvert, setOuvert] = useState(ouvertParDefaut);
+  const t = teinte ? TEINTES[teinte] : null;
+  const visible = !repliable || ouvert;
+  const titre = (
+    <span className="flex items-center gap-2">
+      <span className="font-display text-[21px] font-medium tracking-[-0.015em]">{title}</span>
+      {compte !== undefined ? (
+        <span
+          className={`rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums ${t ? t.pastille : "bg-muted"}`}
+        >
+          {compte}
+        </span>
+      ) : null}
+    </span>
+  );
   return (
     <section>
-      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="font-display text-[21px] font-medium tracking-[-0.015em]">{title}</h2>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        {repliable ? (
+          <button
+            type="button"
+            className="flex min-h-11 items-center gap-2 text-left"
+            aria-expanded={ouvert}
+            onClick={() => setOuvert((v) => !v)}
+          >
+            <h2>{titre}</h2>
+            <ChevronDown
+              className={`size-5 text-muted-foreground transition-transform ${ouvert ? "rotate-180" : ""}`}
+              aria-hidden
+            />
+          </button>
+        ) : (
+          <h2>{titre}</h2>
+        )}
         {action}
       </div>
-      {description ? (
+      {description && visible ? (
         <p className="-mt-2 mb-3 text-[13px] leading-relaxed text-muted-foreground">
           {description}
         </p>
       ) : null}
-      <div className="overflow-hidden rounded-xl border bg-card p-4 shadow-[var(--shadow-card)]">
-        {children}
-      </div>
+      {visible ? (
+        <div
+          className={`overflow-hidden rounded-xl border bg-card p-4 shadow-[var(--shadow-card)] ${
+            t ? `border-l-4 ${t.lisere}` : ""
+          }`}
+        >
+          {children}
+        </div>
+      ) : null}
     </section>
   );
 }

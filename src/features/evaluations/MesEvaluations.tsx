@@ -25,7 +25,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Panneau, Vide } from "@/features/evaluations/ui-apprenant";
+import { Panneau, Vide, type TeintePanneau } from "@/features/evaluations/ui-apprenant";
 import { formatFrDate } from "@/features/administration/adminProgramViewModel";
 import { useDataAccess, useSession } from "@/application/session";
 import {
@@ -592,6 +592,47 @@ function ComposerUneSerie({
   );
 }
 
+type GroupeLibre = "qcm" | "dossiers" | "ecos" | "autres";
+
+function groupeDe(subtype: string): GroupeLibre {
+  if (subtype === "qcm") return "qcm";
+  if (subtype === "dp" || subtype === "mini_dp" || subtype === "kfp") return "dossiers";
+  if (subtype === "ecos" || subtype === "simulation" || subtype === "ai_oral") return "ecos";
+  return "autres";
+}
+
+const GROUPES_LIBRES: readonly {
+  cle: GroupeLibre;
+  titre: string;
+  description: string;
+  teinte: TeintePanneau;
+}[] = [
+  {
+    cle: "qcm",
+    titre: "QCM",
+    description: "Séries de questions à composer vous-même.",
+    teinte: "sky",
+  },
+  {
+    cle: "dossiers",
+    titre: "Dossiers progressifs",
+    description: "Cas cliniques qui se dévoilent étape par étape.",
+    teinte: "violet",
+  },
+  {
+    cle: "ecos",
+    titre: "ECOS",
+    description: "Stations d'examen clinique simulé.",
+    teinte: "amber",
+  },
+  {
+    cle: "autres",
+    titre: "Autres entraînements",
+    description: "Le reste de ce qui vous est ouvert.",
+    teinte: "slate",
+  },
+];
+
 export function MesEvaluations() {
   const { data, isPending, isError } = useMesEvaluations();
 
@@ -637,6 +678,9 @@ export function MesEvaluations() {
             <Panneau
               title="Prochaines échéances"
               description="Les épreuves datées à venir pour votre promotion, dans l'ordre."
+              repliable
+              teinte="rose"
+              compte={prochaines.length}
             >
               <ul className="space-y-1.5">
                 {prochaines.map((s) => {
@@ -661,30 +705,52 @@ export function MesEvaluations() {
             </Panneau>
           ) : null}
 
-          <Panneau
-            title="Quand vous voulez"
-            description="En continu, du début à la fin du stage. Rien n'est retenu contre vous."
-          >
-            {quandJeVeux.length === 0 ? (
-              <Vide>Aucune auto-évaluation prévue pour votre promotion.</Vide>
-            ) : (
-              <ul className="grid gap-3 lg:grid-cols-2">
-                {quandJeVeux.map((m) => (
-                  <CarteModalite
-                    key={m.id}
-                    modality={m}
-                    sessions={sessions}
-                    link={data.links.find((l) => l.modalityId === m.id)}
-                    themes={data.themes}
-                  />
-                ))}
-              </ul>
-            )}
-          </Panneau>
+          {/*
+            22/09 (Stef) : « Quand vous voulez » était une seule liste. Elle est
+            maintenant rangée par nature, un bloc titré, coloré et repliable
+            chacun : QCM, dossiers progressifs, ECOS, le reste.
+          */}
+          <p className="text-[13px] leading-relaxed text-muted-foreground">
+            <b className="font-semibold text-foreground">Quand vous voulez</b> : en continu, du
+            début à la fin du stage. Rien n'est retenu contre vous.
+          </p>
+          {quandJeVeux.length === 0 ? (
+            <Vide>Aucune auto-évaluation prévue pour votre promotion.</Vide>
+          ) : (
+            GROUPES_LIBRES.map((g) => {
+              const liste = quandJeVeux.filter((m) => groupeDe(m.subtype) === g.cle);
+              if (liste.length === 0) return null;
+              return (
+                <Panneau
+                  key={g.cle}
+                  title={g.titre}
+                  description={g.description}
+                  repliable
+                  teinte={g.teinte}
+                  compte={liste.length}
+                >
+                  <ul className="grid gap-3 lg:grid-cols-2">
+                    {liste.map((m) => (
+                      <CarteModalite
+                        key={m.id}
+                        modality={m}
+                        sessions={sessions}
+                        link={data.links.find((l) => l.modalityId === m.id)}
+                        themes={data.themes}
+                      />
+                    ))}
+                  </ul>
+                </Panneau>
+              );
+            })
+          )}
 
           <Panneau
             title="Programmé pour vous"
             description="Ce qu'on vous demande, et ce qui valide votre stage — avec les dates dès qu'elles sont fixées."
+            repliable
+            teinte="emerald"
+            compte={programmees.length}
           >
             {programmees.length === 0 ? (
               <Vide>Aucune épreuve programmée pour votre promotion.</Vide>

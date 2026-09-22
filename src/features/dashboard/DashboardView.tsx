@@ -237,6 +237,22 @@ export function DashboardView() {
    * qui n'a encore rien declare.
    */
   const depassee = jours !== null && jours < 0;
+  /*
+   * 22/09 (Stef : « tu affiches d'abord la date du jour puis tu expliques s'il
+   * y a des jalons en retard par rapport au programme préconisé »). Le retard se
+   * compte sur TOUT le plan : chaque acquis dont l'échéance est passée et qui
+   * reste à faire (ni acquis, ni déclaré en attente de l'encadrant).
+   */
+  const aujourdhui = new Date();
+  const enRetard = plan.items.filter(
+    (item) =>
+      item.dueOn !== null &&
+      item.milestoneLabel !== null &&
+      new Date(item.dueOn).getTime() < aujourdhui.getTime() &&
+      item.stage !== "acquired" &&
+      item.stage !== "to_validate",
+  );
+  const jalonsEnRetard = new Set(enRetard.map((item) => item.milestoneLabel)).size;
   const nouveauVenu = plan.items.every(
     (item) => item.stage !== "acquired" && item.stage !== "to_validate",
   );
@@ -313,8 +329,27 @@ export function DashboardView() {
       {/* LA CARTE DU PROCHAIN JALON, soulevee sur le bandeau. */}
       {echeance !== null ? (
         <section className="-mt-[38px] overflow-hidden rounded-xl border bg-card shadow-[var(--shadow-card)]">
-          <div className="flex items-baseline gap-3 px-4 pb-3 pt-4">
+          <div className="flex items-baseline gap-3 px-4 pb-1 pt-4">
             <span className="font-display text-[27px] font-medium leading-none tracking-[-0.02em]">
+              Aujourd'hui, {dateFr(aujourdhui.toISOString())}
+            </span>
+          </div>
+          <p className="px-4 pb-3 text-sm leading-relaxed text-foreground">
+            {jalonsEnRetard === 0 ? (
+              <>Vous êtes dans le rythme du programme préconisé : aucun jalon en retard.</>
+            ) : (
+              <>
+                Par rapport au programme préconisé,{" "}
+                <b className="font-bold">
+                  {jalonsEnRetard} jalon{jalonsEnRetard > 1 ? "s" : ""} en retard
+                </b>{" "}
+                ({enRetard.length} acquis à rattraper).
+              </>
+            )}
+          </p>
+          <div className="flex items-baseline gap-3 border-t px-4 pb-2 pt-3">
+            <span className="text-[15px] font-semibold">
+              {depassee ? "À rattraper en premier" : "Prochaine échéance"} :{" "}
               {dateFr(echeance.dueOn)}
             </span>
             <span
