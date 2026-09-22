@@ -619,7 +619,14 @@ export function DashboardView() {
                   ]
                 : []),
               ...(echeance
-                ? [{ color: echeance.prioritaire.couleur, label: "prochaine échéance" }]
+                ? [
+                    {
+                      color: echeance.prioritaire.couleur,
+                      label: depassee
+                        ? "à rattraper en premier (couleur du jalon)"
+                        : "prochaine échéance (couleur du jalon)",
+                    },
+                  ]
                 : []),
               { color: "var(--dot-idle)", label: "à travailler" },
             ].map((entree) => (
@@ -634,9 +641,12 @@ export function DashboardView() {
             ))}
           </ul>
           <p className="text-[12.5px] leading-relaxed text-muted-foreground">
-            Chaque carré est un acquis.
+            Chaque carré est un acquis : seuls les verts sont validés. Les carrés colorés ne sont
+            pas acquis, ils signalent ce qu'il faut travailler en premier.
             {echeance
-              ? ` Les ${echeance.total} de la prochaine échéance arrivent le ${dateFr(echeance.dueOn)}.`
+              ? depassee
+                ? ` Les ${echeance.total} du premier jalon étaient attendus le ${dateFr(echeance.dueOn)}.`
+                : ` Les ${echeance.total} de la prochaine échéance arrivent le ${dateFr(echeance.dueOn)}.`
               : ""}{" "}
             {plan.items.reduce((n, i) => n + i.countedEvidence, 0) === 0
               ? "Aucune preuve déposée pour l'instant — la première viendra de votre premier patient examiné en stage."
