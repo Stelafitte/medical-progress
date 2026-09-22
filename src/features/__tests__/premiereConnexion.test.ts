@@ -30,7 +30,9 @@ describe("première connexion à l'épreuve des robots de messagerie (18/09)", (
     for (const source of [invite, resend]) {
       expect(source).not.toContain("link.properties.action_link,");
       expect(source).not.toContain("premiereConnexionUrl(");
-      expect(source).toContain("/premiere-connexion?");
+      // 22/09 : le courriel passe par la fonction `lien` (supabase.co), jamais par
+      // workers.dev, que le serveur d'envoi d'OVH supprime sans le livrer.
+      expect(source).toContain("/functions/v1/lien?");
     }
   });
 });
@@ -77,5 +79,21 @@ describe("contenu servi seulement après l'ouverture de la promotion (18/09)", (
   it("l'étudiant d'une promotion en brouillon lit un message, pas des zéros", () => {
     expect(dashboard).toContain("Votre promotion n'est pas encore ouverte");
     expect(dashboard).toContain('cohort.status === "draft"');
+  });
+});
+
+describe("aucun workers.dev dans les courriels (22/09)", () => {
+  it("la redirection vit sur supabase.co et vise la page de première connexion", () => {
+    const lien = read("supabase/functions/lien/index.ts");
+    expect(lien).toContain("status: 302");
+    expect(lien).toContain("/premiere-connexion?");
+    for (const f of [
+      "invite-person",
+      "resend-first-login",
+      "request-new-link",
+      "relance-excuses",
+    ]) {
+      expect(read(`supabase/functions/${f}/index.ts`)).toContain("/functions/v1/lien?");
+    }
   });
 });

@@ -228,6 +228,18 @@ export function DashboardView() {
   const depart = echeance?.prioritaire.aFaire[0];
   /* Sur TOUT le plan, pas seulement l'echeance affichee. */
   const enAttenteGlobal = plan.items.filter((item) => item.stage === "to_validate").length;
+  /*
+   * 22/09 (Stef, premiere connexion d'un compte test) : « mauvaise date et deja
+   * des choses remplies ». Rien n'etait rempli : la promotion a demarre le
+   * 01/09, l'etudiant arrive en semaine 4, et la carte montrait le premier
+   * jalon, depasse, sous « Passee » avec « 34 acquis a travailler d'ici la ».
+   * On dit maintenant les choses : jalon a rattraper, et un mot d'accueil pour
+   * qui n'a encore rien declare.
+   */
+  const depassee = jours !== null && jours < 0;
+  const nouveauVenu = plan.items.every(
+    (item) => item.stage !== "acquired" && item.stage !== "to_validate",
+  );
 
   /*
    * LA CARTE DU PROGRAMME. Un carre par acquis : les valides en encre, ceux de
@@ -309,15 +321,31 @@ export function DashboardView() {
               className="ms-auto rounded bg-live px-2 py-1 text-[11px] font-bold uppercase tracking-wide text-live-ink"
               style={TABULAIRE}
             >
-              {jours !== null && jours >= 0 ? `dans ${jours} jours` : `passée`}
+              {jours !== null && jours >= 0 ? `dans ${jours} jours` : `à rattraper`}
             </span>
           </div>
+          {depassee && nouveauVenu && cohort ? (
+            <p className="px-4 pb-2 text-sm leading-relaxed text-foreground">
+              Bienvenue ! Votre promotion a démarré le {dateFr(cohort.startsOn)} : les premiers
+              jalons sont déjà passés. Reprenez-les à votre rythme, en commençant par celui-ci.
+            </p>
+          ) : null}
           <p className="px-4 pb-3 text-sm leading-relaxed text-muted-foreground">
-            {echeance.jalons.length === 1
-              ? "Un jalon tombe à cette date : "
-              : `${enLettres(echeance.jalons.length)} jalons tombent le même jour : `}
-            <b className="font-bold text-foreground">{echeance.total} acquis</b> à travailler d'ici
-            là.
+            {depassee ? (
+              <>
+                Échéance dépassée :{" "}
+                <b className="font-bold text-foreground">{echeance.total} acquis</b> restent à
+                travailler pour {echeance.jalons.length === 1 ? "ce jalon" : "ces jalons"}.
+              </>
+            ) : (
+              <>
+                {echeance.jalons.length === 1
+                  ? "Un jalon tombe à cette date : "
+                  : `${enLettres(echeance.jalons.length)} jalons tombent le même jour : `}
+                <b className="font-bold text-foreground">{echeance.total} acquis</b> à travailler
+                d'ici là.
+              </>
+            )}
           </p>
           <Accordion type="multiple" className="w-full pb-2">
             {echeance.jalons.map((jalon) => (
@@ -336,7 +364,7 @@ export function DashboardView() {
                       <b className="text-[17px] font-bold leading-none" style={TABULAIRE}>
                         {jalon.aFaire.length}
                       </b>
-                      <span className="mt-[3px] text-[9px] tracking-wider opacity-85">ACQUIS</span>
+                      <span className="mt-[3px] text-[9px] tracking-wider opacity-85">À FAIRE</span>
                     </span>
                     <span className="flex min-w-0 flex-1 flex-col justify-center gap-[5px]">
                       <span className="font-display text-[16.5px] leading-tight tracking-[-0.01em]">
