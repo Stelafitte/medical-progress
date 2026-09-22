@@ -104,6 +104,104 @@ function NouvelEchange({
  * collègues du groupe. C'est la conséquence directe du choix de Stef — le
  * groupe entier voit le fil.
  */
+/**
+ * ÉCRIRE À SON ÉQUIPE, SANS PASSER PAR UNE COMPÉTENCE (Stef, 22/09 : « l'étudiant
+ * doit pouvoir envoyer à qui il veut de l'équipe d'encadrants un message »).
+ *
+ * Le message part dans le FIL GÉNÉRAL de l'inscription (un par étudiant,
+ * `post_discussion_message` sans ancrage) : toute l'équipe du groupe le lit.
+ * Choisir un destinataire met son nom en tête du message — « À l'attention
+ * de … » — pour qu'il sache que c'est pour lui. Ce n'est pas un message privé :
+ * l'écran le dit.
+ */
+function EcrireAMonEquipe({ enrollmentId }: { enrollmentId: EnrollmentId }) {
+  const data = useDataAccess();
+  const { activeProgram } = useSession();
+  const queryClient = useQueryClient();
+  const [destinataire, setDestinataire] = useState("");
+  const [brouillon, setBrouillon] = useState("");
+
+  const { data: equipe } = useQuery({
+    queryKey: ["mon-equipe-destinataires", activeProgram.id, enrollmentId],
+    queryFn: async () => {
+      const [groups, people] = await Promise.all([
+        data.placements.listSupervisionGroups(activeProgram.id),
+        data.administration.listPeople(),
+      ]);
+      const groupe = groups.find((g) =>
+        g.memberEnrollmentIds.some((id) => (id as string) === (enrollmentId as string)),
+      );
+      if (!groupe) return [];
+      return groupe.supervisorPersonIds
+        .map((id) => people.find((p) => (p.id as string) === (id as string))?.fullName)
+        .filter((n): n is string => Boolean(n))
+        .sort((a, b) => a.localeCompare(b, "fr"));
+    },
+  });
+
+  const envoi = useMutation({
+    mutationFn: (body: string) =>
+      data.discussions.postMessage({
+        enrollmentId,
+        body: destinataire ? `À l'attention de ${destinataire} — ${body}` : body,
+      }),
+    onSuccess: () => {
+      setBrouillon("");
+      void queryClient.invalidateQueries({ queryKey: ["discussion-threads"] });
+      toast.success(
+        destinataire ? `Message envoyé à ${destinataire}.` : "Message envoyé à votre équipe.",
+      );
+    },
+    onError: (raison) =>
+      toast.error(raison instanceof Error ? raison.message : "Message non envoyé."),
+  });
+
+  if (!equipe || equipe.length === 0) return null;
+
+  return (
+    <div className="space-y-3 border-b px-4 py-4">
+      <p className="font-display text-[16.5px] leading-tight tracking-[-0.01em]">
+        Écrire à mon équipe d'encadrement
+      </p>
+      <label className="block space-y-1 text-[13px]">
+        <span className="text-muted-foreground">Destinataire</span>
+        <select
+          className="border-input bg-background block min-h-11 w-full rounded-md border px-3 text-sm"
+          value={destinataire}
+          onChange={(e) => setDestinataire(e.target.value)}
+        >
+          <option value="">Toute l'équipe</option>
+          {equipe.map((nom) => (
+            <option key={nom} value={nom}>
+              {nom}
+            </option>
+          ))}
+        </select>
+      </label>
+      <Textarea
+        value={brouillon}
+        rows={3}
+        maxLength={MESSAGE_MAX}
+        aria-label="Message à mon équipe d'encadrement"
+        placeholder="Votre question, votre demande…"
+        onChange={(event) => setBrouillon(event.target.value)}
+      />
+      <div className="flex flex-wrap items-center gap-3">
+        <Button
+          size="sm"
+          disabled={brouillon.trim().length === 0 || envoi.isPending}
+          onClick={() => envoi.mutate(brouillon)}
+        >
+          Envoyer
+        </Button>
+        <span className="text-[12px] text-muted-foreground">
+          Toute votre équipe d'encadrement peut lire ce fil.
+        </span>
+      </div>
+    </div>
+  );
+}
+
 export function LearnerChatSection({
   enrollmentId,
   contextes,
@@ -164,6 +262,7 @@ export function LearnerChatSection({
         Mes échanges
       </h2>
       <div className="overflow-hidden rounded-xl border bg-card shadow-[var(--shadow-card)]">
+        {ancreSansFil ? null : <EcrireAMonEquipe enrollmentId={enrollmentId} />}
         {isPending ? (
           <Skeleton className="h-24 w-full" />
         ) : ancreSansFil ? (
@@ -183,8 +282,8 @@ export function LearnerChatSection({
           <p className="px-4 py-6 text-center text-[13px] leading-relaxed text-muted-foreground">
             Aucun échange pour l'instant.
             <br />
-            Un échange s'ouvre depuis une compétence ou une journée de stage, avec le bouton
-            «&nbsp;Échanger avec mon tuteur&nbsp;».
+            Écrivez ci-dessus à votre équipe, ou ouvrez un échange depuis une compétence ou une
+            journée de stage, avec le bouton «&nbsp;Échanger avec mon tuteur&nbsp;».
           </p>
         ) : (
           <ul className="divide-y divide-border">

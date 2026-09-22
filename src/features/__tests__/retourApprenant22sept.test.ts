@@ -27,4 +27,21 @@ describe("retours de Stef sur l'espace étudiant (22/09)", () => {
     expect(vue).toContain("repliable");
     expect(read("src/features/evaluations/ui-apprenant.tsx")).toContain("aria-expanded={ouvert}");
   });
+
+  it("n'affiche qu'un « Début de stage » par terrain et période", () => {
+    expect(read("src/application/acquisitionPlan.ts")).toContain("stagesVus.has(cleStage)");
+  });
+
+  it("met les stations ECOS dans le bloc ECOS, tous blocs repliés", () => {
+    const vue = read("src/features/evaluations/MesEvaluations.tsx");
+    expect(vue).toContain('g.cle === "ecos" && ecos');
+    expect(vue).not.toContain("ouvertParDefaut={true}");
+    expect(read("src/features/evaluations/EcosVirtuelView.tsx")).toContain("<MesEvaluations");
+  });
+
+  it("laisse l'étudiant écrire à qui il veut de son équipe", () => {
+    const chat = read("src/features/messages/LearnerChatSection.tsx");
+    expect(chat).toContain("function EcrireAMonEquipe");
+    expect(chat).toContain("À l'attention de");
+  });
 });

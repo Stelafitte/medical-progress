@@ -110,119 +110,129 @@ export function EcosVirtuelView() {
         Lot D (15/09) : ce que la promotion de l'étudiant rencontre, lu en base
         sous RLS, AVANT l'ECOS virtuel qui n'est qu'une de ces évaluations.
       */}
-      <MesEvaluations />
+      {/*
+        22/09 (Stef) : les stations ECOS vivent DANS le bloc repliable « ECOS »
+        de « Mes évaluations », plus en bas de page.
+      */}
+      <MesEvaluations
+        ecos={
+          <div className="space-y-6">
+            {stations.length > 0 ? <Consignes /> : null}
 
-      {stations.length > 0 ? <Consignes /> : null}
-
-      <section
-        aria-labelledby="stations-titre"
-        className="space-y-3"
-        hidden={stations.length === 0}
-      >
-        <div>
-          <p className={`${EYEBROW} text-muted-foreground`}>ECOS virtuel</p>
-          <h2
-            id="stations-titre"
-            className="font-display text-[21px] font-medium tracking-[-0.015em]"
-          >
-            Stations ChatGPT
-          </h2>
-        </div>
-        {!activeEnrollment ? (
-          <p className="text-muted-foreground text-sm">
-            Aucune inscription active : les stations restent consultables, mais rien ne peut être
-            déclaré.
-          </p>
-        ) : null}
-        <ul className="space-y-3">
-          {stations.map((station) => {
-            const dernier = dernierPar.get(station.key);
-            return (
-              <li
-                key={station.key}
-                className="bg-card rounded-xl border p-4 shadow-[var(--shadow-card)]"
-              >
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="min-w-0 space-y-1">
-                    <p className="font-semibold">
-                      {station.label}{" "}
-                      <span className="text-muted-foreground font-normal">· {station.patient}</span>
-                    </p>
-                    <p className="text-sm">{station.theme}</p>
-                    <p className="text-muted-foreground text-sm">{station.role}</p>
-                    {dernier ? (
-                      <p className="text-sm">
-                        Dernier passage déclaré le {dateCourte(dernier.playedOn)} :{" "}
-                        <strong>
-                          {dernier.score} / {dernier.maxScore}
-                        </strong>{" "}
-                        ({ecosRunPercent(dernier)} %)
-                      </p>
-                    ) : (
-                      <p className="text-muted-foreground text-sm">Aucun passage déclaré.</p>
-                    )}
-                  </div>
-                  <div className="flex shrink-0 flex-wrap gap-2">
-                    <Button asChild variant="default">
-                      <a href={station.url} target="_blank" rel="noopener noreferrer">
-                        <ExternalLink className="size-4" aria-hidden />
-                        Ouvrir dans ChatGPT
-                      </a>
-                    </Button>
-                    <Button
-                      variant="outline"
-                      disabled={!activeEnrollment}
-                      aria-expanded={stationOuverte?.key === station.key}
-                      onClick={() =>
-                        setStationOuverte((s) => (s?.key === station.key ? null : station))
-                      }
+            <section
+              aria-labelledby="stations-titre"
+              className="space-y-3"
+              hidden={stations.length === 0}
+            >
+              <div>
+                <p className={`${EYEBROW} text-muted-foreground`}>ECOS virtuel</p>
+                <h2
+                  id="stations-titre"
+                  className="font-display text-[21px] font-medium tracking-[-0.015em]"
+                >
+                  Stations ChatGPT
+                </h2>
+              </div>
+              {!activeEnrollment ? (
+                <p className="text-muted-foreground text-sm">
+                  Aucune inscription active : les stations restent consultables, mais rien ne peut
+                  être déclaré.
+                </p>
+              ) : null}
+              <ul className="space-y-3">
+                {stations.map((station) => {
+                  const dernier = dernierPar.get(station.key);
+                  return (
+                    <li
+                      key={station.key}
+                      className="bg-card rounded-xl border p-4 shadow-[var(--shadow-card)]"
                     >
-                      <Upload className="size-4" aria-hidden />
-                      Rapporter ma grille
-                    </Button>
-                  </div>
-                </div>
-                {stationOuverte?.key === station.key && activeEnrollment ? (
-                  <RapporterGrille
-                    station={station}
-                    enrollmentId={activeEnrollment.id as string}
-                    onEnregistre={() => setStationOuverte(null)}
-                  />
-                ) : null}
-              </li>
-            );
-          })}
-        </ul>
-      </section>
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="min-w-0 space-y-1">
+                          <p className="font-semibold">
+                            {station.label}{" "}
+                            <span className="text-muted-foreground font-normal">
+                              · {station.patient}
+                            </span>
+                          </p>
+                          <p className="text-sm">{station.theme}</p>
+                          <p className="text-muted-foreground text-sm">{station.role}</p>
+                          {dernier ? (
+                            <p className="text-sm">
+                              Dernier passage déclaré le {dateCourte(dernier.playedOn)} :{" "}
+                              <strong>
+                                {dernier.score} / {dernier.maxScore}
+                              </strong>{" "}
+                              ({ecosRunPercent(dernier)} %)
+                            </p>
+                          ) : (
+                            <p className="text-muted-foreground text-sm">Aucun passage déclaré.</p>
+                          )}
+                        </div>
+                        <div className="flex shrink-0 flex-wrap gap-2">
+                          <Button asChild variant="default">
+                            <a href={station.url} target="_blank" rel="noopener noreferrer">
+                              <ExternalLink className="size-4" aria-hidden />
+                              Ouvrir dans ChatGPT
+                            </a>
+                          </Button>
+                          <Button
+                            variant="outline"
+                            disabled={!activeEnrollment}
+                            aria-expanded={stationOuverte?.key === station.key}
+                            onClick={() =>
+                              setStationOuverte((s) => (s?.key === station.key ? null : station))
+                            }
+                          >
+                            <Upload className="size-4" aria-hidden />
+                            Rapporter ma grille
+                          </Button>
+                        </div>
+                      </div>
+                      {stationOuverte?.key === station.key && activeEnrollment ? (
+                        <RapporterGrille
+                          station={station}
+                          enrollmentId={activeEnrollment.id as string}
+                          onEnregistre={() => setStationOuverte(null)}
+                        />
+                      ) : null}
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
 
-      <section
-        aria-labelledby="passages-titre"
-        className="space-y-3"
-        hidden={stations.length === 0 && !aDesPassages}
-      >
-        <div>
-          <p className={`${EYEBROW} text-muted-foreground`}>Historique</p>
-          <h2
-            id="passages-titre"
-            className="font-display text-[21px] font-medium tracking-[-0.015em]"
-          >
-            Mes passages déclarés
-          </h2>
-        </div>
-        {isPending && activeEnrollment ? (
-          <Skeleton className="h-20 w-full" />
-        ) : !passages || passages.length === 0 ? (
-          <p className="text-muted-foreground text-sm">
-            Aucun passage pour l'instant. Après une station, rapportez sa grille ci-dessus.
-          </p>
-        ) : (
-          <ul className="space-y-2">
-            {passages.map((run) => (
-              <PassageDeclare key={run.id} run={run} />
-            ))}
-          </ul>
-        )}
-      </section>
+            <section
+              aria-labelledby="passages-titre"
+              className="space-y-3"
+              hidden={stations.length === 0 && !aDesPassages}
+            >
+              <div>
+                <p className={`${EYEBROW} text-muted-foreground`}>Historique</p>
+                <h2
+                  id="passages-titre"
+                  className="font-display text-[21px] font-medium tracking-[-0.015em]"
+                >
+                  Mes passages déclarés
+                </h2>
+              </div>
+              {isPending && activeEnrollment ? (
+                <Skeleton className="h-20 w-full" />
+              ) : !passages || passages.length === 0 ? (
+                <p className="text-muted-foreground text-sm">
+                  Aucun passage pour l'instant. Après une station, rapportez sa grille ci-dessus.
+                </p>
+              ) : (
+                <ul className="space-y-2">
+                  {passages.map((run) => (
+                    <PassageDeclare key={run.id} run={run} />
+                  ))}
+                </ul>
+              )}
+            </section>
+          </div>
+        }
+      />
     </div>
   );
 }
@@ -238,10 +248,7 @@ function Consignes() {
       className="bg-card rounded-xl border p-4 shadow-[var(--shadow-card)]"
     >
       <p className={EYEBROW}>Avant de cliquer sur une station</p>
-      <h2
-        id="consignes-titre"
-        className="font-display text-[19px] font-medium tracking-[-0.015em]"
-      >
+      <h2 id="consignes-titre" className="font-display text-[19px] font-medium tracking-[-0.015em]">
         Comment jouer une station et rapporter sa grille
       </h2>
       <ol className="mt-3 list-decimal space-y-1.5 pl-5 text-sm">
@@ -382,7 +389,9 @@ function RapporterGrille({
           id={`colle-${station.key}`}
           rows={4}
           value={colle}
-          placeholder={"Item\tBarème\tNote obtenue\nDescription de la dyspnée à l'effort\t5 / 2 / 0\t5"}
+          placeholder={
+            "Item\tBarème\tNote obtenue\nDescription de la dyspnée à l'effort\t5 / 2 / 0\t5"
+          }
           onChange={(e) => lireTexte(e.target.value)}
         />
       </div>
@@ -396,10 +405,7 @@ function RapporterGrille({
       {lecture ? <ApercuGrille lecture={lecture} source={source} /> : null}
 
       <div className="flex flex-wrap items-center gap-2">
-        <Button
-          disabled={!pret || enregistrer.isPending}
-          onClick={() => enregistrer.mutate()}
-        >
+        <Button disabled={!pret || enregistrer.isPending} onClick={() => enregistrer.mutate()}>
           <FileSpreadsheet className="size-4" aria-hidden />
           {enregistrer.isPending ? "Enregistrement…" : "Enregistrer ce passage"}
         </Button>
@@ -524,9 +530,7 @@ function PassageDeclare({ run }: { readonly run: EcosExternalRun }) {
         <div>
           <p className="font-medium">
             {run.stationLabel}{" "}
-            <span className="text-muted-foreground font-normal">
-              · {dateCourte(run.playedOn)}
-            </span>
+            <span className="text-muted-foreground font-normal">· {dateCourte(run.playedOn)}</span>
           </p>
           <p className="text-sm">
             <strong>
@@ -536,7 +540,12 @@ function PassageDeclare({ run }: { readonly run: EcosExternalRun }) {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" aria-expanded={ouvert} onClick={() => setOuvert((o) => !o)}>
+          <Button
+            variant="outline"
+            size="sm"
+            aria-expanded={ouvert}
+            onClick={() => setOuvert((o) => !o)}
+          >
             {ouvert ? "Replier la grille" : "Voir la grille"}
           </Button>
           {confirmer ? (

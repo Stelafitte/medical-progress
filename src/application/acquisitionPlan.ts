@@ -193,9 +193,19 @@ export function buildAcquisitionPlan(
     }
   }
 
+  /*
+   * 22/09 (Stef : « Début de stage apparaît X fois »). Les affectations sont
+   * DÉRIVÉES des groupes d'encadrement : une ligne par ENCADRANT du groupe. Six
+   * encadrants = six « Début de stage » identiques. Un stage, c'est un terrain
+   * et une période : on n'en garde qu'un par couple.
+   */
+  const stagesVus = new Set<string>();
   for (const assignment of input.assignments) {
     const placement = input.placements.find((p) => p.id === assignment.placementId);
     if (!placement) continue;
+    const cleStage = `${assignment.placementId}|${assignment.startsOn}|${assignment.endsOn}`;
+    if (stagesVus.has(cleStage)) continue;
+    stagesVus.add(cleStage);
     events.push({
       id: `placement-${assignment.id}`,
       date: assignment.startsOn,

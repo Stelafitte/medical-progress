@@ -16,7 +16,7 @@
  * L'ECOS virtuel reste en dessous : c'est la seule évaluation que le hub sait
  * FAIRE PASSER lui-même, les autres se passent ailleurs.
  */
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { CalendarDays, ChevronDown, ChevronRight, MapPin, Play } from "lucide-react";
@@ -46,7 +46,6 @@ import {
   type AssessmentUsage,
   type CohortAssessmentLink,
 } from "@/domain/assessmentModality";
-import { ecosStationsOffertes } from "@/domain/ecos";
 import type { OutcomeTheme } from "@/domain/types";
 
 const CE_QUE_CA_ENGAGE: Record<AssessmentUsage, string> = {
@@ -55,8 +54,6 @@ const CE_QUE_CA_ENGAGE: Record<AssessmentUsage, string> = {
   validation_exam: "Le passage conditionne la validation de votre stage.",
   certification: "Épreuve certifiante, au-delà du stage.",
 };
-
-const EYEBROW = "text-muted-foreground text-[11px] font-semibold tracking-[0.14em] uppercase";
 
 /**
  * ⚠️ MÊME CLÉ, MÊME REQUÊTE. `EcosVirtuelView` appelle ce hook pour savoir
@@ -633,7 +630,7 @@ const GROUPES_LIBRES: readonly {
   },
 ];
 
-export function MesEvaluations() {
+export function MesEvaluations({ ecos }: { readonly ecos?: ReactNode } = {}) {
   const { data, isPending, isError } = useMesEvaluations();
 
   const { quandJeVeux, programmees } = useMemo(() => {
@@ -679,6 +676,7 @@ export function MesEvaluations() {
               title="Prochaines échéances"
               description="Les épreuves datées à venir pour votre promotion, dans l'ordre."
               repliable
+              ouvertParDefaut={false}
               teinte="rose"
               compte={prochaines.length}
             >
@@ -726,6 +724,7 @@ export function MesEvaluations() {
                   title={g.titre}
                   description={g.description}
                   repliable
+                  ouvertParDefaut={false}
                   teinte={g.teinte}
                   compte={liste.length}
                 >
@@ -740,6 +739,7 @@ export function MesEvaluations() {
                       />
                     ))}
                   </ul>
+                  {g.cle === "ecos" && ecos ? <div className="mt-6">{ecos}</div> : null}
                 </Panneau>
               );
             })
@@ -749,6 +749,7 @@ export function MesEvaluations() {
             title="Programmé pour vous"
             description="Ce qu'on vous demande, et ce qui valide votre stage — avec les dates dès qu'elles sont fixées."
             repliable
+            ouvertParDefaut={false}
             teinte="emerald"
             compte={programmees.length}
           >
@@ -775,9 +776,6 @@ export function MesEvaluations() {
         L'annonce de l'ECOS ne s'affiche que s'il y a quelque chose à annoncer :
         les stations sont celles que l'équipe a mises à disposition (16/09).
       */}
-      {ecosStationsOffertes(data.modalities, data.links).length > 0 ? (
-        <p className={EYEBROW}>ECOS virtuel — à jouer depuis le hub</p>
-      ) : null}
     </div>
   );
 }
