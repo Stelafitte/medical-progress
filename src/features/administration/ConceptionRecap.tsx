@@ -33,7 +33,7 @@ import { AlertTriangle, Check } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { useDataAccess } from "@/application/session";
-import { formatFrDate } from "@/features/administration/adminProgramViewModel";
+import { etudiantsAffectes, formatFrDate } from "@/features/administration/adminProgramViewModel";
 import type { ProgramAdminScope } from "@/features/administration/useProgramAdmin";
 import { COHORT_STATUS_LABELS_FR, type CohortId } from "@/domain/types";
 
@@ -245,8 +245,8 @@ export function ConceptionRecap({
                     );
                     return (
                       <li key={t.id}>
-                        {t.name} ({t.site}) — {affectationsDuTerrain.length} affecté(s) sur{" "}
-                        {t.capacity} place(s)
+                        {t.name} ({t.site}) — {etudiantsAffectes(affectationsDuTerrain)} affecté(s)
+                        sur {t.capacity} place(s)
                         {groupesDuTerrain.length > 0
                           ? ` · ${groupesDuTerrain.map((g) => g.label).join(", ")}`
                           : " · aucun groupe d'encadrement"}

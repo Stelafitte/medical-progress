@@ -35,10 +35,19 @@ export function AdminStages() {
   const capacity = placements.reduce((total, p) => total + p.capacity, 0);
   const programId = (data.program?.id ?? "program-unknown") as ProgramId;
   const selectedId = cohortId ?? defaultPilotCohortId(data.cohorts);
-  const attached = data.groups.reduce(
-    (total, group) => total + group.memberEnrollmentIds.length,
-    0,
+  /*
+   * UN ETUDIANT COMPTE UNE FOIS (23/09). La somme des effectifs de groupe le
+   * comptait autant de fois qu'il appartenait de groupes, et melait toutes les
+   * promotions du programme alors que l'onglet suit celle de l'en-tete.
+   */
+  const inscriptionsDeLaPromotion = new Set(
+    data.enrollments.filter((e) => e.cohortId === selectedId).map((e) => e.id as string),
   );
+  const attached = new Set(
+    data.groups
+      .flatMap((group) => group.memberEnrollmentIds.map((id) => id as string))
+      .filter((id) => inscriptionsDeLaPromotion.has(id)),
+  ).size;
 
   return (
     <div className="space-y-6">

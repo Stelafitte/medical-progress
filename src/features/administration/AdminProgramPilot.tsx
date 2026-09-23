@@ -116,7 +116,14 @@ export function AdminProgramPilot() {
 
   const upcoming = nextMilestone(timeline);
   const cohortEnrollments = data.enrollments.filter((e) => e.cohortId === selectedId);
-  const cohortLogs = data.logsReceived.filter((log) =>
+  /*
+   * TOUS LES CARNETS DE LA PROMOTION, PAS SEULEMENT CEUX DEJA RECUS (23/09).
+   * Ce bloc lisait `logsReceived` — valides ou transmis uniquement. Aucun
+   * carnet ne l'etant encore, il affichait « 0 journee declaree » et marquait
+   * « inactif » une etudiante qui venait d'en declarer sept. L'activite se lit
+   * sur le carnet ouvert ; la validation reste comptee a part.
+   */
+  const cohortLogs = data.stageLogs.filter((log) =>
     cohortEnrollments.some((e) => e.id === log.enrollmentId),
   );
   const cohortAlerts = data.alerts.filter((alert) =>

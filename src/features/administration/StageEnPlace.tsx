@@ -21,7 +21,7 @@
  */
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/features/professional/mock-ui";
-import { formatFrDate } from "@/features/administration/adminProgramViewModel";
+import { etudiantsAffectes, formatFrDate } from "@/features/administration/adminProgramViewModel";
 import type { ProgramAdminScope } from "@/features/administration/useProgramAdmin";
 
 /** Bornes d'une période, sur un lot de dates ISO. Absentes si le lot est vide. */
@@ -116,7 +116,7 @@ export function StageEnPlace({ scope }: { scope: ProgramAdminScope }) {
               <div>
                 <dt className="font-medium">Étudiants affectés</dt>
                 <dd className="text-muted-foreground">
-                  {affectations.length} sur {placement.capacity} place(s)
+                  {etudiantsAffectes(affectations)} sur {placement.capacity} place(s)
                 </dd>
               </div>
               <div>

@@ -251,3 +251,18 @@ export function buildAdministeredProgramCards(
 }
 
 export const formatFrDate = (iso: string) => new Date(iso).toLocaleDateString("fr-FR");
+
+/**
+ * LES ÉTUDIANTS EN STAGE, PAS LES LIGNES D'AFFECTATION (23/09).
+ *
+ * `list_placement_assignments` DÉRIVE ses lignes du croisement
+ * membres du groupe x encadrants du groupe : 18 étudiants suivis par
+ * 6 encadrants font 108 lignes. Compter ces lignes, c'est compter des couples,
+ * et la « Vue d'ensemble » annonçait 108 stages pour 18 étudiants. Tout
+ * compteur qui parle d'ÉTUDIANTS passe donc par ici.
+ */
+export function etudiantsAffectes(
+  assignments: readonly { readonly enrollmentId: string }[],
+): number {
+  return new Set(assignments.map((a) => a.enrollmentId)).size;
+}

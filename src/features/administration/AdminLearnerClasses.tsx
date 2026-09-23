@@ -136,7 +136,11 @@ export function AdminLearnerClasses() {
         <StatCard label="Classes du programme" value={cohorts.length} />
         <StatCard label="Classes en cours" value={running} />
         <StatCard label="Classes à venir" value={planned} />
-        <StatCard label="Inscriptions actives" value={data.enrollments.length} />
+        <StatCard
+          label="Inscriptions actives"
+          value={data.enrollments.filter((e) => e.status === "active").length}
+          hint={`${data.enrollments.length} inscription(s) au total`}
+        />
       </div>
 
       {actionError ? (

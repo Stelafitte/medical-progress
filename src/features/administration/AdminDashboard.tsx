@@ -22,6 +22,7 @@ import { LearnerTrackingSection } from "@/features/administration/LearnerTrackin
 import {
   buildPilotTimeline,
   defaultPilotCohortId,
+  etudiantsAffectes,
   formatFrDate,
   nextMilestone,
 } from "@/features/administration/adminProgramViewModel";
@@ -82,8 +83,20 @@ export function AdminDashboard() {
   const missingDocuments = data.documents.filter(
     (d) => enrollmentIds.has(d.enrollmentId) && d.status !== "received",
   ).length;
-  const stagesDeLaPromotion = data.assignments.filter((a) => enrollmentIds.has(a.enrollmentId));
-  const carnetsDeLaPromotion = data.logsReceived.filter((l) => enrollmentIds.has(l.enrollmentId));
+  /* 23/09 : on compte les ETUDIANTS en stage, pas les lignes derivees
+     (membres x encadrants) — voir `etudiantsAffectes`. */
+  const etudiantsEnStage = etudiantsAffectes(
+    data.assignments.filter((a) => enrollmentIds.has(a.enrollmentId)),
+  );
+  /*
+   * LE CARNET SE LIT OUVERT, PAS SEULEMENT RECU (23/09). « Carnets recus »
+   * ne comptait que les carnets valides ou transmis : 0, alors que des
+   * journees etaient deja declarees. La carte montre maintenant les carnets
+   * ouverts, et dit en dessous ce qui s'y passe.
+   */
+  const carnetsOuverts = data.stageLogs.filter((l) => enrollmentIds.has(l.enrollmentId));
+  const carnetsRecus = data.logsReceived.filter((l) => enrollmentIds.has(l.enrollmentId));
+  const journeesDeclarees = carnetsOuverts.reduce((n, l) => n + l.entries.length, 0);
 
   /*
    * LES ÉVALUATIONS DE LA PROMOTION OBSERVÉE (Stef, 17/09 : « un bloc sur les
@@ -159,14 +172,14 @@ export function AdminDashboard() {
           hint={`${data.cohorts.length} promotion(s) sur ce programme`}
         />
         <StatCard
-          label="Stages"
-          value={stagesDeLaPromotion.length}
+          label="Étudiants en stage"
+          value={etudiantsEnStage}
           hint={`${data.placements.length} terrain(s) configuré(s)`}
         />
         <StatCard
-          label="Carnets reçus"
-          value={carnetsDeLaPromotion.length}
-          hint="validés puis transmis en interne"
+          label="Carnets de stage"
+          value={carnetsOuverts.length}
+          hint={`${journeesDeclarees} journée(s) déclarée(s) · ${carnetsRecus.length} reçu(s)`}
         />
         <StatCard
           label="Pièces à obtenir"

@@ -50,6 +50,8 @@ import { RealRosterImportPanel } from "@/features/administration/RealRosterImpor
 import { PendingPeopleTable } from "@/features/administration/PendingPeopleTable";
 import { RealIndividualPersonForm } from "@/features/administration/RealIndividualPersonForm";
 import { useDataAccess, useSession } from "@/application/session";
+import { fetchProgramDirectory } from "@/infrastructure/supabase/communicationDirectory";
+import type { DirectoryRow } from "@/domain/communicationDirectory";
 import { setDirectoryState, useDirectoryState } from "@/application/directoryStore";
 import { ROLE_LABELS_FR } from "@/domain/roles";
 import type { Cohort, CohortId, RoleName } from "@/domain/types";
@@ -194,6 +196,7 @@ function RealPeopleEnrollmentsView() {
 
   const [people, setPeople] = useState<readonly PendingPerson[]>([]);
   const [cohorts, setCohorts] = useState<readonly Cohort[]>([]);
+  const [connectes, setConnectes] = useState(0);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<PendingPersonId | null>(null);
@@ -202,12 +205,21 @@ function RealPeopleEnrollmentsView() {
     setLoading(true);
     setLoadError(null);
     try {
-      const [rows, cohortRows] = await Promise.all([
+      /*
+       * « ACTIVEE » NE VEUT PAS DIRE « CONNECTEE » (23/09). La fiche passe a
+       * `activated` des que le compte existe — l'invitation cree le compte.
+       * L'ecran annoncait donc 29 personnes « premiere connexion effectuee »
+       * alors que 11 s'etaient connectees. La seule source de la connexion est
+       * l'annuaire du programme, qui lit `auth.users.last_sign_in_at`.
+       */
+      const [rows, cohortRows, annuaire] = await Promise.all([
         dataAccess.peopleStaging.listPendingPeople(activeProgram.id),
         dataAccess.programs.listCohorts(activeProgram.id),
+        fetchProgramDirectory(activeProgram.id).catch(() => [] as readonly DirectoryRow[]),
       ]);
       setPeople(rows);
       setCohorts(cohortRows);
+      setConnectes(annuaire.filter((ligne) => ligne.lastSignInAt).length);
     } catch (reason) {
       setLoadError(reason instanceof Error ? reason.message : "Chargement impossible.");
     } finally {
@@ -269,6 +281,7 @@ function RealPeopleEnrollmentsView() {
   const pendingCount = people.filter((p) => p.status === "pending").length;
   const invitedCount = people.filter((p) => p.status === "invited").length;
   const activatedCount = people.filter((p) => p.status === "activated").length;
+  const jamaisConnectes = Math.max(0, activatedCount - connectes);
 
   return (
     <div className="space-y-8">
@@ -296,10 +309,15 @@ function RealPeopleEnrollmentsView() {
       ) : null}
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard label="Programme actif" value={activeProgram.code} hint={activeProgram.name} />
-        <StatCard label="En attente d'envoi" value={pendingCount} />
-        <StatCard label="Invitées" value={invitedCount} hint="en attente de première connexion" />
-        <StatCard label="Activées" value={activatedCount} hint="première connexion effectuée" />
+        <StatCard label="En attente d'envoi" value={pendingCount} hint="jamais invitées" />
+        <StatCard label="Invitées" value={invitedCount} hint="lien parti, compte pas encore créé" />
+        <StatCard label="Comptes créés" value={activatedCount} hint="fiche activée" />
+        <StatCard
+          label="Connectées au moins une fois"
+          value={connectes}
+          hint={`${jamaisConnectes} compte(s) jamais ouvert(s)`}
+          tone={jamaisConnectes > 0 ? "attention" : "done"}
+        />
       </div>
 
       <RealRosterImportPanel

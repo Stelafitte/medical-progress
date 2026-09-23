@@ -66,8 +66,8 @@ describe("écrans débarrassés du simulé", () => {
 
   it("borne les compteurs de la vue d'ensemble à la promotion observée", () => {
     const dash = read(`${A}AdminDashboard.tsx`);
-    expect(dash).toContain("stagesDeLaPromotion");
-    expect(dash).toContain("carnetsDeLaPromotion");
+    expect(dash).toContain("etudiantsEnStage");
+    expect(dash).toContain("carnetsOuverts");
     expect(dash).not.toContain(">\n                        Traiter");
   });
 });
