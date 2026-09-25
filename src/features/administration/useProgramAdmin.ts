@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useDataAccess, useSession } from "@/application/session";
 import { fetchProgramDirectory } from "@/infrastructure/supabase/communicationDirectory";
 import type { OutcomeSelfReport } from "@/domain/passport";
+import type { LearnerCourseOpens, LearnerQuestionResults } from "@/application/ports/repositories";
 
 export function useProgramAdmin() {
   const data = useDataAccess();
@@ -96,12 +97,39 @@ export function useProgramAdmin() {
        * les remplacent : les declarations de la promotion, et la derniere
        * connexion de chacun. Un echec de lecture rend du VIDE, jamais du faux.
        */
-      const [declarationsList, directory] = await Promise.all([
+      const [declarationsList, directory, qcmParCohorte, coursParCohorte] = await Promise.all([
         data.passport
           .listSelfReportsForEnrollments(enrollments.map((e) => e.id))
           .catch(() => [] as readonly OutcomeSelfReport[]),
         data.isMock ? Promise.resolve([]) : fetchProgramDirectory(activeProgram.id).catch(() => []),
+        /*
+         * CE QUE LES ETUDIANTS ONT REELLEMENT FAIT (25/09) : les reponses aux
+         * QCM et les cours ouverts. Les deux lectures sont bornees a UNE
+         * promotion cote serveur ; on les fait donc promotion par promotion et
+         * on les remet a plat ici, pour que tout ecran du programme y ait acces
+         * sans refaire la requete. Un refus rend une liste vide : la colonne se
+         * tait, le tableau de suivi tient debout.
+         */
+        Promise.all(
+          cohorts.map((c) =>
+            data.assessments
+              .questionResultsByLearner(c.id as string)
+              .catch(() => [] as readonly LearnerQuestionResults[]),
+          ),
+        ),
+        Promise.all(
+          cohorts.map((c) =>
+            data.statistics
+              .listCourseOpensByLearner(c.id as string)
+              .catch(() => [] as readonly LearnerCourseOpens[]),
+          ),
+        ),
       ]);
+      const qcmByEnrollment = new Map<string, LearnerQuestionResults>();
+      for (const ligne of qcmParCohorte.flat()) qcmByEnrollment.set(ligne.enrollmentId, ligne);
+      const courseOpensByEnrollment = new Map<string, LearnerCourseOpens>();
+      for (const ligne of coursParCohorte.flat())
+        courseOpensByEnrollment.set(ligne.enrollmentId, ligne);
       const declarations = new Map<string, OutcomeSelfReport[]>();
       for (const report of declarationsList) {
         const key = report.enrollmentId as string;
@@ -115,6 +143,8 @@ export function useProgramAdmin() {
 
       return {
         declarations,
+        qcmByEnrollment,
+        courseOpensByEnrollment,
         lastSignInByPerson,
         program,
         versions,

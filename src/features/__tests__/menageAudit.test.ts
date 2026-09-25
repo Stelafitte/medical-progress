@@ -12,7 +12,9 @@ describe("aucune fixture en production", () => {
   const supa = read("src/infrastructure/supabase/supabaseDataAccess.ts");
   it("neutralise les espaces que Supabase ne réimplémente pas", () => {
     for (const ligne of [
-      "statistics: { listCohortStatistics: async () => [] }",
+      /* 25/09 : `statistics` porte désormais une VRAIE lecture à côté
+         (course_opens_by_learner). Ce qui doit rester vide reste vide. */
+      "listCohortStatistics: async () => []",
       "aiCredits: { listEntries: async () => [], getBudget: async () => undefined }",
     ]) {
       expect(supa).toContain(ligne);

@@ -62,6 +62,36 @@ function AxisCell({ axis, label }: { axis: AxisScore; label: string }) {
 const JOUR = 24 * 60 * 60 * 1000;
 
 /**
+ * CE QUE L'ÉTUDIANT A OUVERT, PAS CE QU'IL DÉCLARE (25/09).
+ *
+ * Toutes les autres colonnes sont déclaratives : l'étudiant dit avoir
+ * travaillé, dit avoir fait ses journées. Celle-ci est la seule trace non
+ * déclarative de son passage — les ouvertures de cours enregistrées par la
+ * plateforme. Volontairement grossière : combien d'ouvertures, combien de
+ * cours distincts. Ni quel cours, ni quand : suivre n'est pas surveiller.
+ */
+function Consulte({ opens, courses }: { opens: number; courses: number }) {
+  if (opens === 0) {
+    return (
+      <span
+        title="Aucun cours ouvert depuis l'inscription"
+        className="rounded-md bg-rose-100 px-2 py-1 text-xs text-rose-900 dark:bg-rose-950/50 dark:text-rose-200"
+      >
+        aucun
+      </span>
+    );
+  }
+  return (
+    <span
+      title={`${opens} ouverture(s) de cours, ${courses} cours distinct(s)`}
+      className="rounded-md bg-muted px-2 py-1 text-xs tabular-nums"
+    >
+      {courses} cours · {opens} ouv.
+    </span>
+  );
+}
+
+/**
  * LE CARNET DE STAGE RÉEL, DANS LA MÊME LIGNE (21/09). Le Pilotage montrait
  * trois listes des mêmes étudiants (apprenants du groupe, suivi des stages,
  * suivi de la promotion) ; ce qui était propre aux deux premières tient ici :
@@ -154,6 +184,8 @@ export function LearnerTrackingSection({
       expectedLogsPerLearner: data.templates.length,
       declarations: data.declarations,
       lastSignInByPerson: data.lastSignInByPerson,
+      qcmByEnrollment: data.qcmByEnrollment,
+      courseOpensByEnrollment: data.courseOpensByEnrollment,
     });
   }, [data, selectedId]);
 
@@ -291,6 +323,13 @@ export function LearnerTrackingSection({
                   >
                     Carnet de stage
                   </th>
+                  <th
+                    scope="col"
+                    title="Cours réellement ouverts sur la plateforme — la seule colonne non déclarative"
+                    className="py-2 pr-3 font-medium"
+                  >
+                    Consulté
+                  </th>
                   <th scope="col" className="py-2 pr-3 font-medium">
                     Signaux
                   </th>
@@ -320,6 +359,9 @@ export function LearnerTrackingSection({
                           log={carnets.get(row.enrollmentId)}
                           rattache={rattaches.has(row.enrollmentId)}
                         />
+                      </td>
+                      <td className="py-2.5 pr-3">
+                        <Consulte opens={row.courseOpens} courses={row.distinctCourses} />
                       </td>
                       <td className="py-2.5 pr-3">
                         {messages.length === 0 ? (

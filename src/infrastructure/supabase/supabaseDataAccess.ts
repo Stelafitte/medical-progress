@@ -1710,7 +1710,35 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
       },
     },
     aiCredits: { listEntries: async () => [], getBudget: async () => undefined },
-    statistics: { listCohortStatistics: async () => [] },
+    statistics: {
+      listCohortStatistics: async () => [],
+      /*
+       * LES COURS RÉELLEMENT OUVERTS (25/09), par `course_opens_by_learner`
+       * (migration 20260925090000), qui borne le périmètre à l'équipe du
+       * programme. Un refus rend une liste vide : la colonne se tait, le
+       * tableau de suivi ne tombe pas pour autant — même règle que le journal
+       * d'audit juste au-dessus.
+       */
+      listCourseOpensByLearner: async (cohortId: string) => {
+        const { data, error } = await client.rpc("course_opens_by_learner", {
+          p_cohort_id: cohortId,
+        });
+        if (error || !Array.isArray(data)) return [];
+        return (
+          data as Array<{
+            enrollment_id: string;
+            opens: number | string;
+            distinct_courses: number | string;
+            last_opened_at: string | null;
+          }>
+        ).map((row) => ({
+          enrollmentId: row.enrollment_id,
+          opens: Number(row.opens),
+          distinctCourses: Number(row.distinct_courses),
+          ...(row.last_opened_at ? { lastOpenedAt: row.last_opened_at } : {}),
+        }));
+      },
+    },
     contentAi: {
       listProfiles: async () => [],
       getProfile: async () => undefined,

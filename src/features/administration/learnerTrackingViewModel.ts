@@ -29,6 +29,7 @@
  * explicitement présentés comme simulés dans l'interface.
  */
 import type { AssessmentDefinition } from "@/domain/assessment";
+import type { LearnerCourseOpens, LearnerQuestionResults } from "@/application/ports/repositories";
 import type { StageLog } from "@/domain/stageLog";
 import type { Enrollment, Outcome, Person } from "@/domain/types";
 import {
@@ -49,7 +50,7 @@ export const TRACKING_AXIS_HINTS_FR: Record<TrackingAxis, string> = {
   theory: "Connaissances que l'étudiant a déclarées travaillées.",
   competence: "Compétences validées par un tiers.",
   placement: "Carnets de stage validés sur carnets attendus.",
-  assessment: "Pas encore mesuré par étudiant.",
+  assessment: "Score moyen des réponses aux QCM, sur les réponses données.",
 };
 
 export interface AxisScore {
@@ -77,6 +78,9 @@ export interface LearnerTrackingRow {
   readonly awaitingValidation: number;
   /** Dernière connexion à la plateforme ; absente = jamais connecté. */
   readonly lastSignInAt?: string | undefined;
+  /** Cours réellement ouverts : combien de fois, combien de cours distincts. */
+  readonly courseOpens: number;
+  readonly distinctCourses: number;
 }
 
 function theoryScore(
@@ -117,6 +121,10 @@ export function buildLearnerTrackingRows(input: {
   readonly expectedLogsPerLearner: number;
   readonly declarations?: DeclarationsParInscription;
   readonly lastSignInByPerson?: ReadonlyMap<string, string>;
+  /** Tentatives de QCM par inscription — absentes, l'axe reste « non mesuré ». */
+  readonly qcmByEnrollment?: ReadonlyMap<string, LearnerQuestionResults>;
+  /** Ouvertures de cours par inscription — absentes, la colonne affiche 0. */
+  readonly courseOpensByEnrollment?: ReadonlyMap<string, LearnerCourseOpens>;
 }): readonly LearnerTrackingRow[] {
   const declarations = input.declarations ?? new Map();
   const competenceRows = new Map(
@@ -132,9 +140,26 @@ export function buildLearnerTrackingRows(input: {
       const theory = theoryScore(enrollment.id, input.outcomes, declarations);
       const competence = score(competenceRow?.validated ?? 0, competenceRow?.total ?? 0);
       const placement = placementScore(enrollment.id, input.logs, input.expectedLogsPerLearner);
-      // Non mesuré : un axe à 0/0 s'affiche « non mesuré » et ne compte pas
-      // dans la moyenne. Mieux vaut un vide qu'un chiffre inventé.
-      const assessment = score(0, 0);
+      /*
+       * L'AXE ÉVALUATIONS, ENFIN LU EN BASE (25/09).
+       *
+       * Il valait `score(0, 0)` EN DUR depuis l'origine : la colonne affichait
+       * « non mesuré » quoi que fassent les étudiants, et l'aurait affiché même
+       * après cinquante QCM. Stef, le 25/09 : « ce tableau permet-il de voir ce
+       * que les étudiants ont réellement fait ? » — sur cette colonne, non.
+       *
+       * Il vaut maintenant le SCORE MOYEN des réponses réellement données
+       * (`question_attempts`, score EDN 0..1), rapporté au nombre de réponses :
+       * « 12 sur 20 » se lit comme les autres axes. Aucune réponse = 0/0 =
+       * « non mesuré », et l'axe ne pèse pas sur la moyenne — la règle d'avant,
+       * qui reste juste : un étudiant qui n'a rien passé n'a pas échoué.
+       */
+      const qcm = input.qcmByEnrollment?.get(enrollment.id as string);
+      const assessment =
+        qcm && qcm.attempts > 0
+          ? score(Math.round((qcm.avgScore ?? 0) * qcm.attempts), qcm.attempts)
+          : score(0, 0);
+      const ouvertures = input.courseOpensByEnrollment?.get(enrollment.id as string);
       const active = [theory, competence, placement, assessment].filter((a) => a.total > 0);
       return {
         enrollmentId: enrollment.id,
@@ -150,6 +175,8 @@ export function buildLearnerTrackingRows(input: {
             ? 0
             : Math.round(active.reduce((sum, a) => sum + a.percent, 0) / active.length),
         awaitingValidation: competenceRow?.declared ?? 0,
+        courseOpens: ouvertures?.opens ?? 0,
+        distinctCourses: ouvertures?.distinctCourses ?? 0,
         lastSignInAt: input.lastSignInByPerson?.get(enrollment.personId as string),
       };
     })

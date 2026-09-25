@@ -1259,6 +1259,8 @@ export const mockDataAccess: DataAccess = {
   statistics: {
     listCohortStatistics: (programId) =>
       ok(stfx.cohortStatistics.filter((s) => s.programId === programId)),
+    /* Aucune fixture d'ouverture de cours : la maquette n'en invente pas. */
+    listCourseOpensByLearner: () => ok([]),
   },
   clinicalAudits: {
     listTemplates: (programId) => ok(dpc.auditTemplates.filter((t) => t.programId === programId)),

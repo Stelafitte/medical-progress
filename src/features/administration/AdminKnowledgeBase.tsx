@@ -83,6 +83,8 @@ export function AdminKnowledgeBase() {
     expectedLogsPerLearner: data.templates.length,
     declarations: data.declarations,
     lastSignInByPerson: data.lastSignInByPerson,
+    qcmByEnrollment: data.qcmByEnrollment,
+    courseOpensByEnrollment: data.courseOpensByEnrollment,
   });
   const summary = summarizeLearnerTracking(trackingRows);
   const selectedCohort = cohorts.find((cohort) => cohort.id === selectedId) ?? null;

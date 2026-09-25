@@ -1713,6 +1713,24 @@ export interface ValidateStageLogBlockInput {
  */
 export interface StatisticsRepository {
   listCohortStatistics(programId: ProgramId): Promise<readonly CohortStatisticsSnapshot[]>;
+  /**
+   * CE QUE LES ÉTUDIANTS ONT RÉELLEMENT OUVERT (25/09).
+   *
+   * Le suivi ne montrait que du déclaratif : ce qu'un étudiant dit avoir
+   * travaillé. La plateforme enregistre pourtant chaque ouverture de cours
+   * depuis le 17/09 (`audit_events`), et seul l'écran des coûts s'en servait.
+   * Agrégé par inscription, jamais le détail de qui a lu quoi et quand : un
+   * suivi pédagogique n'est pas une surveillance de lecture.
+   */
+  listCourseOpensByLearner(cohortId: string): Promise<readonly LearnerCourseOpens[]>;
+}
+
+/** Les ouvertures de cours d'un étudiant, agrégées. */
+export interface LearnerCourseOpens {
+  readonly enrollmentId: string;
+  readonly opens: number;
+  readonly distinctCourses: number;
+  readonly lastOpenedAt?: string;
 }
 
 /**
