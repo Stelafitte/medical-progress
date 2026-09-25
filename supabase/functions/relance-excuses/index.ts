@@ -225,6 +225,87 @@ Deno.serve(async (req) => {
     }
   }
 
+  /*
+   * 25/09 -- LE MOT AUX ENCADRANTS, A LA DEMANDE DE STEF.
+   *
+   * Son connecteur de messagerie personnelle etant hors service (le backend
+   * rendait les comptes d'un AUTRE utilisateur), le message part de l'adresse
+   * de service. Le `replyTo` le ramene vers son adresse universitaire : un mot
+   * de collegue a collegues doit se repondre a lui, pas a une boite d'envoi.
+   *
+   * CE MODE N'EST PAS UN RELAIS OUVERT, et c'est deliberé : le corps est ECRIT
+   * ICI, les destinataires sont LUS EN BASE (les encadrants et responsables de
+   * stage du programme). L'appelant ne choisit ni le texte ni les adresses ; il
+   * peut seulement en RETIRER (`exclure`), jamais en ajouter. Un endpoint garde
+   * par un seul secret qui accepterait un corps et une liste libres serait un
+   * relais de courrier ouvert, quel que soit le soin mis a garder le secret.
+   */
+  const annonceEncadrants = (body as { annonceEncadrants?: unknown }).annonceEncadrants === true;
+  if (annonceEncadrants) {
+    const exclure = new Set(
+      (Array.isArray((body as { exclure?: unknown }).exclure)
+        ? ((body as { exclure: unknown[] }).exclure as unknown[])
+        : []
+      )
+        .filter((x): x is string => typeof x === "string")
+        .map((x) => x.trim().toLowerCase()),
+    );
+    const equipe = (people ?? []).filter(
+      (p) =>
+        (p.intended_role === "placement_supervisor" || p.intended_role === "placement_manager") &&
+        !exclure.has((p.login_email ?? "").trim().toLowerCase()),
+    );
+    const sujet = "Campus DFASM Cardio \u2014 ce que c'est, et pourquoi je vous en parle";
+    const corpsCommun = [
+      "Vous avez re\u00e7u un lien de connexion \u00e0 \u00ab Campus Sant\u00e9 Augment\u00e9 \u00bb, la plateforme que nous testons cette ann\u00e9e avec les \u00e9tudiants de DFASM en stage de cardiologie. Un mot pour vous dire ce que c'est, et ce que \u00e7a peut vous apporter.",
+      "",
+      "Pour les \u00e9tudiants, l'id\u00e9e est simple : un seul endroit o\u00f9 ils retrouvent le programme du stage, les connaissances et les comp\u00e9tences attendues, les ressources p\u00e9dagogiques \u2014 cours, diaporamas, QCM, ECOS \u2014 et leur carnet de stage, qu'ils remplissent au fil des journ\u00e9es plut\u00f4t que de le reconstituer \u00e0 la fin.",
+      "",
+      "Pour nous, c'est d'abord de la visibilit\u00e9. On voit o\u00f9 chacun en est, ce qu'il a travaill\u00e9, ce qu'il d\u00e9clare avoir acquis \u2014 et donc qui aurait besoin d'\u00eatre repris avant la fin du stage. Un \u00e9tudiant peut aussi vous \u00e9crire directement depuis la plateforme, et la validation d'une comp\u00e9tence acquise en situation r\u00e9elle se fait en quelques clics.",
+      "",
+      "Deux choses importantes :",
+      "",
+      "\u2014 C'est exp\u00e9rimental, \u00e0 ce stade, pour tout le monde \u2014 moi compris. Rien n'est fig\u00e9, et ce qui vous para\u00eetra mal fichu m'int\u00e9resse plus que le reste.",
+      "",
+      "\u2014 Rien n'est obligatoire pour les \u00e9tudiants. Ils s'en serviront s'ils y trouvent leur compte. \u00c7a prend ou \u00e7a ne prend pas ; il n'y a aucun enjeu derri\u00e8re, ni pour eux, ni pour vous.",
+      "",
+      "Si vous n'avez plus votre lien de connexion, ou s'il a expir\u00e9, r\u00e9pondez simplement \u00e0 ce message : je vous en renvoie un. Chaque lien est personnel, je ne peux pas en mettre un commun ici.",
+      "",
+      "Si vous avez cinq minutes pour l'ouvrir et regarder, c'est d\u00e9j\u00e0 beaucoup. Et si quelque chose vous semble inutile ou mal fait, dites-le-moi.",
+      "",
+      "Bien cordialement,",
+      "St\u00e9phane Lafitte",
+    ];
+    let envoyesAnnonce = 0;
+    const echecsAnnonce: Array<{ email: string; error: string }> = [];
+    for (const p of equipe) {
+      const prenom = (p.first_name ?? "").trim();
+      const text = [prenom ? `Cher ${prenom},` : "Chers coll\u00e8gues,", "", ...corpsCommun].join(
+        "\n",
+      );
+      try {
+        await transporter.sendMail({
+          from: `"Pr St\u00e9phane Lafitte (Campus DFASM Cardio)" <${sender.smtp_user}>`,
+          replyTo: "stephane.lafitte@u-bordeaux.fr",
+          to: p.login_email,
+          subject: sujet,
+          text,
+        });
+        envoyesAnnonce++;
+      } catch (e) {
+        echecsAnnonce.push({
+          email: p.login_email,
+          error: e instanceof Error ? e.message : String(e),
+        });
+      }
+      await new Promise((r) => setTimeout(r, 700));
+    }
+    return json(
+      { annonceEncadrants: true, cibles: equipe.length, envoyes: envoyesAnnonce, echecs: echecsAnnonce },
+      200,
+    );
+  }
+
   if (testSmtp) {
     try {
       await transporter.verify();
@@ -254,10 +335,10 @@ Deno.serve(async (req) => {
       const text = [
         prenom ? `Bonjour ${prenom},` : "Bonjour,",
         "",
-        `Vous avez récemment reçu une invitation à rejoindre la plateforme "${program.name}" (Campus Santé Augmenté).`,
-        "Beaucoup d'entre vous sont tombés sur le message « lien expiré » : le lien envoyé n'était valable que très peu de temps. Nous vous prions de bien vouloir nous excuser pour ce désagrément.",
+        `Nous vous avons adressé il y a quelques jours une invitation à rejoindre la plateforme "${program.name}" (Campus Santé Augmenté).`,
+        "Ce message ne vous est très probablement jamais parvenu — notre serveur d'envoi le bloquait sans nous le dire — ou bien le lien qu'il contenait avait expiré avant que vous ne l'ouvriez. Nous vous prions de bien vouloir nous excuser pour ce désagrément.",
         "",
-        "Le problème est corrigé. Voici un nouveau lien personnel, valable 7 jours :",
+        "Le problème est corrigé et vérifié. Voici un nouveau lien personnel, valable 7 jours :",
         lien,
         "",
         encadrant
