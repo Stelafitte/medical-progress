@@ -3,6 +3,7 @@
  * les stages : droits existants → attribution d'un droit → règles de partage
  * et de conservation → journal d'audit.
  */
+import { useState } from "react";
 import { ShieldCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -35,13 +36,27 @@ function scopeDetail(
   scope: RoleAssignment["scope"],
   cohorts: readonly Cohort[],
   placements: readonly Placement[],
+  archivedCohorts: readonly Cohort[] = [],
 ): string {
-  if (scope.kind === "cohort")
-    return cohorts.find((c) => c.id === scope.cohortId)?.label ?? "promotion inconnue";
+  if (scope.kind === "cohort") {
+    const active = cohorts.find((c) => c.id === scope.cohortId);
+    if (active) return active.label;
+    const archived = archivedCohorts.find((c) => c.id === scope.cohortId);
+    return archived ? `${archived.label} (archivée)` : "promotion inconnue";
+  }
   if (scope.kind === "placement")
     return placements.find((p) => p.id === scope.placementId)?.name ?? "terrain inconnu";
   return SCOPE_LABELS_FR[scope.kind] ?? scope.kind;
 }
+
+/** Ordre d'affichage des fonctions : du plus large au plus ciblé. */
+const ROLE_ORDER: readonly RoleAssignment["role"][] = [
+  "administrator",
+  "teacher",
+  "placement_manager",
+  "placement_supervisor",
+  "learner",
+];
 
 export function AccessGrantSection({
   programId,
@@ -50,6 +65,7 @@ export function AccessGrantSection({
   placements,
   roleAssignments,
   auditEvents,
+  archivedCohorts = [],
   onGrantCreated,
 }: {
   readonly programId: ProgramId;
@@ -58,10 +74,37 @@ export function AccessGrantSection({
   readonly placements: readonly Placement[];
   readonly roleAssignments: readonly RoleAssignment[];
   readonly auditEvents: readonly AuditEvent[];
+  /** Promotions archivées : elles restent nommées dans la liste des droits. */
+  readonly archivedCohorts?: readonly Cohort[] | undefined;
   readonly onGrantCreated?: (() => void) | undefined;
 }) {
   const allGrants = grantsForProgram(roleAssignments, programId);
   const nameOf = (personId: string) => people.find((p) => p.id === personId)?.fullName ?? personId;
+  const [roleFilter, setRoleFilter] = useState<string>("all");
+  const [scopeFilter, setScopeFilter] = useState<string>("all");
+
+  const rows = allGrants.map((grant) => ({
+    grant,
+    name: nameOf(grant.personId),
+    scopeLabel: scopeDetail(grant.scope, cohorts, placements, archivedCohorts),
+  }));
+  const scopeOptions = [...new Set(rows.map((r) => r.scopeLabel))].sort((a, b) =>
+    a.localeCompare(b, "fr"),
+  );
+  const visibles = rows.filter(
+    (r) =>
+      (roleFilter === "all" || r.grant.role === roleFilter) &&
+      (scopeFilter === "all" || r.scopeLabel === scopeFilter),
+  );
+  const groups = ROLE_ORDER.map((role) => ({
+    role,
+    items: visibles
+      .filter((r) => r.grant.role === role)
+      .sort(
+        (a, b) =>
+          a.scopeLabel.localeCompare(b.scopeLabel, "fr") || a.name.localeCompare(b.name, "fr"),
+      ),
+  })).filter((g) => g.items.length > 0);
 
   return (
     <div className="space-y-8">
@@ -77,26 +120,66 @@ export function AccessGrantSection({
         {allGrants.length === 0 ? (
           <EmptyState>Aucun droit accordé dans ce programme.</EmptyState>
         ) : (
-          <ul className="space-y-2 text-sm">
-            {allGrants.map((grant, index) => (
-              <li
-                key={`${grant.personId}-${grant.role}-${index}`}
-                className="flex flex-wrap items-center gap-2 rounded-md border p-2"
-              >
-                <ShieldCheck className="size-4 text-muted-foreground" aria-hidden />
-                <span className="font-medium">{nameOf(grant.personId)}</span>
-                <Badge variant="outline" className="font-normal">
-                  {ROLE_LABELS_FR[grant.role]}
-                </Badge>
-                <span className="text-muted-foreground">
-                  portée : {scopeDetail(grant.scope, cohorts, placements)}
-                </span>
-                <span className="ms-auto text-xs text-muted-foreground">
-                  accordé le {formatFrDate(grant.grantedAt)}
-                </span>
-              </li>
+          <div className="space-y-4">
+            <div className="flex flex-wrap gap-3 text-sm">
+              <label className="flex items-center gap-2">
+                <span className="text-muted-foreground">Fonction</span>
+                <select
+                  className="min-h-9 rounded-md border bg-background px-2"
+                  value={roleFilter}
+                  onChange={(e) => setRoleFilter(e.target.value)}
+                >
+                  <option value="all">Toutes les fonctions</option>
+                  {ROLE_ORDER.map((role) => (
+                    <option key={role} value={role}>
+                      {ROLE_LABELS_FR[role]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex items-center gap-2">
+                <span className="text-muted-foreground">Portée</span>
+                <select
+                  className="min-h-9 rounded-md border bg-background px-2"
+                  value={scopeFilter}
+                  onChange={(e) => setScopeFilter(e.target.value)}
+                >
+                  <option value="all">Toutes les portées</option>
+                  {scopeOptions.map((label) => (
+                    <option key={label} value={label}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            {groups.length === 0 ? (
+              <EmptyState>Aucun droit ne correspond à ce filtre.</EmptyState>
+            ) : null}
+            {groups.map(({ role, items }) => (
+              <section key={role} aria-label={ROLE_LABELS_FR[role]} className="space-y-2">
+                <h3 className="text-sm font-semibold">
+                  {ROLE_LABELS_FR[role]}{" "}
+                  <span className="font-normal text-muted-foreground">({items.length})</span>
+                </h3>
+                <ul className="space-y-2 text-sm">
+                  {items.map(({ grant, name, scopeLabel }, index) => (
+                    <li
+                      key={`${grant.personId}-${grant.role}-${scopeLabel}-${index}`}
+                      className="flex flex-wrap items-center gap-2 rounded-md border p-2"
+                    >
+                      <ShieldCheck className="size-4 text-muted-foreground" aria-hidden />
+                      <span className="font-medium">{name}</span>
+                      <span className="text-muted-foreground">portée : {scopeLabel}</span>
+                      <span className="ms-auto text-xs text-muted-foreground">
+                        accordé le {formatFrDate(grant.grantedAt)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
             ))}
-          </ul>
+          </div>
         )}
       </PanelCard>
 
