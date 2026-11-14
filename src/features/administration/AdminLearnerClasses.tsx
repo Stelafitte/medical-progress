@@ -254,6 +254,8 @@ export function AdminLearnerClasses() {
                         busyId={personBusyId}
                         onUpdate={updatePerson}
                         onSetCancelled={setPersonCancelled}
+                        programId={data.program?.id}
+                        onPeopleChanged={() => void pendingQuery.refetch()}
                       />
                       {/*
                         `existingPeople` reçoit TOUTES les personnes du

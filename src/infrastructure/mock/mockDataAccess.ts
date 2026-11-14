@@ -319,6 +319,22 @@ export const mockDataAccess: DataAccess = {
         pending = pending.map((p) => (p.id === input.personId ? revised : p));
         return ok(revised);
       },
+      removePeople: (_programId, personIds, remove) => {
+        let done = 0;
+        pending = pending.map((p) => {
+          if (!personIds.includes(p.id)) return p;
+          done += 1;
+          return remove
+            ? { ...p, status: "cancelled" as const, cancelledAt: new Date().toISOString() }
+            : { ...omitPendingPersonKeys(p, ["cancelledAt"]), status: statusAfterRestore(p) };
+        });
+        return ok({ done, skipped: [] });
+      },
+      deletePeople: (_programId, personIds) => {
+        const before = pending.length;
+        pending = pending.filter((p) => !personIds.includes(p.id));
+        return ok({ done: before - pending.length, skipped: [] });
+      },
       setPendingPersonCancelled: (personId, cancelled) => {
         const found = pending.find((p) => p.id === personId);
         if (!found) return Promise.reject(new Error("Personne introuvable."));

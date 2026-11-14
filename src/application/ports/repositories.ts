@@ -397,6 +397,30 @@ export interface PeopleStagingRepository {
    * base ne l'accorde d'ailleurs pas (aucun `delete` sur `people`).
    */
   setPendingPersonCancelled(personId: PendingPersonId, cancelled: boolean): Promise<PendingPerson>;
+
+  /**
+   * RETIRER (réversible) ou RÉINTÉGRER une ou plusieurs personnes du programme :
+   * droits révoqués, inscriptions « retirées », sorties des groupes — rien n'est
+   * effacé. Les identifiants sont ceux de comptes OU de lignes du vivier.
+   */
+  removePeople(
+    programId: ProgramId,
+    personIds: readonly string[],
+    remove: boolean,
+  ): Promise<PeopleActionResult>;
+
+  /**
+   * SUPPRIMER définitivement. Refusé par la base dès qu'il existe un historique
+   * (carnet, validation…), pour un administrateur, pour soi-même, ou pour un
+   * compte présent dans un autre programme : la raison est rendue par personne.
+   */
+  deletePeople(programId: ProgramId, personIds: readonly string[]): Promise<PeopleActionResult>;
+}
+
+/** Résultat d'une action en lot sur des personnes : ce qui a été fait, et ce qui a été écarté. */
+export interface PeopleActionResult {
+  readonly done: number;
+  readonly skipped: readonly { readonly id: string; readonly reason: string }[];
 }
 
 /** Saisie du port `createOutcome` : champs plats, prêts pour le RPC serveur. */

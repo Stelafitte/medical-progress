@@ -49,6 +49,7 @@ import type {
   PublishNarratedDeckInput,
   RegisteredResourceAsset,
   RegisterResourceAssetInput,
+  PeopleActionResult,
   RequestUploadUrlInput,
   ResourceAssetKind,
   ResourceVisibility,
@@ -312,6 +313,18 @@ function mapProgramAiSettings(row: ProgramAiSettingsRow): ProgramAiSettings {
      * une absence d'information.
      */
     activeProvider: row.active_provider ?? undefined,
+  };
+}
+
+/** Lit la réponse JSON des fonctions `retirer_personnes` / `supprimer_personnes`. */
+function mapPeopleActionResult(data: unknown): PeopleActionResult {
+  const raw = (data ?? {}) as {
+    traites?: number;
+    ignores?: readonly { id: string; raison: string }[];
+  };
+  return {
+    done: raw.traites ?? 0,
+    skipped: (raw.ignores ?? []).map((i) => ({ id: i.id, reason: i.raison })),
   };
 }
 
@@ -2923,6 +2936,23 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
           .single();
         assertNoSupabaseError(error);
         return mapPendingPerson(data as PendingPersonRow);
+      },
+      async removePeople(programId: ProgramId, personIds: readonly string[], remove: boolean) {
+        const { data, error } = await client.rpc("retirer_personnes", {
+          p_program_id: programId,
+          p_person_ids: [...personIds],
+          p_retirer: remove,
+        });
+        assertNoSupabaseError(error);
+        return mapPeopleActionResult(data);
+      },
+      async deletePeople(programId: ProgramId, personIds: readonly string[]) {
+        const { data, error } = await client.rpc("supprimer_personnes", {
+          p_program_id: programId,
+          p_person_ids: [...personIds],
+        });
+        assertNoSupabaseError(error);
+        return mapPeopleActionResult(data);
       },
       async sendInvitations(personIds: readonly PendingPersonId[]) {
         if (personIds.length === 0) return [];

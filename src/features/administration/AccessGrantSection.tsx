@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Link } from "@tanstack/react-router";
 import { EmptyState, PanelCard, ScopeNotice } from "@/features/professional/mock-ui";
+import { PeopleRemovalBar } from "@/features/administration/PeopleRemovalBar";
 import { AccessGrantCreationForm } from "@/features/administration/AccessGrantCreationForm";
 import { formatFrDate } from "@/features/administration/adminProgramViewModel";
 import { horodatageFr, libelleEvenement } from "@/domain/auditJournal";
@@ -82,6 +83,14 @@ export function AccessGrantSection({
   const nameOf = (personId: string) => people.find((p) => p.id === personId)?.fullName ?? personId;
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [scopeFilter, setScopeFilter] = useState<string>("all");
+  const [selection, setSelection] = useState<ReadonlySet<string>>(new Set());
+  const toggle = (personId: string, value: boolean) =>
+    setSelection((cur) => {
+      const next = new Set(cur);
+      if (value) next.add(personId);
+      else next.delete(personId);
+      return next;
+    });
 
   const rows = allGrants.map((grant) => ({
     grant,
@@ -153,6 +162,13 @@ export function AccessGrantSection({
                 </select>
               </label>
             </div>
+            <PeopleRemovalBar
+              programId={programId}
+              personIds={[...selection]}
+              nameOf={nameOf}
+              onClear={() => setSelection(new Set())}
+              onDone={() => onGrantCreated?.()}
+            />
             {groups.length === 0 ? (
               <EmptyState>Aucun droit ne correspond à ce filtre.</EmptyState>
             ) : null}
@@ -168,6 +184,13 @@ export function AccessGrantSection({
                       key={`${grant.personId}-${grant.role}-${scopeLabel}-${index}`}
                       className="flex flex-wrap items-center gap-2 rounded-md border p-2"
                     >
+                      <input
+                        type="checkbox"
+                        className="size-5"
+                        aria-label={`Sélectionner ${name}`}
+                        checked={selection.has(grant.personId)}
+                        onChange={(e) => toggle(grant.personId, e.target.checked)}
+                      />
                       <ShieldCheck className="size-4 text-muted-foreground" aria-hidden />
                       <span className="font-medium">{name}</span>
                       <span className="text-muted-foreground">portée : {scopeLabel}</span>

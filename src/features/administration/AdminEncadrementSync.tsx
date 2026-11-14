@@ -5,6 +5,7 @@ import { toast } from "sonner";
 
 import { SectionHeading } from "@/components/section-heading";
 import { PanelCard } from "@/features/professional/mock-ui";
+import { PeopleRemovalBar } from "@/features/administration/PeopleRemovalBar";
 import { EYEBROW, TABULAIRE } from "@/components/milestone-heading";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -181,6 +182,7 @@ export function AdminEncadrementSync() {
 
   /** Le vivier ENCADRANT seulement : intention explicite, ou rapporté par une
    *  source d'équipe. Les apprenants du sas n'ont rien à faire ici. */
+  const [selectionEquipe, setSelectionEquipe] = useState<ReadonlySet<string>>(new Set());
   const vivierEncadrant = useMemo(
     () =>
       (vivier ?? []).filter(
@@ -375,6 +377,77 @@ export function AdminEncadrementSync() {
           attente d'invitation · {vivierEncadrant.filter((p) => p.status === "invited").length}{" "}
           invité(s) · {vivierEncadrant.filter((p) => p.status === "activated").length} activé(s)
         </p>
+      </PanelCard>
+
+      {/* ---------- retirer / supprimer, en lot ---------- */}
+      <PanelCard
+        title="Retirer ou supprimer des encadrants"
+        description="Cochez une ou plusieurs personnes : retirer est réversible, supprimer est définitif et refusé s'il existe un historique."
+      >
+        {(() => {
+          const viviers = (vivier ?? []).filter(
+            (p) => p.intendedRole === "placement_supervisor" || p.origin === "sync",
+          );
+          const comptesVivier = new Set(
+            viviers.map((p) => p.activatedProfileId).filter((id): id is PersonId => Boolean(id)),
+          );
+          const lignes: { id: string; nom: string; etat: string }[] = [
+            ...viviers.map((p) => ({
+              id: p.id,
+              nom: fullNameOfPendingPerson(p),
+              etat:
+                p.status === "cancelled"
+                  ? "retiré"
+                  : p.status === "activated"
+                    ? "compte actif"
+                    : p.status === "invited"
+                      ? "invité"
+                      : "à inviter",
+            })),
+            ...[...new Set((groupes ?? []).flatMap((g) => g.supervisorPersonIds))]
+              .filter((id) => !comptesVivier.has(id))
+              .map((id) => ({ id, nom: nomDe(id), etat: "compte actif" })),
+          ].sort((a, b) => a.nom.localeCompare(b.nom, "fr"));
+          if (lignes.length === 0)
+            return <p className="text-muted-foreground text-sm">Aucun encadrant à gérer.</p>;
+          return (
+            <div className="space-y-3">
+              <PeopleRemovalBar
+                programId={activeProgram.id}
+                personIds={[...selectionEquipe]}
+                nameOf={(id) => lignes.find((l) => l.id === id)?.nom ?? id}
+                onClear={() => setSelectionEquipe(new Set())}
+                onDone={() => {
+                  void queryClient.invalidateQueries({ queryKey: ["pending-people"] });
+                  void queryClient.invalidateQueries({ queryKey: ["supervision-groups"] });
+                  void queryClient.invalidateQueries({ queryKey: ["administration-people"] });
+                }}
+              />
+              <ul className="space-y-1 text-sm">
+                {lignes.map((l) => (
+                  <li key={l.id} className="flex items-center gap-2 rounded-md border p-2">
+                    <input
+                      type="checkbox"
+                      className="size-5"
+                      aria-label={`Sélectionner ${l.nom}`}
+                      checked={selectionEquipe.has(l.id)}
+                      onChange={(e) =>
+                        setSelectionEquipe((cur) => {
+                          const next = new Set(cur);
+                          if (e.target.checked) next.add(l.id);
+                          else next.delete(l.id);
+                          return next;
+                        })
+                      }
+                    />
+                    <span className="font-medium">{l.nom}</span>
+                    <span className="text-muted-foreground">{l.etat}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          );
+        })()}
       </PanelCard>
 
       {/* ---------- ajouter un encadrant à la main ---------- */}

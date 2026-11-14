@@ -42,6 +42,7 @@ import {
   type DirectoryBlock,
   type DirectoryRow,
 } from "@/domain/communicationDirectory";
+import { PeopleRemovalBar } from "@/features/administration/PeopleRemovalBar";
 import { CommunicationSendDialogs } from "@/features/administration/CommunicationSendDialogs";
 
 const TOUCH = "min-h-11";
@@ -200,6 +201,21 @@ export function CommunicationDirectorySection() {
           onSelection={basculer}
         />
       ))}
+
+      {/* Même geste que dans Administration : retirer / réintégrer / supprimer la sélection. */}
+      <PeopleRemovalBar
+        programId={activeProgram.id}
+        personIds={[
+          ...new Set(
+            retenues
+              .map((r) => r.personId ?? r.stagingId)
+              .filter((id): id is string => Boolean(id)),
+          ),
+        ]}
+        nameOf={(id) => retenues.find((r) => (r.personId ?? r.stagingId) === id)?.fullName ?? id}
+        onClear={() => setSelection(new Set())}
+        onDone={() => void annuaire.refetch()}
+      />
 
       <CommunicationSendDialogs
         selection={retenues}
