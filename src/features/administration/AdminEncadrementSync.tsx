@@ -399,7 +399,19 @@ export function AdminEncadrementSync() {
                 p.status === "cancelled"
                   ? "retiré"
                   : p.status === "activated"
-                    ? "compte actif"
+                    ? (roles ?? []).some(
+                        (r) =>
+                          r.personId === p.activatedProfileId &&
+                          r.role === "placement_supervisor" &&
+                          r.scope.kind !== "platform" &&
+                          "programId" in r.scope &&
+                          r.scope.programId === activeProgram.id,
+                      ) ||
+                      (groupes ?? []).some((g) =>
+                        g.supervisorPersonIds.some((id) => id === p.activatedProfileId),
+                      )
+                      ? "compte actif"
+                      : "retiré"
                     : p.status === "invited"
                       ? "invité"
                       : "à inviter",

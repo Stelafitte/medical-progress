@@ -12,6 +12,10 @@ export function AdminGovernance() {
   const dataAccess = useDataAccess();
   // Les promotions archivées sont demandées à part : sans elles, un droit
   // accordé sur une promotion archivée s'afficherait « promotion inconnue ».
+  const pendingQuery = useQuery({
+    queryKey: ["pending-people", activeProgram.id],
+    queryFn: () => dataAccess.peopleStaging.listPendingPeople(activeProgram.id),
+  });
   const archivedQuery = useQuery({
     queryKey: ["cohorts-archived", activeProgram.id],
     queryFn: async () => {
@@ -38,6 +42,7 @@ export function AdminGovernance() {
         people={data.people}
         cohorts={data.cohorts}
         archivedCohorts={archivedQuery.data ?? []}
+        pendingPeople={pendingQuery.data ?? []}
         placements={data.placements}
         roleAssignments={data.roleAssignments}
         auditEvents={data.auditEvents}

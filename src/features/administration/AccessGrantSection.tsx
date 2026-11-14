@@ -16,6 +16,8 @@ import { horodatageFr, libelleEvenement } from "@/domain/auditJournal";
 import { grantsForProgram } from "@/domain/accessGrant";
 import { ROLE_LABELS_FR } from "@/domain/roles";
 import { EXPORT_NO_PATIENT_DATA_FR, RETENTION_TBD_FR } from "@/domain/administration";
+import type { PendingPerson } from "@/domain/peopleStaging";
+import { fullNameOfPendingPerson } from "@/domain/peopleStaging";
 import type {
   AuditEvent,
   Cohort,
@@ -67,6 +69,7 @@ export function AccessGrantSection({
   roleAssignments,
   auditEvents,
   archivedCohorts = [],
+  pendingPeople = [],
   onGrantCreated,
 }: {
   readonly programId: ProgramId;
@@ -77,6 +80,8 @@ export function AccessGrantSection({
   readonly auditEvents: readonly AuditEvent[];
   /** Promotions archivées : elles restent nommées dans la liste des droits. */
   readonly archivedCohorts?: readonly Cohort[] | undefined;
+  /** Le vivier : les encadrants issus de la synchro n'ont pas encore de droit. */
+  readonly pendingPeople?: readonly PendingPerson[] | undefined;
   readonly onGrantCreated?: (() => void) | undefined;
 }) {
   const allGrants = grantsForProgram(roleAssignments, programId);
@@ -105,6 +110,40 @@ export function AccessGrantSection({
       (roleFilter === "all" || r.grant.role === roleFilter) &&
       (scopeFilter === "all" || r.scopeLabel === scopeFilter),
   );
+  // Le vivier d'encadrants (synchro Echo Planner) : sans droit tant qu'ils ne sont pas
+  // invités, donc absents de la liste des droits. On les montre ici, avec leur état.
+  const aUnDroit = (profileId: string | undefined) =>
+    profileId !== undefined &&
+    allGrants.some((g) => g.personId === profileId && g.role === "placement_supervisor");
+  const vivier = pendingPeople
+    .filter((p) => p.intendedRole === "placement_supervisor" || p.origin === "sync")
+    .map((p) => {
+      const retire =
+        p.status === "cancelled" || (p.status === "activated" && !aUnDroit(p.activatedProfileId));
+      const actif = p.status === "activated" && !retire;
+      return {
+        id: p.id,
+        name: fullNameOfPendingPerson(p),
+        etat: retire
+          ? "retiré"
+          : p.status === "invited"
+            ? "invité, en attente"
+            : actif
+              ? "compte actif"
+              : "à inviter",
+        retire,
+        actif,
+      };
+    })
+    .sort((a, b) => a.name.localeCompare(b.name, "fr"));
+  const vivierVisible = vivier.filter(
+    (v) =>
+      !v.retire &&
+      !v.actif &&
+      scopeFilter === "all" &&
+      (roleFilter === "all" || roleFilter === "placement_supervisor"),
+  );
+  const retires = vivier.filter((v) => v.retire);
   const groups = ROLE_ORDER.map((role) => ({
     role,
     items: visibles
@@ -169,7 +208,7 @@ export function AccessGrantSection({
               onClear={() => setSelection(new Set())}
               onDone={() => onGrantCreated?.()}
             />
-            {groups.length === 0 ? (
+            {groups.length === 0 && vivierVisible.length === 0 ? (
               <EmptyState>Aucun droit ne correspond à ce filtre.</EmptyState>
             ) : null}
             {groups.map(({ role, items }) => (
@@ -202,6 +241,66 @@ export function AccessGrantSection({
                 </ul>
               </section>
             ))}
+
+            {vivierVisible.length > 0 ? (
+              <section aria-label="Encadrants en attente" className="space-y-2">
+                <h3 className="text-sm font-semibold">
+                  Encadrants issus de la synchronisation, pas encore actifs{" "}
+                  <span className="font-normal text-muted-foreground">
+                    ({vivierVisible.length})
+                  </span>
+                </h3>
+                <ul className="space-y-2 text-sm">
+                  {vivierVisible.map((v) => (
+                    <li
+                      key={v.id}
+                      className="flex flex-wrap items-center gap-2 rounded-md border p-2"
+                    >
+                      <input
+                        type="checkbox"
+                        className="size-5"
+                        aria-label={`Sélectionner ${v.name}`}
+                        checked={selection.has(v.id)}
+                        onChange={(e) => toggle(v.id, e.target.checked)}
+                      />
+                      <span className="font-medium">{v.name}</span>
+                      <Badge variant="outline" className="font-normal">
+                        {v.etat}
+                      </Badge>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ) : null}
+
+            {retires.length > 0 ? (
+              <section aria-label="Personnes retirées" className="space-y-2">
+                <h3 className="text-sm font-semibold">
+                  Retirés{" "}
+                  <span className="font-normal text-muted-foreground">({retires.length})</span>
+                </h3>
+                <ul className="space-y-2 text-sm opacity-80">
+                  {retires.map((v) => (
+                    <li
+                      key={v.id}
+                      className="flex flex-wrap items-center gap-2 rounded-md border p-2"
+                    >
+                      <input
+                        type="checkbox"
+                        className="size-5"
+                        aria-label={`Sélectionner ${v.name}`}
+                        checked={selection.has(v.id)}
+                        onChange={(e) => toggle(v.id, e.target.checked)}
+                      />
+                      <span className="font-medium">{v.name}</span>
+                      <span className="text-muted-foreground">
+                        retiré : à réintégrer ou supprimer
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ) : null}
           </div>
         )}
       </PanelCard>

@@ -13,6 +13,7 @@
  * (pas de fenêtre modale du navigateur).
  */
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { useDataAccess } from "@/application/session";
 import type { PeopleActionResult } from "@/application/ports/repositories";
@@ -51,6 +52,7 @@ export function PeopleRemovalBar({
   readonly onClear?: (() => void) | undefined;
 }) {
   const dataAccess = useDataAccess();
+  const queryClient = useQueryClient();
   const [pending, setPending] = useState<Geste | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -76,6 +78,10 @@ export function PeopleRemovalBar({
       );
       setPending(null);
       onClear?.();
+      // Un seul état en base, donc UNE seule vérité à l'écran : tout le cache est
+      // invalidé pour que Administration, Équipe d'encadrement, Classes
+      // d'apprenants et Communication se mettent à jour ensemble.
+      void queryClient.invalidateQueries();
       onDone();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Action impossible.");
