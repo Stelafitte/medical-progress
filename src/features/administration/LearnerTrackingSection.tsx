@@ -24,7 +24,10 @@ import { EmptyState, PanelCard, StatCard } from "@/features/professional/mock-ui
 import { CohortSelector } from "@/features/administration/CohortSelector";
 import { setCohortFocus, useCohortFocus } from "@/application/cohortFocusStore";
 import type { ProgramAdminScope } from "@/features/administration/useProgramAdmin";
-import { defaultPilotCohortId } from "@/features/administration/adminProgramViewModel";
+import {
+  defaultPilotCohortId,
+  isCohortClosed,
+} from "@/features/administration/adminProgramViewModel";
 import {
   TRACKING_AXIS_HINTS_FR,
   TRACKING_AXIS_LABELS_FR,
@@ -173,6 +176,11 @@ export function LearnerTrackingSection({
   const [tri, setTri] = useState<"retard" | "nom">("retard");
   const selectedId = cohortId ?? focus ?? defaultPilotCohortId(cohorts);
   const selected = cohorts.find((c) => c.id === selectedId);
+  /* 14/11 : la liste nominative d'une promotion clôturée est masquée d'office ;
+     un bouton la déplie, pour la promotion choisie seulement. */
+  const [listeDepliee, setListeDepliee] = useState<string | null>(null);
+  const listeMasquee =
+    selected !== undefined && isCohortClosed(selected) && listeDepliee !== selectedId;
 
   const rows = useMemo<readonly LearnerTrackingRow[]>(() => {
     const enrollments = data.enrollments.filter((e) => e.cohortId === selectedId);
@@ -284,7 +292,22 @@ export function LearnerTrackingSection({
           </Button>
         </div>
 
-        {rows.length === 0 ? (
+        {listeMasquee ? (
+          <div className="flex flex-wrap items-center gap-3 rounded-md border border-dashed p-4 text-sm">
+            <span className="text-muted-foreground">
+              Cette promotion est clôturée : la liste de ses {rows.length} apprenant(s) est masquée.
+            </span>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="min-h-11"
+              onClick={() => setListeDepliee(selectedId ?? null)}
+            >
+              Afficher la liste
+            </Button>
+          </div>
+        ) : rows.length === 0 ? (
           <EmptyState>
             {selected
               ? "Aucun apprenant inscrit dans cette classe."

@@ -78,11 +78,28 @@ const STATUS_ORDER: Record<string, number> = {
   archived: 4,
 };
 
+/**
+ * UNE PROMOTION CLÔTURÉE (Stef, 14/11) : le statut « terminée » posé par
+ * l'administrateur — ou l'archivage. La PHASE ne suffit pas : elle se lit sur
+ * les dates, donc une promotion dont les dates passent encore pour « en cours »
+ * restait en tête alors que son stage était fini. Le geste de l'administrateur
+ * prime sur le calendrier.
+ */
+export function isCohortClosed(cohort: Pick<Cohort, "status" | "archivedAt">): boolean {
+  return (
+    cohort.status === "completed" || cohort.status === "archived" || Boolean(cohort.archivedAt)
+  );
+}
+
 export function sortCohortsForPilot(
   cohorts: readonly Cohort[],
   now: Date = new Date(),
 ): readonly Cohort[] {
   return [...cohorts].sort((a, b) => {
+    const ca = Number(isCohortClosed(a));
+    const cb = Number(isCohortClosed(b));
+    if (ca !== cb) return ca - cb;
+
     const pa = PHASE_ORDER[cohortPhase(a, now)];
     const pb = PHASE_ORDER[cohortPhase(b, now)];
     if (pa !== pb) return pa - pb;

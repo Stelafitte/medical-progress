@@ -3,6 +3,7 @@
  * Un programme est rejoué par plusieurs cohortes (parallèle ou séquence) :
  * aucun écran de pilotage ne suppose une cohorte unique.
  */
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -20,6 +21,7 @@ import {
   cohortProgressRatio,
   daysUntil,
   formatFrDate,
+  isCohortClosed,
   sortCohortsForPilot,
 } from "@/features/administration/adminProgramViewModel";
 
@@ -39,6 +41,13 @@ export function CohortSelector({
 }) {
   const ordered = sortCohortsForPilot(cohorts);
   const selected = ordered.find((c) => c.id === value);
+  /* 14/11 : les promotions clôturées ne sont plus proposées d'office — celle
+     qui a fini son stage ne doit pas se mêler à celle qui est en cours. Une
+     case les ramène pour les consulter ; et la promotion déjà choisie reste
+     toujours dans le menu, sinon la valeur affichée serait vide. */
+  const [voirClotures, setVoirClotures] = useState(false);
+  const nbClotures = ordered.filter(isCohortClosed).length;
+  const proposees = ordered.filter((c) => voirClotures || !isCohortClosed(c) || c.id === value);
   /* 21/09 : une promotion choisie dans l'en-tête s'impose ; le menu interne
      ne revient qu'avec « Toutes les promotions ». Deux sélecteurs qui se
      contredisent seraient pires qu'un seul. */
@@ -67,18 +76,32 @@ export function CohortSelector({
                 <SelectValue placeholder="Choisir une cohorte" />
               </SelectTrigger>
               <SelectContent>
-                {ordered.map((cohort) => (
+                {proposees.map((cohort) => (
                   <SelectItem key={cohort.id} value={cohort.id}>
-                    {cohort.label} · {COHORT_PHASE_LABELS_FR[cohortPhase(cohort)]}
+                    {cohort.label} ·{" "}
+                    {isCohortClosed(cohort)
+                      ? "clôturée"
+                      : COHORT_PHASE_LABELS_FR[cohortPhase(cohort)]}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           )}
+          {nbClotures > 0 ? (
+            <label className="text-muted-foreground flex items-center gap-2 text-xs">
+              <input
+                type="checkbox"
+                checked={voirClotures}
+                onChange={(e) => setVoirClotures(e.target.checked)}
+              />
+              Afficher les promotions clôturées ({nbClotures})
+            </label>
+          ) : null}
         </div>
         <p className="text-muted-foreground text-xs sm:max-w-xs">
-          {ordered.length} cohorte(s) rattachée(s) à ce programme. Le pilotage se fait cohorte par
-          cohorte.
+          {ordered.length - nbClotures} promotion(s) en cours ou à venir
+          {nbClotures > 0 ? `, ${nbClotures} clôturée(s)` : ""}. Le pilotage se fait promotion par
+          promotion.
         </p>
       </div>
 
@@ -103,6 +126,7 @@ export function CohortSelector({
               {daysUntil(selected.endsOn) >= 0
                 ? ` · clôture dans ${daysUntil(selected.endsOn)} jours`
                 : " · cohorte terminée"}
+              {isCohortClosed(selected) ? " · clôturée par l'administrateur" : ""}
             </p>
           </div>
         </div>

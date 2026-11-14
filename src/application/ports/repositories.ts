@@ -226,6 +226,14 @@ export interface ProgramRepository {
    */
   setCohortArchived(cohortId: CohortId, archived: boolean): Promise<Cohort>;
   /**
+   * CLÔTURE une promotion dont le stage est fini (statut « terminée »), ou la
+   * rouvre (retour à « en cours »). Réversible, sans perte : inscriptions,
+   * carnets et jalons restent consultables. Ce n'est pas l'archivage, qui cache
+   * la classe de toutes les listes — une promotion clôturée a vécu, on veut
+   * pouvoir la relire ; on veut seulement qu'elle cesse d'être proposée par défaut.
+   */
+  setCohortClosed(cohortId: CohortId, closed: boolean): Promise<Cohort>;
+  /**
    * INTERROMPT une promotion selon l'un des trois degrés (Stef, 16/09 : « il
    * faut des boutons pour chaque situation »). Le motif est obligatoire — la
    * fonction SQL le refuse vide, et c'est voulu : une promotion arrêtée sans

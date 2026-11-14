@@ -2640,6 +2640,14 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
         assertNoSupabaseError(error);
         return mapCohort(data as CohortRow, 0);
       },
+      async setCohortClosed(cohortId, closed) {
+        const { data, error } = await client.rpc("set_cohort_closed", {
+          p_cohort_id: cohortId,
+          p_closed: closed,
+        });
+        assertNoSupabaseError(error);
+        return mapCohort(data as CohortRow, 0);
+      },
       /*
        * INTERROMPRE ET REPRENDRE UNE PROMOTION (16/09).
        *

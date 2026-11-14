@@ -214,6 +214,13 @@ export const mockDataAccess: DataAccess = {
         cohorts = cohorts.map((c) => (c.id === updated.id ? updated : c));
         return ok(updated);
       },
+      setCohortClosed: (cohortId, closed) => {
+        const existing = cohorts.find((c) => c.id === cohortId);
+        if (!existing) return ok(undefined as never);
+        const updated: Cohort = { ...existing, status: closed ? "completed" : "in_progress" };
+        cohorts = cohorts.map((c) => (c.id === updated.id ? updated : c));
+        return ok(updated);
+      },
       /*
         L'INTERRUPTION N'EXISTE QU'EN BASE. Elle repose sur un trigger qui
         refuse les ecritures d'apprenant : la simuler ici donnerait un bouton

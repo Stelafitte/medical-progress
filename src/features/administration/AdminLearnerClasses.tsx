@@ -6,7 +6,7 @@
  */
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { SectionHeading } from "@/components/section-heading";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -34,6 +34,7 @@ import type { PendingPersonId, UpdatePendingPersonInput } from "@/domain/peopleS
 export function AdminLearnerClasses() {
   const { data, isPending, error, refetch } = useProgramAdmin();
   const dataAccess = useDataAccess();
+  const queryClient = useQueryClient();
   const [editing, setEditing] = useState<CohortId | null>(null);
   const [importingInto, setImportingInto] = useState<CohortId | null>(null);
   const [openRoster, setOpenRoster] = useState<CohortId | null>(null);
@@ -108,6 +109,22 @@ export function AdminLearnerClasses() {
     try {
       await dataAccess.programs.setCohortArchived(cohort.id, value);
       await Promise.all([refetch(), archivedQuery.refetch()]);
+    } catch (reason) {
+      setActionError(
+        reason instanceof Error ? reason.message : "L'opération sur la classe a échoué.",
+      );
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function setClosed(cohort: Cohort, value: boolean) {
+    setActionError(null);
+    setBusy(cohort.id);
+    try {
+      await dataAccess.programs.setCohortClosed(cohort.id, value);
+      await Promise.all([refetch(), queryClient.invalidateQueries({ queryKey: ["cohorts"] })]);
+      if (value && openRoster === cohort.id) setOpenRoster(null);
     } catch (reason) {
       setActionError(
         reason instanceof Error ? reason.message : "L'opération sur la classe a échoué.",
@@ -286,6 +303,19 @@ export function AdminLearnerClasses() {
                       onClick={() => setImportingInto(isImporting ? null : cohort.id)}
                     >
                       {isImporting ? "Fermer l'import" : "Importer une liste"}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="min-h-11"
+                      disabled={busy === cohort.id}
+                      onClick={() => void setClosed(cohort, cohort.status !== "completed")}
+                    >
+                      {busy === cohort.id
+                        ? "…"
+                        : cohort.status === "completed"
+                          ? "Rouvrir"
+                          : "Clôturer"}
                     </Button>
                     <Button
                       size="sm"
