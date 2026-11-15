@@ -28,7 +28,8 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState, PanelCard } from "@/features/professional/mock-ui";
-import { useSession } from "@/application/session";
+import { useDataAccess, useSession } from "@/application/session";
+import { COHORT_STATUS_LABELS_FR, type Cohort } from "@/domain/types";
 import { fetchProgramDirectory } from "@/infrastructure/supabase/communicationDirectory";
 import {
   ACCOUNT_STATE_LABELS_FR,
@@ -46,6 +47,20 @@ import { PeopleRemovalBar } from "@/features/administration/PeopleRemovalBar";
 import { CommunicationSendDialogs } from "@/features/administration/CommunicationSendDialogs";
 
 const TOUCH = "min-h-11";
+
+/** Ordre des promotions : en cours d'abord, puis ouvertes, en préparation,
+ *  clôturées, archivées. À statut égal, l'ordre alphabétique. */
+const RANG_STATUT: Record<string, number> = {
+  in_progress: 0,
+  open: 1,
+  draft: 2,
+  completed: 3,
+  archived: 4,
+};
+function statutAffiche(c: Cohort | undefined): string | undefined {
+  if (!c) return undefined;
+  return c.archivedAt ? "archived" : c.status;
+}
 
 /**
  * UNE COULEUR PAR POPULATION (Stef, 18/09 : « sépare les entités, mets de la
@@ -101,8 +116,35 @@ export function CommunicationDirectorySection() {
     queryFn: () => fetchProgramDirectory(activeProgram.id),
   });
 
+  const dataAccess = useDataAccess();
+  const promotions = useQuery({
+    queryKey: ["cohorts-all", activeProgram.id],
+    queryFn: () => dataAccess.programs.listCohorts(activeProgram.id, { includeArchived: true }),
+  });
+  const statutParPromotion = useMemo(
+    () => new Map((promotions.data ?? []).map((c) => [c.id as string, statutAffiche(c)])),
+    [promotions.data],
+  );
+
   const rows = useMemo(() => annuaire.data ?? [], [annuaire.data]);
-  const blocks = useMemo(() => groupDirectory(rows), [rows]);
+  const blocks = useMemo(
+    () =>
+      groupDirectory(rows).map((bloc) =>
+        bloc.kind !== "learner"
+          ? bloc
+          : {
+              ...bloc,
+              groups: [...bloc.groups]
+                .map((g) => ({ ...g, statut: statutParPromotion.get(g.groupId) }))
+                .sort(
+                  (a, b) =>
+                    (RANG_STATUT[a.statut ?? ""] ?? 9) - (RANG_STATUT[b.statut ?? ""] ?? 9) ||
+                    a.label.localeCompare(b.label, "fr"),
+                ),
+            },
+      ),
+    [rows, statutParPromotion],
+  );
   const retenues = useMemo(() => selectedRows(rows, selection), [rows, selection]);
 
   function basculer(cible: readonly DirectoryRow[], valeur: boolean) {
@@ -199,6 +241,7 @@ export function CommunicationDirectorySection() {
             )
           }
           onSelection={basculer}
+          statutDe={(id) => statutParPromotion.get(id)}
         />
       ))}
 
@@ -236,7 +279,9 @@ function BlocAnnuaire({
   groupesOuverts,
   onBasculerGroupe,
   onSelection,
+  statutDe,
 }: {
+  statutDe: (groupId: string) => string | undefined;
   bloc: DirectoryBlock;
   selection: ReadonlySet<string>;
   ouvert: boolean;
@@ -322,6 +367,15 @@ function BlocAnnuaire({
                   )}
                   <span className={`size-2 shrink-0 rounded-full ${style.rail}`} aria-hidden />
                   <span className="text-sm font-medium">{groupe.label}</span>
+                  {bloc.kind === "learner" && statutDe(groupe.groupId) ? (
+                    <Badge variant="outline" className="font-normal">
+                      {statutDe(groupe.groupId) === "archived"
+                        ? "archivée"
+                        : COHORT_STATUS_LABELS_FR[
+                            statutDe(groupe.groupId) as keyof typeof COHORT_STATUS_LABELS_FR
+                          ]}
+                    </Badge>
+                  ) : null}
                   <span className="text-muted-foreground text-xs">
                     {groupe.rows.length} personne(s)
                   </span>

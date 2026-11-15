@@ -60,10 +60,12 @@ export function CommunicationSendDialogs({
   selection,
   onVider,
   onRafraichir,
+  libelleConnexion = "Première connexion",
 }: {
   selection: readonly DirectoryRow[];
   onVider: () => void;
   onRafraichir: () => void;
+  libelleConnexion?: string;
 }) {
   const [ouvert, setOuvert] = useState<"aucun" | "connexion" | "message">("aucun");
 
@@ -83,7 +85,7 @@ export function CommunicationSendDialogs({
           <div className="flex-1" />
           <Button variant="outline" className={TOUCH} onClick={() => setOuvert("connexion")}>
             <KeyRound className="me-1 size-4" aria-hidden />
-            Première connexion
+            {libelleConnexion}
           </Button>
           <Button className={TOUCH} onClick={() => setOuvert("message")}>
             <Mail className="me-1 size-4" aria-hidden />

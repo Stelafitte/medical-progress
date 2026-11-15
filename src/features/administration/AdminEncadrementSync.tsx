@@ -1,25 +1,17 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { RefreshCw, Send, ShieldCheck, UserPlus } from "lucide-react";
+import { RefreshCw, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 
 import { SectionHeading } from "@/components/section-heading";
 import { PanelCard } from "@/features/professional/mock-ui";
-import { PeopleRemovalBar } from "@/features/administration/PeopleRemovalBar";
+import { AdminSupervisorsTable } from "@/features/administration/AdminSupervisorsTable";
 import { EYEBROW, TABULAIRE } from "@/components/milestone-heading";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDataAccess, useSession } from "@/application/session";
-import {
-  PENDING_PERSON_ISSUE_LABELS_FR,
-  PENDING_PERSON_STATUS_LABELS_FR,
-  fullNameOfPendingPerson,
-  validatePendingPersonCreation,
-  type PendingPerson,
-  type PendingPersonId,
-} from "@/domain/peopleStaging";
 import type {
   EncadrementMembre,
   EncadrementSourceId,
@@ -112,10 +104,6 @@ export function AdminEncadrementSync() {
   const [rapport, setRapport] = useState<EncadrementSyncReport | null>(null);
 
   /* ---- saisie manuelle d'un encadrant ---- */
-  const [prenom, setPrenom] = useState("");
-  const [nom, setNom] = useState("");
-  const [email, setEmail] = useState("");
-  const [terrainSaisi, setTerrainSaisi] = useState<string>("");
 
   const { data: terrains } = useQuery({
     queryKey: ["placements", activeProgram.id],
@@ -132,10 +120,6 @@ export function AdminEncadrementSync() {
   const { data: groupes } = useQuery({
     queryKey: ["supervision-groups", activeProgram.id],
     queryFn: () => data.placements.listSupervisionGroups(activeProgram.id),
-  });
-  const { data: vivier } = useQuery({
-    queryKey: ["pending-people", activeProgram.id],
-    queryFn: () => data.peopleStaging.listPendingPeople(activeProgram.id),
   });
   const { data: comptes } = useQuery({
     queryKey: ["administration-people"],
@@ -180,22 +164,6 @@ export function AdminEncadrementSync() {
     return (id: PlacementId) => index.get(id) ?? "terrain inconnu";
   }, [terrains]);
 
-  /** Le vivier ENCADRANT seulement : intention explicite, ou rapporté par une
-   *  source d'équipe. Les apprenants du sas n'ont rien à faire ici. */
-  const [selectionEquipe, setSelectionEquipe] = useState<ReadonlySet<string>>(new Set());
-  const vivierEncadrant = useMemo(
-    () =>
-      (vivier ?? []).filter(
-        (p) =>
-          p.status !== "cancelled" &&
-          (p.intendedRole === "placement_supervisor" || p.origin === "sync"),
-      ),
-    [vivier],
-  );
-
-  const terrainParDefaut = source?.placementId ?? terrains?.[0]?.id ?? "";
-  const terrainChoisi = (terrainSaisi || terrainParDefaut) as PlacementId;
-
   const enregistrer = useMutation({
     mutationFn: () =>
       data.encadrementSources.setSource({
@@ -238,64 +206,6 @@ export function AdminEncadrementSync() {
     onError: (raison) =>
       toast.error(raison instanceof Error ? raison.message : "Synchronisation impossible."),
   });
-
-  /**
-   * AJOUT À LA MAIN. L'INTENTION DE RÔLE EST POSÉE DÈS LE VIVIER : sans elle,
-   * l'activation du compte ne saurait rien accorder et la personne arriverait
-   * sans aucun rôle. Le rôle est porté par le TERRAIN, jamais par la
-   * promotion — et à l'activation, le déclencheur la rattache à TOUS les
-   * groupes de ce terrain, donc à ceux de la promotion en cours.
-   */
-  const ajouter = useMutation({
-    mutationFn: () =>
-      data.peopleStaging.createPendingPerson({
-        programId: activeProgram.id,
-        firstName: prenom.trim(),
-        lastName: nom.trim(),
-        loginEmail: email,
-        intendedRole: "placement_supervisor",
-        intendedPlacementId: terrainChoisi,
-      }),
-    onSuccess: (personne) => {
-      setPrenom("");
-      setNom("");
-      setEmail("");
-      void queryClient.invalidateQueries({ queryKey: ["pending-people"] });
-      toast.success(
-        `${fullNameOfPendingPerson(personne)} est au vivier. Aucun compte n'a été créé : il reste à l'inviter.`,
-      );
-    },
-    onError: (raison) =>
-      toast.error(raison instanceof Error ? raison.message : "Ajout impossible."),
-  });
-
-  const inviter = useMutation({
-    mutationFn: async (personId: PendingPersonId) => {
-      const resultats = await data.peopleStaging.sendInvitations([personId]);
-      const resultat = resultats.find((r) => r.personId === personId);
-      if (resultat && !resultat.ok) {
-        throw new Error(resultat.error ?? "Envoi de l'invitation impossible.");
-      }
-      return resultat;
-    },
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["pending-people"] });
-      toast.success("Invitation envoyée.");
-    },
-    onError: (raison) =>
-      toast.error(raison instanceof Error ? raison.message : "Invitation non envoyée."),
-  });
-
-  const saisieIncomplete =
-    prenom.trim() === "" || nom.trim() === "" || email.trim() === "" || terrainChoisi === "";
-  const problemes = saisieIncomplete
-    ? []
-    : validatePendingPersonCreation({
-        programId: activeProgram.id,
-        firstName: prenom.trim(),
-        lastName: nom.trim(),
-        loginEmail: email,
-      });
 
   if (isPending) return <Skeleton className="h-64 w-full" />;
 
@@ -371,208 +281,10 @@ export function AdminEncadrementSync() {
             })}
           </div>
         )}
-
-        <p className={`${EYEBROW} text-muted-foreground`} style={TABULAIRE}>
-          Vivier encadrant : {vivierEncadrant.filter((p) => p.status === "pending").length} en
-          attente d'invitation · {vivierEncadrant.filter((p) => p.status === "invited").length}{" "}
-          invité(s) · {vivierEncadrant.filter((p) => p.status === "activated").length} activé(s)
-        </p>
       </PanelCard>
 
-      {/* ---------- retirer / supprimer, en lot ---------- */}
-      <PanelCard
-        title="Retirer ou supprimer des encadrants"
-        description="Cochez une ou plusieurs personnes : retirer est réversible, supprimer est définitif et refusé s'il existe un historique."
-      >
-        {(() => {
-          const viviers = (vivier ?? []).filter(
-            (p) => p.intendedRole === "placement_supervisor" || p.origin === "sync",
-          );
-          const comptesVivier = new Set(
-            viviers.map((p) => p.activatedProfileId).filter((id): id is PersonId => Boolean(id)),
-          );
-          const lignes: { id: string; nom: string; etat: string }[] = [
-            ...viviers.map((p) => ({
-              id: p.id,
-              nom: fullNameOfPendingPerson(p),
-              etat:
-                p.status === "cancelled"
-                  ? "retiré"
-                  : p.status === "activated"
-                    ? (roles ?? []).some(
-                        (r) =>
-                          r.personId === p.activatedProfileId &&
-                          r.role === "placement_supervisor" &&
-                          r.scope.kind !== "platform" &&
-                          "programId" in r.scope &&
-                          r.scope.programId === activeProgram.id,
-                      ) ||
-                      (groupes ?? []).some((g) =>
-                        g.supervisorPersonIds.some((id) => id === p.activatedProfileId),
-                      )
-                      ? "compte actif"
-                      : "retiré"
-                    : p.status === "invited"
-                      ? "invité"
-                      : "à inviter",
-            })),
-            ...[...new Set((groupes ?? []).flatMap((g) => g.supervisorPersonIds))]
-              .filter((id) => !comptesVivier.has(id))
-              .map((id) => ({ id, nom: nomDe(id), etat: "compte actif" })),
-          ].sort((a, b) => a.nom.localeCompare(b.nom, "fr"));
-          if (lignes.length === 0)
-            return <p className="text-muted-foreground text-sm">Aucun encadrant à gérer.</p>;
-          return (
-            <div className="space-y-3">
-              <PeopleRemovalBar
-                programId={activeProgram.id}
-                personIds={[...selectionEquipe]}
-                nameOf={(id) => lignes.find((l) => l.id === id)?.nom ?? id}
-                onClear={() => setSelectionEquipe(new Set())}
-                onDone={() => {
-                  void queryClient.invalidateQueries({ queryKey: ["pending-people"] });
-                  void queryClient.invalidateQueries({ queryKey: ["supervision-groups"] });
-                  void queryClient.invalidateQueries({ queryKey: ["administration-people"] });
-                }}
-              />
-              <ul className="space-y-1 text-sm">
-                {lignes.map((l) => (
-                  <li key={l.id} className="flex items-center gap-2 rounded-md border p-2">
-                    <input
-                      type="checkbox"
-                      className="size-5"
-                      aria-label={`Sélectionner ${l.nom}`}
-                      checked={selectionEquipe.has(l.id)}
-                      onChange={(e) =>
-                        setSelectionEquipe((cur) => {
-                          const next = new Set(cur);
-                          if (e.target.checked) next.add(l.id);
-                          else next.delete(l.id);
-                          return next;
-                        })
-                      }
-                    />
-                    <span className="font-medium">{l.nom}</span>
-                    <span className="text-muted-foreground">{l.etat}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          );
-        })()}
-      </PanelCard>
-
-      {/* ---------- ajouter un encadrant à la main ---------- */}
-      <PanelCard
-        collapsible
-        title="Ajouter un encadrant"
-        description="À la main, avec invitation : pour un senior que le service ne rend pas."
-      >
-        <p className="text-muted-foreground text-[12.5px] leading-relaxed">
-          La personne entre au vivier ; aucun compte n'est créé. À l'invitation, elle reçoit un lien
-          d'activation, et c'est en activant son compte qu'elle devient encadrante du terrain choisi
-          — et de tous ses groupes, donc de la promotion en cours.
-        </p>
-
-        <div className="grid gap-3 sm:grid-cols-3">
-          <div className="space-y-1">
-            <Label htmlFor="enc-prenom" className="text-xs">
-              Prénom
-            </Label>
-            <Input id="enc-prenom" value={prenom} onChange={(e) => setPrenom(e.target.value)} />
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="enc-nom" className="text-xs">
-              Nom
-            </Label>
-            <Input id="enc-nom" value={nom} onChange={(e) => setNom(e.target.value)} />
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="enc-email" className="text-xs">
-              Adresse de connexion
-            </Label>
-            <Input
-              id="enc-email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              autoComplete="off"
-            />
-          </div>
-        </div>
-
-        <div className="space-y-1">
-          <Label htmlFor="enc-terrain" className="text-xs">
-            Terrain encadré
-          </Label>
-          <select
-            id="enc-terrain"
-            className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm sm:max-w-sm"
-            value={terrainChoisi}
-            onChange={(e) => setTerrainSaisi(e.target.value)}
-          >
-            {(terrains ?? []).map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {problemes.length > 0 ? (
-          <ul className="text-destructive space-y-0.5 text-[12.5px]">
-            {problemes.map((p) => (
-              <li key={p}>{PENDING_PERSON_ISSUE_LABELS_FR[p]}</li>
-            ))}
-          </ul>
-        ) : null}
-
-        <Button
-          size="sm"
-          disabled={saisieIncomplete || problemes.length > 0 || ajouter.isPending}
-          onClick={() => ajouter.mutate()}
-        >
-          <UserPlus className="size-4" aria-hidden />
-          Ajouter au vivier
-        </Button>
-
-        {vivierEncadrant.length === 0 ? (
-          <p className="text-muted-foreground text-[13px]">
-            Le vivier encadrant est vide : personne n'attend d'invitation.
-          </p>
-        ) : (
-          <ul className="divide-border divide-y border-t">
-            {vivierEncadrant.map((p: PendingPerson) => (
-              <li
-                key={p.id}
-                className="flex flex-wrap items-center justify-between gap-2 py-2.5 text-[13px] leading-snug"
-              >
-                <span>
-                  <span className="font-medium">{fullNameOfPendingPerson(p)}</span>{" "}
-                  <span className="text-muted-foreground">
-                    {p.loginEmail} · {PENDING_PERSON_STATUS_LABELS_FR[p.status]}
-                    {p.origin === "sync" ? " · venue de la synchronisation" : ""}
-                    {p.intendedPlacementId
-                      ? ` · ${nomDuTerrain(p.intendedPlacementId)}`
-                      : " · aucun terrain visé"}
-                  </span>
-                </span>
-                {p.status === "activated" ? null : (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={inviter.isPending}
-                    onClick={() => inviter.mutate(p.id)}
-                  >
-                    <Send className="size-4" aria-hidden />
-                    {p.status === "invited" ? "Renvoyer l'invitation" : "Inviter"}
-                  </Button>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
-      </PanelCard>
+      {/* ---------- UN SEUL tableau d'encadrants, avec toutes les actions ---------- */}
+      <AdminSupervisorsTable />
 
       {/* ---------- la source ---------- */}
       <PanelCard

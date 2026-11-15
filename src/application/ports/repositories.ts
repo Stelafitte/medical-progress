@@ -415,6 +415,18 @@ export interface PeopleStagingRepository {
    * compte présent dans un autre programme : la raison est rendue par personne.
    */
   deletePeople(programId: ProgramId, personIds: readonly string[]): Promise<PeopleActionResult>;
+
+  /**
+   * RATTACHER des encadrants à un groupe d'encadrement, tout de suite : rôle
+   * actif sur le terrain du groupe + entrée dans ses encadrants. Identifiants de
+   * comptes OU de lignes du vivier ; sans compte, la ligne est ignorée
+   * (« pas-de-compte »).
+   */
+  attachSupervisorsToGroup(
+    programId: ProgramId,
+    personIds: readonly string[],
+    groupId: string,
+  ): Promise<PeopleActionResult>;
 }
 
 /** Résultat d'une action en lot sur des personnes : ce qui a été fait, et ce qui a été écarté. */

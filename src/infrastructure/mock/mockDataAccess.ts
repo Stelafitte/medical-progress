@@ -330,6 +330,8 @@ export const mockDataAccess: DataAccess = {
         });
         return ok({ done, skipped: [] });
       },
+      attachSupervisorsToGroup: (_programId, personIds) =>
+        ok({ done: personIds.length, skipped: [] }),
       deletePeople: (_programId, personIds) => {
         const before = pending.length;
         pending = pending.filter((p) => !personIds.includes(p.id));

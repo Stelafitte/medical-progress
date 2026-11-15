@@ -2954,6 +2954,19 @@ export function createSupabaseDataAccess(client: SupabaseClient): DataAccess {
         assertNoSupabaseError(error);
         return mapPeopleActionResult(data);
       },
+      async attachSupervisorsToGroup(
+        programId: ProgramId,
+        personIds: readonly string[],
+        groupId: string,
+      ) {
+        const { data, error } = await client.rpc("rattacher_encadrants_groupe", {
+          p_program_id: programId,
+          p_person_ids: [...personIds],
+          p_group_id: groupId,
+        });
+        assertNoSupabaseError(error);
+        return mapPeopleActionResult(data);
+      },
       async sendInvitations(personIds: readonly PendingPersonId[]) {
         if (personIds.length === 0) return [];
         const { data, error } = await client.functions.invoke("invite-person", {
