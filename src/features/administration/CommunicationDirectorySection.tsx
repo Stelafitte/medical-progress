@@ -347,7 +347,14 @@ function BlocAnnuaire({
           const toutGroupe = allSelected(groupe.rows, selection);
           const partielGroupe = someSelected(groupe.rows, selection);
           return (
-            <div key={cle} className="border-border border-t">
+            <div
+              key={cle}
+              className={`border-border border-t ${
+                bloc.kind === "learner" && statutDe(groupe.groupId) === "archived"
+                  ? "bg-muted/50 text-muted-foreground opacity-60 grayscale"
+                  : ""
+              }`}
+            >
               <div className="flex flex-wrap items-center gap-3 px-4 py-2 ps-6">
                 <Checkbox
                   checked={partielGroupe ? "indeterminate" : toutGroupe}
