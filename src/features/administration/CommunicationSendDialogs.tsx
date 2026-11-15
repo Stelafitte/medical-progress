@@ -378,6 +378,31 @@ function DialogueMessage({
           </div>
         </div>
 
+        {preparer.isError && (
+          <p
+            className="text-destructive border-destructive rounded border p-2 text-xs"
+            role="alert"
+          >
+            Essai refusé :{" "}
+            {preparer.error instanceof Error ? preparer.error.message : "erreur inconnue"}
+          </p>
+        )}
+        {envoyer.isError && (
+          <p
+            className="text-destructive border-destructive rounded border p-2 text-xs"
+            role="alert"
+          >
+            Envoi refusé :{" "}
+            {envoyer.error instanceof Error ? envoyer.error.message : "erreur inconnue"}
+          </p>
+        )}
+        {!essai && !preparer.isError && (
+          <p className="text-muted-foreground text-xs">
+            « Envoyer pour de vrai » reste grisé tant qu'aucun essai n'a réussi pour ce texte et ces{" "}
+            {plan.personIds.length} destinataire(s). Modifier l'objet ou le message annule l'essai.
+          </p>
+        )}
+
         {essai && (
           <div className="border-border space-y-1 rounded border p-2 text-xs">
             <p className="font-medium">
