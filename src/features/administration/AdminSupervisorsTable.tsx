@@ -30,6 +30,7 @@ import {
   fullNameOfPendingPerson,
   validatePendingPersonCreation,
 } from "@/domain/peopleStaging";
+import type { DirectoryRow } from "@/domain/communicationDirectory";
 import type { PersonId, PlacementId } from "@/domain/types";
 
 const RAISONS_RATTACHEMENT: Record<string, string> = {
@@ -44,6 +45,9 @@ interface Ligne {
   readonly email: string;
   readonly terrain: string;
   readonly groupes: string;
+  readonly profileId?: string | undefined;
+  readonly stagingId?: string | undefined;
+  readonly statutVivier?: string | undefined;
 }
 
 export function AdminSupervisorsTable() {
@@ -129,6 +133,9 @@ export function AdminSupervisorsTable() {
 
     const issues: Ligne[] = viviers.map((p) => ({
       id: p.id,
+      profileId: p.activatedProfileId ?? undefined,
+      stagingId: p.id,
+      statutVivier: p.status,
       nom: fullNameOfPendingPerson(p),
       email: p.loginEmail ?? "",
       terrain: p.intendedPlacementId ? nomDuTerrain(p.intendedPlacementId) : "aucun terrain visé",
@@ -148,6 +155,7 @@ export function AdminSupervisorsTable() {
       .filter((id) => !comptesVivier.has(id))
       .map((id) => ({
         id,
+        profileId: id,
         nom: nomDe(id),
         email: "",
         terrain: "",
@@ -165,16 +173,40 @@ export function AdminSupervisorsTable() {
 
   /** Lignes de l'annuaire correspondant à la sélection : c'est ce que les
    *  fenêtres « Inviter » et « Écrire un message » savent envoyer. */
-  const lignesAnnuaire = useMemo(
-    () =>
-      (annuaire.data ?? []).filter(
-        (r) =>
-          r.kind === "placement_supervisor" &&
-          ((r.personId && selection.has(r.personId)) ||
-            (r.stagingId && selection.has(r.stagingId))),
-      ),
-    [annuaire.data, selection],
-  );
+  const lignesAnnuaire = useMemo<readonly DirectoryRow[]>(() => {
+    const dir = annuaire.data ?? [];
+    return lignes
+      .filter((l) => selection.has(l.id))
+      .map((l): DirectoryRow => {
+        const connue = dir.find(
+          (r) =>
+            r.kind === "placement_supervisor" &&
+            ((l.profileId && r.personId === l.profileId) ||
+              (l.stagingId && r.stagingId === l.stagingId)),
+        );
+        if (connue) return connue;
+        // Personne absente de l'annuaire (rôle retiré, pas encore rattachée) :
+        // on la décrit à partir du tableau pour pouvoir quand même lui écrire.
+        const arobase = l.email.indexOf("@");
+        return {
+          rowKey: `enc:${l.id}`,
+          kind: "placement_supervisor",
+          personId: l.profileId,
+          stagingId: l.profileId ? undefined : l.stagingId,
+          fullName: l.nom,
+          groupLabel: l.terrain || "Encadrants",
+          accountState: !l.email
+            ? "no_address"
+            : l.profileId
+              ? "active"
+              : l.statutVivier === "invited"
+                ? "invited"
+                : "staged",
+          emailMasked: arobase > 0 ? `${l.email[0]}***${l.email.slice(arobase)}` : "",
+          optedOut: false,
+        };
+      });
+  }, [annuaire.data, lignes, selection]);
 
   const groupesChoisissables = (groupes ?? []).map((g) => ({
     id: g.id as string,
