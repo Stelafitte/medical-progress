@@ -256,7 +256,11 @@ Deno.serve(async (req) => {
       422,
     );
   }
+  /* L'ESSAI N'EXPEDIE RIEN : la confirmation collective n'est exigee que pour
+     l'envoi reel. La demander aussi a l'essai enfermait l'utilisateur — l'essai
+     est obligatoire avant l'envoi, et l'envoi seul declenche la confirmation. */
   if (
+    !dryRun &&
     campaign.requires_collective_confirmation &&
     !campaign.collective_confirmation_at &&
     recipients.length > 1
