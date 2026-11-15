@@ -83,6 +83,7 @@ export function ProgramMilestonePlanner({
   themes,
   outcomes,
   defaultCohortId,
+  onSummary,
 }: {
   /**
    * Passé explicitement plutôt que déduit de `themes[0].programId` : les
@@ -95,6 +96,11 @@ export function ProgramMilestonePlanner({
   themes: readonly OutcomeTheme[];
   outcomes: readonly Outcome[];
   defaultCohortId?: CohortId;
+  /**
+   * Dit à l'écran parent combien de jalons la promotion regardée porte EN BASE :
+   * c'est ce chiffre, et lui seul, qui fait passer l'étape du bleu au vert.
+   */
+  onSummary?: (summary: { cohortId: string; milestones: number }) => void;
 }) {
   const dataAccess = useDataAccess();
   /**
@@ -193,12 +199,17 @@ export function ProgramMilestonePlanner({
     [ordered, existing],
   );
 
+  // Référence, pas dépendance : un rappel recréé à chaque rendu relancerait la lecture en boucle.
+  const onSummaryRef = useRef(onSummary);
+  onSummaryRef.current = onSummary;
+
   const load = useCallback(async () => {
     if (cohortId === "") return;
     setError(null);
     try {
       const found = await dataAccess.plan.listMilestones(cohortId as CohortId);
       setExisting(found);
+      onSummaryRef.current?.({ cohortId, milestones: found.length });
       /*
        * On rapproche un jalon de son chapitre par l'INTITULÉ. C'est ce qui
        * permet de rouvrir l'écran et de retrouver ce qu'on avait posé, sans

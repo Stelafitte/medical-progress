@@ -231,6 +231,8 @@ export function AdminProgramDesigner() {
   // le détail (mode, ajout, associations) ne s'ouvre qu'à la demande.
   const [ressourcesOuvertes, setRessourcesOuvertes] = useState<Record<string, boolean>>({});
   const [selectedCohortId, setSelectedCohortId] = useState<string | null>(null);
+  /** Jalons posés en base pour la promotion regardée dans le rétroplanning (étape 3). */
+  const [jalonsPoses, setJalonsPoses] = useState<number | null>(null);
   const [associated, setAssociated] = useState<string | null>(null);
   const [programStartsOn, setProgramStartsOn] = useState("");
   const [programEndsOn, setProgramEndsOn] = useState("");
@@ -1641,7 +1643,7 @@ export function AdminProgramDesigner() {
         title="Programmer le planning général du programme"
         step={3}
         collapsible
-        tone="action"
+        tone={jalonsPoses !== null && jalonsPoses > 0 && !boundsInvalid ? "done" : "action"}
         description="Chaque chapitre du programme peut recevoir une semaine, une période, ou rester non daté. Les semaines se comptent depuis le début de la promotion choisie."
         action={
           <Badge variant="outline" className="font-normal">
@@ -1677,7 +1679,11 @@ export function AdminProgramDesigner() {
           ) : null}
         </SubBlock>
 
-        <SubBlock title="Jalons de la promotion" summary="rétroplanning" tone="action">
+        <SubBlock
+          title="Jalons de la promotion"
+          summary="rétroplanning"
+          tone={jalonsPoses !== null && jalonsPoses > 0 ? "done" : "action"}
+        >
           {/*
             Le VRAI rétroplanning, écrit dans `plan_milestones`. Il remplace la
             maquette qui listait deux échéances génériques par type de ressource
@@ -1690,6 +1696,7 @@ export function AdminProgramDesigner() {
             cohorts={cohorts}
             themes={data.outcomeThemes}
             outcomes={data.outcomes}
+            onSummary={(summary) => setJalonsPoses(summary.milestones)}
             {...(selectedCohortId ? { defaultCohortId: selectedCohortId as CohortId } : {})}
           />
         </SubBlock>
