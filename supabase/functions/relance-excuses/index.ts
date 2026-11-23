@@ -138,8 +138,18 @@ Deno.serve(async (req) => {
     if (data.users.length < 1000) break;
   }
 
+  // 23/11 : envoi ciblé (liste d'adresses) et variante « lien expiré », pour le groupe B.
+  const emailsCibles = Array.isArray((body as { emails?: unknown }).emails)
+    ? ((body as { emails: unknown[] }).emails.filter((e) => typeof e === "string") as string[]).map(
+        (e) => e.trim().toLowerCase(),
+      )
+    : null;
+  const varianteExpire = (body as { variante?: unknown }).variante === "expire";
   const cibles = (people ?? []).filter(
-    (p) => derniere.has(p.login_email) && derniere.get(p.login_email) === null,
+    (p) =>
+      derniere.has(p.login_email) &&
+      derniere.get(p.login_email) === null &&
+      (!emailsCibles || emailsCibles.includes((p.login_email ?? "").toLowerCase())),
   );
   const estEncadrant = (p: { intended_role?: string | null; intended_cohort_id?: string | null }) =>
     !p.intended_cohort_id && (p.intended_role ?? "").startsWith("placement_");
@@ -149,6 +159,27 @@ Deno.serve(async (req) => {
     encadrants: cibles.filter(estEncadrant).length,
   };
   const veutTestEnvoi = typeof (body as { testEnvoi?: unknown }).testEnvoi === "string";
+  // 23/11 : DIFFUSION d'un courriel libre a tous les inscrits d'une promotion (mail de motivation
+  // du groupe B). Entree : { diffusion: { cohortId, sujet, texte } }. Une adresse = un envoi.
+  const diffusion = (body as { diffusion?: { cohortId?: unknown; sujet?: unknown; texte?: unknown } })
+    .diffusion;
+  let destinataires: Array<{ first_name: string | null; login_email: string }> = [];
+  if (diffusion) {
+    if (
+      typeof diffusion.cohortId !== "string" ||
+      typeof diffusion.sujet !== "string" ||
+      typeof diffusion.texte !== "string"
+    )
+      return json({ error: "diffusion : cohortId, sujet, texte requis" }, 400);
+    const { data: dest } = await admin
+      .from("people")
+      .select("first_name, login_email")
+      .eq("program_id", program.id)
+      .eq("intended_cohort_id", diffusion.cohortId)
+      .in("status", ["invited", "activated"]);
+    destinataires = (dest ?? []).filter((d) => d.login_email);
+    if (dryRun) return json({ dryRun: true, diffusion: destinataires.length }, 200);
+  }
   if (dryRun && !testSmtp && !veutTestEnvoi) return json({ dryRun: true, ...resume }, 200);
 
   const { data: sender } = await admin
@@ -165,6 +196,28 @@ Deno.serve(async (req) => {
     secure: sender.smtp_port === 465,
     auth: { user: sender.smtp_user, pass: password },
   });
+
+  if (diffusion) {
+    let envoyes = 0;
+    const echecs: Array<{ email: string; error: string }> = [];
+    for (const d of destinataires) {
+      try {
+        const prenom = (d.first_name ?? "").trim();
+        const corps = String(diffusion.texte).replace("{prenom}", prenom);
+        await transporter.sendMail({
+          from: `"${sender.from_name}" <${sender.smtp_user}>`,
+          to: d.login_email,
+          subject: String(diffusion.sujet),
+          text: corps,
+        });
+        envoyes++;
+      } catch (e) {
+        echecs.push({ email: d.login_email, error: e instanceof Error ? e.message : String(e) });
+      }
+      await new Promise((r) => setTimeout(r, 1200));
+    }
+    return json({ dryRun: false, diffusion: destinataires.length, envoyes, echecs }, 200);
+  }
 
   /*
    * 21/09 (nuit) : DIAGNOSTIC D'ACHEMINEMENT. Un courriel de test vers une
@@ -332,13 +385,29 @@ Deno.serve(async (req) => {
       const { lien, id: lienId } = await lienInvitation(admin, p.login_email);
       const prenom = (p.first_name ?? "").trim();
       const encadrant = estEncadrant(p);
-      const text = [
+      const text = varianteExpire
+        ? [
+            prenom ? `Bonjour ${prenom},` : "Bonjour,",
+            "",
+            `Vous nous avez signalé que votre lien de connexion à la plateforme "${program.name}" (Campus Santé Augmenté) avait expiré. Nous vous prions de nous excuser pour ce désagrément.`,
+            "",
+            "Voici un nouveau lien personnel, valable sans date limite :",
+            lien,
+            "",
+            "Il vous permet de vérifier vos informations puis de choisir votre mot de passe. Si quoi que ce soit ne fonctionne pas, répondez simplement à ce message.",
+            "",
+            "Ce lien est personnel : merci de ne pas le transférer.",
+            "",
+            "Bien cordialement,",
+            `— ${sender.from_name}`,
+          ].join("\n")
+        : [
         prenom ? `Bonjour ${prenom},` : "Bonjour,",
         "",
         `Nous vous avons adressé il y a quelques jours une invitation à rejoindre la plateforme "${program.name}" (Campus Santé Augmenté).`,
         "Ce message ne vous est très probablement jamais parvenu — notre serveur d'envoi le bloquait sans nous le dire — ou bien le lien qu'il contenait avait expiré avant que vous ne l'ouvriez. Nous vous prions de bien vouloir nous excuser pour ce désagrément.",
         "",
-        "Le problème est corrigé et vérifié. Voici un nouveau lien personnel, valable 7 jours :",
+        "Le problème est corrigé et vérifié. Voici un nouveau lien personnel, sans date limite :",
         lien,
         "",
         encadrant

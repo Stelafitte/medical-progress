@@ -335,7 +335,7 @@ async function sendWithDedicatedSender(
     "Pour définir votre mot de passe et vérifier vos informations, cliquez sur le lien suivant :",
     lien,
     "",
-    "Ce lien est personnel et valable 7 jours. Merci de ne pas le transférer.",
+    "Ce lien est personnel et sans date limite. Merci de ne pas le transférer.",
     "S'il a expiré, la page vous permettra d'en recevoir un nouveau.",
     "",
     `— ${sender.from_name}`,
